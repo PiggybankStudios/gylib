@@ -12,6 +12,7 @@ Description:
 
 #include "gy_defines_check.h"
 #include "gy_std.h"
+#include "gy_types.h"
 
 enum GyDbgLevel_t
 {
@@ -49,29 +50,29 @@ GYLIB_DEBUG_PRINT_HANDLER_DEF(GyLibDebugPrintHandler_Stub)
 static GyLibDebugOutput_f* GyLibDebugOutputFunc = GyLibDebugOutputHandler_Stub;
 static GyLibDebugPrint_f*  GyLibDebugPrintFunc  = GyLibDebugPrintHandler_Stub;
 
-#define GyLibWriteAt(level, message)               MyLibDebugOutputFunc(__FILE__, __LINE__, __func__, (level),            false, (message))
-#define GyLibWriteLineAt(level, message)           MyLibDebugOutputFunc(__FILE__, __LINE__, __func__, (level),            true,  (message))
-#define GyLibPrintAt(level, formatString, ...)     MyLibDebugPrintFunc (__FILE__, __LINE__, __func__, (level),            false, (formatString), ##__VA_ARGS__)
-#define GyLibPrintLineAt(level, formatString, ...) MyLibDebugPrintFunc (__FILE__, __LINE__, __func__, (level),            true,  (formatString), ##__VA_ARGS__)
+#define GyLibWriteAt(level, message)               GyLibDebugOutputFunc(__FILE__, __LINE__, __func__, (level),            false, (message))
+#define GyLibWriteLineAt(level, message)           GyLibDebugOutputFunc(__FILE__, __LINE__, __func__, (level),            true,  (message))
+#define GyLibPrintAt(level, formatString, ...)     GyLibDebugPrintFunc (__FILE__, __LINE__, __func__, (level),            false, (formatString), ##__VA_ARGS__)
+#define GyLibPrintLineAt(level, formatString, ...) GyLibDebugPrintFunc (__FILE__, __LINE__, __func__, (level),            true,  (formatString), ##__VA_ARGS__)
 
-#define GyLibWrite_D(message)                      MyLibDebugOutputFunc(__FILE__, __LINE__, __func__, GyDbgLevel_Debug,   false, (message))
-#define GyLibWriteLine_D(message)                  MyLibDebugOutputFunc(__FILE__, __LINE__, __func__, GyDbgLevel_Debug,   true,  (message))
-#define GyLibPrint_D(formatString, ...)            MyLibDebugPrintFunc (__FILE__, __LINE__, __func__, GyDbgLevel_Debug,   false, (formatString), ##__VA_ARGS__)
-#define GyLibPrintLine_D(formatString, ...)        MyLibDebugPrintFunc (__FILE__, __LINE__, __func__, GyDbgLevel_Debug,   true,  (formatString), ##__VA_ARGS__)
+#define GyLibWrite_D(message)                      GyLibDebugOutputFunc(__FILE__, __LINE__, __func__, GyDbgLevel_Debug,   false, (message))
+#define GyLibWriteLine_D(message)                  GyLibDebugOutputFunc(__FILE__, __LINE__, __func__, GyDbgLevel_Debug,   true,  (message))
+#define GyLibPrint_D(formatString, ...)            GyLibDebugPrintFunc (__FILE__, __LINE__, __func__, GyDbgLevel_Debug,   false, (formatString), ##__VA_ARGS__)
+#define GyLibPrintLine_D(formatString, ...)        GyLibDebugPrintFunc (__FILE__, __LINE__, __func__, GyDbgLevel_Debug,   true,  (formatString), ##__VA_ARGS__)
 
-#define GyLibWrite_I(message)                      MyLibDebugOutputFunc(__FILE__, __LINE__, __func__, GyDbgLevel_Info,    false, (message))
-#define GyLibWriteLine_I(message)                  MyLibDebugOutputFunc(__FILE__, __LINE__, __func__, GyDbgLevel_Info,    true,  (message))
-#define GyLibPrint_I(formatString, ...)            MyLibDebugPrintFunc (__FILE__, __LINE__, __func__, GyDbgLevel_Info,    false, (formatString), ##__VA_ARGS__)
-#define GyLibPrintLine_I(formatString, ...)        MyLibDebugPrintFunc (__FILE__, __LINE__, __func__, GyDbgLevel_Info,    true,  (formatString), ##__VA_ARGS__)
+#define GyLibWrite_I(message)                      GyLibDebugOutputFunc(__FILE__, __LINE__, __func__, GyDbgLevel_Info,    false, (message))
+#define GyLibWriteLine_I(message)                  GyLibDebugOutputFunc(__FILE__, __LINE__, __func__, GyDbgLevel_Info,    true,  (message))
+#define GyLibPrint_I(formatString, ...)            GyLibDebugPrintFunc (__FILE__, __LINE__, __func__, GyDbgLevel_Info,    false, (formatString), ##__VA_ARGS__)
+#define GyLibPrintLine_I(formatString, ...)        GyLibDebugPrintFunc (__FILE__, __LINE__, __func__, GyDbgLevel_Info,    true,  (formatString), ##__VA_ARGS__)
 
-#define GyLibWrite_W(message)                      MyLibDebugOutputFunc(__FILE__, __LINE__, __func__, GyDbgLevel_Warning, false, (message))
-#define GyLibWriteLine_W(message)                  MyLibDebugOutputFunc(__FILE__, __LINE__, __func__, GyDbgLevel_Warning, true,  (message))
-#define GyLibPrint_W(formatString, ...)            MyLibDebugPrintFunc (__FILE__, __LINE__, __func__, GyDbgLevel_Warning, false, (formatString), ##__VA_ARGS__)
-#define GyLibPrintLine_W(formatString, ...)        MyLibDebugPrintFunc (__FILE__, __LINE__, __func__, GyDbgLevel_Warning, true,  (formatString), ##__VA_ARGS__)
+#define GyLibWrite_W(message)                      GyLibDebugOutputFunc(__FILE__, __LINE__, __func__, GyDbgLevel_Warning, false, (message))
+#define GyLibWriteLine_W(message)                  GyLibDebugOutputFunc(__FILE__, __LINE__, __func__, GyDbgLevel_Warning, true,  (message))
+#define GyLibPrint_W(formatString, ...)            GyLibDebugPrintFunc (__FILE__, __LINE__, __func__, GyDbgLevel_Warning, false, (formatString), ##__VA_ARGS__)
+#define GyLibPrintLine_W(formatString, ...)        GyLibDebugPrintFunc (__FILE__, __LINE__, __func__, GyDbgLevel_Warning, true,  (formatString), ##__VA_ARGS__)
 
-#define GyLibWrite_E(message)                      MyLibDebugOutputFunc(__FILE__, __LINE__, __func__, GyDbgLevel_Error,   false, (message))
-#define GyLibWriteLine_E(message)                  MyLibDebugOutputFunc(__FILE__, __LINE__, __func__, GyDbgLevel_Error,   true,  (message))
-#define GyLibPrint_E(formatString, ...)            MyLibDebugPrintFunc (__FILE__, __LINE__, __func__, GyDbgLevel_Error,   false, (formatString), ##__VA_ARGS__)
-#define GyLibPrintLine_E(formatString, ...)        MyLibDebugPrintFunc (__FILE__, __LINE__, __func__, GyDbgLevel_Error,   true,  (formatString), ##__VA_ARGS__)
+#define GyLibWrite_E(message)                      GyLibDebugOutputFunc(__FILE__, __LINE__, __func__, GyDbgLevel_Error,   false, (message))
+#define GyLibWriteLine_E(message)                  GyLibDebugOutputFunc(__FILE__, __LINE__, __func__, GyDbgLevel_Error,   true,  (message))
+#define GyLibPrint_E(formatString, ...)            GyLibDebugPrintFunc (__FILE__, __LINE__, __func__, GyDbgLevel_Error,   false, (formatString), ##__VA_ARGS__)
+#define GyLibPrintLine_E(formatString, ...)        GyLibDebugPrintFunc (__FILE__, __LINE__, __func__, GyDbgLevel_Error,   true,  (formatString), ##__VA_ARGS__)
 
 #endif //  _GY_DEBUG_H

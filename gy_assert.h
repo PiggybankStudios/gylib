@@ -11,16 +11,28 @@ Description:
 	
 	If @GYLIB_USE_ASSERT_FAILURE_FUNC is defined then the file will declare
 	a function GyLibAssertFailure that you must implement somewhere
+	
+	Assertion macros ending in _ will skip the call to GyLibAssertFailure.
+	If GYLIB_USE_ASSERT_FAILURE_FUNC isn't enabled then both assertion types are the same.
+	This is to help in scenarios where the GyLibAssertFailure could accidentally perform an action that causes another Assert
+	
+	Assertions with the suffix Msg allow a message string that will be passed to the GyLibAssertFailure
+	function to help describe what this assertion means beyond the Expression itself
 */
 
 #ifndef _GY_ASSERT_H
 #define _GY_ASSERT_H
+
+#include "gy_defines_check.h"
+#include "gy_std.h"
+#include "gy_types.h"
 
 #ifndef GYLIB_ASSERTIONS_ENABLED
 #define GYLIB_ASSERTIONS_ENABLED 1
 #endif
 
 #ifdef GYLIB_USE_ASSERT_FAILURE_FUNC
+#undef GYLIB_USE_ASSERT_FAILURE_FUNC
 #define GYLIB_USE_ASSERT_FAILURE_FUNC 1
 #else
 #define GYLIB_USE_ASSERT_FAILURE_FUNC 0
@@ -70,6 +82,20 @@ extern void GyLibAssertFailure(const char* filePath, int lineNumber, const char*
 #define Assert(Expression)  AssertMsg((Expression), nullptr)
 #define Assert_(Expression) AssertMsg_((Expression), nullptr)
 
+//Compiled out precondition if statement
+#if GYLIB_ASSERTIONS_ENABLED
+#define AssertIf(Precondition, Expression)  if (Precondition) { Assert(Expression);  }
+#define AssertIf_(Precondition, Expression) if (Precondition) { Assert_(Expression); }
+#define AssertIfMsg(Precondition, Expression, message)  if (Precondition) { AssertMsg(Expression, message);  }
+#define AssertIfMsg_(Precondition, Expression, message) if (Precondition) { AssertMsg_(Expression, message); }
+#else
+#define AssertIf(Precondition, Expression)              //nothing
+#define AssertIf_(Precondition, Expression)             //nothing
+#define AssertIfMsg(Precondition, Expression, message)  //nothing
+#define AssertIfMsg_(Precondition, Expression, message) //nothing
+#endif
+
+//Assertions that only happen in debug builds
 #if DEBUG_BUILD
 #define DebugAssert(Expression)              Assert((Expression))
 #define DebugAssert_(Expression)             Assert_((Expression))
@@ -82,6 +108,7 @@ extern void GyLibAssertFailure(const char* filePath, int lineNumber, const char*
 #define DebugAssertMsg_(Expression, message) //null
 #endif
 
+//Quick-hand for something != nullptr && something != nullptr && ...
 #define NotNull(variable)                                    Assert((variable) != nullptr)
 #define NotNull2(variable1, variable2)                       Assert((variable1) != nullptr && (variable2) != nullptr)
 #define NotNull3(variable1, variable2, variable3)            Assert((variable1) != nullptr && (variable2) != nullptr && (variable3) != nullptr)
