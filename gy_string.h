@@ -86,6 +86,8 @@ bool IsStrNullTerminated(const MyStr_t* target)
 #define NewStringInArena(arena, length, charPntr) NewStr((length),                   AllocCharsAndFill  ((arena), (length),          (charPntr)))
 #define NewStringInArenaNt(arena, nullTermStr)    NewStr(MyStrLength64(nullTermStr), AllocCharsAndFillNt((arena), (nullTermStr)))
 
+#define FreeString(arena, strPntr) do { NotNullStr(strPntr); if ((strPntr)->pntr != nullptr) { FreeMem((arena), (strPntr)->pntr); (strPntr)->pntr = nullptr; (strPntr)->length = 0; } } while(0)
+
 // +--------------------------------------------------------------+
 // |                Helpful Manipulation Functions                |
 // +--------------------------------------------------------------+
@@ -442,6 +444,72 @@ MyStr_t UnescapeQuotedStringInArena(MemArena_t* memArena, MyStr_t target, bool r
 	NotNull(memArena);
 	MyStr_t result = AllocString(memArena, &target);
 	u64 numBytesSmaller = UnescapeQuotedStringInPlace(&result, removeQuotes, allowNewLineEscapes, allowOtherEscapeCodes);
+	return result;
+}
+
+// if extensionOut is not passed then the extension will be included in the fileNameOut
+// Output MyStr_t are not reallocated so they are not all null-terminated
+// extensionOut will include the '.' character
+// If the path is actually a directory only we may interpret the last folder name as fileName w/ extension.
+// Only use full file paths in order to avoid this, or have trailing "/"
+void SplitFilePath(MyStr_t fullPath, MyStr_t* directoryOut, MyStr_t* fileNameOut, MyStr_t* extensionOut = nullptr)
+{
+	NotNullStr(&fullPath);
+	if (fullPath.length == 0)
+	{
+		if (directoryOut != nullptr) { *directoryOut = MyStr_Empty; }
+		if (fileNameOut != nullptr) { *fileNameOut = MyStr_Empty; }
+		if (extensionOut != nullptr) { *extensionOut = MyStr_Empty; }
+		return;
+	}
+	
+	bool foundSlash = false;
+	bool foundPeriod = false;
+	u64 lastSlashIndex = 0; //index after char
+	u64 lastPeriodIndex = fullPath.length; //index before char
+	for (u64 cIndex = 0; cIndex < fullPath.length; cIndex++)
+	{
+		if (fullPath.pntr[cIndex] == '\\' || fullPath.pntr[cIndex] == '/')
+		{
+			foundSlash = true;
+			lastSlashIndex = cIndex+1;
+		}
+		if (fullPath.pntr[cIndex] == '.')
+		{
+			foundPeriod = true;
+			lastPeriodIndex = cIndex;
+		}
+	}
+	if (foundPeriod && lastPeriodIndex < lastSlashIndex) //periods in the directory portion are relative directives like ".\..\" 
+	{
+		foundPeriod = false;
+		lastPeriodIndex = fullPath.length;
+	}
+	Assert(lastPeriodIndex >= lastSlashIndex);
+	
+	if (directoryOut != nullptr)
+	{
+		*directoryOut = NewStr(lastSlashIndex, &fullPath.pntr[0]);
+	}
+	if (fileNameOut != nullptr)
+	{
+		if (extensionOut != nullptr)
+		{
+			*fileNameOut = NewStr(lastPeriodIndex - lastSlashIndex, &fullPath.pntr[lastSlashIndex]);
+			*extensionOut = NewStr(fullPath.length - lastPeriodIndex, &fullPath.pntr[lastPeriodIndex]);
+		}
+		else
+		{
+			*fileNameOut = NewStr(fullPath.length - lastSlashIndex, &fullPath.pntr[lastSlashIndex]);
+		}
+	}
+}
+MyStr_t GetFileNamePart(MyStr_t filePath, bool includeExtension = true)
+{
+	MyStr_t result;
+	MyStr_t extensionThrowAway;
+	SplitFilePath(filePath, nullptr, &result, (includeExtension ? nullptr : &extensionThrowAway));
+	NotNullStr(&result);
 	return result;
 }
 
