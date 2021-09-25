@@ -251,7 +251,7 @@ void* LinkedListAdd_(LinkedList_t* list, u64 itemSize)
 	Assert(list->itemSize > 0);
 	AssertMsg(itemSize == list->itemSize, "Tried to access LinkedList with wrong type");
 	
-	if (list->count >= list->maxCount)
+	if (list->maxCount > 0 && list->count >= list->maxCount)
 	{
 		return nullptr;
 	}
@@ -319,7 +319,8 @@ void LinkedListRemove_(LinkedList_t* list, u64 itemSize, void* itemPntr, bool sk
 	}
 }
 //TODO: Implement intrusive variants
-#define LinkedListRemove(list, type, itemPntr) (type*)LinkedListRemove_((list), sizeof(type), (itemPntr))
+#define LinkedListRemove(list, type, itemPntr) LinkedListRemove_((list), sizeof(type), (itemPntr), false)
+#define LinkedListUnlist(list, type, itemPntr) LinkedListRemove_((list), sizeof(type), (itemPntr), true)
 
 void* LinkedListGet_(LinkedList_t* list, u64 itemSize, u64 index)
 {
@@ -366,7 +367,7 @@ void* LinkedListInsert_(LinkedList_t* list, u64 itemSize, u64 index)
 	AssertMsg(itemSize == list->itemSize, "Tried to access LinkedList with wrong type");
 	Assert(index <= list->count);
 	
-	if (list->count >= list->maxCount)
+	if (list->maxCount > 0 && list->count >= list->maxCount)
 	{
 		return nullptr;
 	}
@@ -451,6 +452,7 @@ u64 GetItemIndexInLinkedList(LinkedList_t* list, const void* itemPntr)
 #define LinkedListPrev(list, type, itemPntr)
 #define LinkedListAdd(list, type)
 #define LinkedListRemove(list, type, itemPntr)
+#define LinkedListUnlist(list, type, itemPntr)
 #define LinkedListGet(list, type, index)
 #define LinkedListInsert(list, type, index)
 */
