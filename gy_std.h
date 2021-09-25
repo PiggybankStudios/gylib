@@ -62,6 +62,7 @@ Date:   09\14\2021
 // MyStrCompare
 // MyStrLength
 // MyStrLength32
+// MyStrLength64
 // MyWideStrLength
 // MyWideStrLength32
 // MyStrStrNt
@@ -104,6 +105,9 @@ Date:   09\14\2021
 #endif
 #ifndef MyStrLength32
 #define MyStrLength32(str)                ((u32)strlen(str))
+#endif
+#ifndef MyStrLength64
+#define MyStrLength64(str)                ((u64)strlen(str))
 #endif
 #ifndef MyWideStrLength
 #define MyWideStrLength(str)              wcslen(str)

@@ -472,17 +472,42 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride =
 	return (void*)result;
 }
 
-#define AllocStruct(arena, structName) (structName*)AllocBytes((arena), sizeof(structName))
-#define AllocArray(arena, structName, numItems) (structName*)AllocBytes((arena), sizeof(structName) * (numItems))
-#define AllocBytes(arena, numBytes) AllocArray((arena), u8, (numBytes))
+#define AllocStruct(arena, structName)          (structName*)AllocMem((arena), sizeof(structName))
+#define AllocArray(arena, structName, numItems) (structName*)AllocMem((arena), sizeof(structName) * (numItems))
+#define AllocBytes(arena, numBytes)             (u8*)AllocMem((arena), (numBytes))
 
-MemArena_t AllocBufferArena(MemArena_t* sourceArena, u32 numBytes, AllocAlignment_t alignOverride = AllocAlignment_None)
+MemArena_t AllocBufferArena(MemArena_t* sourceArena, u64 numBytes, AllocAlignment_t alignOverride = AllocAlignment_None)
 {
 	MemArena_t result;
 	void* allocatedMemory = AllocMem(sourceArena, numBytes, alignOverride);
 	NotNull(allocatedMemory);
 	InitMemArena_Buffer(&result, numBytes, allocatedMemory, true);
 	return result;
+}
+
+char* AllocCharsAndFill(MemArena_t* arena, u64 numChars, const char* dataForFill, bool addNullTerm = true)
+{
+	NotNull(arena);
+	Assert(dataForFill != nullptr || numChars == 0);
+	if (numChars == 0 && !addNullTerm) { return nullptr; }
+	char* result = (char*)AllocMem(arena, numChars + (addNullTerm ? 1 : 0));
+	if (result == nullptr) { return nullptr; }
+	if (numChars > 0)
+	{
+		MyMemCopy(result, dataForFill, numChars);
+	}
+	if (addNullTerm)
+	{
+		result[numChars] = '\0';
+	}
+	return result;
+}
+char* AllocCharsAndFillNt(MemArena_t* arena, const char* nullTermStr, bool addNullTerm = true)
+{
+	NotNull(arena);
+	NotNull(nullTermStr);
+	u64 numChars = MyStrLength64(nullTermStr);
+	return AllocCharsAndFill(arena, numChars, nullTermStr, addNullTerm);
 }
 
 // +--------------------------------------------------------------+
