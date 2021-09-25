@@ -236,9 +236,33 @@ void InitMemArena_PagedHeapArena(MemArena_t* arena, u64 pageSize, MemArena_t* so
 {
 	//TODO: Implement me!
 }
-void InitMemArena_MarkedStack(MemArena_t* arena, u64 size, void* memoryPntr, u64 maxNumMarks = 0, AllocAlignment_t alignment = AllocAlignment_None)
+void InitMemArena_MarkedStack(MemArena_t* arena, u64 size, void* memoryPntr, u64 maxNumMarks, AllocAlignment_t alignment = AllocAlignment_None)
 {
-	//TODO: Implement me!
+	NotNull(arena);
+	NotNull(memoryPntr);
+	Assert(size > 0);
+	Assert(maxNumMarks > 0);
+	Assert(size > sizeof(MarkedStackArenaHeader_t) + (maxNumMarks * sizeof(u64)));
+	
+	ClearPointer(arena);
+	arena->type = MemArenaType_MarkedStack;
+	arena->alignment = alignment;
+	arena->singleAlloc = false;
+	arena->headerPntr = (((u8*)memoryPntr) + 0);
+	arena->otherPntr  = (((u8*)memoryPntr) + sizeof(MarkedStackArenaHeader_t));
+	arena->mainPntr   = (((u8*)memoryPntr) + sizeof(MarkedStackArenaHeader_t) + (maxNumMarks * sizeof(u64)));
+	arena->size = size - (sizeof(MarkedStackArenaHeader_t) + (maxNumMarks * sizeof(u64)));
+	arena->used = 0;
+	arena->numAllocations = 0;
+	
+	MarkedStackArenaHeader_t* stackHeader = (MarkedStackArenaHeader_t*)arena->headerPntr;
+	ClearPointer(stackHeader);
+	stackHeader->maxNumMarks = maxNumMarks;
+	stackHeader->numMarks = 0;
+	
+	arena->telemetryEnabled = true;
+	arena->highUsedMark = 0;
+	stackHeader->highMarkCount = 0;
 }
 void InitMemArena_Buffer(MemArena_t* arena, u64 bufferSize, void* bufferPntr, bool singleAlloc = false, AllocAlignment_t alignment = AllocAlignment_None)
 {
@@ -343,6 +367,17 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 	return true;
 }
 
+u64 GetNumMemMarks(MemArena_t* arena)
+{
+	NotNull(arena);
+	Assert(arena->type == MemArenaType_MarkedStack);
+	NotNull(arena->headerPntr);
+	MarkedStackArenaHeader_t* stackHeader = (MarkedStackArenaHeader_t*)arena->headerPntr;
+	Assert(stackHeader->maxNumMarks > 0);
+	Assert(stackHeader->numMarks <= stackHeader->maxNumMarks);
+	return stackHeader->numMarks;
+}
+
 // +--------------------------------------------------------------+
 // |                      Allocate Function                       |
 // +--------------------------------------------------------------+
@@ -432,10 +467,19 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride =
 		// +==============================+
 		// |   MemArenaType_MarkedStack   |
 		// +==============================+
-		// case MemArenaType_MarkedStack:
-		// {
-		// 	//TODO: Implement me!
-		// } break;
+		case MemArenaType_MarkedStack:
+		{
+			NotNull(arena->headerPntr);
+			NotNull(arena->otherPntr);
+			if (arena->used + numBytes > arena->size) { return nullptr; }
+			result = ((u8*)arena->mainPntr) + arena->used;
+			arena->used += numBytes;
+			arena->numAllocations++;
+			if (arena->telemetryEnabled)
+			{
+				if (arena->highUsedMark < arena->used) { arena->highUsedMark = arena->used; }
+			}
+		} break;
 		
 		// +==============================+
 		// |     MemArenaType_Buffer      |
@@ -578,10 +622,10 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreN
 		// +==============================+
 		// |   MemArenaType_MarkedStack   |
 		// +==============================+
-		// case MemArenaType_MarkedStack:
-		// {
-		// 	//TODO: Implement me!
-		// } break;
+		case MemArenaType_MarkedStack:
+		{
+			AssertMsg(false, "FreeMem is not supported for a MarkedStack. Are you trying to free memory allocated on the TempArena");
+		} break;
 		
 		// +==============================+
 		// |     MemArenaType_Buffer      |
@@ -801,11 +845,57 @@ void* ReallocMem(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 
 #define SoftReallocMem(arena, allocPntr, newSize) ReallocMem((arena), (allocPntr), (newSize), 0, AllocAlignment_None, true)
 
 // +--------------------------------------------------------------+
-// |                      Push Mark Function                      |
+// |                 Push And Pop Mark Functions                  |
 // +--------------------------------------------------------------+
+void PushMemMark(MemArena_t* arena)
+{
+	NotNull(arena);
+	Assert(arena->type == MemArenaType_MarkedStack);
+	NotNull(arena->headerPntr);
+	NotNull(arena->otherPntr);
+	
+	MarkedStackArenaHeader_t* stackHeader = (MarkedStackArenaHeader_t*)arena->headerPntr;
+	Assert(stackHeader->maxNumMarks > 0);
+	Assert(stackHeader->numMarks <= stackHeader->maxNumMarks);
+	if (stackHeader->numMarks == stackHeader->maxNumMarks)
+	{
+		GyLibPrintLine_E("Tried to push mark %llu onto marked stack which only has support for %llu marks", stackHeader->numMarks+1, stackHeader->maxNumMarks);
+		AssertMsg(false, "Too many marks pushed onto a MarkedStack");
+		return;
+	}
+	
+	u64* marksPntr = (u64*)arena->otherPntr;
+	marksPntr[stackHeader->numMarks] = arena->used;
+	stackHeader->numMarks++;
+	
+	if (arena->telemetryEnabled)
+	{
+		if (stackHeader->highMarkCount < stackHeader->numMarks) { stackHeader->highMarkCount = stackHeader->numMarks; }
+	}
+}
 
-// +--------------------------------------------------------------+
-// |                      Pop Mark Function                       |
-// +--------------------------------------------------------------+
+void PopMemMark(MemArena_t* arena)
+{
+	NotNull(arena);
+	Assert(arena->type == MemArenaType_MarkedStack);
+	NotNull(arena->headerPntr);
+	NotNull(arena->otherPntr);
+	
+	MarkedStackArenaHeader_t* stackHeader = (MarkedStackArenaHeader_t*)arena->headerPntr;
+	Assert(stackHeader->maxNumMarks > 0);
+	Assert(stackHeader->numMarks <= stackHeader->maxNumMarks);
+	if (stackHeader->numMarks == 0)
+	{
+		GyLibWriteLine_E("Tried to pop stack mark when no marks were left");
+		AssertMsg(false, "Tried to pop too many times on a MarkedStack");
+		return;
+	}
+	
+	u64* marksPntr = (u64*)arena->otherPntr;
+	Assert(marksPntr[stackHeader->numMarks-1] <= arena->used);
+	Assert(marksPntr[stackHeader->numMarks-1] <= arena->size);
+	arena->used = marksPntr[stackHeader->numMarks-1];
+	stackHeader->numMarks--;
+}
 
 #endif //  _GY_MEMORY_H
