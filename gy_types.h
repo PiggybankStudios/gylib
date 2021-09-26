@@ -122,6 +122,8 @@ typedef BOOL_FUNC_DEF(BoolFunc_f);
 #define I32_FUNC_DEF(functionName) i32 functionName()
 typedef I32_FUNC_DEF(I32Func_f);
 
+#define UNREFERENCED(varName) (void)(varName)
+
 // +--------------------------------------------------------------+
 // |                   Packed and Export Macros                   |
 // +--------------------------------------------------------------+
@@ -146,7 +148,6 @@ typedef I32_FUNC_DEF(I32Func_f);
 	#define ATTR_PACKED __attribute__((__packed__))
 	//TODO: Figure out how to do EXPORT and IMPORT on OSX
 #endif
-
 
 // +--------------------------------------------------------------+
 // |                        Memset Macros                         |

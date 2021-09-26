@@ -230,10 +230,21 @@ void InitMemArena_FixedHeap(MemArena_t* arena, u64 size, void* memoryPntr, Alloc
 }
 void InitMemArena_PagedHeapFuncs(MemArena_t* arena, u64 pageSize, AllocationFunction_f* allocFunc, AllocationFunction_f* freeFunc, u64 maxNumPages = 0, AllocAlignment_t alignment = AllocAlignment_None)
 {
+	UNREFERENCED(arena);
+	UNREFERENCED(pageSize);
+	UNREFERENCED(allocFunc);
+	UNREFERENCED(freeFunc);
+	UNREFERENCED(maxNumPages);
+	UNREFERENCED(alignment);
 	//TODO: Implement me!
 }
 void InitMemArena_PagedHeapArena(MemArena_t* arena, u64 pageSize, MemArena_t* sourceArena, u64 maxNumPages = 0, AllocAlignment_t alignment = AllocAlignment_None)
 {
+	UNREFERENCED(arena);
+	UNREFERENCED(pageSize);
+	UNREFERENCED(sourceArena);
+	UNREFERENCED(maxNumPages);
+	UNREFERENCED(alignment);
 	//TODO: Implement me!
 }
 void InitMemArena_MarkedStack(MemArena_t* arena, u64 size, void* memoryPntr, u64 maxNumMarks, AllocAlignment_t alignment = AllocAlignment_None)
@@ -309,10 +320,10 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 		// +==============================+
 		// |      MemArenaType_Alias      |
 		// +==============================+
-		// case MemArenaType_Alias:
-		// {
-		// 	//TODO: Implement me!
-		// } break;
+		case MemArenaType_Alias:
+		{
+			//TODO: Implement me!
+		} break;
 		
 		// +==============================+
 		// |     MemArenaType_StdHeap     |
@@ -690,6 +701,7 @@ void* ReallocMem(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 
 	bool decreasingSize = (knownOldSize && newSize < oldSize);
 	u64 sizeChangeAmount = (newSize >= oldSize) ? (newSize - oldSize) : (oldSize - newSize);
 	
+	UNREFERENCED(isRealigning); //TODO: Remove me!
 	u8* result = nullptr;
 	switch (arena->type)
 	{

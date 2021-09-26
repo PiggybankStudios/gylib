@@ -375,6 +375,8 @@ MyStr_t* SplitString(MemArena_t* memArena, const char* targetNt, const char* del
 //Returns the number of bytes that the string shrunk by after unescaping
 u64 UnescapeQuotedStringInPlace(MyStr_t* target, bool removeQuotes = true, bool allowNewLineEscapes = true, bool allowOtherEscapeCodes = false)
 {
+	NotNullStr(target);
+	if (target->length == 0) { return 0; }
 	u64 numBytesSmaller = 0;
 	u64 writeIndex = 0;
 	for (u64 readIndex = 0; readIndex < target->length; readIndex++)
@@ -502,6 +504,7 @@ MyStr_t UnescapeQuotedStringInArena(MemArena_t* memArena, MyStr_t target, bool r
 	NotNull(memArena);
 	MyStr_t result = AllocString(memArena, &target);
 	u64 numBytesSmaller = UnescapeQuotedStringInPlace(&result, removeQuotes, allowNewLineEscapes, allowOtherEscapeCodes);
+	UNREFERENCED(numBytesSmaller);
 	return result;
 }
 
