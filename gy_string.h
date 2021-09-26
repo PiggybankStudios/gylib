@@ -121,6 +121,64 @@ MyStr_t StrSubstringLength(MyStr_t* target, u64 startIndex, u64 length)
 	return result;
 }
 
+MyStr_t CombineStrs(MemArena_t* memArena, MyStr_t str1, MyStr_t str2)
+{
+	NotNull(memArena);
+	NotNullStr(&str1);
+	NotNullStr(&str2);
+	
+	MyStr_t result;
+	result.length = str1.length + str2.length;
+	result.pntr = AllocArray(memArena, char, result.length + 1);
+	NotNull(result.pntr);
+	
+	MyMemCopy(&result.pntr[0], str1.pntr, str1.length);
+	MyMemCopy(&result.pntr[str1.length], str2.pntr, str2.length);
+	result.pntr[result.length] = '\0';
+	
+	return result;
+}
+MyStr_t CombineStrs(MemArena_t* memArena, MyStr_t str1, MyStr_t str2, MyStr_t str3)
+{
+	NotNull(memArena);
+	NotNullStr(&str1);
+	NotNullStr(&str2);
+	NotNullStr(&str3);
+	
+	MyStr_t result;
+	result.length = str1.length + str2.length + str3.length;
+	result.pntr = AllocArray(memArena, char, result.length + 1);
+	NotNull(result.pntr);
+	
+	MyMemCopy(&result.pntr[0], str1.pntr, str1.length);
+	MyMemCopy(&result.pntr[str1.length], str2.pntr, str2.length);
+	MyMemCopy(&result.pntr[str1.length + str2.length], str3.pntr, str3.length);
+	result.pntr[result.length] = '\0';
+	
+	return result;
+}
+MyStr_t CombineStrs(MemArena_t* memArena, MyStr_t str1, MyStr_t str2, MyStr_t str3, MyStr_t str4)
+{
+	NotNull(memArena);
+	NotNullStr(&str1);
+	NotNullStr(&str2);
+	NotNullStr(&str3);
+	NotNullStr(&str4);
+	
+	MyStr_t result;
+	result.length = str1.length + str2.length + str3.length + str4.length;
+	result.pntr = AllocArray(memArena, char, result.length + 1);
+	NotNull(result.pntr);
+	
+	MyMemCopy(&result.pntr[0], str1.pntr, str1.length);
+	MyMemCopy(&result.pntr[str1.length], str2.pntr, str2.length);
+	MyMemCopy(&result.pntr[str1.length + str2.length], str3.pntr, str3.length);
+	MyMemCopy(&result.pntr[str1.length + str2.length + str3.length], str4.pntr, str4.length);
+	result.pntr[result.length] = '\0';
+	
+	return result;
+}
+
 bool StrEquals(MyStr_t target, MyStr_t comparison)
 {
 	NotNullStr(&target);
