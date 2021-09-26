@@ -482,9 +482,10 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride =
 		{
 			NotNull(arena->headerPntr);
 			NotNull(arena->otherPntr);
-			if (arena->used + numBytes > arena->size) { return nullptr; }
-			result = ((u8*)arena->mainPntr) + arena->used;
-			arena->used += numBytes;
+			u8 alignmentOffset = OffsetToAlign(((u8*)arena->mainPntr) + arena->used, alignment);
+			if (arena->used + alignmentOffset + numBytes > arena->size) { return nullptr; }
+			result = ((u8*)arena->mainPntr) + arena->used + alignmentOffset;
+			arena->used += alignmentOffset + numBytes;
 			arena->numAllocations++;
 			if (arena->telemetryEnabled)
 			{
