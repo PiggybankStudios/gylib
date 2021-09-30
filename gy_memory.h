@@ -531,6 +531,7 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride =
 #define AllocStruct(arena, structName)          (structName*)AllocMem((arena), sizeof(structName))
 #define AllocArray(arena, structName, numItems) (structName*)AllocMem((arena), sizeof(structName) * (numItems))
 #define AllocBytes(arena, numBytes)             (u8*)AllocMem((arena), (numBytes))
+#define AllocChars(arena, numBytes)             (char*)AllocMem((arena), (numBytes))
 
 MemArena_t AllocBufferArena(MemArena_t* sourceArena, u64 numBytes, AllocAlignment_t alignOverride = AllocAlignment_None)
 {
