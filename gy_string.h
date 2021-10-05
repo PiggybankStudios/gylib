@@ -574,4 +574,38 @@ MyStr_t GetFileNamePart(MyStr_t filePath, bool includeExtension = true)
 	return result;
 }
 
+//Returns the number of instances replaced
+u64 StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ignoreCase = false)
+{
+	NotNullStr(&str);
+	NotNullStr(&target);
+	NotNullStr(&replacement);
+	Assert(target.length == replacement.length); //TODO: Add support for replacement being shorter?
+	if (target.length == 0) { return 0; } //nothing to replace
+	
+	u64 result = 0;
+	for (u64 cIndex = 0; cIndex + target.length <= str.length; cIndex++)
+	{
+		if ((ignoreCase && StrCompareIgnoreCase(&str.pntr[cIndex], target.pntr, target.length) == 0) ||
+			(!ignoreCase && MyStrCompare(&str.pntr[cIndex], target.pntr, target.length) == 0))
+		{
+			for (u64 cIndex2 = 0; cIndex2 < target.length; cIndex2++)
+			{
+				str.pntr[cIndex + cIndex2] = replacement.pntr[cIndex2];
+			}
+			cIndex += replacement.length-1;
+			result++;
+		}
+	}
+	
+	return result;
+}
+u64 StrReplaceInPlace(MyStr_t str, const char* target, const char* replacement, bool ignoreCase = false)
+{
+	NotNullStr(&str);
+	NotNull(target);
+	NotNull(replacement);
+	return StrReplaceInPlace(str, NewStr(target), NewStr(replacement));
+}
+
 #endif //  _GY_STRING_H
