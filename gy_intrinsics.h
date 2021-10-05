@@ -24,176 +24,176 @@ Description:
 // +--------------------------------------------------------------+
 	inline u32 MinU32(u32 value1, u32 value2)
 	{
-		return min(value1, value2);
+		return (value1 < value2) ? value1 : value2;
 	}
 	inline u32 MinU32(u32 value1, u32 value2, u32 value3)
 	{
-		return min(value1, min(value2, value3));
+		return MinU32(value1, MinU32(value2, value3));
 	}
 	inline u32 MinU32(u32 value1, u32 value2, u32 value3, u32 value4)
 	{
-		return min(value1, min(value2, min(value3, value4)));
+		return MinU32(value1, MinU32(value2, MinU32(value3, value4)));
 	}
 	inline u32 MinU32(u32 value1, u32 value2, u32 value3, u32 value4, u32 value5)
 	{
-		return min(value1, min(value2, min(value3, min(value4, value5))));
+		return MinU32(value1, MinU32(value2, MinU32(value3, MinU32(value4, value5))));
 	}
 	inline u32 MinU32(u32 value1, u32 value2, u32 value3, u32 value4, u32 value5, u32 value6)
 	{
-		return min(value1, min(value2, min(value3, min(value4, min(value5, value6)))));
+		return MinU32(value1, MinU32(value2, MinU32(value3, MinU32(value4, MinU32(value5, value6)))));
 	}
 	inline u32 MinU32(u32 value1, u32 value2, u32 value3, u32 value4, u32 value5, u32 value6, u32 value7)
 	{
-		return min(value1, min(value2, min(value3, min(value4, min(value5, min(value6, value7))))));
+		return MinU32(value1, MinU32(value2, MinU32(value3, MinU32(value4, MinU32(value5, MinU32(value6, value7))))));
 	}
 	inline u32 MinU32(u32 value1, u32 value2, u32 value3, u32 value4, u32 value5, u32 value6, u32 value7, u32 value8)
 	{
-		return min(value1, min(value2, min(value3, min(value4, min(value5, min(value6, min(value7, value8)))))));
+		return MinU32(value1, MinU32(value2, MinU32(value3, MinU32(value4, MinU32(value5, MinU32(value6, MinU32(value7, value8)))))));
 	}
 	
 	inline i32 MinI32(i32 value1, i32 value2)
 	{
-		return min(value1, value2);
+		return (value1 < value2) ? value1 : value2;
 	}
 	inline i32 MinI32(i32 value1, i32 value2, i32 value3)
 	{
-		return min(value1, min(value2, value3));
+		return MinI32(value1, MinI32(value2, value3));
 	}
 	inline i32 MinI32(i32 value1, i32 value2, i32 value3, i32 value4)
 	{
-		return min(value1, min(value2, min(value3, value4)));
+		return MinI32(value1, MinI32(value2, MinI32(value3, value4)));
 	}
 	inline i32 MinI32(i32 value1, i32 value2, i32 value3, i32 value4, i32 value5)
 	{
-		return min(value1, min(value2, min(value3, min(value4, value5))));
+		return MinI32(value1, MinI32(value2, MinI32(value3, MinI32(value4, value5))));
 	}
 	inline i32 MinI32(i32 value1, i32 value2, i32 value3, i32 value4, i32 value5, i32 value6)
 	{
-		return min(value1, min(value2, min(value3, min(value4, min(value5, value6)))));
+		return MinI32(value1, MinI32(value2, MinI32(value3, MinI32(value4, MinI32(value5, value6)))));
 	}
 	inline i32 MinI32(i32 value1, i32 value2, i32 value3, i32 value4, i32 value5, i32 value6, i32 value7)
 	{
-		return min(value1, min(value2, min(value3, min(value4, min(value5, min(value6, value7))))));
+		return MinI32(value1, MinI32(value2, MinI32(value3, MinI32(value4, MinI32(value5, MinI32(value6, value7))))));
 	}
 	inline i32 MinI32(i32 value1, i32 value2, i32 value3, i32 value4, i32 value5, i32 value6, i32 value7, i32 value8)
 	{
-		return min(value1, min(value2, min(value3, min(value4, min(value5, min(value6, min(value7, value8)))))));
+		return MinI32(value1, MinI32(value2, MinI32(value3, MinI32(value4, MinI32(value5, MinI32(value6, MinI32(value7, value8)))))));
 	}
 	
 	inline r32 MinR32(r32 value1, r32 value2)
 	{
-		return min(value1, value2);
+		return fminf(value1, value2);
 	}
 	inline r32 MinR32(r32 value1, r32 value2, r32 value3)
 	{
-		return min(value1, min(value2, value3));
+		return fminf(value1, fminf(value2, value3));
 	}
 	inline r32 MinR32(r32 value1, r32 value2, r32 value3, r32 value4)
 	{
-		return min(value1, min(value2, min(value3, value4)));
+		return fminf(value1, fminf(value2, fminf(value3, value4)));
 	}
 	inline r32 MinR32(r32 value1, r32 value2, r32 value3, r32 value4, r32 value5)
 	{
-		return min(value1, min(value2, min(value3, min(value4, value5))));
+		return fminf(value1, fminf(value2, fminf(value3, fminf(value4, value5))));
 	}
 	inline r32 MinR32(r32 value1, r32 value2, r32 value3, r32 value4, r32 value5, r32 value6)
 	{
-		return min(value1, min(value2, min(value3, min(value4, min(value5, value6)))));
+		return fminf(value1, fminf(value2, fminf(value3, fminf(value4, fminf(value5, value6)))));
 	}
 	inline r32 MinR32(r32 value1, r32 value2, r32 value3, r32 value4, r32 value5, r32 value6, r32 value7)
 	{
-		return min(value1, min(value2, min(value3, min(value4, min(value5, min(value6, value7))))));
+		return fminf(value1, fminf(value2, fminf(value3, fminf(value4, fminf(value5, fminf(value6, value7))))));
 	}
 	inline r32 MinR32(r32 value1, r32 value2, r32 value3, r32 value4, r32 value5, r32 value6, r32 value7, r32 value8)
 	{
-		return min(value1, min(value2, min(value3, min(value4, min(value5, min(value6, min(value7, value8)))))));
+		return fminf(value1, fminf(value2, fminf(value3, fminf(value4, fminf(value5, fminf(value6, fminf(value7, value8)))))));
 	}
 	
 	inline u64 MinU64(u64 value1, u64 value2)
 	{
-		return min(value1, value2);
+		return (value1 < value2) ? value1 : value2;
 	}
 	inline u64 MinU64(u64 value1, u64 value2, u64 value3)
 	{
-		return min(value1, min(value2, value3));
+		return MinU64(value1, MinU64(value2, value3));
 	}
 	inline u64 MinU64(u64 value1, u64 value2, u64 value3, u64 value4)
 	{
-		return min(value1, min(value2, min(value3, value4)));
+		return MinU64(value1, MinU64(value2, MinU64(value3, value4)));
 	}
 	inline u64 MinU64(u64 value1, u64 value2, u64 value3, u64 value4, u64 value5)
 	{
-		return min(value1, min(value2, min(value3, min(value4, value5))));
+		return MinU64(value1, MinU64(value2, MinU64(value3, MinU64(value4, value5))));
 	}
 	inline u64 MinU64(u64 value1, u64 value2, u64 value3, u64 value4, u64 value5, u64 value6)
 	{
-		return min(value1, min(value2, min(value3, min(value4, min(value5, value6)))));
+		return MinU64(value1, MinU64(value2, MinU64(value3, MinU64(value4, MinU64(value5, value6)))));
 	}
 	inline u64 MinU64(u64 value1, u64 value2, u64 value3, u64 value4, u64 value5, u64 value6, u64 value7)
 	{
-		return min(value1, min(value2, min(value3, min(value4, min(value5, min(value6, value7))))));
+		return MinU64(value1, MinU64(value2, MinU64(value3, MinU64(value4, MinU64(value5, MinU64(value6, value7))))));
 	}
 	inline u64 MinU64(u64 value1, u64 value2, u64 value3, u64 value4, u64 value5, u64 value6, u64 value7, u64 value8)
 	{
-		return min(value1, min(value2, min(value3, min(value4, min(value5, min(value6, min(value7, value8)))))));
+		return MinU64(value1, MinU64(value2, MinU64(value3, MinU64(value4, MinU64(value5, MinU64(value6, MinU64(value7, value8)))))));
 	}
 	
 	inline i64 MinI64(i64 value1, i64 value2)
 	{
-		return min(value1, value2);
+		return (value1 < value2) ? value1 : value2;
 	}
 	inline i64 MinI64(i64 value1, i64 value2, i64 value3)
 	{
-		return min(value1, min(value2, value3));
+		return MinI64(value1, MinI64(value2, value3));
 	}
 	inline i64 MinI64(i64 value1, i64 value2, i64 value3, i64 value4)
 	{
-		return min(value1, min(value2, min(value3, value4)));
+		return MinI64(value1, MinI64(value2, MinI64(value3, value4)));
 	}
 	inline i64 MinI64(i64 value1, i64 value2, i64 value3, i64 value4, i64 value5)
 	{
-		return min(value1, min(value2, min(value3, min(value4, value5))));
+		return MinI64(value1, MinI64(value2, MinI64(value3, MinI64(value4, value5))));
 	}
 	inline i64 MinI64(i64 value1, i64 value2, i64 value3, i64 value4, i64 value5, i64 value6)
 	{
-		return min(value1, min(value2, min(value3, min(value4, min(value5, value6)))));
+		return MinI64(value1, MinI64(value2, MinI64(value3, MinI64(value4, MinI64(value5, value6)))));
 	}
 	inline i64 MinI64(i64 value1, i64 value2, i64 value3, i64 value4, i64 value5, i64 value6, i64 value7)
 	{
-		return min(value1, min(value2, min(value3, min(value4, min(value5, min(value6, value7))))));
+		return MinI64(value1, MinI64(value2, MinI64(value3, MinI64(value4, MinI64(value5, MinI64(value6, value7))))));
 	}
 	inline i64 MinI64(i64 value1, i64 value2, i64 value3, i64 value4, i64 value5, i64 value6, i64 value7, i64 value8)
 	{
-		return min(value1, min(value2, min(value3, min(value4, min(value5, min(value6, min(value7, value8)))))));
+		return MinI64(value1, MinI64(value2, MinI64(value3, MinI64(value4, MinI64(value5, MinI64(value6, MinI64(value7, value8)))))));
 	}
 	
 	inline r64 MinR64(r64 value1, r64 value2)
 	{
-		return min(value1, value2);
+		return fmin(value1, value2);
 	}
 	inline r64 MinR64(r64 value1, r64 value2, r64 value3)
 	{
-		return min(value1, min(value2, value3));
+		return fmin(value1, fmin(value2, value3));
 	}
 	inline r64 MinR64(r64 value1, r64 value2, r64 value3, r64 value4)
 	{
-		return min(value1, min(value2, min(value3, value4)));
+		return fmin(value1, fmin(value2, fmin(value3, value4)));
 	}
 	inline r64 MinR64(r64 value1, r64 value2, r64 value3, r64 value4, r64 value5)
 	{
-		return min(value1, min(value2, min(value3, min(value4, value5))));
+		return fmin(value1, fmin(value2, fmin(value3, fmin(value4, value5))));
 	}
 	inline r64 MinR64(r64 value1, r64 value2, r64 value3, r64 value4, r64 value5, r64 value6)
 	{
-		return min(value1, min(value2, min(value3, min(value4, min(value5, value6)))));
+		return fmin(value1, fmin(value2, fmin(value3, fmin(value4, fmin(value5, value6)))));
 	}
 	inline r64 MinR64(r64 value1, r64 value2, r64 value3, r64 value4, r64 value5, r64 value6, r64 value7)
 	{
-		return min(value1, min(value2, min(value3, min(value4, min(value5, min(value6, value7))))));
+		return fmin(value1, fmin(value2, fmin(value3, fmin(value4, fmin(value5, fmin(value6, value7))))));
 	}
 	inline r64 MinR64(r64 value1, r64 value2, r64 value3, r64 value4, r64 value5, r64 value6, r64 value7, r64 value8)
 	{
-		return min(value1, min(value2, min(value3, min(value4, min(value5, min(value6, min(value7, value8)))))));
+		return fmin(value1, fmin(value2, fmin(value3, fmin(value4, fmin(value5, fmin(value6, fmin(value7, value8)))))));
 	}
 // +--------------------------------------------------------------+
 
@@ -202,176 +202,176 @@ Description:
 // +--------------------------------------------------------------+
 	inline u32 MaxU32(u32 value1, u32 value2)
 	{
-		return max(value1, value2);
+		return (value1 > value2) ? value1 : value2;
 	}
 	inline u32 MaxU32(u32 value1, u32 value2, u32 value3)
 	{
-		return max(value1, max(value2, value3));
+		return MaxU32(value1, MaxU32(value2, value3));
 	}
 	inline u32 MaxU32(u32 value1, u32 value2, u32 value3, u32 value4)
 	{
-		return max(value1, max(value2, max(value3, value4)));
+		return MaxU32(value1, MaxU32(value2, MaxU32(value3, value4)));
 	}
 	inline u32 MaxU32(u32 value1, u32 value2, u32 value3, u32 value4, u32 value5)
 	{
-		return max(value1, max(value2, max(value3, max(value4, value5))));
+		return MaxU32(value1, MaxU32(value2, MaxU32(value3, MaxU32(value4, value5))));
 	}
 	inline u32 MaxU32(u32 value1, u32 value2, u32 value3, u32 value4, u32 value5, u32 value6)
 	{
-		return max(value1, max(value2, max(value3, max(value4, max(value5, value6)))));
+		return MaxU32(value1, MaxU32(value2, MaxU32(value3, MaxU32(value4, MaxU32(value5, value6)))));
 	}
 	inline u32 MaxU32(u32 value1, u32 value2, u32 value3, u32 value4, u32 value5, u32 value6, u32 value7)
 	{
-		return max(value1, max(value2, max(value3, max(value4, max(value5, max(value6, value7))))));
+		return MaxU32(value1, MaxU32(value2, MaxU32(value3, MaxU32(value4, MaxU32(value5, MaxU32(value6, value7))))));
 	}
 	inline u32 MaxU32(u32 value1, u32 value2, u32 value3, u32 value4, u32 value5, u32 value6, u32 value7, u32 value8)
 	{
-		return max(value1, max(value2, max(value3, max(value4, max(value5, max(value6, max(value7, value8)))))));
+		return MaxU32(value1, MaxU32(value2, MaxU32(value3, MaxU32(value4, MaxU32(value5, MaxU32(value6, MaxU32(value7, value8)))))));
 	}
 	
 	inline i32 MaxI32(i32 value1, i32 value2)
 	{
-		return max(value1, value2);
+		return (value1 > value2) ? value1 : value2;
 	}
 	inline i32 MaxI32(i32 value1, i32 value2, i32 value3)
 	{
-		return max(value1, max(value2, value3));
+		return MaxI32(value1, MaxI32(value2, value3));
 	}
 	inline i32 MaxI32(i32 value1, i32 value2, i32 value3, i32 value4)
 	{
-		return max(value1, max(value2, max(value3, value4)));
+		return MaxI32(value1, MaxI32(value2, MaxI32(value3, value4)));
 	}
 	inline i32 MaxI32(i32 value1, i32 value2, i32 value3, i32 value4, i32 value5)
 	{
-		return max(value1, max(value2, max(value3, max(value4, value5))));
+		return MaxI32(value1, MaxI32(value2, MaxI32(value3, MaxI32(value4, value5))));
 	}
 	inline i32 MaxI32(i32 value1, i32 value2, i32 value3, i32 value4, i32 value5, i32 value6)
 	{
-		return max(value1, max(value2, max(value3, max(value4, max(value5, value6)))));
+		return MaxI32(value1, MaxI32(value2, MaxI32(value3, MaxI32(value4, MaxI32(value5, value6)))));
 	}
 	inline i32 MaxI32(i32 value1, i32 value2, i32 value3, i32 value4, i32 value5, i32 value6, i32 value7)
 	{
-		return max(value1, max(value2, max(value3, max(value4, max(value5, max(value6, value7))))));
+		return MaxI32(value1, MaxI32(value2, MaxI32(value3, MaxI32(value4, MaxI32(value5, MaxI32(value6, value7))))));
 	}
 	inline i32 MaxI32(i32 value1, i32 value2, i32 value3, i32 value4, i32 value5, i32 value6, i32 value7, i32 value8)
 	{
-		return max(value1, max(value2, max(value3, max(value4, max(value5, max(value6, max(value7, value8)))))));
+		return MaxI32(value1, MaxI32(value2, MaxI32(value3, MaxI32(value4, MaxI32(value5, MaxI32(value6, MaxI32(value7, value8)))))));
 	}
 	
 	inline r32 MaxR32(r32 value1, r32 value2)
 	{
-		return max(value1, value2);
+		return fmaxf(value1, value2);
 	}
 	inline r32 MaxR32(r32 value1, r32 value2, r32 value3)
 	{
-		return max(value1, max(value2, value3));
+		return fmaxf(value1, fmaxf(value2, value3));
 	}
 	inline r32 MaxR32(r32 value1, r32 value2, r32 value3, r32 value4)
 	{
-		return max(value1, max(value2, max(value3, value4)));
+		return fmaxf(value1, fmaxf(value2, fmaxf(value3, value4)));
 	}
 	inline r32 MaxR32(r32 value1, r32 value2, r32 value3, r32 value4, r32 value5)
 	{
-		return max(value1, max(value2, max(value3, max(value4, value5))));
+		return fmaxf(value1, fmaxf(value2, fmaxf(value3, fmaxf(value4, value5))));
 	}
 	inline r32 MaxR32(r32 value1, r32 value2, r32 value3, r32 value4, r32 value5, r32 value6)
 	{
-		return max(value1, max(value2, max(value3, max(value4, max(value5, value6)))));
+		return fmaxf(value1, fmaxf(value2, fmaxf(value3, fmaxf(value4, fmaxf(value5, value6)))));
 	}
 	inline r32 MaxR32(r32 value1, r32 value2, r32 value3, r32 value4, r32 value5, r32 value6, r32 value7)
 	{
-		return max(value1, max(value2, max(value3, max(value4, max(value5, max(value6, value7))))));
+		return fmaxf(value1, fmaxf(value2, fmaxf(value3, fmaxf(value4, fmaxf(value5, fmaxf(value6, value7))))));
 	}
 	inline r32 MaxR32(r32 value1, r32 value2, r32 value3, r32 value4, r32 value5, r32 value6, r32 value7, r32 value8)
 	{
-		return max(value1, max(value2, max(value3, max(value4, max(value5, max(value6, max(value7, value8)))))));
+		return fmaxf(value1, fmaxf(value2, fmaxf(value3, fmaxf(value4, fmaxf(value5, fmaxf(value6, fmaxf(value7, value8)))))));
 	}
 	
 	inline u64 MaxU64(u64 value1, u64 value2)
 	{
-		return max(value1, value2);
+		return (value1 > value2) ? value1 : value2;
 	}
 	inline u64 MaxU64(u64 value1, u64 value2, u64 value3)
 	{
-		return max(value1, max(value2, value3));
+		return MaxU64(value1, MaxU64(value2, value3));
 	}
 	inline u64 MaxU64(u64 value1, u64 value2, u64 value3, u64 value4)
 	{
-		return max(value1, max(value2, max(value3, value4)));
+		return MaxU64(value1, MaxU64(value2, MaxU64(value3, value4)));
 	}
 	inline u64 MaxU64(u64 value1, u64 value2, u64 value3, u64 value4, u64 value5)
 	{
-		return max(value1, max(value2, max(value3, max(value4, value5))));
+		return MaxU64(value1, MaxU64(value2, MaxU64(value3, MaxU64(value4, value5))));
 	}
 	inline u64 MaxU64(u64 value1, u64 value2, u64 value3, u64 value4, u64 value5, u64 value6)
 	{
-		return max(value1, max(value2, max(value3, max(value4, max(value5, value6)))));
+		return MaxU64(value1, MaxU64(value2, MaxU64(value3, MaxU64(value4, MaxU64(value5, value6)))));
 	}
 	inline u64 MaxU64(u64 value1, u64 value2, u64 value3, u64 value4, u64 value5, u64 value6, u64 value7)
 	{
-		return max(value1, max(value2, max(value3, max(value4, max(value5, max(value6, value7))))));
+		return MaxU64(value1, MaxU64(value2, MaxU64(value3, MaxU64(value4, MaxU64(value5, MaxU64(value6, value7))))));
 	}
 	inline u64 MaxU64(u64 value1, u64 value2, u64 value3, u64 value4, u64 value5, u64 value6, u64 value7, u64 value8)
 	{
-		return max(value1, max(value2, max(value3, max(value4, max(value5, max(value6, max(value7, value8)))))));
+		return MaxU64(value1, MaxU64(value2, MaxU64(value3, MaxU64(value4, MaxU64(value5, MaxU64(value6, MaxU64(value7, value8)))))));
 	}
 	
 	inline i64 MaxI64(i64 value1, i64 value2)
 	{
-		return max(value1, value2);
+		return (value1 > value2) ? value1 : value2;
 	}
 	inline i64 MaxI64(i64 value1, i64 value2, i64 value3)
 	{
-		return max(value1, max(value2, value3));
+		return MaxI64(value1, MaxI64(value2, value3));
 	}
 	inline i64 MaxI64(i64 value1, i64 value2, i64 value3, i64 value4)
 	{
-		return max(value1, max(value2, max(value3, value4)));
+		return MaxI64(value1, MaxI64(value2, MaxI64(value3, value4)));
 	}
 	inline i64 MaxI64(i64 value1, i64 value2, i64 value3, i64 value4, i64 value5)
 	{
-		return max(value1, max(value2, max(value3, max(value4, value5))));
+		return MaxI64(value1, MaxI64(value2, MaxI64(value3, MaxI64(value4, value5))));
 	}
 	inline i64 MaxI64(i64 value1, i64 value2, i64 value3, i64 value4, i64 value5, i64 value6)
 	{
-		return max(value1, max(value2, max(value3, max(value4, max(value5, value6)))));
+		return MaxI64(value1, MaxI64(value2, MaxI64(value3, MaxI64(value4, MaxI64(value5, value6)))));
 	}
 	inline i64 MaxI64(i64 value1, i64 value2, i64 value3, i64 value4, i64 value5, i64 value6, i64 value7)
 	{
-		return max(value1, max(value2, max(value3, max(value4, max(value5, max(value6, value7))))));
+		return MaxI64(value1, MaxI64(value2, MaxI64(value3, MaxI64(value4, MaxI64(value5, MaxI64(value6, value7))))));
 	}
 	inline i64 MaxI64(i64 value1, i64 value2, i64 value3, i64 value4, i64 value5, i64 value6, i64 value7, i64 value8)
 	{
-		return max(value1, max(value2, max(value3, max(value4, max(value5, max(value6, max(value7, value8)))))));
+		return MaxI64(value1, MaxI64(value2, MaxI64(value3, MaxI64(value4, MaxI64(value5, MaxI64(value6, MaxI64(value7, value8)))))));
 	}
 	
 	inline r64 MaxR64(r64 value1, r64 value2)
 	{
-		return max(value1, value2);
+		return fmax(value1, value2);
 	}
 	inline r64 MaxR64(r64 value1, r64 value2, r64 value3)
 	{
-		return max(value1, max(value2, value3));
+		return fmax(value1, fmax(value2, value3));
 	}
 	inline r64 MaxR64(r64 value1, r64 value2, r64 value3, r64 value4)
 	{
-		return max(value1, max(value2, max(value3, value4)));
+		return fmax(value1, fmax(value2, fmax(value3, value4)));
 	}
 	inline r64 MaxR64(r64 value1, r64 value2, r64 value3, r64 value4, r64 value5)
 	{
-		return max(value1, max(value2, max(value3, max(value4, value5))));
+		return fmax(value1, fmax(value2, fmax(value3, fmax(value4, value5))));
 	}
 	inline r64 MaxR64(r64 value1, r64 value2, r64 value3, r64 value4, r64 value5, r64 value6)
 	{
-		return max(value1, max(value2, max(value3, max(value4, max(value5, value6)))));
+		return fmax(value1, fmax(value2, fmax(value3, fmax(value4, fmax(value5, value6)))));
 	}
 	inline r64 MaxR64(r64 value1, r64 value2, r64 value3, r64 value4, r64 value5, r64 value6, r64 value7)
 	{
-		return max(value1, max(value2, max(value3, max(value4, max(value5, max(value6, value7))))));
+		return fmax(value1, fmax(value2, fmax(value3, fmax(value4, fmax(value5, fmax(value6, value7))))));
 	}
 	inline r64 MaxR64(r64 value1, r64 value2, r64 value3, r64 value4, r64 value5, r64 value6, r64 value7, r64 value8)
 	{
-		return max(value1, max(value2, max(value3, max(value4, max(value5, max(value6, max(value7, value8)))))));
+		return fmax(value1, fmax(value2, fmax(value3, fmax(value4, fmax(value5, fmax(value6, fmax(value7, value8)))))));
 	}
 // +--------------------------------------------------------------+
 
