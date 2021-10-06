@@ -80,6 +80,7 @@ enum AllocAlignment_t
 	AllocAlignment_4Bytes  = 4,
 	AllocAlignment_8Bytes  = 8,
 	AllocAlignment_64Bytes = 64,
+	AllocAlignment_Max = AllocAlignment_64Bytes,
 };
 
 typedef void* AllocationFunction_f(u64 numBytes);
@@ -217,8 +218,7 @@ void InitMemArena_FixedHeap(MemArena_t* arena, u64 size, void* memoryPntr, Alloc
 	arena->singleAlloc = false;
 	arena->mainPntr = memoryPntr;
 	arena->size = size;
-	arena->otherPntr = memoryPntr;
-	HeapAllocPrefix_t* firstAlloc = (HeapAllocPrefix_t*)arena->otherPntr;
+	HeapAllocPrefix_t* firstAlloc = (HeapAllocPrefix_t*)arena->mainPntr;
 	ClearPointer(firstAlloc);
 	firstAlloc->size = PackAllocPrefixSize(false, arena->size);
 	arena->used = prefixSize;
@@ -230,21 +230,21 @@ void InitMemArena_FixedHeap(MemArena_t* arena, u64 size, void* memoryPntr, Alloc
 }
 void InitMemArena_PagedHeapFuncs(MemArena_t* arena, u64 pageSize, AllocationFunction_f* allocFunc, AllocationFunction_f* freeFunc, u64 maxNumPages = 0, AllocAlignment_t alignment = AllocAlignment_None)
 {
-	UNREFERENCED(arena);
-	UNREFERENCED(pageSize);
-	UNREFERENCED(allocFunc);
-	UNREFERENCED(freeFunc);
-	UNREFERENCED(maxNumPages);
-	UNREFERENCED(alignment);
+	UNUSED(arena);
+	UNUSED(pageSize);
+	UNUSED(allocFunc);
+	UNUSED(freeFunc);
+	UNUSED(maxNumPages);
+	UNUSED(alignment);
 	//TODO: Implement me!
 }
 void InitMemArena_PagedHeapArena(MemArena_t* arena, u64 pageSize, MemArena_t* sourceArena, u64 maxNumPages = 0, AllocAlignment_t alignment = AllocAlignment_None)
 {
-	UNREFERENCED(arena);
-	UNREFERENCED(pageSize);
-	UNREFERENCED(sourceArena);
-	UNREFERENCED(maxNumPages);
-	UNREFERENCED(alignment);
+	UNUSED(arena);
+	UNUSED(pageSize);
+	UNUSED(sourceArena);
+	UNUSED(maxNumPages);
+	UNUSED(alignment);
 	//TODO: Implement me!
 }
 void InitMemArena_MarkedStack(MemArena_t* arena, u64 size, void* memoryPntr, u64 maxNumMarks, AllocAlignment_t alignment = AllocAlignment_None)
@@ -462,10 +462,61 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride =
 		// +==============================+
 		// |    MemArenaType_FixedHeap    |
 		// +==============================+
-		// case MemArenaType_FixedHeap:
-		// {
-		// 	//TODO: Implement me!
-		// } break;
+		case MemArenaType_FixedHeap:
+		{
+			NotNull(arena->mainPntr);
+			
+			//TODO: Assert a maximum sized based off the fact that our top bit stores filled info
+			
+			u64 allocOffset = 0;
+			u8* allocBytePntr = (u8*)arena->mainPntr;
+			u64 sectionIndex = 0;
+			while (allocOffset < arena->size)
+			{
+				HeapAllocPrefix_t* allocPntr = (HeapAllocPrefix_t*)allocBytePntr;
+				u8* allocAfterPrefixPntr = (allocBytePntr + sizeof(HeapAllocPrefix_t));
+				bool isAllocFilled = IsAllocPrefixFilled(allocPntr->size);
+				u64 allocSize = UnpackAllocPrefixSize(allocPntr->size);
+				AssertMsg(allocSize >= sizeof(HeapAllocPrefix_t), "Found an allocation header that claimed to be smaller than the header itself in Fixed Heap");
+				u64 allocAfterPrefixSize = allocSize - sizeof(HeapAllocPrefix_t);
+				if (!isAllocFilled)
+				{
+					u8 alignOffset = OffsetToAlign(allocAfterPrefixPntr, alignment);
+					if (allocAfterPrefixSize >= alignOffset + numBytes)
+					{
+						result = allocAfterPrefixPntr + alignOffset;
+						if (allocAfterPrefixSize > alignOffset + numBytes + sizeof(HeapAllocPrefix_t))
+						{
+							//Split the section into 2 (one filled and one empty)
+							allocPntr->size = PackAllocPrefixSize(true, sizeof(HeapAllocPrefix_t) + alignOffset + numBytes);
+							HeapAllocPrefix_t* newSection = (HeapAllocPrefix_t*)(allocAfterPrefixPntr + alignOffset + numBytes);
+							newSection->size = PackAllocPrefixSize(false, allocAfterPrefixSize - (alignOffset + numBytes));
+							arena->used += alignOffset + numBytes + sizeof(HeapAllocPrefix_t);
+							Assert(arena->used <= arena->size);
+						}
+						else
+						{
+							//This entire section is getting used (or there's not enough extra room to make another empty section)
+							allocPntr->size = PackAllocPrefixSize(true, allocSize);
+							arena->used += allocSize - sizeof(HeapAllocPrefix_t);
+							Assert(arena->used <= arena->size);
+						}
+						arena->numAllocations++;
+						if (arena->telemetryEnabled)
+						{
+							if (arena->highUsedMark < arena->used) { arena->highUsedMark = arena->used; }
+							if (arena->highAllocMark < arena->numAllocations) { arena->highAllocMark = arena->numAllocations; }
+						}
+						break;
+					}
+				}
+				allocOffset += allocSize;
+				allocBytePntr += allocSize;
+				sectionIndex++;
+			}
+			UNUSED(sectionIndex); //used for debug purposes
+			AssertIfMsg(result == nullptr, allocOffset == arena->size, "A Fixed Heap is corrupt. The last allocation size does not perfectly match the size of the arena");
+		} break;
 		
 		// +==============================+
 		// |    MemArenaType_PagedHeap    |
@@ -482,10 +533,10 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride =
 		{
 			NotNull(arena->headerPntr);
 			NotNull(arena->otherPntr);
-			u8 alignmentOffset = OffsetToAlign(((u8*)arena->mainPntr) + arena->used, alignment);
-			if (arena->used + alignmentOffset + numBytes > arena->size) { return nullptr; }
-			result = ((u8*)arena->mainPntr) + arena->used + alignmentOffset;
-			arena->used += alignmentOffset + numBytes;
+			u8 alignOffset = OffsetToAlign(((u8*)arena->mainPntr) + arena->used, alignment);
+			if (arena->used + alignOffset + numBytes > arena->size) { return nullptr; }
+			result = ((u8*)arena->mainPntr) + arena->used + alignOffset;
+			arena->used += alignOffset + numBytes;
 			arena->numAllocations++;
 			if (arena->telemetryEnabled)
 			{
@@ -619,10 +670,74 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreN
 		// +==============================+
 		// |    MemArenaType_FixedHeap    |
 		// +==============================+
-		// case MemArenaType_FixedHeap:
-		// {
-		// 	//TODO: Implement me!
-		// } break;
+		case MemArenaType_FixedHeap:
+		{
+			NotNull(arena->mainPntr);
+			
+			u64 allocOffset = 0;
+			u8* allocBytePntr = (u8*)arena->mainPntr;
+			u64 sectionIndex = 0;
+			HeapAllocPrefix_t* prevPrefixPntr = nullptr;
+			while (allocOffset < arena->size)
+			{
+				HeapAllocPrefix_t* prefixPntr = (HeapAllocPrefix_t*)allocBytePntr;
+				u8* afterPrefixPntr = (allocBytePntr + sizeof(HeapAllocPrefix_t));
+				bool isSectionFilled = IsAllocPrefixFilled(prefixPntr->size);
+				u64 sectionSize = UnpackAllocPrefixSize(prefixPntr->size);
+				AssertMsg(sectionSize >= sizeof(HeapAllocPrefix_t), "Found an allocation header that claimed to be smaller than the header itself in Fixed Heap");
+				u64 afterPrefixSize = sectionSize - sizeof(HeapAllocPrefix_t);
+				
+				if ((u8*)allocPntr >= allocBytePntr && (u8*)allocPntr < allocBytePntr + sectionSize)
+				{
+					AssertMsg((u8*)allocPntr >= afterPrefixPntr, "Tried to free a pointer that pointed into a Fixed Heap header. This is a corrupt pointer!");
+					//TODO: Check if the allocation was actually aligned. Be more strict if it wasn't aligned
+					AssertMsg((u8*)allocPntr <= afterPrefixPntr + OffsetToAlign(afterPrefixPntr, AllocAlignment_Max), "Tried to free a pointer that pointed to the middle of a Fixed Heap section. This is a corrupt pointer!");
+					AssertMsg(isSectionFilled, "Tried to free previously freed section in Fixed Heap. This is a memory management bug");
+					if (allocSize != 0)
+					{
+						//TODO: Handle scenarios where the alignment offset or bad-fit scenarios caused the section to be slightly larger than the requested allocation size
+						//NOTE: Right now we allow for slop in both the alignment offset and scenarios where the section that was used was only slighly larger than needed
+						//      and a second section couldn't be created because there wasn't even enough room for a HeapAllocPrefix_t
+						u64 allowedSlop = OffsetToAlign(afterPrefixPntr, AllocAlignment_Max) + sizeof(HeapAllocPrefix_t);
+						AssertMsg(AbsDiffU64(allocSize, afterPrefixSize) <= allowedSlop, "Given size did not match actual allocation size in Fixed Heap during FreeMem. This is a memory management bug");
+					}
+					
+					result = true;
+					prefixPntr->size = PackAllocPrefixSize(false, sectionSize);
+					AssertMsg(arena->used >= afterPrefixSize, "Fixed Heap used tracker was corrupted. Reached 0 too soon!");
+					arena->used -= afterPrefixSize;
+					AssertMsg(arena->numAllocations > 0, "Fixed Heap numAllocations was corrupted. Reached 0 too soon!");
+					arena->numAllocations--;
+					
+					if (allocOffset + sectionSize < arena->size)
+					{
+						Assert(allocOffset + sectionSize + sizeof(HeapAllocPrefix_t) <= arena->size);
+						HeapAllocPrefix_t* nextPrefixPntr = (HeapAllocPrefix_t*)(allocBytePntr + sectionSize);
+						if (!IsAllocPrefixFilled(nextPrefixPntr->size))
+						{
+							// Merge the next section with this one by making this section bigger
+							prefixPntr->size = PackAllocPrefixSize(false, sectionSize + UnpackAllocPrefixSize(nextPrefixPntr->size));
+							AssertMsg(arena->used >= sizeof(HeapAllocPrefix_t), "Fixed Heap used tracker was corrupted. Reached 0 too soon.");
+							arena->used -= sizeof(HeapAllocPrefix_t);
+						}
+					}
+					if (prevPrefixPntr != nullptr && !IsAllocPrefixFilled(prevPrefixPntr->size))
+					{
+						// Merge the previous section with this one by making it sectionSize bigger
+						prevPrefixPntr->size = PackAllocPrefixSize(false, UnpackAllocPrefixSize(prevPrefixPntr->size) + sectionSize);
+						AssertMsg(arena->used >= sizeof(HeapAllocPrefix_t), "Fixed Heap used tracker was corrupted. Reached 0 too soon.");
+						arena->used -= sizeof(HeapAllocPrefix_t);
+					}
+				}
+				
+				prevPrefixPntr = prefixPntr;
+				allocOffset += sectionSize;
+				allocBytePntr += sectionSize;
+				sectionIndex++;
+			}
+			UNUSED(sectionIndex); //used for debug purposes
+			AssertMsg(result == true, "Tried to free an unknown pointer from Fixed Heap. The pointer must be corrupt or was freed from the wrong heap. This is a memory management bug");
+		} break;
 		
 		// +==============================+
 		// |    MemArenaType_PagedHeap    |
@@ -703,7 +818,7 @@ void* ReallocMem(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 
 	bool decreasingSize = (knownOldSize && newSize < oldSize);
 	u64 sizeChangeAmount = (newSize >= oldSize) ? (newSize - oldSize) : (oldSize - newSize);
 	
-	UNREFERENCED(isRealigning); //TODO: Remove me!
+	UNUSED(isRealigning); //TODO: Remove me!
 	u8* result = nullptr;
 	switch (arena->type)
 	{

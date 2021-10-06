@@ -122,6 +122,7 @@ typedef BOOL_FUNC_DEF(BoolFunc_f);
 #define I32_FUNC_DEF(functionName) i32 functionName()
 typedef I32_FUNC_DEF(I32Func_f);
 
+#define UNUSED(varName) (void)(varName)
 #define UNREFERENCED(varName) (void)(varName)
 
 // +--------------------------------------------------------------+

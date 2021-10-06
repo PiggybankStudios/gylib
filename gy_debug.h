@@ -41,22 +41,22 @@ typedef GYLIB_DEBUG_PRINT_HANDLER_DEF(GyLibDebugPrint_f);
 
 GYLIB_DEBUG_OUTPUT_HANDLER_DEF(GyLibDebugOutputHandler_Stub)
 {
-	UNREFERENCED(filePath);
-	UNREFERENCED(lineNumber);
-	UNREFERENCED(funcName);
-	UNREFERENCED(level);
-	UNREFERENCED(newLine);
-	UNREFERENCED(message);
+	UNUSED(filePath);
+	UNUSED(lineNumber);
+	UNUSED(funcName);
+	UNUSED(level);
+	UNUSED(newLine);
+	UNUSED(message);
 	//do nothing
 }
 GYLIB_DEBUG_PRINT_HANDLER_DEF(GyLibDebugPrintHandler_Stub)
 {
-	UNREFERENCED(filePath);
-	UNREFERENCED(lineNumber);
-	UNREFERENCED(funcName);
-	UNREFERENCED(level);
-	UNREFERENCED(newLine);
-	UNREFERENCED(formatString);
+	UNUSED(filePath);
+	UNUSED(lineNumber);
+	UNUSED(funcName);
+	UNUSED(level);
+	UNUSED(newLine);
+	UNUSED(formatString);
 	//do nothing
 }
 static GyLibDebugOutput_f* GyLibDebugOutputFunc = GyLibDebugOutputHandler_Stub;

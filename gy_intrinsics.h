@@ -880,6 +880,51 @@ inline u8 FlagsDiffU8(u8 flags1, u8 flags2)
 	return result;
 }
 
+// +==============================+
+// |           AbsDiff            |
+// +==============================+
+inline u8 AbsDiffU8(u8 value1, u8 value2)
+{
+	if (value1 > value2) { return value1 - value2; }
+	else { return value2 - value1; }
+}
+inline u16 AbsDiffU16(u16 value1, u16 value2)
+{
+	if (value1 > value2) { return value1 - value2; }
+	else { return value2 - value1; }
+}
+inline u32 AbsDiffU32(u32 value1, u32 value2)
+{
+	if (value1 > value2) { return value1 - value2; }
+	else { return value2 - value1; }
+}
+inline u64 AbsDiffU64(u64 value1, u64 value2)
+{
+	if (value1 > value2) { return value1 - value2; }
+	else { return value2 - value1; }
+}
+
+inline i8 AbsDiffI8(i8 value1, i8 value2)
+{
+	if (value1 > value2) { return value1 - value2; }
+	else { return value2 - value1; }
+}
+inline i16 AbsDiffI16(i16 value1, i16 value2)
+{
+	if (value1 > value2) { return value1 - value2; }
+	else { return value2 - value1; }
+}
+inline i32 AbsDiffI32(i32 value1, i32 value2)
+{
+	if (value1 > value2) { return value1 - value2; }
+	else { return value2 - value1; }
+}
+inline i64 AbsDiffI64(i64 value1, i64 value2)
+{
+	if (value1 > value2) { return value1 - value2; }
+	else { return value2 - value1; }
+}
+
 // +--------------------------------------------------------------+
 // |                     Threading Intrinsics                     |
 // +--------------------------------------------------------------+

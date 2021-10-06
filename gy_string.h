@@ -504,7 +504,7 @@ MyStr_t UnescapeQuotedStringInArena(MemArena_t* memArena, MyStr_t target, bool r
 	NotNull(memArena);
 	MyStr_t result = AllocString(memArena, &target);
 	u64 numBytesSmaller = UnescapeQuotedStringInPlace(&result, removeQuotes, allowNewLineEscapes, allowOtherEscapeCodes);
-	UNREFERENCED(numBytesSmaller);
+	UNUSED(numBytesSmaller);
 	return result;
 }
 
