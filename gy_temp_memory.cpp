@@ -41,4 +41,7 @@ static GetTempArena_f* GetTempArena = GetTempArena_Stub;
 #define TempPushMark() PushMemMark(GetTempArena())
 #define TempPopMark()  PopMemMark(GetTempArena())
 
+#define TempPrint(formatString, ...) PrintInArena(GetTempArena(), (formatString), ##__VA_ARGS__)
+#define TempPrintVa(resultName, resultLengthName, formatString) PrintInArenaVa(GetTempArena(), resultName, resultLengthName, (formatString))
+
 #endif //  _GY_TEMP_MEMORY_CPP

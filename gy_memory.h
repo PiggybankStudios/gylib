@@ -1027,4 +1027,66 @@ void PopMemMark(MemArena_t* arena)
 	stackHeader->numMarks--;
 }
 
+// +--------------------------------------------------------------+
+// |                    Arena Print Functions                     |
+// +--------------------------------------------------------------+
+char* PrintInArena(MemArena_t* arena, const char* formatString, ...)
+{
+	NotNull(arena);
+	NotNull(formatString);
+	
+	char* result = nullptr;
+	va_list args;
+	
+	va_start(args, formatString);
+	int length = MyVaListPrintf(result, 0, formatString, args); //Measure first
+	Assert(length >= 0);
+	va_end(args);
+	
+	result = AllocArray(arena, char, length+1); //Allocate
+	if (result == nullptr) { return result; }
+	
+	va_start(args, formatString);
+	MyVaListPrintf(result, (size_t)(length+1), formatString, args); //Real printf
+	va_end(args);
+	
+	result[length] = '\0';
+	
+	return result;
+}
+
+int PrintInArenaVa_Measure(MemArena_t* arena, const char* formatString, va_list args)
+{
+	int result = MyVaListPrintf(nullptr, 0, formatString, args);
+	return result;
+}
+void PrintInArenaVa_Print(MemArena_t* arena, const char* formatString, va_list args, char* allocatedSpace, int previousResult)
+{
+	Assert(previousResult >= 0);
+	NotNull(allocatedSpace);
+	int printResult = MyVaListPrintf(allocatedSpace, previousResult+1, formatString, args);
+	Assert(printResult == previousResult);
+	allocatedSpace[previousResult] = '\0';
+}
+
+#define ArenaPrintVa(arena, resultName, resultLengthName, formatString)                    \
+char* resultName = nullptr;                                                                \
+int resultLengthName = 0;                                                                  \
+va_list args;                                                                              \
+do                                                                                         \
+{                                                                                          \
+	va_start(args, formatString);                                                          \
+	resultLengthName = PrintInArenaVa_Measure((arena), (formatString), args);              \
+	va_end(args);                                                                          \
+	if (resultLengthName >= 0)                                                             \
+	{                                                                                      \
+		resultName = AllocArray((memArena), char, resultLengthName+1); /*Allocate*/        \
+		if (resultName == nullptr) { break; }                                              \
+		va_start(args, formatString);                                                      \
+		PrintInArenaVa_Print((arena), (formatString), args, resultName, resultLengthName); \
+		va_end(args);                                                                      \
+	}                                                                                      \
+}                                                                                          \
+while(0)
+
 #endif //  _GY_MEMORY_H
