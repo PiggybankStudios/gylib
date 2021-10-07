@@ -183,7 +183,7 @@ struct Obb3D_t
 
 typedef Rectangle_t   rec;
 typedef Rectanglei_t  reci;
-typedef OBB2D_t       obb2;
+typedef Obb2D_t       obb2;
 typedef Box_t        box;
 typedef Boxi_t       boxi;
 // typedef OBB3D_t       obb3; //TODO: Uncomment me!
@@ -341,7 +341,9 @@ box NewBoxCentered(r32 centerX, r32 centerY, r32 centerZ, r32 width, r32 height,
 box NewBoxCentered(v3 center, r32 width, r32 height, r32 depth)
 {
 	box result;
-	result.topLeft = topLeft;
+	result.x = center.x - width/2;
+	result.y = center.y - height/2;
+	result.z = center.z - depth/2;
 	result.width = width;
 	result.height = height;
 	result.depth = depth;
@@ -366,7 +368,7 @@ box NewBoxCentered(v3 center, v3 size)
 	return result;
 }
 
-boxi NewBoxi(r32i x, r32i y, r32i z, r32i width, r32i height, r32i depth)
+boxi NewBoxi(i32 x, i32 y, i32 z, i32 width, i32 height, i32 depth)
 {
 	boxi result;
 	result.x = x;
@@ -377,7 +379,7 @@ boxi NewBoxi(r32i x, r32i y, r32i z, r32i width, r32i height, r32i depth)
 	result.depth = depth;
 	return result;
 }
-boxi NewBoxi(v3i topLeft, r32i width, r32i height, r32i depth)
+boxi NewBoxi(v3i topLeft, i32 width, i32 height, i32 depth)
 {
 	boxi result;
 	result.topLeft = topLeft;
@@ -386,7 +388,7 @@ boxi NewBoxi(v3i topLeft, r32i width, r32i height, r32i depth)
 	result.depth = depth;
 	return result;
 }
-boxi NewBoxi(r32i x, r32i y, r32i z, v3i size)
+boxi NewBoxi(i32 x, i32 y, i32 z, v3i size)
 {
 	boxi result;
 	result.x = x;
@@ -445,11 +447,12 @@ obb2 NewObb2D(v2 center, v2 size, r32 rotation)
 // +--------------------------------------------------------------+
 // |                   Simple Value Definitions                   |
 // +--------------------------------------------------------------+
-#define Rec_Zero  NewRec(0, 0, 0, 0)
-#define Reci_Zero NewReci(0, 0, 0, 0)
-#define Box_Zero  NewBox(0, 0, 0, 0, 0, 0)
-#define Boxi_Zero NewBoxi(0, 0, 0, 0, 0, 0)
-#define Obb2_Zero NewObb2D(0, 0, 0, 0, 0)
+#define Rec_Zero    NewRec(0, 0, 0, 0)
+#define Rec_Default NewRec(0, 0, 1, 1)
+#define Reci_Zero   NewReci(0, 0, 0, 0)
+#define Box_Zero    NewBox(0, 0, 0, 0, 0, 0)
+#define Boxi_Zero   NewBoxi(0, 0, 0, 0, 0, 0)
+#define Obb2_Zero   NewObb2D(0, 0, 0, 0, 0)
 // #define Obb3_Zero NewObb2D(0, 0, 0, 0, 0, 0, Quat_Identity) //TODO: Uncomment me!
 
 // +--------------------------------------------------------------+
@@ -618,6 +621,61 @@ box BoxScale3(box boundingBox, r32 scaleX, r32 scaleY, r32 scaleZ)
 box BoxScale2(box boundingBox, v3 scale)
 {
 	box result;
+	result.x = boundingBox.x * scale.x;
+	result.y = boundingBox.y * scale.y;
+	result.z = boundingBox.z * scale.z;
+	result.width = boundingBox.width * scale.x;
+	result.height = boundingBox.height * scale.y;
+	result.depth = boundingBox.depth * scale.z;
+	return result;
+}
+
+// +==============================+
+// |             Boxi             |
+// +==============================+
+boxi BoxiShift(boxi boundingBox, i32 amountX, i32 amountY, i32 amountZ)
+{
+	boxi result;
+	result.x = boundingBox.x + amountX;
+	result.y = boundingBox.y + amountY;
+	result.z = boundingBox.z + amountZ;
+	result.size = boundingBox.size;
+	return result;
+}
+boxi BoxiShift(boxi boundingBox, v3i amount)
+{
+	boxi result;
+	result.x = boundingBox.x + amount.x;
+	result.y = boundingBox.y + amount.y;
+	result.z = boundingBox.z + amount.z;
+	result.size = boundingBox.size;
+	return result;
+}
+boxi BoxiScale(boxi boundingBox, i32 scalar)
+{
+	boxi result;
+	result.x = boundingBox.x * scalar;
+	result.y = boundingBox.y * scalar;
+	result.z = boundingBox.z * scalar;
+	result.width = boundingBox.width * scalar;
+	result.height = boundingBox.height * scalar;
+	result.depth = boundingBox.depth * scalar;
+	return result;
+}
+boxi BoxiScale3(boxi boundingBox, i32 scaleX, i32 scaleY, i32 scaleZ)
+{
+	boxi result;
+	result.x = boundingBox.x * scaleX;
+	result.y = boundingBox.y * scaleY;
+	result.z = boundingBox.z * scaleZ;
+	result.width = boundingBox.width * scaleX;
+	result.height = boundingBox.height * scaleY;
+	result.depth = boundingBox.depth * scaleZ;
+	return result;
+}
+boxi BoxiScale2(boxi boundingBox, v3i scale)
+{
+	boxi result;
 	result.x = boundingBox.x * scale.x;
 	result.y = boundingBox.y * scale.y;
 	result.z = boundingBox.z * scale.z;
@@ -824,7 +882,7 @@ reci ReciExpand(reci rectangle, i32 extraWidth, i32 extraHeight)
 	result.height = rectangle.height + extraHeight;
 	return result;
 }
-reci ReciExpand(reci rectangle, v2 extraSize)
+reci ReciExpand(reci rectangle, v2i extraSize)
 {
 	reci result;
 	result.topLeft = rectangle.topLeft;
@@ -856,7 +914,7 @@ reci ReciRetract(reci rectangle, i32 subWidth, i32 subHeight)
 	result.height = rectangle.height - subHeight;
 	return result;
 }
-reci ReciRetract(reci rectangle, v2 subSize)
+reci ReciRetract(reci rectangle, v2i subSize)
 {
 	reci result;
 	result.topLeft = rectangle.topLeft;
@@ -889,7 +947,7 @@ reci ReciInflate(reci rectangle, i32 extraWidth, i32 extraHeight)
 	result.height = rectangle.height + extraHeight*2;
 	return result;
 }
-reci ReciInflate(reci rectangle, v2 extraSize)
+reci ReciInflate(reci rectangle, v2i extraSize)
 {
 	reci result;
 	result.x = rectangle.x - extraSize.width;
@@ -925,7 +983,7 @@ reci ReciDeflate(reci rectangle, i32 subWidth, i32 subHeight)
 	result.height = rectangle.height - subHeight*2;
 	return result;
 }
-reci ReciDeflate(reci rectangle, v2 extraSize)
+reci ReciDeflate(reci rectangle, v2i extraSize)
 {
 	reci result;
 	result.x = rectangle.x + extraSize.width;
@@ -1746,42 +1804,42 @@ boxi BoxiUninvert(boxi boundingBox)
 // +==============================+
 // |            Obb2D             |
 // +==============================+
-rec Obb2DSquarify(rec rectangle, bool makeLarger = true)
+obb2 Obb2DSquarify(obb2 rectangle, bool makeLarger = true)
 {
-	rec result;
+	obb2 result;
 	r32 newSize = (makeLarger ? MaxR32(rectangle.width, rectangle.height) : MinR32(rectangle.width, rectangle.height));
 	result.center = rectangle.center;
 	result.width = newSize;
 	result.height = newSize;
 	return result;
 }
-rec Obb2DInvert(rec rectangle)
+obb2 Obb2DInvert(obb2 rectangle)
 {
-	rec result;
+	obb2 result;
 	result.center = rectangle.center;
 	result.width = -rectangle.width;
 	result.height = -rectangle.height;
 	return result;
 }
-rec Obb2DInvertX(rec rectangle)
+obb2 Obb2DInvertX(obb2 rectangle)
 {
-	rec result;
+	obb2 result;
 	result.center = rectangle.center;
 	result.width = -rectangle.width;
 	result.height = rectangle.height;
 	return result;
 }
-rec Obb2DInvertY(rec rectangle)
+obb2 Obb2DInvertY(obb2 rectangle)
 {
-	rec result;
+	obb2 result;
 	result.center = rectangle.center;
 	result.width = rectangle.width;
 	result.height = -rectangle.height;
 	return result;
 }
-rec Obb2DUninvert(rec rectangle)
+obb2 Obb2DUninvert(obb2 rectangle)
 {
-	rec result;
+	obb2 result;
 	result.center = rectangle.center;
 	result.width = AbsR32(rectangle.width);
 	result.height = AbsR32(rectangle.height);
@@ -1825,15 +1883,15 @@ inline reci operator / (reci rectangle, i32 scale)  { return ReciScale(rectangle
 inline bool operator == (reci left, reci right) { return  (left.x == right.x && left.y == right.y && left.width == right.width && left.height == right.height); }
 inline bool operator != (reci left, reci right) { return !(left.x == right.x && left.y == right.y && left.width == right.width && left.height == right.height); }
 
-inline box operator + (box boundingBox, v3 vector) { return BoxShift(rectangle, vector); }
-inline box operator - (box boundingBox, v3 vector) { return BoxShift(rectangle, -vector); }
-inline box operator * (box boundingBox, r32 scale) { return BoxScale(rectangle, scale); }
-inline box operator / (box boundingBox, r32 scale) { return BoxScale(rectangle, 1/scale); }
+inline box operator + (box boundingBox, v3 vector) { return BoxShift(boundingBox, vector); }
+inline box operator - (box boundingBox, v3 vector) { return BoxShift(boundingBox, -vector); }
+inline box operator * (box boundingBox, r32 scale) { return BoxScale(boundingBox, scale); }
+inline box operator / (box boundingBox, r32 scale) { return BoxScale(boundingBox, 1/scale); }
 
-inline boxi operator + (boxi boundingBox, v3i vector) { return BoxiShift(rectangle, vector); }
-inline boxi operator - (boxi boundingBox, v3i vector) { return BoxiShift(rectangle, -vector); }
-inline boxi operator * (boxi boundingBox, i32 scale)  { return BoxiScale(rectangle, scale); }
-inline boxi operator / (boxi boundingBox, i32 scale)  { return BoxiScale(rectangle, 1/scale); }
+inline boxi operator + (boxi boundingBox, v3i vector) { return BoxiShift(boundingBox, vector); }
+inline boxi operator - (boxi boundingBox, v3i vector) { return BoxiShift(boundingBox, -vector); }
+inline boxi operator * (boxi boundingBox, i32 scale)  { return BoxiScale(boundingBox, scale); }
+inline boxi operator / (boxi boundingBox, i32 scale)  { return BoxiScale(boundingBox, 1/scale); }
 inline bool operator == (boxi left, boxi right) { return  (left.x == right.x && left.y == right.y && left.z == right.z && left.width == right.width && left.height == right.height && left.depth == right.depth); }
 inline bool operator != (boxi left, boxi right) { return !(left.x == right.x && left.y == right.y && left.z == right.z && left.width == right.width && left.height == right.height && left.depth == right.depth); }
 
