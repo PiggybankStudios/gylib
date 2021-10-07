@@ -73,7 +73,7 @@ Description:
 	#define PureBlue                NewColor(PureBlue_Value)
 	#define PurePurple              NewColor(PurePurple_Value)
 	
-	Color_t GetPureColorByIndex(u32 index)
+	Color_t GetPureColorByIndex(u64 index)
 	{
 		switch (index % NUM_PREDEF_PURE_COLORS)
 		{
@@ -86,7 +86,7 @@ Description:
 			default: return PureRed;
 		}
 	}
-	Color_t GetGreyscaleColorByIndex(u32 index)
+	Color_t GetGreyscaleColorByIndex(u64 index)
 	{
 		switch (index % NUM_PREDEF_GREYSCALE_COLORS)
 		{
@@ -109,7 +109,7 @@ Description:
 			default: return Black;
 		}
 	}
-	u32 GetPureColorIndex(u32 colorValue)
+	u64 GetPureColorIndex(u64 colorValue)
 	{
 		switch (colorValue)
 		{
@@ -122,11 +122,11 @@ Description:
 			default: return NUM_PREDEF_PURE_COLORS;
 		}
 	}
-	u32 GetPureColorIndex(Color_t color)
+	u64 GetPureColorIndex(Color_t color)
 	{
 		return GetPureColorIndex(color.value);
 	}
-	u32 GetGreyscaleColorIndex(u32 colorValue)
+	u64 GetGreyscaleColorIndex(u64 colorValue)
 	{
 		switch (colorValue)
 		{
@@ -149,7 +149,7 @@ Description:
 			default: return NUM_PREDEF_GREYSCALE_COLORS;
 		}
 	}
-	u32 GetGreyscaleColorIndex(Color_t color)
+	u64 GetGreyscaleColorIndex(Color_t color)
 	{
 		return GetGreyscaleColorIndex(color.value);
 	}
@@ -324,7 +324,7 @@ Description:
 	#define PalBlackLight           NewColor(PalBlackLight_Value)
 	#define PalBlackLighter         NewColor(PalBlackLighter_Value)
 
-	Color_t GetPredefPalColorByIndex(u32 index)
+	Color_t GetPredefPalColorByIndex(u64 index)
 	{
 		switch (index % NUM_PREDEF_PAL_COLORS)
 		{
@@ -411,7 +411,7 @@ Description:
 			default: return Black;
 		}
 	}
-	u32 GetPredefPalColorIndex(u32 colorValue)
+	u64 GetPredefPalColorIndex(u64 colorValue)
 	{
 		switch (colorValue)
 		{
@@ -488,7 +488,7 @@ Description:
 			default: return NUM_PREDEF_PAL_COLORS;
 		}
 	}
-	u32 GetPredefPalColorIndex(Color_t color)
+	u64 GetPredefPalColorIndex(Color_t color)
 	{
 		return GetPredefPalColorIndex(color.value);
 	}

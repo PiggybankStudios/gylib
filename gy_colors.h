@@ -197,4 +197,17 @@ inline Color_t ColorTransparent(Color_t color, r32 alpha)
 	return NewColor(color.r, color.g, color.b, ClampI32toU8(RoundR32i(255 * alpha)));
 }
 
+// +--------------------------------------------------------------+
+// |                       Other Functions                        |
+// +--------------------------------------------------------------+
+v4 ToVec4(Color_t color)
+{
+	v4 result;
+	result.r = (r32)color.r / 255.0f;
+	result.g = (r32)color.g / 255.0f;
+	result.b = (r32)color.b / 255.0f;
+	result.a = (r32)color.a / 255.0f;
+	return result;
+}
+
 #endif //  _GY_COLORS_H
