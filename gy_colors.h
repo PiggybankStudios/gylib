@@ -253,14 +253,11 @@ Color_t ColorLerp(Color_t start, Color_t end, r32 amount)
 	result.a = ClampI32toU8(RoundR32i(LerpR32((r32)start.a, (r32)end.a, amount)));
 	return result;
 }
-
 //TODO: ColorMultiply
 //TODO: ColorMultiplyAlpha
-//TODO: ColorOpposite
-//TODO: ColorComplimentary
 //TODO: ColorDarken
 //TODO: ColorLighten
-//TODO: ColorDesaturate
+//TODO: ColorOpposite
 
 // +==============================+
 // |            Colorf            |
@@ -408,5 +405,7 @@ ColorHSV_t ColorHSVFromRGB(Color_t color)
 // +--------------------------------------------------------------+
 // |                       Other Functions                        |
 // +--------------------------------------------------------------+
+//TODO: ColorComplimentary
+//TODO: ColorDesaturate
 
 #endif //  _GY_COLORS_H
