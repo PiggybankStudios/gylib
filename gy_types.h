@@ -18,6 +18,12 @@ Description:
 //Actual Value of Pi: 3.1415926535897932384626433832795...
 #define Pi64          3.14159265358979311599796346854      //accurate to 15 digits
 #define Pi32          3.1415927410125732421875f            //accurate to 6 digits
+#define HalfPi64       (Pi64/2.0)
+#define ThreeHalfsPi64 (Pi64*(3.0/2.0))
+#define TwoPi64        (2*Pi64)
+#define HalfPi32       (Pi32/2.0f)
+#define ThreeHalfsPi32 (Pi32*(3.0f/2.0f))
+#define TwoPi32        (2*Pi32)
 //Actual Value of e:  2.7182818284590452353602874713526...
 #define e64           2.71828182845904509079559829843      //accurate to 15 digits
 #define e32           2.71828174591064453125f              //accurate to 6 digits
