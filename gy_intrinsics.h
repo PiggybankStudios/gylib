@@ -925,6 +925,18 @@ inline i64 AbsDiffI64(i64 value1, i64 value2)
 	else { return value2 - value1; }
 }
 
+// +==============================+
+// |          IsInfinite          |
+// +==============================+
+inline bool IsInfiniteR32(r32 value)
+{
+	return (isinf(value) || isnan(value)); //TODO: Should these by like fisinf or fisnan?
+}
+inline bool IsInfiniteR64(r64 value)
+{
+	return (isinf(value) || isnan(value));
+}
+
 // +--------------------------------------------------------------+
 // |                     Threading Intrinsics                     |
 // +--------------------------------------------------------------+
