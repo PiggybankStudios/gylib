@@ -88,6 +88,31 @@ bool IsStrNullTerminated(const MyStr_t* target)
 
 #define FreeString(arena, strPntr) do { NotNullStr(strPntr); if ((strPntr)->pntr != nullptr) { FreeMem((arena), (strPntr)->pntr); (strPntr)->pntr = nullptr; (strPntr)->length = 0; } } while(0)
 
+MyStr_t PrintInArenaStr(MemArena_t* arena, const char* formatString, ...)
+{
+	NotNull(arena);
+	NotNull(formatString);
+	
+	char* result = nullptr;
+	va_list args;
+	
+	va_start(args, formatString);
+	int length = MyVaListPrintf(result, 0, formatString, args); //Measure first
+	Assert(length >= 0);
+	va_end(args);
+	
+	result = AllocArray(arena, char, length+1); //Allocate
+	if (result == nullptr) { return MyStr_Empty; }
+	
+	va_start(args, formatString);
+	MyVaListPrintf(result, (size_t)(length+1), formatString, args); //Real printf
+	va_end(args);
+	
+	result[length] = '\0';
+	
+	return NewStr((u64)length, result);
+}
+
 // +--------------------------------------------------------------+
 // |                Helpful Manipulation Functions                |
 // +--------------------------------------------------------------+

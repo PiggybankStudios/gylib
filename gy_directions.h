@@ -46,7 +46,7 @@ Description:
 // +--------------------------------------------------------------+
 // |                          Structures                          |
 // +--------------------------------------------------------------+
-typedef enum
+enum Dir2_t
 {
 	Dir2_None  = 0x00,
 	Dir2_Right = 0x01, //+x ( 1,  0)
@@ -55,9 +55,9 @@ typedef enum
 	Dir2_Up    = 0x08, //-y ( 0, -1)
 	Dir2_All   = 0x0F,
 	Dir2_Count = 4,
-} Dir2_t;
+};
 
-typedef enum
+enum Dir2Ex_t
 {
 	Dir2Ex_None        = 0x00,
 	Dir2Ex_Right       = 0x01, //+x ( 1,  0)
@@ -72,9 +72,9 @@ typedef enum
 	Dir2Ex_Diagonal    = 0xF0,
 	Dir2Ex_All         = 0xFF,
 	Dir2Ex_Count = 8,
-} Dir2Ex_t;
+};
 
-typedef enum
+enum Dir3_t
 {
 	Dir3_None     = 0x00,
 	Dir3_Right    = 0x01, //+x ( 1,  0,  0)
@@ -85,9 +85,9 @@ typedef enum
 	Dir3_Backward = 0x20, //-z ( 0,  0, -1)
 	Dir3_All      = 0x3F,
 	Dir3_Count = 6,
-} Dir3_t;
+};
 
-typedef enum
+enum Dir3Ex_t
 {
 	Dir3Ex_None             = 0x0000,
 	Dir3Ex_Right            = 0x0001, //+x ( 1,  0,  0)
@@ -108,9 +108,9 @@ typedef enum
 	Dir3Ex_Diagonal         = 0x3FC0,
 	Dir3Ex_All              = 0x3FFF,
 	Dir3Ex_Count = 14,
-} Dir3Ex_t;
+};
 
-typedef enum
+enum Axis_t
 {
 	Axis_None  = 0x00,
 	Axis_X     = 0x01,
@@ -121,7 +121,7 @@ typedef enum
 	Axis_All3  = 0x07,
 	Axis_All4  = 0x0F,
 	Axis_Count = 4,
-} Axis_t;
+};
 
 // +--------------------------------------------------------------+
 // |               Casting and Conversion Functions               |
