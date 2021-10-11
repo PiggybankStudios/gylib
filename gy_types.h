@@ -140,22 +140,22 @@ typedef I32_FUNC_DEF(I32Func_f);
 // +--------------------------------------------------------------+
 #if WINDOWS_COMPILATION
 	#define PACKED(class_to_pack) __pragma( pack(push, 1) ) class_to_pack __pragma(pack(pop))
-	#define START_PACK  __pragma(pack(push, 1))
-	#define END_PACK    __pragma(pack(pop))
+	#define START_PACK()  __pragma(pack(push, 1))
+	#define END_PACK()    __pragma(pack(pop))
 	#define ATTR_PACKED //nothing
 	#define EXPORT __declspec(dllexport)
 	#define IMPORT __declspec(dllimport)
 	#define __func__ __FUNCTION__
 #elif OSX_COMPILATION
 	#define PACKED(class_to_pack) class_to_pack __attribute__((__packed__))
-	#define START_PACK  //nothing
-	#define END_PACK    //nothing
+	#define START_PACK()  //nothing
+	#define END_PACK()    //nothing
 	#define ATTR_PACKED __attribute__((__packed__))
 	//TODO: Figure out how to do EXPORT and IMPORT on OSX
 #else
 	#define PACKED(class_to_pack) class_to_pack __attribute__((__packed__))
-	#define START_PACK  //nothing
-	#define END_PACK    //nothing
+	#define START_PACK()  //nothing
+	#define END_PACK()    //nothing
 	#define ATTR_PACKED __attribute__((__packed__))
 	//TODO: Figure out how to do EXPORT and IMPORT on OSX
 #endif
