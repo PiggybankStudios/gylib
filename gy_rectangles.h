@@ -527,6 +527,14 @@ rec RecScale2(rec rectangle, v2 scale)
 	result.height = rectangle.height * scale.y;
 	return result;
 }
+bool RecBasicallyEqual(rec left, rec right, r32 tolerance = 0.001f)
+{
+	if (!BasicallyEqualR32(left.x,      right.x))      { return false; }
+	if (!BasicallyEqualR32(left.y,      right.y))      { return false; }
+	if (!BasicallyEqualR32(left.width,  right.width))  { return false; }
+	if (!BasicallyEqualR32(left.height, right.height)) { return false; }
+	return true;
+}
 
 // +==============================+
 // |             Reci             |
@@ -573,6 +581,14 @@ reci ReciScale2(reci rectangle, v2i scale)
 	result.width = rectangle.width * scale.x;
 	result.height = rectangle.height * scale.y;
 	return result;
+}
+bool ReciEqual(reci left, reci right)
+{
+	if (left.x      != right.x)      { return false; }
+	if (left.y      != right.y)      { return false; }
+	if (left.width  != right.width)  { return false; }
+	if (left.height != right.height) { return false; }
+	return true;
 }
 
 // +==============================+
@@ -629,6 +645,16 @@ box BoxScale2(box boundingBox, v3 scale)
 	result.depth = boundingBox.depth * scale.z;
 	return result;
 }
+bool BoxBasicallyEqual(box left, box right, r32 tolerance = 0.001f)
+{
+	if (!BasicallyEqualR32(left.x,      right.x))      { return false; }
+	if (!BasicallyEqualR32(left.y,      right.y))      { return false; }
+	if (!BasicallyEqualR32(left.z,      right.z))      { return false; }
+	if (!BasicallyEqualR32(left.width,  right.width))  { return false; }
+	if (!BasicallyEqualR32(left.height, right.height)) { return false; }
+	if (!BasicallyEqualR32(left.depth,  right.depth))  { return false; }
+	return true;
+}
 
 // +==============================+
 // |             Boxi             |
@@ -684,6 +710,16 @@ boxi BoxiScale2(boxi boundingBox, v3i scale)
 	result.depth = boundingBox.depth * scale.z;
 	return result;
 }
+bool BoxiEqual(boxi left, boxi right)
+{
+	if (left.x      != right.x)      { return false; }
+	if (left.y      != right.y)      { return false; }
+	if (left.z      != right.z)      { return false; }
+	if (left.width  != right.width)  { return false; }
+	if (left.height != right.height) { return false; }
+	if (left.depth  != right.depth)  { return false; }
+	return true;
+}
 
 // +==============================+
 // |            Obb2D             |
@@ -716,16 +752,25 @@ obb2 Obb2DScale(obb2 boundingBox, r32 scalar)
 	result.rotation = boundingBox.rotation;
 	return result;
 }
+bool Obb2DBasicallyEqual(obb2 left, obb2 right, r32 tolerance = 0.001f)
+{
+	if (!BasicallyEqualR32(left.x,        right.x))         { return false; }
+	if (!BasicallyEqualR32(left.y,        right.y))         { return false; }
+	if (!BasicallyEqualR32(left.width,    right.width))     { return false; }
+	if (!BasicallyEqualR32(left.height,   right.height))    { return false; }
+	if (!BasicallyEqualR32(left.rotation, right.rotation))  { return false; }
+	return true;
+}
 
 // +--------------------------------------------------------------+
 // |                Expand Retract Inflate Deflate                |
 // +--------------------------------------------------------------+
-//Expand/Retract: +------+
+//Expand/Retract: +------+ (top left position stays the same)
 //                ||---->|
 //                ||     |
 //                |V     |
 //                +------+
-//Inflate/Deflate: +------+ (total inflation/deflation is 2 times extraSize)
+//Inflate/Deflate: +------+ (total inflation/deflation is 2 times given value)
 //                 |<^^^^>|
 //                 |<    >|
 //                 |<vvvv>|
