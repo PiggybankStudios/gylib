@@ -630,7 +630,7 @@ u64 StrReplaceInPlace(MyStr_t str, const char* target, const char* replacement, 
 	NotNullStr(&str);
 	NotNull(target);
 	NotNull(replacement);
-	return StrReplaceInPlace(str, NewStr(target), NewStr(replacement));
+	return StrReplaceInPlace(str, NewStr(target), NewStr(replacement), ignoreCase);
 }
 
 #endif //  _GY_STRING_H

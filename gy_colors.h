@@ -304,10 +304,6 @@ r32 HueToRGB(r32 value1, r32 value2, r32 vH)
 //TODO: These HSV <-> RGB functions seem to have problems!
 Color_t ColorRGBFromHSV(ColorHSV_t colorHsv)
 {
-	r32 redValue = 0;
-	r32 greenValue = 0;
-	r32 blueValue = 0;
-	
 	r32 cValue = colorHsv.v * colorHsv.s;
 	r32 xValue = cValue * (1 - AbsR32((r32)((RoundR32i(colorHsv.h) / 60)%2) - 1));
 	r32 nextX = cValue * (1 - AbsR32((r32)((RoundR32i(colorHsv.h) / 60 + 1)%2) - 1));

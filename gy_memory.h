@@ -1055,12 +1055,12 @@ char* PrintInArena(MemArena_t* arena, const char* formatString, ...)
 	return result;
 }
 
-int PrintInArenaVa_Measure(MemArena_t* arena, const char* formatString, va_list args)
+int PrintInArenaVa_Measure(const char* formatString, va_list args)
 {
 	int result = MyVaListPrintf(nullptr, 0, formatString, args);
 	return result;
 }
-void PrintInArenaVa_Print(MemArena_t* arena, const char* formatString, va_list args, char* allocatedSpace, int previousResult)
+void PrintInArenaVa_Print(const char* formatString, va_list args, char* allocatedSpace, int previousResult)
 {
 	Assert(previousResult >= 0);
 	NotNull(allocatedSpace);

@@ -1098,6 +1098,8 @@ v3 Vec3Normalize(v3 vector)
 }
 r32 Vec3Determinant(v3 left, v3 right)
 {
+	UNUSED(left);
+	UNUSED(right);
 	//TODO: Implement me
 	return 0;
 }
@@ -1165,6 +1167,8 @@ v3 Vec3iNormalize(v3i vector)
 }
 i32 Vec3iDeterminant(v3i left, v3i right)
 {
+	UNUSED(left);
+	UNUSED(right);
 	//TODO: Implement me
 	return 0;
 }
@@ -1199,6 +1203,8 @@ v4 Vec4Normalize(v4 vector)
 }
 r32 Vec4Determinant(v4 left, v4 right)
 {
+	UNUSED(left);
+	UNUSED(right);
 	//TODO: Implement me
 	return 0;
 }
@@ -1266,6 +1272,8 @@ v4 Vec4iNormalize(v4i vector)
 }
 i32 Vec4iDeterminant(v4i left, v4i right)
 {
+	UNUSED(left);
+	UNUSED(right);
 	//TODO: Implement me
 	return 0;
 }

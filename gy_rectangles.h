@@ -529,10 +529,10 @@ rec RecScale2(rec rectangle, v2 scale)
 }
 bool RecBasicallyEqual(rec left, rec right, r32 tolerance = 0.001f)
 {
-	if (!BasicallyEqualR32(left.x,      right.x))      { return false; }
-	if (!BasicallyEqualR32(left.y,      right.y))      { return false; }
-	if (!BasicallyEqualR32(left.width,  right.width))  { return false; }
-	if (!BasicallyEqualR32(left.height, right.height)) { return false; }
+	if (!BasicallyEqualR32(left.x,      right.x,      tolerance)) { return false; }
+	if (!BasicallyEqualR32(left.y,      right.y,      tolerance)) { return false; }
+	if (!BasicallyEqualR32(left.width,  right.width,  tolerance)) { return false; }
+	if (!BasicallyEqualR32(left.height, right.height, tolerance)) { return false; }
 	return true;
 }
 
@@ -647,12 +647,12 @@ box BoxScale2(box boundingBox, v3 scale)
 }
 bool BoxBasicallyEqual(box left, box right, r32 tolerance = 0.001f)
 {
-	if (!BasicallyEqualR32(left.x,      right.x))      { return false; }
-	if (!BasicallyEqualR32(left.y,      right.y))      { return false; }
-	if (!BasicallyEqualR32(left.z,      right.z))      { return false; }
-	if (!BasicallyEqualR32(left.width,  right.width))  { return false; }
-	if (!BasicallyEqualR32(left.height, right.height)) { return false; }
-	if (!BasicallyEqualR32(left.depth,  right.depth))  { return false; }
+	if (!BasicallyEqualR32(left.x,      right.x,      tolerance)) { return false; }
+	if (!BasicallyEqualR32(left.y,      right.y,      tolerance)) { return false; }
+	if (!BasicallyEqualR32(left.z,      right.z,      tolerance)) { return false; }
+	if (!BasicallyEqualR32(left.width,  right.width,  tolerance)) { return false; }
+	if (!BasicallyEqualR32(left.height, right.height, tolerance)) { return false; }
+	if (!BasicallyEqualR32(left.depth,  right.depth,  tolerance)) { return false; }
 	return true;
 }
 
@@ -754,11 +754,11 @@ obb2 Obb2DScale(obb2 boundingBox, r32 scalar)
 }
 bool Obb2DBasicallyEqual(obb2 left, obb2 right, r32 tolerance = 0.001f)
 {
-	if (!BasicallyEqualR32(left.x,        right.x))         { return false; }
-	if (!BasicallyEqualR32(left.y,        right.y))         { return false; }
-	if (!BasicallyEqualR32(left.width,    right.width))     { return false; }
-	if (!BasicallyEqualR32(left.height,   right.height))    { return false; }
-	if (!BasicallyEqualR32(left.rotation, right.rotation))  { return false; }
+	if (!BasicallyEqualR32(left.x,        right.x,        tolerance)) { return false; }
+	if (!BasicallyEqualR32(left.y,        right.y,        tolerance)) { return false; }
+	if (!BasicallyEqualR32(left.width,    right.width,    tolerance)) { return false; }
+	if (!BasicallyEqualR32(left.height,   right.height,   tolerance)) { return false; }
+	if (!BasicallyEqualR32(left.rotation, right.rotation, tolerance)) { return false; }
 	return true;
 }
 
