@@ -937,6 +937,42 @@ inline bool IsInfiniteR64(r64 value)
 	return (isinf(value) || isnan(value));
 }
 
+// +==============================+
+// |          RoundUpTo           |
+// +==============================+
+u32 RoundUpToU32(u32 value, u32 chunkSize)
+{
+	if (chunkSize <= 1) { return value; } //eat degenerate and invalid
+	if ((value % chunkSize) == 0) { return value; } //totally valid scenario
+	return value + (chunkSize - (value % chunkSize)); //the real calculation
+}
+u64 RoundUpToU64(u64 value, u64 chunkSize)
+{
+	if (chunkSize <= 1) { return value; } //eat degenerate and invalid
+	if ((value % chunkSize) == 0) { return value; } //totally valid scenario
+	return value + (chunkSize - (value % chunkSize)); //the real calculation
+}
+
+//On negative numbers "up" is really "more negative"
+i32 RoundUpToI32(i32 value, i32 chunkSize)
+{
+	if (chunkSize <= 1) { return value; } //eat degenerate and invalid
+	bool isNegative = (value < 0);
+	value = AbsI32(value);
+	if ((value % chunkSize) == 0) { return value; } //totally valid scenario
+	i32 result = value + (chunkSize - (value % chunkSize)); //the real calculation
+	return (isNegative ? -1 : 1) * result;
+}
+i64 RoundUpToI64(i64 value, i64 chunkSize)
+{
+	if (chunkSize <= 1) { return value; } //eat degenerate and invalid
+	bool isNegative = (value < 0);
+	value = AbsI64(value);
+	if ((value % chunkSize) == 0) { return value; } //totally valid scenario
+	i64 result = value + (chunkSize - (value % chunkSize)); //the real calculation
+	return (isNegative ? -1 : 1) * result;
+}
+
 // +--------------------------------------------------------------+
 // |                     Threading Intrinsics                     |
 // +--------------------------------------------------------------+

@@ -15,6 +15,15 @@ Description:
 #ifndef _GY_LINKED_LIST_H
 #define _GY_LINKED_LIST_H
 
+#include "gy_defines_check.h"
+#include "gy_std.h"
+#include "gy_types.h"
+#include "gy_intrinsics.h"
+#include "gy_memory.h"
+
+// +--------------------------------------------------------------+
+// |                          Structures                          |
+// +--------------------------------------------------------------+
 struct LinkedListNode_t
 {
 	LinkedListNode_t* next;
@@ -50,6 +59,9 @@ struct InDblLinkedList_t
 	void* lastItem;
 };
 
+// +--------------------------------------------------------------+
+// |                      Create and Destroy                      |
+// +--------------------------------------------------------------+
 void CreateLinkedList_(LinkedList_t* list, MemArena_t* memArena, u64 itemSize)
 {
 	NotNull(list);
