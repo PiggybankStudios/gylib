@@ -382,6 +382,7 @@ void VarArrayAddVarArray(VarArray_t* destArray, const VarArray_t* sourceArray, u
 	AssertMsg(destArray->itemSize == sourceArray->itemSize, "Incompatible arrays passed to VarArrayAddVarArray. Make sure the two arrays are the same type!");
 	Assert(destIndex <= destArray->length);
 	Assert(sourceIndex <= sourceArray->length);
+	Assert(destArray != sourceArray);
 	if (sourceCount == UINT64_MAX) { sourceCount = sourceArray->length; }
 	Assert(sourceIndex+sourceCount <= sourceArray->length);
 	if (sourceCount == 0) { return; }
@@ -430,6 +431,7 @@ void VarArrayCopy(VarArray_t* destArray, const VarArray_t* sourceArray, MemArena
 	NotNull(memArena);
 	NotNull(destArray);
 	NotNull(sourceArray);
+	Assert(destArray != sourceArray);
 	CreateVarArray(destArray, memArena, sourceArray->itemSize, sourceArray->length, sourceArray->exponentialChunkSize, sourceArray->allocChunkSize);
 	if (sourceArray->length > 0)
 	{

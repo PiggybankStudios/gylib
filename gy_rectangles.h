@@ -458,6 +458,15 @@ obb2 NewObb2D(v2 center, v2 size, r32 rotation)
 // +--------------------------------------------------------------+
 // |                 Simple Conversions and Casts                 |
 // +--------------------------------------------------------------+
+rec ToRec(reci rectangle)
+{
+	rec result;
+	result.x = (r32)rectangle.x;
+	result.y = (r32)rectangle.y;
+	result.width = (r32)rectangle.width;
+	result.height = (r32)rectangle.height;
+	return result;
+}
 obb2 ToObb2D(rec rectangle)
 {
 	obb2 result;
