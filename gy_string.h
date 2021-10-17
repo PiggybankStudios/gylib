@@ -633,4 +633,12 @@ u64 StrReplaceInPlace(MyStr_t str, const char* target, const char* replacement, 
 	return StrReplaceInPlace(str, NewStr(target), NewStr(replacement), ignoreCase);
 }
 
+#ifdef _GY_UNICODE_H
+u8 GetCodepointForUtf8Str(MyStr_t str, u64 index, u32* codepointOut)
+{
+	Assert(index <= str.length);
+	return GetCodepointForUtf8(str.length - index, str.pntr + index, codepointOut);
+}
+#endif //_GY_UNICODE_H
+
 #endif //  _GY_STRING_H

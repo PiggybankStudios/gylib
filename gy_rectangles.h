@@ -1662,6 +1662,15 @@ rec RecUninvert(rec rectangle)
 	result.height = AbsR32(rectangle.height);
 	return result;
 }
+rec RecBoth(rec rectangle1, rec rectangle2)
+{
+	rec result;
+	result.x = MinR32(rectangle1.x, rectangle2.x);
+	result.y = MinR32(rectangle1.y, rectangle2.y);
+	result.width = MaxR32(rectangle1.x + rectangle1.width, rectangle2.x + rectangle2.width) - result.x;
+	result.height = MaxR32(rectangle1.y + rectangle1.height, rectangle2.y + rectangle2.height) - result.y;
+	return result;
+}
 
 // +==============================+
 // |             Reci             |
@@ -1712,6 +1721,7 @@ reci ReciUninvert(reci rectangle)
 	result.height = AbsI32(rectangle.height);
 	return result;
 }
+//TODO: Add ReciBoth
 
 // +==============================+
 // |             Box              |
@@ -1783,6 +1793,7 @@ box BoxUninvert(box boundingBox)
 	result.depth = AbsR32(boundingBox.depth);
 	return result;
 }
+//TODO: Add BoxBoth
 
 // +==============================+
 // |             Boxi             |
@@ -1854,6 +1865,7 @@ boxi BoxiUninvert(boxi boundingBox)
 	result.depth = AbsI32(boundingBox.depth);
 	return result;
 }
+//TODO: Add BoxiBoth
 
 // +==============================+
 // |            Obb2D             |
