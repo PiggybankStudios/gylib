@@ -112,6 +112,22 @@ bool IsCharExtendedAnsii(u32 codepoint)
 {
 	return (codepoint <= 255);
 }
+bool IsCharAlphaNumeric(u32 codepoint)
+{
+	return (IsCharAlphabetic(codepoint) || IsCharNumeric(codepoint));
+}
+bool IsCharSyntax(u32 codepoint)
+{
+	return (IsCharRenderableAnsii(codepoint) && !IsCharAlphaNumeric(codepoint));
+}
+bool IsCharPunctuationStart(u32 codepoint)
+{
+	return (codepoint == '(' || codepoint == '[' || codepoint == '<' || codepoint == '{' || codepoint == '"');
+}
+bool IsCharPunctuationEnd(u32 codepoint)
+{
+	return (codepoint == ')' || codepoint == ']' || codepoint == '>' || codepoint == '}' || codepoint == '"');
+}
 
 // +--------------------------------------------------------------+
 // |                       UTF-8 Functions                        |

@@ -336,10 +336,122 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 		// +==============================+
 		// |    MemArenaType_FixedHeap    |
 		// +==============================+
-		// case MemArenaType_FixedHeap:
-		// {
-		// 	//TODO: Implement me!
-		// } break;
+		case MemArenaType_FixedHeap:
+		{
+			if (arena->mainPntr == nullptr)
+			{
+				AssertIfMsg(assertOnFailure, false, "FixedHeap mainPntr is null");
+				return false;
+			}
+			if (arena->used >= arena->size)
+			{
+				AssertIfMsg(assertOnFailure, false, "FixedHeap used is larger than size");
+				return false;
+			}
+			if (arena->telemetryEnabled && arena->used > arena->highUsedMark)
+			{
+				AssertIfMsg(assertOnFailure, false, "FixedHeap used is higher than high used mark");
+				return false;
+			}
+			if (arena->telemetryEnabled && arena->numAllocations > arena->highAllocMark)
+			{
+				AssertIfMsg(assertOnFailure, false, "FixedHeap allocation count is higher than high allocation mark");
+				return false;
+			}
+			if (!IsAlignedTo(arena->mainPntr, arena->alignment))
+			{
+				AssertIfMsg(assertOnFailure, false, "FixedHeap main memory not aligned to alignment setting");
+				return false;
+			}
+			if (arena->singleAlloc && arena->numAllocations > 1)
+			{
+				AssertIfMsg(assertOnFailure, false, "FixedHeap single alloc doesn't match allocation count");
+				return false;
+			}
+			if (arena->used < sizeof(HeapAllocPrefix_t))
+			{
+				AssertIfMsg(assertOnFailure, false, "FixedHeap used is smaller than 1 prefix size");
+				return false;
+			}
+			
+			u64 numFilledSections = 0;
+			bool lastSectionWasEmpty = false;
+			u64 sectionIndex = 0;
+			u64 totalUsed = 0;
+			
+			u64 allocOffset = 0;
+			u8* allocBytePntr = (u8*)arena->mainPntr;
+			HeapAllocPrefix_t* prevPrefixPntr = nullptr;
+			while (allocOffset < arena->size)
+			{
+				HeapAllocPrefix_t* allocPntr = (HeapAllocPrefix_t*)allocBytePntr;
+				u8* allocAfterPrefixPntr = (allocBytePntr + sizeof(HeapAllocPrefix_t));
+				bool isAllocFilled = IsAllocPrefixFilled(allocPntr->size);
+				u64 allocSize = UnpackAllocPrefixSize(allocPntr->size);
+				if (allocSize < sizeof(HeapAllocPrefix_t))
+				{
+					AssertIfMsg(assertOnFailure, false, "Found an allocation header that claimed to be smaller than the header itself in Fixed Heap");
+					return false;
+				}
+				u64 allocAfterPrefixSize = allocSize - sizeof(HeapAllocPrefix_t);
+				if (isAllocFilled)
+				{
+					if (numFilledSections + 1 > arena->numAllocations)
+					{
+						AssertIfMsg(assertOnFailure, false, "FixedHeap numAllocations doesn't match actual number of filled sections");
+						return false;
+					}
+					numFilledSections++;
+					if (totalUsed + allocSize > arena->used)
+					{
+						AssertIfMsg(assertOnFailure, false, "FixedHeap used doesn't match actual total used area");
+						return false;
+					}
+					totalUsed += allocSize;
+					lastSectionWasEmpty = false;
+				}
+				else //not filled
+				{
+					if (lastSectionWasEmpty)
+					{
+						AssertIfMsg(assertOnFailure, false, "FixedHeap two empty sections in a row");
+						return false;
+					}
+					if (totalUsed + sizeof(HeapAllocPrefix_t) > arena->used)
+					{
+						AssertIfMsg(assertOnFailure, false, "FixedHeap used doesn't match actual total used area");
+						return false;
+					}
+					totalUsed += sizeof(HeapAllocPrefix_t);
+					lastSectionWasEmpty = true;
+				}
+				if (allocOffset + allocSize > arena->size)
+				{
+					AssertIfMsg(assertOnFailure, false, "FixedHeap corrupt section size stepping us past the end of the arena memory");
+					return false;
+				}
+				prevPrefixPntr = allocPntr;
+				allocOffset += allocSize;
+				allocBytePntr += allocSize;
+				sectionIndex++;
+			}
+			UNUSED(sectionIndex); //used for debug purposes
+			UNUSED(prevPrefixPntr); //used for debug purposes
+			AssertMsg(allocOffset == arena->size, "Somehow stepped past end in ArenaVerify on FixedHeap despite the in-loop check");
+			
+			if (totalUsed != arena->used)
+			{
+				AssertIfMsg(assertOnFailure, false, "FixedHeap used is higher than actual used amount");
+				return false;
+			}
+			if (numFilledSections != arena->numAllocations)
+			{
+				AssertIfMsg(assertOnFailure, false, "FixedHeap numAllocations is higher than actual used section count");
+				return false;
+			}
+			
+			return true;
+		} break;
 		
 		// +==============================+
 		// |    MemArenaType_PagedHeap    |
@@ -516,6 +628,8 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride =
 			}
 			UNUSED(sectionIndex); //used for debug purposes
 			AssertIfMsg(result == nullptr, allocOffset == arena->size, "A Fixed Heap is corrupt. The last allocation size does not perfectly match the size of the arena");
+			
+			// MemArenaVerify(arena, true); //TODO: Remove me when not debugging
 		} break;
 		
 		// +==============================+
@@ -716,7 +830,8 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreN
 						if (!IsAllocPrefixFilled(nextPrefixPntr->size))
 						{
 							// Merge the next section with this one by making this section bigger
-							prefixPntr->size = PackAllocPrefixSize(false, sectionSize + UnpackAllocPrefixSize(nextPrefixPntr->size));
+							sectionSize += UnpackAllocPrefixSize(nextPrefixPntr->size);
+							prefixPntr->size = PackAllocPrefixSize(false, sectionSize);
 							AssertMsg(arena->used >= sizeof(HeapAllocPrefix_t), "Fixed Heap used tracker was corrupted. Reached 0 too soon.");
 							arena->used -= sizeof(HeapAllocPrefix_t);
 						}
@@ -728,6 +843,8 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreN
 						AssertMsg(arena->used >= sizeof(HeapAllocPrefix_t), "Fixed Heap used tracker was corrupted. Reached 0 too soon.");
 						arena->used -= sizeof(HeapAllocPrefix_t);
 					}
+					
+					break;
 				}
 				
 				prevPrefixPntr = prefixPntr;
@@ -737,6 +854,8 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreN
 			}
 			UNUSED(sectionIndex); //used for debug purposes
 			AssertMsg(result == true, "Tried to free an unknown pointer from Fixed Heap. The pointer must be corrupt or was freed from the wrong heap. This is a memory management bug");
+			
+			// MemArenaVerify(arena, true); //TODO: Remove me when not debugging
 		} break;
 		
 		// +==============================+

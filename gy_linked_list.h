@@ -441,6 +441,23 @@ void* LinkedListInsert_(LinkedList_t* list, u64 itemSize, u64 index)
 //TODO: Implement intrusive variants
 #define LinkedListInsert(list, type, index) (type*)LinkedListInsert_((list), sizeof(type), (index))
 
+void LinkedListClear_(LinkedList_t* list, u64 itemSize)
+{
+	NotNull(list);
+	NotNull(list->allocArena);
+	LinkedListNode_t* nodePntr = list->firstItem;
+	while (nodePntr != nullptr)
+	{
+		FreeMem(list->allocArena, nodePntr, sizeof(LinkedListNode_t) + list->itemSize);
+		nodePntr = nodePntr->next;
+	}
+	list->count = 0;
+	list->firstItem = nullptr;
+	list->lastItem = nullptr;
+}
+//TODO: Implement intrusive variants
+#define LinkedListClear(list, type) LinkedListClear_((list), sizeof(type))
+
 // +--------------------------------------------------------------+
 // |                   Autocomplete Dictionary                    |
 // +--------------------------------------------------------------+
@@ -467,6 +484,7 @@ u64 GetItemIndexInLinkedList(LinkedList_t* list, const void* itemPntr)
 #define LinkedListUnlist(list, type, itemPntr)
 #define LinkedListGet(list, type, index)
 #define LinkedListInsert(list, type, index)
+#define LinkedListClear(list, type)
 */
 
 #endif //  _GY_LINKED_LIST_H
