@@ -18,6 +18,7 @@ Description:
 // +--------------------------------------------------------------+
 // |                          Structure                           |
 // +--------------------------------------------------------------+
+//TODO: Add support for a maximum length restriction
 struct VarArray_t
 {
 	MemArena_t* allocArena;
@@ -44,7 +45,7 @@ void FreeVarArray(VarArray_t* array)
 		NotNull(array->allocArena);
 		FreeMem(array->allocArena, array->items, array->itemSize * array->allocLength);
 	}
-	if (array->name.pntr != nullptr)
+	if (!IsStrEmpty(array->name))
 	{
 		NotNull(array->allocArena);
 		FreeString(array->allocArena, &array->name);
@@ -235,7 +236,18 @@ const void* VarArrayGet_(const VarArray_t* array, u64 index, u64 itemSize, bool 
 
 #define VarArrayGetHard(array, index, type) (type*)VarArrayGet_((array), (index), sizeof(type), true)
 #define VarArrayGetSoft(array, index, type) (type*)VarArrayGet_((array), (index), sizeof(type), false)
-#define VarArrayGet(array, index, type) VarArrayGetHard(array, index, type)
+#define VarArrayGet(array, index, type) VarArrayGetHard((array), (index), type)
+
+#define VarArrayGetFirstHard(array, type) VarArrayGetHard((array), 0, type)
+#define VarArrayGetFirstSoft(array, type) (((array)->length > 0) ? VarArrayGetSoft((array), 0, type) : nullptr)
+#define VarArrayGetFirst(array, type) VarArrayGetFirstHard((array), type) 
+
+#define VarArrayGetLastHard(array, type) VarArrayGetHard((array), (array)->length - 1, type)
+#define VarArrayGetLastSoft(array, type) (((array)->length > 0) ? VarArrayGetSoft((array), (array)->length - 1, type) : nullptr)
+#define VarArrayGetLast(array, type) VarArrayGetLastHard((array), type) 
+
+#define VarArrayLoop(arrayPntr, indexName) for (u64 indexName = 0; indexName < (arrayPntr)->length; indexName++)
+#define VarArrayLoopGet(type, varName, arrayPntr, index) type* varName = VarArrayGet((arrayPntr), (index), type)
 
 // +--------------------------------------------------------------+
 // |                             Add                              |
@@ -356,9 +368,12 @@ void* VarArrayAddRange_(VarArray_t* array, u64 index, u64 newItemsCount, u64 ite
 	Assert(array->allocLength >= array->length+newItemsCount);
 	
 	//Move all items above the index up by however many slots are being inserted
-	for (u64 iIndex = array->length-1; iIndex >= index; iIndex--)
+	if (array->length > 0)
 	{
-		MyMemCopy(VarArrayGet_(array, iIndex + newItemsCount, itemSize, true), VarArrayGet_(array, iIndex, itemSize, true), array->itemSize);
+		for (u64 iIndex = array->length-1; iIndex >= index; iIndex--)
+		{
+			MyMemCopy(VarArrayGet_(array, iIndex + newItemsCount, itemSize, true), VarArrayGet_(array, iIndex, itemSize, true), array->itemSize);
+		}
 	}
 	
 	void* result = (((u8*)array->items) + (array->itemSize * index));
@@ -442,3 +457,45 @@ void VarArrayCopy(VarArray_t* destArray, const VarArray_t* sourceArray, MemArena
 //TODO: Add VarArraySort if gy_sorting.h is included?
 
 #endif //  _GY_VARIABLE_ARRAY_H
+
+// +--------------------------------------------------------------+
+// |                   Autocomplete Dictionary                    |
+// +--------------------------------------------------------------+
+/*
+@Defines
+@Types
+VarArray_t
+@Functions
+void FreeVarArray(VarArray_t* array)
+void CreateVarArray(VarArray_t* array, MemArena_t* memArena, u64 itemSize, u64 initialRequiredCapacity = 0, bool exponentialChunkSize = true, u64 allocChunkSize = 8)
+void VarArrayName(VarArray_t* array, MyStr_t newName)
+bool VarArrayExpand(VarArray_t* array, u64 capacityRequired)
+#define VarArrayContains(array, itemPntr)
+#define VarArrayContainsTyped(array, itemPntr, type)
+#define VarArrayGetIndexOf(array, itemPntr, indexOutPntr, type)
+void VarArrayClear(VarArray_t* array, bool deallocate = false)
+#define VarArrayGetHard(array, index, type)
+#define VarArrayGetSoft(array, index, type)
+#define VarArrayGet(array, index, type)
+#define VarArrayGetFirstHard(array, type)
+#define VarArrayGetFirstSoft(array, type)
+#define VarArrayGetFirst(array, type)
+#define VarArrayGetLastHard(array, type)
+#define VarArrayGetLastSoft(array, type)
+#define VarArrayGetLast(array, type)
+#define VarArrayLoop(arrayPntr, indexName)
+#define VarArrayLoopGet(type, varName, arrayPntr, index)
+#define VarArrayAdd(array, type)
+#define VarArrayPush(array, type)
+#define VarArrayInsert(array, index, type)
+#define VarArrayPushFront(array, type)
+#define VarArrayRemove(array, index, type)
+#define VarArrayPop(array, type)
+#define VarArrayPopFront(array, type)
+#define VarArrayRemoveByPntr(array, itemToRemove)
+#define VarArrayRemoveByPntrTyped(array, itemToRemove, type)
+#define VarArrayAddRange(array, index, newItemsCount, type)
+#define VarArrayMerge(destArray, sourceArray)
+#define VarArrayRemoveRange(array, index, numItemsToRemove, type)
+void VarArrayCopy(VarArray_t* destArray, const VarArray_t* sourceArray, MemArena_t* memArena)
+*/

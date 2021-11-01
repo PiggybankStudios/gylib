@@ -42,6 +42,28 @@ static GetTempArena_f* GetTempArena = GetTempArena_Stub;
 #define TempPopMark()  PopMemMark(GetTempArena())
 
 #define TempPrint(formatString, ...) PrintInArena(GetTempArena(), (formatString), ##__VA_ARGS__)
-#define TempPrintVa(resultName, resultLengthName, formatString) PrintInArenaVa(GetTempArena(), resultName, resultLengthName, (formatString))
+#define TempPrintVa(resultName, resultLengthName, formatString) PrintInArenaVa(GetTempArena(), resultName, resultLengthName, formatString)
+#define TempPrintStr(formatString, ...) PrintInArenaStr(GetTempArena(), formatString, ##__VA_ARGS__)
 
 #endif //  _GY_TEMP_MEMORY_CPP
+
+// +--------------------------------------------------------------+
+// |                   Autocomplete Dictionary                    |
+// +--------------------------------------------------------------+
+/*
+@Defines
+@Types
+@Globals
+TempArena
+@Functions
+#define GYLIB_GET_TEMP_ARENA_DEF(functionName)
+MemArena_t* GetTempArena()
+#define TempStruct(structName)
+#define TempArray(structName, numItems)
+#define TempBytes(numBytes)
+#define TempPushMark()
+#define TempPopMark()
+#define TempPrint(formatString, ...)
+#define TempPrintVa(resultName, resultLengthName, formatString)
+#define TempPrintStr(formatString, ...)
+*/

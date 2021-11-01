@@ -1038,3 +1038,15 @@ const u32 PrimeNumbersU32[PrimeNumbersU32_Count] =
 };
 
 #endif //  _GY_LOOKUP_H
+
+// +--------------------------------------------------------------+
+// |                   Autocomplete Dictionary                    |
+// +--------------------------------------------------------------+
+/*
+@Defines
+PrimeNumbersU32_Count
+@Types
+@Globals
+PrimeNumbersU32
+@Functions
+*/

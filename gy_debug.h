@@ -88,3 +88,42 @@ static GyLibDebugPrint_f*  GyLibDebugPrintFunc  = GyLibDebugPrintHandler_Stub;
 #define GyLibPrintLine_E(formatString, ...)        GyLibDebugPrintFunc (__FILE__, __LINE__, __func__, GyDbgLevel_Error,   true,  (formatString), ##__VA_ARGS__)
 
 #endif //  _GY_DEBUG_H
+
+// +--------------------------------------------------------------+
+// |                   Autocomplete Dictionary                    |
+// +--------------------------------------------------------------+
+/*
+@Defines
+GyDbgLevel_Debug
+GyDbgLevel_Info
+GyDbgLevel_Warning
+GyDbgLevel_Error
+@Types
+GyDbgLevel_t
+GyLibDebugOutput_f
+GyLibDebugPrint_f
+@Functions
+const char* GetGyDbgLevelStr(GyDbgLevel_t gyDbgLevel)
+#define GYLIB_DEBUG_OUTPUT_HANDLER_DEF(functionName)
+#define GYLIB_DEBUG_PRINT_HANDLER_DEF(functionName)
+#define GyLibWriteAt(level, message)
+#define GyLibWriteLineAt(level, message)
+#define GyLibPrintAt(level, formatString, ...)
+#define GyLibPrintLineAt(level, formatString, ...)
+#define GyLibWrite_D(message)
+#define GyLibWriteLine_D(message)
+#define GyLibPrint_D(formatString, ...)
+#define GyLibPrintLine_D(formatString, ...)
+#define GyLibWrite_I(message)
+#define GyLibWriteLine_I(message)
+#define GyLibPrint_I(formatString, ...)
+#define GyLibPrintLine_I(formatString, ...)
+#define GyLibWrite_W(message)
+#define GyLibWriteLine_W(message)
+#define GyLibPrint_W(formatString, ...)
+#define GyLibPrintLine_W(formatString, ...)
+#define GyLibWrite_E(message)
+#define GyLibWriteLine_E(message)
+#define GyLibPrint_E(formatString, ...)
+#define GyLibPrintLine_E(formatString, ...)
+*/

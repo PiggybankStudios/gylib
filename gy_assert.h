@@ -129,5 +129,47 @@ extern void GyLibAssertFailure(const char* filePath, int lineNumber, const char*
 #define NotNull3Msg_(variable1, variable2, variable3, message)            AssertMsg_((variable1) != nullptr && (variable2) != nullptr && (variable3) != nullptr, (message))
 #define NotNull4Msg_(variable1, variable2, variable3, variable4, message) AssertMsg_((variable1) != nullptr && (variable2) != nullptr && (variable3) != nullptr && (variable4) != nullptr, (message))
 
-
 #endif //  _GY_ASSERT_H
+
+// +--------------------------------------------------------------+
+// |                   Autocomplete Dictionary                    |
+// +--------------------------------------------------------------+
+/*
+@Defines
+GYLIB_ASSERTIONS_ENABLED
+GYLIB_USE_ASSERT_FAILURE_FUNC
+@Types
+
+@Functions
+#define MyBreak()
+#define MyDebugBreak()
+void GyLibAssertFailure(const char* filePath, int lineNumber, const char* funcName, const char* expressionStr, const char* messageStr)
+#define AssertMsg_(Expression, message)
+#define AssertMsg(Expression, message)
+#define Assert(Expression)
+#define Assert_(Expression)
+#define AssertIf(Precondition, Expression)
+#define AssertIf_(Precondition, Expression)
+#define AssertIfMsg(Precondition, Expression, message)
+#define AssertIfMsg_(Precondition, Expression, message)
+#define DebugAssert(Expression)
+#define DebugAssert_(Expression)
+#define DebugAssertMsg(Expression, message)
+#define DebugAssertMsg_(Expression, message)
+#define NotNull(variable)
+#define NotNull2(variable1, variable2)
+#define NotNull3(variable1, variable2, variable3)
+#define NotNull4(variable1, variable2, variable3, variable4)
+#define NotNull_(variable)
+#define NotNull2_(variable1, variable2)
+#define NotNull3_(variable1, variable2, variable3)
+#define NotNull4_(variable1, variable2, variable3, variable4)
+#define NotNullMsg(variable, message)
+#define NotNull2Msg(variable1, variable2, message)
+#define NotNull3Msg(variable1, variable2, variable3, message)
+#define NotNull4Msg(variable1, variable2, variable3, variable4, message)
+#define NotNullMsg_(variable, message)
+#define NotNull2Msg_(variable1, variable2, message)
+#define NotNull3Msg_(variable1, variable2, variable3, message)
+#define NotNull4Msg_(variable1, variable2, variable3, variable4, message)
+*/

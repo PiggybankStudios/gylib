@@ -401,4 +401,46 @@ v2 ClosestPointOnLine(v2 lineStart, v2 lineEnd, v2 point)
 	return lineStart + (lineNorm * dot);
 }
 
+r32 AngleFromVec2(v2 vector)
+{
+	return AngleFixR32(AtanR32(vector.y, vector.x));
+}
+
 #endif //  _GY_MATH_H
+
+// +--------------------------------------------------------------+
+// |                   Autocomplete Dictionary                    |
+// +--------------------------------------------------------------+
+/*
+@Defines
+@Types
+@Functions
+r32 SubAnimAmountR32(r32 animAmount, r32 subPieceStart, r32 subPieceEnd)
+r64 SubAnimAmountR64(r64 animAmount, r64 subPieceStart, r64 subPieceEnd)
+r32 SubAnimAmountTwoWayR32(r32 animAmount, r32 subPieceStart, r32 subPieceEnd)
+r64 SubAnimAmountTwoWayR64(r64 animAmount, r64 subPieceStart, r64 subPieceEnd)
+r32 AngleFixR32(r32 angle)
+r64 AngleFixR64(r64 angle)
+r32 AngleDiffR32(r32 left, r32 right)
+r64 AngleDiffR64(r64 left, r64 right)
+r32 AngleOppositeR32(r32 angle)
+r64 AngleOppositeR64(r64 angle)
+r32 AngleFlipVerticalR32(r32 angle, bool normalize = true)
+r32 AngleFlipHorizontalR32(r32 angle, bool normalize = true)
+r64 AngleFlipVerticalR64(r64 angle, bool normalize = true)
+r64 AngleFlipHorizontalR64(r64 angle, bool normalize = true)
+r32 AngleLerpR32(r32 angleFrom, r32 angleTo, r32 amount)
+r64 AngleLerpR64(r64 angleFrom, r64 angleTo, r64 amount)
+bool IsTriangleClockwise(v2 p0, v2 p1, v2 p2)
+bool IsInsideTriangle(v2 p0, v2 p1, v2 p2, v2 test)
+v2 BezierCurve3(v2 start, v2 control, v2 end, r32 time)
+v2 BezierCurve4(v2 start, v2 control1, v2 control2, v2 end, r32 time)
+bool MinNoInfinitiesR32(r32 value1, r32 value2, r32 value3, r32* outValue, u8* whichIsMaxOut = nullptr)
+bool MinNoInfinitiesR64(r64 value1, r64 value2, r64 value3, r64* outValue, u8* whichIsMaxOut = nullptr)
+u8 NumDecimalDigitsU32(u32 number)
+u8 NumDecimalDigitsU64(u64 number)
+void ReduceRatioU32(u32* num1, u32* num2)
+void ReduceRatioU64(u64* num1, u64* num2)
+v2 ClosestPointOnLine(v2 lineStart, v2 lineEnd, v2 point)
+r32 AngleFromVec2(v2 vector)
+*/

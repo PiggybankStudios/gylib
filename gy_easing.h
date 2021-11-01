@@ -520,3 +520,86 @@ r32 InverseEase(EasingStyle_t style, r32 y)
 }
 
 #endif //  _GY_EASING_H
+
+// +--------------------------------------------------------------+
+// |                   Autocomplete Dictionary                    |
+// +--------------------------------------------------------------+
+/*
+@Defines
+EasingStyle_None
+EasingStyle_Linear
+EasingStyle_QuadraticIn
+EasingStyle_QuadraticOut
+EasingStyle_QuadraticInOut
+EasingStyle_CubicIn
+EasingStyle_CubicOut
+EasingStyle_CubicInOut
+EasingStyle_QuarticIn
+EasingStyle_QuarticOut
+EasingStyle_QuarticInOut
+EasingStyle_QuinticIn
+EasingStyle_QuinticOut
+EasingStyle_QuinticInOut
+EasingStyle_SineIn
+EasingStyle_SineOut
+EasingStyle_SineInOut
+EasingStyle_CircularIn
+EasingStyle_CircularOut
+EasingStyle_CircularInOut
+EasingStyle_ExponentialIn
+EasingStyle_ExponentialOut
+EasingStyle_ExponentialInOut
+EasingStyle_ElasticIn
+EasingStyle_ElasticOut
+EasingStyle_ElasticInOut
+EasingStyle_BackIn
+EasingStyle_BackOut
+EasingStyle_BackInOut
+EasingStyle_BounceIn
+EasingStyle_BounceOut
+EasingStyle_BounceInOut
+EasingStyle_EarlyInOut
+EasingStyle_NumStyles
+@Types
+EasingStyle_t
+@Functions
+const char* GetEasingStyleStr(EasingStyle_t style)
+r32 EaseLinear(r32 p)
+r32 InverseEaseLinear(r32 y)
+r32 EaseQuadraticIn(r32 p)
+r32 InverseEaseQuadraticIn(r32 y)
+r32 EaseQuadraticOut(r32 p)
+r32 InverseEaseQuadraticOut(r32 y)
+r32 EaseQuadraticInOut(r32 p)
+r32 InverseEaseQuadraticInOut(r32 y)
+r32 EaseCubicIn(r32 p)
+r32 EaseCubicOut(r32 p)
+r32 EaseCubicInOut(r32 p)
+r32 EaseQuarticIn(r32 p)
+r32 EaseQuarticOut(r32 p)
+r32 EaseQuarticInOut(r32 p)
+r32 EaseQuinticIn(r32 p)
+r32 EaseQuinticOut(r32 p)
+r32 EaseQuinticInOut(r32 p)
+r32 EaseSineIn(r32 p)
+r32 EaseSineOut(r32 p)
+r32 EaseSineInOut(r32 p)
+r32 EaseCircularIn(r32 p)
+r32 EaseCircularOut(r32 p)
+r32 EaseCircularInOut(r32 p)
+r32 EaseExponentialIn(r32 p)
+r32 EaseExponentialOut(r32 p)
+r32 EaseExponentialInOut(r32 p)
+r32 EaseElasticIn(r32 p)
+r32 EaseElasticOut(r32 p)
+r32 EaseElasticInOut(r32 p)
+r32 EaseBackIn(r32 p)
+r32 EaseBackOut(r32 p)
+r32 EaseBackInOut(r32 p)
+r32 EaseBounceOut(r32 p)
+r32 EaseBounceIn(r32 p)
+r32 EaseBounceInOut(r32 p)
+r32 EaseEarlyInOut(r32 p)
+r32 Ease(EasingStyle_t style, r32 p)
+r32 InverseEase(EasingStyle_t style, r32 y)
+*/

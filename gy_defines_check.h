@@ -40,3 +40,16 @@ Date:   09\14\2021
 #endif
 
 #endif //  _GY_DEFINES_CHECK_H
+
+// +--------------------------------------------------------------+
+// |                   Autocomplete Dictionary                    |
+// +--------------------------------------------------------------+
+/*
+@Defines
+WINDOWS_COMPILATION
+OSX_COMPILATION
+LINUX_COMPILATION
+GY_STD_LIB_ALLOWED
+@Types
+@Functions
+*/

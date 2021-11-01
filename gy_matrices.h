@@ -346,7 +346,7 @@ mat4 Mat4Rotate(v3 axis, r32 angle)
 
 mat4 Mat4LookAt(v3 position, v3 lookAt, v3 upVector)
 {
-	v3 lookNorm = Vec3Normalize(Vec3Subtract(lookAt, position));
+	v3 lookNorm = Vec3Normalize(lookAt - position);
 	v3 rightVector = Vec3Normalize(Vec3Cross(lookNorm, upVector));
 	v3 upNorm = Vec3Normalize(Vec3Cross(rightVector, lookNorm));
 	r32 rightDot = -Vec3Dot(rightVector, position);
@@ -395,3 +395,37 @@ mat4 Mat4Orthographic(r32 left, r32 right, r32 top, r32 bottom, r32 zNear, r32 z
 //TODO: Add support for quaternion conversion to matrix
 
 #endif //  _GY_MATRICES_H
+
+// +--------------------------------------------------------------+
+// |                   Autocomplete Dictionary                    |
+// +--------------------------------------------------------------+
+/*
+@Defines
+Matrix4x4_Identity
+Mat4_Identity
+@Types
+Matrix4x4_t
+mat4
+@Functions
+mat4 NewMat4(r32 r0c0, r32 r0c1, r32 r0c2, r32 r0c3, r32 r1c0, r32 r1c1, r32 r1c2, r32 r1c3, r32 r2c0, r32 r2c1, r32 r2c2, r32 r2c3, r32 r3c0, r32 r3c1, r32 r3c2, r32 r3c3)
+mat4 Mat4Fill(r32 all)
+mat4 Mat4Diagonal(r32 r0c0, r32 r1c1, r32 r2c2, r32 r3c3, r32 other = 0.0f)
+mat4 Mat4Multiply(mat4 left, mat4 right)
+v2 Mat4MultiplyVec2(mat4 matrix, v2 vector)
+v3 Mat4MultiplyVec3(mat4 matrix, v3 vector, r32* wOut = nullptr)
+v3 Mat4MultiplyRightVec3(v3 vector, mat4 matrix, r32* wOut = nullptr)
+v4 Mat4MultiplyVec4(mat4 matrix, v4 vector)
+#define Mat4ApplyLeft(matrix, transformation)
+#define Mat4Transform(matrix, transformation)
+mat4 Mat4Translate3(r32 x, r32 y, r32 z)
+mat4 Mat4Translate2(r32 x, r32 y)
+mat4 Mat4Scale3(r32 x, r32 y, r32 z)
+mat4 Mat4Scale2(r32 x, r32 y)
+mat4 Mat4RotateX(r32 angle)
+mat4 Mat4RotateY(r32 angle)
+mat4 Mat4RotateZ(r32 angle)
+mat4 Mat4Rotate(v3 axis, r32 angle)
+mat4 Mat4LookAt(v3 position, v3 lookAt, v3 upVector)
+mat4 Mat4Perspective(r32 fovy, r32 aspectRatio, r32 zNear, r32 zFar)
+mat4 Mat4Orthographic(r32 left, r32 right, r32 top, r32 bottom, r32 zNear, r32 zFar)
+*/

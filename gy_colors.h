@@ -405,3 +405,30 @@ ColorHSV_t ColorHSVFromRGB(Color_t color)
 //TODO: ColorDesaturate
 
 #endif //  _GY_COLORS_H
+
+// +--------------------------------------------------------------+
+// |                   Autocomplete Dictionary                    |
+// +--------------------------------------------------------------+
+/*
+@Defines
+
+@Types
+Color_t
+Colorf_t
+ColorHSV_t
+ColorXYZ_t
+ColorLCH_t
+ColorLAB_t
+@Functions
+Color_t NewColor(u8 r, u8 g, u8 b)
+inline Colorf_t NewColorf(r32 r, r32 g, r32 b)
+inline ColorHSV_t NewColorHsv(r32 hue, r32 saturation, r32 value)
+Color_t ToColor(Colorf_t colorf)
+inline Color_t ColorTransparent(Color_t color, r32 alpha)
+inline Colorf_t ToColorf(Color_t color)
+inline ColorHSV_t ToColorHsv(v3 vector3)
+Color_t ColorLerp(Color_t start, Color_t end, r32 amount)
+Colorf_t ColorfLerp(Colorf_t start, Colorf_t end, r32 amount)
+Color_t ColorRGBFromHSV(ColorHSV_t colorHsv)
+ColorHSV_t ColorHSVFromRGB(Color_t color)
+*/

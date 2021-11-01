@@ -78,6 +78,11 @@ typedef double      r64;
 #define FlagToggle(BitwiseField, Bit) ((BitwiseField) ^= (Bit))
 #define FlagSetTo(BitwiseField, Bit, condition) if (condition) { FlagSet((BitwiseField), (Bit)); } else { FlagUnset((BitwiseField), (Bit)); }
 
+#define FlagEnumSet(BitwiseField, Bit, enumType, castType)   (BitwiseField) = (enumType)(((castType)(BitwiseField)) | (castType)(Bit))
+#define FlagEnumUnset(BitwiseField, Bit, enumType, castType) (BitwiseField) = (enumType)(((castType)(BitwiseField)) & ~((castType)(Bit)))
+#define FlagEnumToggle(BitwiseField, Bit, enumType, castType) (BitwiseField) = (enumType)(((castType)(BitwiseField)) ^ ((castType)(Bit)))
+#define FlagEnumSetTo(BitwiseField, Bit, condition, enumType, castType) if (condition) { FlagEnumSet((BitwiseField), (Bit), (enumType), (castType)); } else { FlagEnumUnset((BitwiseField), (Bit), (enumType), (castType)); }
+
 #define Kilobytes(value) ((value) * 1024UL)
 #define Megabytes(value) (Kilobytes((value)) * 1024UL)
 #define Gigabytes(value) (Megabytes((value)) * 1024UL)
@@ -184,3 +189,82 @@ typedef I32_FUNC_DEF(I32Func_f);
 #endif //GY_STD_LIB_ALLOWED
 
 #endif //  _GY_TYPES_H
+
+// +--------------------------------------------------------------+
+// |                   Autocomplete Dictionary                    |
+// +--------------------------------------------------------------+
+/*
+@Defines
+Pi64
+Pi32
+QuarterPi64
+ThirdPi64
+HalfPi64
+ThreeHalfsPi64
+TwoPi64
+QuarterPi32
+ThirdPi32
+HalfPi32
+ThreeHalfsPi32
+TwoPi32
+e64
+e32
+EXPORT
+IMPORT
+__func__
+@Types
+VoidFunc_f
+BoolFunc_f
+I32Func_f
+@Functions
+#define ArrayCount(Array)
+#define IsFlagSet(BitwiseField, Bit)
+#define FlagSet(BitwiseField, Bit)
+#define FlagUnset(BitwiseField, Bit)
+#define FlagToggle(BitwiseField, Bit)
+#define FlagSetTo(BitwiseField, Bit, condition)
+#define FlagEnumSet(BitwiseField, Bit, enumType, castType)
+#define FlagEnumUnset(BitwiseField, Bit, enumType, castType)
+#define FlagEnumToggle(BitwiseField, Bit, enumType, castType)
+#define FlagEnumSetTo(BitwiseField, Bit, condition, enumType, castType)
+#define Kilobytes(value)
+#define Megabytes(value)
+#define Gigabytes(value)
+#define Increment(variable, max)
+#define IncrementU8(variable)
+#define IncrementU16(variable)
+#define IncrementU32(variable)
+#define IncrementU64(variable)
+#define IncrementBy(variable, amount, max)
+#define IncrementU8By(variable, amount)
+#define IncrementU16By(variable, amount)
+#define IncrementU32By(variable, amount)
+#define IncrementU64By(variable, amount)
+#define Decrement(variable)
+#define DecrementBy(variable, amount)
+#define ToRadians32(degrees)
+#define ToRadians64(degrees)
+#define ToDegrees32(radians)
+#define ToDegrees64(radians)
+#define ReverseByteArray(array, size)
+#define IsVersionBelow(versionMajor, versionMinor, numberMajor, numberMinor)
+#define IsVersionAbove(versionMajor, versionMinor, numberMajor, numberMinor)
+#define IsEqualXor(variable1, variable2, condition1, condition2)
+#define FlipEndianU32(variable)
+#define OnesComplimentU32(variable)
+#define STRUCT_VAR_SIZE(structureName, variableName)
+#define STRUCT_VAR_OFFSET(structureName, variableName)
+#define STRUCT_VAR_END_OFFSET(structureName, variableName)
+#define IS_VAR_IN_X_BYTES_OF_STRUCT(structureName, numBytes, variableName)
+#define VOID_FUNC_DEF(functionName)
+#define BOOL_FUNC_DEF(functionName)
+#define I32_FUNC_DEF(functionName)
+#define UNUSED(varName)
+#define UNREFERENCED(varName)
+#define PACKED(class_to_pack)
+#define START_PACK()
+#define END_PACK()
+#define ClearArray(Array)
+#define ClearStruct(Structure)
+#define ClearPointer(Pointer)
+*/

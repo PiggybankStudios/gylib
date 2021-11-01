@@ -253,9 +253,9 @@ Axis_t GetDir2Axis(Dir2_t dir2)
 		default: return Axis_None;
 	}
 }
-Axis_t GetDir3Axis(Dir3_t dir2)
+Axis_t GetDir3Axis(Dir3_t dir3)
 {
-	switch (dir2)
+	switch (dir3)
 	{
 		case Dir3_Right:    return Axis_X;
 		case Dir3_Left:     return Axis_X;
@@ -1026,3 +1026,124 @@ v2i RotateVec2iNumTurnsClockwise(v2i vector, u64 numQuarterTurns)
 }
 
 #endif //  _GY_DIRECTIONS_H
+
+// +--------------------------------------------------------------+
+// |                   Autocomplete Dictionary                    |
+// +--------------------------------------------------------------+
+/*
+@Defines
+Dir2_None
+Dir2_Right
+Dir2_Down
+Dir2_Left
+Dir2_Up
+Dir2_All
+Dir2_Count
+Dir2Ex_None
+Dir2Ex_Right
+Dir2Ex_Down
+Dir2Ex_Left
+Dir2Ex_Up
+Dir2Ex_TopLeft
+Dir2Ex_TopRight
+Dir2Ex_BottomRight
+Dir2Ex_BottomLeft
+Dir2Ex_Cardinal
+Dir2Ex_Diagonal
+Dir2Ex_All
+Dir2Ex_Count
+Dir3_None
+Dir3_Right
+Dir3_Left
+Dir3_Up
+Dir3_Down
+Dir3_Forward
+Dir3_Backward
+Dir3_All
+Dir3_Count
+Dir3Ex_None
+Dir3Ex_Right
+Dir3Ex_Left
+Dir3Ex_Up
+Dir3Ex_Down
+Dir3Ex_Forward
+Dir3Ex_Backward
+Dir3Ex_BottomLeftBack
+Dir3Ex_BottomRightBack
+Dir3Ex_BottomRightFront
+Dir3Ex_BottomLeftFront
+Dir3Ex_TopLeftBack
+Dir3Ex_TopRightBack
+Dir3Ex_TopRightFront
+Dir3Ex_TopLeftFront
+Dir3Ex_Cardinal
+Dir3Ex_Diagonal
+Dir3Ex_All
+Dir3Ex_Count
+Axis_None
+Axis_X
+Axis_Y
+Axis_Z
+Axis_W
+Axis_All2
+Axis_All3
+Axis_All4
+Axis_Count
+@Types
+Dir2_t
+Dir2Ex_t
+Dir3_t
+Dir3Ex_t
+Axis_t
+@Functions
+Dir2_t ToDir2(v2 vector)
+Dir3_t ToDir3(v3 vector)
+Axis_t GetDir2Axis(Dir2_t dir2)
+Axis_t GetDir3Axis(Dir3_t dir3)
+bool IsSingleDir2(Dir2_t dir2, bool allowNone = false)
+bool IsSingleDir2Ex(Dir2Ex_t dir2ex, bool allowNone = false)
+bool IsCardinalDir2Ex(Dir2Ex_t dir2ex, bool allowNone = false)
+bool IsDiagonalDir2Ex(Dir2Ex_t dir2ex, bool allowNone = false)
+bool IsSingleDir3(Dir3_t dir3, bool allowNone = false)
+bool IsSingleDir3Ex(Dir3Ex_t dir3ex, bool allowNone = false)
+bool IsCardinalDir3Ex(Dir3Ex_t dir3ex, bool allowNone = false)
+bool IsDiagonalDir3Ex(Dir3Ex_t dir3ex, bool allowNone = false)
+u8 Dir2BitwiseCount(Dir2_t dir2)
+u8 Dir2ExBitwiseCount(Dir2Ex_t dir2ex)
+u8 Dir3BitwiseCount(Dir3_t dir3)
+u8 Dir3ExBitwiseCount(Dir3Ex_t dir3ex)
+const char* GetDir2String(Dir2_t dir2)
+const char* GetDir2ExString(Dir2Ex_t dir2ex)
+const char* GetDir3String(Dir3_t dir3)
+const char* GetDir3ExString(Dir3Ex_t dir3ex)
+u8 GetDir2Index(Dir2_t dir2)
+u8 GetDir2ExIndex(Dir2Ex_t dir2ex)
+u8 GetDir3Index(Dir3_t dir3)
+u8 GetDir3ExIndex(Dir3Ex_t dir3ex)
+u8 GetAxisIndex(Axis_t axis)
+Dir2_t Dir2FromIndex(u64 index)
+Dir2_t Dir2FromCwIndex(u64 index)
+Dir2_t Dir2FromCwIndexStartingWith(Dir2_t startingDir, u64 index)
+Dir2_t Dir2FromCcwIndex(u64 index)
+Dir2_t Dir2FromCcwIndexStartingWith(Dir2_t startingDir, u64 index)
+Dir2Ex_t Dir2ExFromIndex(u64 index)
+Dir3_t Dir3FromIndex(u64 index)
+Dir3Ex_t Dir3ExFromIndex(u64 index)
+Axis_t AxisFromIndex(u64 index)
+Dir2_t Dir2Opposite(Dir2_t dir2)
+Dir2Ex_t Dir2ExOpposite(Dir2Ex_t dir2ex)
+Dir3_t Dir3Opposite(Dir3_t dir3)
+Dir3Ex_t Dir3ExOpposite(Dir3Ex_t dir3ex)
+Dir2_t Dir2Clockwise(Dir2_t dir2, u64 numQuarterTurns = 1)
+Dir2_t Dir2CounterClockwise(Dir2_t dir2, u64 numQuarterTurns = 1)
+u8 GetCwTurnsBetweenDir2(Dir2_t start, Dir2_t end)
+u8 GetCcwTurnsBetweenDir2(Dir2_t start, Dir2_t end)
+u8 GetTurnsBetweenDir3(Dir3_t start, Dir3_t end)
+r32 GetDir2AngleR32(Dir2_t dir2)
+r64 GetDir2AngleR64(Dir2_t dir2)
+r32 GetDir2ExAngleR32(Dir2Ex_t dir2ex)
+r64 GetDir2ExAngleR64(Dir2Ex_t dir2ex)
+char GetDir2Char(Dir2_t dir2)
+v2 RotateVec2NumTurnsClockwise(v2 vector, u64 numQuarterTurns)
+v2i RotateVec2iNumTurnsClockwise(v2i vector, u64 numQuarterTurns)
+*/

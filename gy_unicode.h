@@ -287,3 +287,48 @@ bool IsStringValidIdentifier(u64 strLength, const char* strPntr, bool allowUnder
 }
 
 #endif //  _GY_UNICODE_H
+
+// +--------------------------------------------------------------+
+// |                   Autocomplete Dictionary                    |
+// +--------------------------------------------------------------+
+/*
+@Defines
+UTF8_MAX_CODEPOINT
+UTF8_MAX_CHAR_SIZE
+UNICODE_LATIN_EXT_START
+UNICODE_LATIN_EXT_COUNT
+UNICODE_LATIN_EXT_END
+UNICODE_CYRILLIC_START
+UNICODE_CYRILLIC_COUNT
+UNICODE_CYRILLIC_END
+UNICODE_HIRAGANA_START
+UNICODE_HIRAGANA_COUNT
+UNICODE_HIRAGANA_END
+UNICODE_KATAKANA_START
+UNICODE_KATAKANA_COUNT
+UNICODE_KATAKANA_END
+@Types
+@Functions
+char GetLowercaseAnsiiChar(char c)
+char GetUppercaseAnsiiChar(char c)
+u8 CharToU8(char c)
+u32 CharToU32(char c)
+char GetHexChar(u8 hexValue, bool upperCase = true)
+u8 GetUpperNibble(u8 value)
+u8 GetLowerNibble(u8 value)
+bool IsCharNumeric(u32 codepoint)
+bool IsCharAlphabetic(u32 codepoint)
+bool IsCharLowercaseAlphabet(u32 codepoint)
+bool IsCharUppercaseAlphabet(u32 codepoint)
+bool IsCharWhitespace(u32 codepoint, bool includeNewLines = false)
+bool IsCharAnsii(u32 codepoint)
+bool IsCharRenderableAnsii(u32 codepoint)
+bool IsCharExtendedAnsii(u32 codepoint)
+bool IsCharAlphaNumeric(u32 codepoint)
+bool IsCharSyntax(u32 codepoint)
+bool IsCharPunctuationStart(u32 codepoint)
+bool IsCharPunctuationEnd(u32 codepoint)
+u8 GetUtf8BytesForCode(u32 codepoint, u8* byteBufferOut = nullptr, bool doAssertions = true)
+u8 GetCodepointForUtf8(u64 maxNumChars, const char* strPntr, u32* codepointOut = nullptr)
+bool IsStringValidIdentifier(u64 strLength, const char* strPntr, bool allowUnderscores = true, bool allowNumbers = true, bool allowLeadingNumbers = false, bool allowEmpty = false, bool allowSpaces = false)
+*/

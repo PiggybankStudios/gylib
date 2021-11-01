@@ -458,18 +458,18 @@ void LinkedListClear_(LinkedList_t* list, u64 itemSize)
 //TODO: Implement intrusive variants
 #define LinkedListClear(list, type) LinkedListClear_((list), sizeof(type))
 
+#endif //  _GY_LINKED_LIST_H
+
 // +--------------------------------------------------------------+
 // |                   Autocomplete Dictionary                    |
 // +--------------------------------------------------------------+
 /*
 @Defines
-
 @Types
 LinkedListNode_t
 LinkedList_t
 InLinkedList_t
 InDblLinkedList_t
-
 @Functions
 #define CreateLinkedList(list, memArena, type)
 void FreeLinkedList(LinkedList_t* list)
@@ -486,5 +486,3 @@ u64 GetItemIndexInLinkedList(LinkedList_t* list, const void* itemPntr)
 #define LinkedListInsert(list, type, index)
 #define LinkedListClear(list, type)
 */
-
-#endif //  _GY_LINKED_LIST_H

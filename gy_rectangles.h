@@ -1611,7 +1611,7 @@ obb2 Obb2DDeflateY(obb2 rectangle, r32 subHeight)
 //TODO: Add Obb3D functions
 
 // +--------------------------------------------------------------+
-// |                    Other Simple Functions                    |
+// |                 Other Manipulation Functions                 |
 // +--------------------------------------------------------------+
 // +==============================+
 // |             Rec              |
@@ -1915,6 +1915,93 @@ obb2 Obb2DUninvert(obb2 rectangle)
 //TODO: Add Obb3D functions
 
 // +--------------------------------------------------------------+
+// |                Collision and Inclusion Tests                 |
+// +--------------------------------------------------------------+
+// +==============================+
+// |             Rec              |
+// +==============================+
+bool IsInsideRec(rec rectangle, v2 point)
+{
+	if (point.x < rectangle.x) { return false; }
+	if (point.y < rectangle.y) { return false; }
+	if (point.x >= rectangle.x + rectangle.width) { return false; }
+	if (point.y >= rectangle.y + rectangle.height) { return false; }
+	return true;
+}
+bool IsInsideRec(rec rectangle, v2i point)
+{
+	return IsInsideRec(rectangle, ToVec2(point));
+}
+
+// +==============================+
+// |             Reci             |
+// +==============================+
+bool IsInsideReci(reci rectangle, v2i point, bool includePositiveEdges = false)
+{
+	if (point.x < rectangle.x) { return false; }
+	if (point.y < rectangle.y) { return false; }
+	if (point.x > rectangle.x + rectangle.width) { return false; }
+	if (point.y > rectangle.y + rectangle.height) { return false; }
+	if (!includePositiveEdges && point.x == rectangle.x + rectangle.width) { return false; }
+	if (!includePositiveEdges && point.y == rectangle.y + rectangle.height) { return false; }
+	return true;
+}
+
+// +==============================+
+// |             Box              |
+// +==============================+
+bool IsInsideBox(box boundingBox, v3 point)
+{
+	if (point.x < boundingBox.x) { return false; }
+	if (point.y < boundingBox.y) { return false; }
+	if (point.z < boundingBox.z) { return false; }
+	if (point.x >= boundingBox.x + boundingBox.width) { return false; }
+	if (point.y >= boundingBox.y + boundingBox.height) { return false; }
+	if (point.z >= boundingBox.z + boundingBox.depth) { return false; }
+	return true;
+}
+bool IsInsideBox(box boundingBox, v3i point)
+{
+	return IsInsideBox(boundingBox, ToVec3(point));
+}
+
+// +==============================+
+// |             Boxi             |
+// +==============================+
+bool IsInsideBoxi(boxi boundingBox, v3i point, bool includePositiveEdges = false)
+{
+	if (point.x < boundingBox.x) { return false; }
+	if (point.y < boundingBox.y) { return false; }
+	if (point.z < boundingBox.z) { return false; }
+	if (point.x > boundingBox.x + boundingBox.width) { return false; }
+	if (point.y > boundingBox.y + boundingBox.height) { return false; }
+	if (point.z > boundingBox.z + boundingBox.depth) { return false; }
+	if (!includePositiveEdges && point.x == boundingBox.x + boundingBox.width) { return false; }
+	if (!includePositiveEdges && point.y == boundingBox.y + boundingBox.height) { return false; }
+	if (!includePositiveEdges && point.z == boundingBox.z + boundingBox.depth) { return false; }
+	return true;
+}
+
+// +==============================+
+// |            Obb2D             |
+// +==============================+
+bool IsInsideObb2D(obb2 rectangle, v2 point)
+{
+	if (rectangle.rotation == 0) { return IsInsideRec(NewRec(rectangle.center - rectangle.size/2, rectangle.size), point); } //TODO: Is this really useful?? Let's time it!
+	r32 cosValue = CosR32(rectangle.rotation);
+	r32 sinValue = SinR32(rectangle.rotation);
+	r32 dotX = Vec2Dot(point - rectangle.center, NewVec2(cosValue, sinValue));
+	r32 dotY = Vec2Dot(point - rectangle.center, NewVec2(-sinValue, cosValue));
+	if (dotX >= rectangle.width/2) { return false; }
+	if (dotY >= rectangle.height/2) { return false; }
+	if (dotX < -rectangle.width/2) { return false; }
+	if (dotY < -rectangle.height/2) { return false; }
+	return true;
+}
+
+//TODO: Add Obb3D functions
+
+// +--------------------------------------------------------------+
 // |                 Other Complicated Functions                  |
 // +--------------------------------------------------------------+
 v2 GetObb2DRelativePos(obb2 box, v2 point)
@@ -1931,6 +2018,17 @@ v2 GetObb2DWorldPoint(obb2 box, v2 relativeOffset)
 	v2 rotVec = NewVec2(CosR32(box.rotation), SinR32(box.rotation));
 	result += (-box.width/2 + relativeOffset.x) * rotVec;
 	result += (-box.height/2 + relativeOffset.y) * Vec2PerpRight(rotVec);
+	return result;
+}
+
+obb2 Obb2Line(v2 start, v2 end, r32 thickness)
+{
+	obb2 result;
+	result.center = (start + end) / 2;
+	result.width = Vec2Length(end - start);
+	result.height = thickness;
+	result.rotation = AtanR32(end.y - start.y, end.x - start.x);
+	if (result.rotation < 0) { result.rotation += TwoPi32; }
 	return result;
 }
 
@@ -1969,3 +2067,154 @@ inline obb2 operator / (obb2 box, r32 scale) { return Obb2DScale(box, 1/scale); 
 //TODO: Add operator overloads for obb3
 
 #endif //  _GY_RECTANGLES_H
+
+// +--------------------------------------------------------------+
+// |                   Autocomplete Dictionary                    |
+// +--------------------------------------------------------------+
+/*
+@Defines
+Rec_Zero
+Rec_Default
+Reci_Zero
+Box_Zero
+Boxi_Zero
+Obb2_Zero
+@Types
+Rectangle_t
+Rectanglei_t
+Box_t
+Boxi_t
+Obb2D_t
+rec
+reci
+obb2
+box
+boxi
+@Functions
+rec NewRec(v2 topLeft, v2 size)
+rec NewRecCentered(v2 center, v2 size)
+reci NewReci(v2i topLeft, v2i size)
+box NewBox(v3 topLeft, v3 size)
+box NewBoxCentered(v3 center, v3 size)
+boxi NewBoxi(v3i topLeft, v3i size)
+obb2 NewObb2D(v2 center, v2 size, r32 rotation)
+rec ToRec(reci rectangle)
+obb2 ToObb2D(rec rectangle)
+box ToBox(boxi boundingBox)
+rec RecShift(rec rectangle, r32 amountX, r32 amountY)
+rec RecScale(rec rectangle, r32 scalar)
+rec RecScale2(rec rectangle, r32 scaleX, r32 scaleY)
+bool RecBasicallyEqual(rec left, rec right, r32 tolerance = 0.001f)
+reci ReciShift(reci rectangle, i32 amountX, i32 amountY)
+reci ReciScale(reci rectangle, i32 scalar)
+reci ReciScale2(reci rectangle, i32 scaleX, i32 scaleY)
+bool ReciEqual(reci left, reci right)
+box BoxShift(box boundingBox, r32 amountX, r32 amountY, r32 amountZ)
+box BoxScale(box boundingBox, r32 scalar)
+box BoxScale3(box boundingBox, r32 scaleX, r32 scaleY, r32 scaleZ)
+bool BoxBasicallyEqual(box left, box right, r32 tolerance = 0.001f)
+boxi BoxiShift(boxi boundingBox, i32 amountX, i32 amountY, i32 amountZ)
+boxi BoxiScale(boxi boundingBox, i32 scalar)
+boxi BoxiScale3(boxi boundingBox, i32 scaleX, i32 scaleY, i32 scaleZ)
+bool BoxiEqual(boxi left, boxi right)
+obb2 Obb2DShift(obb2 boundingBox, r32 amountX, r32 amountY)
+obb2 Obb2DScale(obb2 boundingBox, r32 scalar)
+bool Obb2DBasicallyEqual(obb2 left, obb2 right, r32 tolerance = 0.001f)
+rec RecExpand(rec rectangle, r32 extraWidth, r32 extraHeight)
+rec RecExpandX(rec rectangle, r32 extraWidth)
+rec RecExpandY(rec rectangle, r32 extraHeight)
+rec RecRetract(rec rectangle, r32 subWidth, r32 subHeight)
+rec RecRetractX(rec rectangle, r32 subWidth)
+rec RecRetractY(rec rectangle, r32 subHeight)
+rec RecInflate(rec rectangle, r32 extraWidth, r32 extraHeight)
+rec RecInflateX(rec rectangle, r32 extraWidth)
+rec RecInflateY(rec rectangle, r32 extraHeight)
+rec RecDeflate(rec rectangle, r32 subWidth, r32 subHeight)
+rec RecDeflateX(rec rectangle, r32 subWidth)
+rec RecDeflateY(rec rectangle, r32 subHeight)
+reci ReciExpand(reci rectangle, i32 extraWidth, i32 extraHeight)
+reci ReciExpandX(reci rectangle, i32 extraWidth)
+reci ReciExpandY(reci rectangle, i32 extraHeight)
+reci ReciRetract(reci rectangle, i32 subWidth, i32 subHeight)
+reci ReciRetractX(reci rectangle, i32 subWidth)
+reci ReciRetractY(reci rectangle, i32 subHeight)
+reci ReciInflate(reci rectangle, i32 extraWidth, i32 extraHeight)
+reci ReciInflateX(reci rectangle, i32 extraWidth)
+reci ReciInflateY(reci rectangle, i32 extraHeight)
+reci ReciDeflate(reci rectangle, i32 subWidth, i32 subHeight)
+reci ReciDeflateX(reci rectangle, i32 subWidth)
+reci ReciDeflateY(reci rectangle, i32 subHeight)
+box BoxExpand(box boundingBox, r32 extraWidth, r32 extraHeight, r32 extraDepth)
+box BoxExpandX(box boundingBox, r32 extraWidth)
+box BoxExpandY(box boundingBox, r32 extraHeight)
+box BoxExpandZ(box boundingBox, r32 extraDepth)
+box BoxRetract(box boundingBox, r32 subWidth, r32 subHeight, r32 subDepth)
+box BoxRetractX(box boundingBox, r32 subWidth)
+box BoxRetractY(box boundingBox, r32 subHeight)
+box BoxRetractZ(box boundingBox, r32 subDepth)
+box BoxInflate(box boundingBox, r32 extraWidth, r32 extraHeight, r32 extraDepth)
+box BoxInflateX(box boundingBox, r32 extraWidth)
+box BoxInflateY(box boundingBox, r32 extraHeight)
+box BoxInflateZ(box boundingBox, r32 extraDepth)
+box BoxDeflate(box boundingBox, r32 subWidth, r32 subHeight, r32 subDepth)
+box BoxDeflateX(box boundingBox, r32 subWidth)
+box BoxDeflateY(box boundingBox, r32 subHeight)
+box BoxDeflateZ(box boundingBox, r32 subDepth)
+boxi BoxiExpand(boxi boundingBox, i32 extraWidth, i32 extraHeight, i32 extraDepth)
+boxi BoxiExpandX(boxi boundingBox, i32 extraWidth)
+boxi BoxiExpandY(boxi boundingBox, i32 extraHeight)
+boxi BoxiExpandZ(boxi boundingBox, i32 extraDepth)
+boxi BoxiRetract(boxi boundingBox, i32 subWidth, i32 subHeight, i32 subDepth)
+boxi BoxiRetractX(boxi boundingBox, i32 subWidth)
+boxi BoxiRetractY(boxi boundingBox, i32 subHeight)
+boxi BoxiRetractZ(boxi boundingBox, i32 subDepth)
+boxi BoxiInflate(boxi boundingBox, i32 extraWidth, i32 extraHeight, i32 extraDepth)
+boxi BoxiInflateX(boxi boundingBox, i32 extraWidth)
+boxi BoxiInflateY(boxi boundingBox, i32 extraHeight)
+boxi BoxiInflateZ(boxi boundingBox, i32 extraDepth)
+boxi BoxiDeflate(boxi boundingBox, i32 subWidth, i32 subHeight, i32 subDepth)
+boxi BoxiDeflateX(boxi boundingBox, i32 subWidth)
+boxi BoxiDeflateY(boxi boundingBox, i32 subHeight)
+boxi BoxiDeflateZ(boxi boundingBox, i32 subDepth)
+obb2 Obb2DInflate(obb2 rectangle, r32 extraWidth, r32 extraHeight)
+obb2 Obb2DInflateX(obb2 rectangle, r32 extraWidth)
+obb2 Obb2DInflateY(obb2 rectangle, r32 extraHeight)
+obb2 Obb2DDeflate(obb2 rectangle, r32 subWidth, r32 subHeight)
+obb2 Obb2DDeflateX(obb2 rectangle, r32 subWidth)
+obb2 Obb2DDeflateY(obb2 rectangle, r32 subHeight)
+rec RecSquarify(rec rectangle, bool makeLarger = true, bool center = true)
+rec RecInvert(rec rectangle)
+rec RecInvertX(rec rectangle)
+rec RecInvertY(rec rectangle)
+rec RecUninvert(rec rectangle)
+rec RecBoth(rec rectangle1, rec rectangle2)
+reci ReciSquarify(reci rectangle, bool makeLarger = true)
+reci ReciInvert(reci rectangle)
+reci ReciInvertX(reci rectangle)
+reci ReciInvertY(reci rectangle)
+reci ReciUninvert(reci rectangle)
+box BoxCubify(box boundingBox, bool makeLarger = true, bool center = true)
+box BoxInvert(box boundingBox)
+box BoxInvertX(box boundingBox)
+box BoxInvertY(box boundingBox)
+box BoxInvertZ(box boundingBox)
+box BoxUninvert(box boundingBox)
+boxi BoxiCubify(boxi boundingBox, bool makeLarger = true)
+boxi BoxiInvert(boxi boundingBox)
+boxi BoxiInvertX(boxi boundingBox)
+boxi BoxiInvertY(boxi boundingBox)
+boxi BoxiInvertZ(boxi boundingBox)
+boxi BoxiUninvert(boxi boundingBox)
+obb2 Obb2DSquarify(obb2 rectangle, bool makeLarger = true)
+obb2 Obb2DInvert(obb2 rectangle)
+obb2 Obb2DInvertX(obb2 rectangle)
+obb2 Obb2DInvertY(obb2 rectangle)
+obb2 Obb2DUninvert(obb2 rectangle)
+bool IsInsideRec(rec rectangle, v2 point)
+bool IsInsideReci(reci rectangle, v2i point, bool includePositiveEdges = false)
+bool IsInsideBox(box boundingBox, v3 point)
+bool IsInsideBoxi(boxi boundingBox, v3i point, bool includePositiveEdges = false)
+bool IsInsideObb2D(obb2 rectangle, v2 point)
+v2 GetObb2DRelativePos(obb2 box, v2 point)
+v2 GetObb2DWorldPoint(obb2 box, v2 relativeOffset)
+*/

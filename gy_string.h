@@ -642,3 +642,40 @@ u8 GetCodepointForUtf8Str(MyStr_t str, u64 index, u32* codepointOut)
 #endif //_GY_UNICODE_H
 
 #endif //  _GY_STRING_H
+
+// +--------------------------------------------------------------+
+// |                   Autocomplete Dictionary                    |
+// +--------------------------------------------------------------+
+/*
+@Defines
+MyStr_Empty
+@Types
+MyStr_t
+@Functions
+MyStr_t NewStr(u64 length, char* pntr)
+bool IsStrEmpty(MyStr_t target)
+bool IsStrNullTerminated(const MyStr_t* target)
+#define NotNullStr(strPntr)
+#define NotNullStr_(strPntr)
+#define NotEmptyStr(strPntr)
+#define NotEmptyStr_(strPntr)
+#define AssertNullTerm(strPntr)
+#define AssertNullTerm_(strPntr)
+#define AllocString(arena, strPntr)
+#define NewStringInArena(arena, length, charPntr)
+#define NewStringInArenaNt(arena, nullTermStr)
+#define FreeString(arena, strPntr)
+MyStr_t PrintInArenaStr(MemArena_t* arena, const char* formatString, ...)
+MyStr_t StrSubstring(MyStr_t* target, u64 startIndex, u64 endIndex)
+MyStr_t StrSubstringLength(MyStr_t* target, u64 startIndex, u64 length)
+MyStr_t CombineStrs(MemArena_t* memArena, MyStr_t str1, MyStr_t str2)
+bool StrEquals(MyStr_t target, MyStr_t comparison)
+i32 StrCompareIgnoreCase(MyStr_t str1, MyStr_t str2)
+MyStr_t* SplitString(MemArena_t* memArena, MyStr_t target, MyStr_t delineator, u64* numPiecesOut = nullptr, bool ignoreCase = false)
+u64 UnescapeQuotedStringInPlace(MyStr_t* target, bool removeQuotes = true, bool allowNewLineEscapes = true, bool allowOtherEscapeCodes = false)
+MyStr_t UnescapeQuotedStringInArena(MemArena_t* memArena, MyStr_t target, bool removeQuotes = true, bool allowNewLineEscapes = true, bool allowOtherEscapeCodes = false)
+void SplitFilePath(MyStr_t fullPath, MyStr_t* directoryOut, MyStr_t* fileNameOut, MyStr_t* extensionOut = nullptr)
+MyStr_t GetFileNamePart(MyStr_t filePath, bool includeExtension = true)
+u64 StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ignoreCase = false)
+u8 GetCodepointForUtf8Str(MyStr_t str, u64 index, u32* codepointOut)
+*/

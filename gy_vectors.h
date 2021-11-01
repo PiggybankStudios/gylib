@@ -1152,6 +1152,16 @@ v3 Vec3Cross(v3 left, v3 right)
 	result.z = left.x*right.y - left.y*right.x;
 	return result;
 }
+//This Assumes +y is up and is phrased in terms of a first person camera (facingDirection y rotation, and rotationUpDown is z rotation)
+v3 Vec3From2Angles(r32 facingDirection, r32 rotationUpDown, r32 radius = 1.0f)
+{
+	v3 result;
+	r32 circleRadius = CosR32(rotationUpDown) * radius;
+	result.x = CosR32(facingDirection) * circleRadius;
+	result.z = SinR32(facingDirection) * circleRadius;
+	result.y = SinR32(rotationUpDown);
+	return result;
+}
 
 i32 Vec3iDot(v3i left, v3i right)
 {
@@ -1342,3 +1352,217 @@ inline bool operator == (v4i left, v4i right)  { return (left.x == right.x && le
 inline bool operator != (v4i left, v4i right)  { return (left.x != right.x || left.y != right.y || left.z != right.z || left.w != right.w); }
 
 #endif //  _GY_VECTORS_H
+
+// +--------------------------------------------------------------+
+// |                   Autocomplete Dictionary                    |
+// +--------------------------------------------------------------+
+/*
+@Defines
+Vec2_Zero
+Vec2_One
+Vec2_Half
+Vec2_Left
+Vec2_Right
+Vec2_Up
+Vec2_Down
+Vec2i_Zero
+Vec2i_One
+Vec2i_Left
+Vec2i_Right
+Vec2i_Up
+Vec2i_Down
+Vec3_Zero
+Vec3_One
+Vec3_Half
+Vec3_Left
+Vec3_Right
+Vec3_Bottom
+Vec3_Top
+Vec3_Back
+Vec3_Front
+Vec3_Down
+Vec3_Up
+Vec3_Backward
+Vec3_Forward
+Vec3i_Zero
+Vec3i_One
+Vec3i_Left
+Vec3i_Right
+Vec3i_Bottom
+Vec3i_Top
+Vec3i_Back
+Vec3i_Front
+Vec3i_Down
+Vec3i_Up
+Vec3i_Backward
+Vec3i_Forward
+Vec4_Zero
+Vec4_One
+Vec4_Half
+Vec4_Left
+Vec4_Right
+Vec4_Bottom
+Vec4_Top
+Vec4_Back
+Vec4_Front
+Vec4_Down
+Vec4_Up
+Vec4_Backward
+Vec4_Forward
+Vec4i_Zero
+Vec4i_One
+Vec4i_Left
+Vec4i_Right
+Vec4i_Bottom
+Vec4i_Top
+Vec4i_Back
+Vec4i_Front
+Vec4i_Down
+Vec4i_Up
+Vec4i_Backward
+Vec4i_Forward
+@Types
+Vector2_t
+Vector3_t
+Vector4_t
+Vector2i_t
+Vector3i_t
+Vector4i_t
+v2
+v3
+v4
+v2i
+v3i
+v4i
+@Functions
+Vector2_t NewVec2(r32 x, r32 y)
+Vector3_t NewVec3(r32 x, r32 y, r32 z)
+Vector4_t NewVec4(r32 x, r32 y, r32 z, r32 w)
+Vector2i_t NewVec2i(i32 x, i32 y)
+Vector3i_t NewVec3i(i32 x, i32 y, i32 z)
+Vector4i_t NewVec4i(i32 x, i32 y, i32 z, i32 w)
+v2 ToVec2(v2i vector)
+v3 ToVec3(v3i vector)
+v4 ToVec4(v4i vector)
+v2 Vec2Floor(v2 vector)
+v2i Vec2Floori(v2 vector)
+v3 Vec3Floor(v3 vector)
+v3i Vec3Floori(v3 vector)
+v4 Vec4Floor(v4 vector)
+v4i Vec4Floori(v4 vector)
+v2 Vec2Ceil(v2 vector)
+v2i Vec2Ceili(v2 vector)
+v3 Vec3Ceil(v3 vector)
+v3i Vec3Ceili(v3 vector)
+v4 Vec4Ceil(v4 vector)
+v4i Vec4Ceili(v4 vector)
+v2 Vec2Round(v2 vector)
+v2i Vec2Roundi(v2 vector)
+v3 Vec3Round(v3 vector)
+v3i Vec3Roundi(v3 vector)
+v4 Vec4Round(v4 vector)
+v4i Vec4Roundi(v4 vector)
+v2 Vec2Max(v2 left, v2 right)
+v2i Vec2iMax(v2i left, v2i right)
+v3 Vec3Max(v3 left, v3 right)
+v3i Vec3iMax(v3i left, v3i right)
+v4 Vec4Max(v4 left, v4 right)
+v4i Vec4iMax(v4i left, v4i right)
+v2 Vec2Min(v2 left, v2 right)
+v2i Vec2iMin(v2i left, v2i right)
+v3 Vec3Min(v3 left, v3 right)
+v3i Vec3iMin(v3i left, v3i right)
+v4 Vec4Min(v4 left, v4 right)
+v4i Vec4iMin(v4i left, v4i right)
+v2 Vec2Fill(r32 value)
+v2i Vec2iFill(i32 value)
+v3 Vec3Fill(r32 value)
+v3i Vec3iFill(i32 value)
+v4 Vec4Fill(r32 value)
+v4i Vec4iFill(i32 value)
+v3 Vec3FromVec2(v2 vector, r32 z)
+v3i Vec3iFromVec2i(v2i vector, i32 z)
+v4 Vec4FromVec3(v3 vector, r32 w)
+v4i Vec4iFromVec3i(v3i vector, i32 w)
+v2 Vec2Add(v2 left, v2 right)
+v2 Vec2Subtract(v2 left, v2 right)
+v2 Vec2Scale(v2 vector, r32 scalar)
+v2 Vec2Multiply(v2 left, v2 right)
+v2 Vec2Shrink(v2 vector, r32 divisor)
+v2 Vec2Divide(v2 left, v2 right)
+bool Vec2BasicallyEqual(v2 left, v2 right, r32 tolerance = 0.001f)
+v2i Vec2iAdd(v2i left, v2i right)
+v2i Vec2iSubtract(v2i left, v2i right)
+v2i Vec2iScale(v2i vector, i32 scalar)
+v2i Vec2iMultiply(v2i left, v2i right)
+bool Vec2iEqual(v2i left, v2i right)
+v3 Vec3Add(v3 left, v3 right)
+v3 Vec3Subtract(v3 left, v3 right)
+v3 Vec3Scale(v3 vector, r32 scalar)
+v3 Vec3Multiply(v3 left, v3 right)
+v3 Vec3Shrink(v3 vector, r32 divisor)
+v3 Vec3Divide(v3 left, v3 right)
+bool Vec3BasicallyEqual(v3 left, v3 right, r32 tolerance = 0.001f)
+v3i Vec3iAdd(v3i left, v3i right)
+v3i Vec3iSubtract(v3i left, v3i right)
+v3i Vec3iScale(v3i vector, i32 scalar)
+v3i Vec3iMultiply(v3i left, v3i right)
+bool Vec3iEqual(v3i left, v3i right)
+v4 Vec4Add(v4 left, v4 right)
+v4 Vec4Subtract(v4 left, v4 right)
+v4 Vec4Scale(v4 vector, r32 scalar)
+v4 Vec4Multiply(v4 left, v4 right)
+v4 Vec4Shrink(v4 vector, r32 divisor)
+v4 Vec4Divide(v4 left, v4 right)
+bool Vec4BasicallyEqual(v4 left, v4 right, r32 tolerance = 0.001f)
+v4i Vec4iAdd(v4i left, v4i right)
+v4i Vec4iSubtract(v4i left, v4i right)
+v4i Vec4iScale(v4i vector, i32 scalar)
+v4i Vec4iMultiply(v4i left, v4i right)
+bool Vec4iEqual(v4i left, v4i right)
+r32 Vec2Dot(v2 left, v2 right)
+r32 Vec2Length(v2 vector)
+v2 Vec2Normalize(v2 vector)
+v2 Vec2PerpRight(v2 vector)
+v2 Vec2PerpLeft(v2 vector)
+r32 Vec2Determinant(v2 left, v2 right)
+r32 Vec2Inner(v2 left, v2 right)
+v2 Vec2Clamp(v2 vector, v2 min, v2 max)
+v2 Vec2Lerp(v2 start, v2 end, r32 amount)
+v2 Vec2Rotate(v2 vector, r32 angle)
+v2 Vec2FromAngle(r32 angle, r32 radius = 1.0f)
+i32 Vec2iDot(v2i left, v2i right)
+r32 Vec2iLength(v2i vector)
+v2 Vec2iNormalize(v2i vector)
+v2i Vec2iPerpRight(v2i vector)
+v2i Vec2iPerpLeft(v2i vector)
+i32 Vec2iDeterminant(v2i left, v2i right)
+v2i Vec2iClamp(v2i vector, v2i min, v2i max)
+r32 Vec3Dot(v3 left, v3 right)
+r32 Vec3Length(v3 vector)
+v3 Vec3Normalize(v3 vector)
+r32 Vec3Determinant(v3 left, v3 right)
+r32 Vec3Inner(v3 left, v3 right)
+v3 Vec3Clamp(v3 vector, v3 min, v3 max)
+v3 Vec3Lerp(v3 start, v3 end, r32 amount)
+v3 Vec3Cross(v3 left, v3 right)
+v3 Vec3From2Angles(r32 facingDirection, r32 rotationUpDown, r32 radius = 1.0f)
+i32 Vec3iDot(v3i left, v3i right)
+r32 Vec3iLength(v3i vector)
+v3 Vec3iNormalize(v3i vector)
+i32 Vec3iDeterminant(v3i left, v3i right)
+v3i Vec3iClamp(v3i vector, v3i min, v3i max)
+v3i Vec3iCross(v3i left, v3i right)
+r32 Vec4Dot(v4 left, v4 right)
+r32 Vec4Length(v4 vector)
+v4 Vec4Normalize(v4 vector)
+r32 Vec4Determinant(v4 left, v4 right)
+r32 Vec4Inner(v4 left, v4 right)
+v4 Vec4Clamp(v4 vector, v4 min, v4 max)
+v4 Vec4Lerp(v4 start, v4 end, r32 amount)
+i32 Vec4iDot(v4i left, v4i right)
+r32 Vec4iLength(v4i vector)
+v4 Vec4iNormalize(v4i vector)
+i32 Vec4iDeterminant(v4i left, v4i right)
+v4i Vec4iClamp(v4i vector, v4i min, v4i max)
+*/

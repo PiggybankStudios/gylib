@@ -136,3 +136,29 @@ Date:   09\14\2021
 #endif
 
 #endif // _GY_STD_H
+
+// +--------------------------------------------------------------+
+// |                   Autocomplete Dictionary                    |
+// +--------------------------------------------------------------+
+/*
+@Defines
+@Types
+@Functions
+#define MyMemSet(dest, value, length)
+#define MyMemCompare(ptr1, ptr2, length)
+#define MyMemCopy(dest, source, length)
+#define MyMemMove(dest, source, length)
+#define MyStrCopyNt(dest, source)
+#define MyStrCompareNt(str1, str2)
+#define MyStrCompare(str1, str2, length)
+#define MyStrLength(str)
+#define MyStrLength32(str)
+#define MyStrLength64(str)
+#define MyWideStrLength(str)
+#define MyWideStrLength32(str)
+#define MyStrStrNt(str1, str2)
+#define MyMalloc(size)
+#define MyRealloc(pntr, newSize)
+#define MyFree(size)
+#define MyVaListPrintf(buffer, bufferSize, formatStr, vaList)
+*/

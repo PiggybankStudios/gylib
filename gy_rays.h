@@ -64,3 +64,16 @@ Ray3_t NewRay3(v3 origin, v3 direction)
 }
 
 #endif //  _GY_RAYS_H
+
+// +--------------------------------------------------------------+
+// |                   Autocomplete Dictionary                    |
+// +--------------------------------------------------------------+
+/*
+@Defines
+@Types
+Ray2_t
+Ray3_t
+@Functions
+Ray2_t NewRay2(v2 origin, v2 direction)
+Ray3_t NewRay3(v3 origin, v3 direction)
+*/
