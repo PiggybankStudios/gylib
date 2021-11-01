@@ -1225,6 +1225,16 @@ do                                                                              
 }                                                                                          \
 while(0)
 
+// +--------------------------------------------------------------+
+// |                      C++ Class Helpers                       |
+// +--------------------------------------------------------------+
+#define ArenaNew(pntrToAssign, arena, type, ...) do        \
+{                                                          \
+	(pntrToAssign) = AllocStruct((arena), type);           \
+	NotNull(pntrToAssign);                                 \
+	new (pntrToAssign) type(__VA_ARGS__); /*In-place new*/ \
+} while(0)
+
 #endif //  _GY_MEMORY_H
 
 // +--------------------------------------------------------------+
@@ -1294,4 +1304,5 @@ char* PrintInArena(MemArena_t* arena, const char* formatString, ...)
 int PrintVa_Measure(const char* formatString, va_list args)
 void PrintVa_Print(const char* formatString, va_list args, char* allocatedSpace, int previousResult)
 #define PrintInArenaVa(arena, resultName, resultLengthName, formatString)
+#define ArenaNew(pntrToAssign, arena, type, ...)
 */
