@@ -405,6 +405,10 @@ r32 AngleFromVec2(v2 vector)
 {
 	return AngleFixR32(AtanR32(vector.y, vector.x));
 }
+r32 AngleFromVec2(r32 x, r32 y)
+{
+	return AngleFixR32(AtanR32(y, x));
+}
 
 #endif //  _GY_MATH_H
 
@@ -443,4 +447,5 @@ void ReduceRatioU32(u32* num1, u32* num2)
 void ReduceRatioU64(u64* num1, u64* num2)
 v2 ClosestPointOnLine(v2 lineStart, v2 lineEnd, v2 point)
 r32 AngleFromVec2(v2 vector)
+r32 AngleFromVec2(r32 x, r32 y)
 */

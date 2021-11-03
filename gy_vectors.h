@@ -318,6 +318,28 @@ v4 ToVec4(v4i vector)
 }
 //ToVec4(Color_t) defined in gy_colors.h
 
+v2 Vec3_xy(v3 vector)
+{
+	v2 result;
+	result.x = vector.x;
+	result.y = vector.y;
+	return result;
+}
+v2 Vec3_xz(v3 vector)
+{
+	v2 result;
+	result.x = vector.x;
+	result.y = vector.z;
+	return result;
+}
+v2 Vec3_yz(v3 vector)
+{
+	v2 result;
+	result.x = vector.y;
+	result.y = vector.z;
+	return result;
+}
+
 // +==============================+
 // |            Floor             |
 // +==============================+

@@ -15,6 +15,9 @@ Description:
 #include "gy_intrinsics.h"
 #include "gy_vectors.h"
 
+// +--------------------------------------------------------------+
+// |                          Structures                          |
+// +--------------------------------------------------------------+
 union Matrix4x4_t
 {
 	//         C  R
@@ -250,6 +253,43 @@ mat4 Mat4Translate2(r32 x, r32 y)
 	);
 }
 
+mat4 Mat4ScaleX(r32 scale)
+{
+	return NewMat4(
+		scale, 0.0f, 0.0f, 0.0f,
+		0.0f,  1.0f, 0.0f, 0.0f,
+		0.0f,  0.0f, 1.0f, 0.0f,
+		0.0f,  0.0f, 0.0f, 1.0f
+	);
+}
+mat4 Mat4ScaleY(r32 scale)
+{
+	return NewMat4(
+		1.0f, 0.0f,  0.0f, 0.0f,
+		0.0f, scale, 0.0f, 0.0f,
+		0.0f, 0.0f,  1.0f, 0.0f,
+		0.0f, 0.0f,  0.0f, 1.0f
+	);
+}
+mat4 Mat4ScaleZ(r32 scale)
+{
+	return NewMat4(
+		1.0f, 0.0f, 0.0f,  0.0f,
+		0.0f, 1.0f, 0.0f,  0.0f,
+		0.0f, 0.0f, scale, 0.0f,
+		0.0f, 0.0f, 0.0f,  1.0f
+	);
+}
+mat4 Mat4ScaleW(r32 scale)
+{
+	return NewMat4(
+		1.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 1.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 1.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, scale
+	);
+}
+
 mat4 Mat4Scale3(v3 scale)
 {
 	return NewMat4(
@@ -290,45 +330,45 @@ mat4 Mat4Scale2(r32 x, r32 y)
 
 mat4 Mat4RotateX(r32 angle)
 {
-	r32 s = sinf(angle);
-	r32 t = 1.0f - cosf(angle);
+	r32 s = SinR32(angle);
+	r32 c = CosR32(angle);
 	
 	return NewMat4(
-		1.0f, 0.0f, 0.0f, 0.0f,
-		0.0f, 1-t,  -s,    0.0f,
-		0.0f, s,    1-t,  0.0f,
-		0.0f, 0.0f, 0.0f, 1.0f
+		1, 0, 0, 0,
+		0, c,-s, 0,
+		0, s, c, 0,
+		0, 0, 0, 1
 	);
 }
 mat4 Mat4RotateY(r32 angle)
 {
-	r32 s = sinf(angle);
-	r32 t = 1.0f - cosf(angle);
+	r32 s = SinR32(angle);
+	r32 c = CosR32(angle);
 	
 	return NewMat4(
-		1-t,  0,    s,    0.0f,
-		0,    1,    0,    0.0f,
-		-s,   0,    1-t,  0.0f,
-		0.0f, 0.0f, 0.0f, 1.0f
+		 c, 0,-s, 0,
+		 0, 1, 0, 0,
+		 s, 0, c, 0,
+		 0, 0, 0, 1
 	);
 }
 mat4 Mat4RotateZ(r32 angle)
 {
-	r32 s = sinf(angle);
-	r32 t = 1.0f - cosf(angle);
+	r32 s = SinR32(angle);
+	r32 c = CosR32(angle);
 	
 	return NewMat4(
-		1-t,  -s,   0,    0.0f,
-		s,    1-t,  0,    0.0f,
-		0,    0,    1.0f, 0.0f,
-		0.0f, 0.0f, 0.0f, 1.0f
+		c,-s, 0, 0,
+		s, c, 0, 0,
+		0, 0, 1, 0,
+		0, 0, 0, 1
 	);
 }
 
 mat4 Mat4Rotate(v3 axis, r32 angle)
 {
-	r32 c = cosf(angle);
-	r32 s = sinf(angle);
+	r32 c = CosR32(angle);
+	r32 s = SinR32(angle);
 	r32 t = 1.0f - c;
 	
 	v3 norm = Vec3Normalize(axis);
@@ -368,7 +408,7 @@ mat4 Mat4Perspective(r32 fovy, r32 aspectRatio, r32 zNear, r32 zFar)
 	Assert(zFar > zNear);
 	Assert(aspectRatio > 0);
 	
-	r32 uh = 1.0f / tanf(fovy / 2.0f);
+	r32 uh = 1.0f / TanR32(fovy / 2.0f);
 	r32 uw = uh / aspectRatio;
 	r32 depth = zFar - zNear;
 	r32 z1 = zFar / depth;
@@ -419,6 +459,10 @@ v4 Mat4MultiplyVec4(mat4 matrix, v4 vector)
 #define Mat4Transform(matrix, transformation)
 mat4 Mat4Translate3(r32 x, r32 y, r32 z)
 mat4 Mat4Translate2(r32 x, r32 y)
+mat4 Mat4ScaleX(r32 scale)
+mat4 Mat4ScaleY(r32 scale)
+mat4 Mat4ScaleZ(r32 scale)
+mat4 Mat4ScaleW(r32 scale)
 mat4 Mat4Scale3(r32 x, r32 y, r32 z)
 mat4 Mat4Scale2(r32 x, r32 y)
 mat4 Mat4RotateX(r32 angle)

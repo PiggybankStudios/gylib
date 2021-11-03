@@ -15,6 +15,12 @@ Description:
 #include "gy_intrinsics.h"
 #include "gy_vectors.h"
 
+#ifdef _GY_QUATERNIONS_H
+#define OBB3D_AVAILABLE    1
+#else
+#define OBB3D_AVAILABLE    0
+#endif
+
 // +--------------------------------------------------------------+
 // |                          Structures                          |
 // +--------------------------------------------------------------+
@@ -152,8 +158,7 @@ struct Obb2D_t
 	}
 };
 
-#if 0
-//TODO: Implement me once we have quaternions implemented
+#if OBB3D_AVAILABLE
 struct Obb3D_t
 {
 	union
@@ -184,9 +189,11 @@ struct Obb3D_t
 typedef Rectangle_t   rec;
 typedef Rectanglei_t  reci;
 typedef Obb2D_t       obb2;
-typedef Box_t        box;
-typedef Boxi_t       boxi;
-// typedef OBB3D_t       obb3; //TODO: Uncomment me!
+typedef Box_t         box;
+typedef Boxi_t        boxi;
+#if OBB3D_AVAILABLE
+typedef Obb3D_t       obb3;
+#endif
 
 // +--------------------------------------------------------------+
 // |                        New Functions                         |
@@ -257,6 +264,42 @@ rec NewRecCentered(v2 center, v2 size)
 	result.size = size;
 	return result;
 }
+rec NewRecBetween(r32 point1X, r32 point1Y, r32 point2X, r32 point2Y)
+{
+	rec result;
+	result.x = MinR32(point1X, point2X);
+	result.y = MinR32(point1Y, point2Y);
+	result.width = MaxR32(point1X, point2X) - result.x;
+	result.height = MaxR32(point1Y, point2Y) - result.y;
+	return result;
+}
+rec NewRecBetween(r32 point1X, r32 point1Y, v2 point2)
+{
+	rec result;
+	result.x = MinR32(point1X, point2.x);
+	result.y = MinR32(point1Y, point2.y);
+	result.width = MaxR32(point1X, point2.x) - result.x;
+	result.height = MaxR32(point1Y, point2.y) - result.y;
+	return result;
+}
+rec NewRecBetween(v2 point1, r32 point2X, r32 point2Y)
+{
+	rec result;
+	result.x = MinR32(point1.x, point2X);
+	result.y = MinR32(point1.y, point2Y);
+	result.width = MaxR32(point1.x, point2X) - result.x;
+	result.height = MaxR32(point1.y, point2Y) - result.y;
+	return result;
+}
+rec NewRecBetween(v2 point1, v2 point2)
+{
+	rec result;
+	result.x = MinR32(point1.x, point2.x);
+	result.y = MinR32(point1.y, point2.y);
+	result.width = MaxR32(point1.x, point2.x) - result.x;
+	result.height = MaxR32(point1.y, point2.y) - result.y;
+	return result;
+}
 
 reci NewReci(i32 left, i32 top, i32 width, i32 height)
 {
@@ -288,6 +331,42 @@ reci NewReci(v2i topLeft, v2i size)
 	reci result;
 	result.topLeft = topLeft;
 	result.size = size;
+	return result;
+}
+reci NewReciBetween(i32 point1X, i32 point1Y, i32 point2X, i32 point2Y)
+{
+	reci result;
+	result.x = MinI32(point1X, point2X);
+	result.y = MinI32(point1Y, point2Y);
+	result.width = MaxI32(point1X, point2X) - result.x;
+	result.height = MaxI32(point1Y, point2Y) - result.y;
+	return result;
+}
+reci NewReciBetween(i32 point1X, i32 point1Y, v2i point2)
+{
+	reci result;
+	result.x = MinI32(point1X, point2.x);
+	result.y = MinI32(point1Y, point2.y);
+	result.width = MaxI32(point1X, point2.x) - result.x;
+	result.height = MaxI32(point1Y, point2.y) - result.y;
+	return result;
+}
+reci NewReciBetween(v2i point1, i32 point2X, i32 point2Y)
+{
+	reci result;
+	result.x = MinI32(point1.x, point2X);
+	result.y = MinI32(point1.y, point2Y);
+	result.width = MaxI32(point1.x, point2X) - result.x;
+	result.height = MaxI32(point1.y, point2Y) - result.y;
+	return result;
+}
+reci NewReciBetween(v2i point1, v2i point2)
+{
+	reci result;
+	result.x = MinI32(point1.x, point2.x);
+	result.y = MinI32(point1.y, point2.y);
+	result.width = MaxI32(point1.x, point2.x) - result.x;
+	result.height = MaxI32(point1.y, point2.y) - result.y;
 	return result;
 }
 
@@ -367,6 +446,50 @@ box NewBoxCentered(v3 center, v3 size)
 	result.size = size;
 	return result;
 }
+box NewBoxBetween(r32 point1X, r32 point1Y, r32 point1Z, r32 point2X, r32 point2Y, r32 point2Z)
+{
+	box result;
+	result.x = MinR32(point1X, point2X);
+	result.y = MinR32(point1Y, point2Y);
+	result.z = MinR32(point1Z, point2Z);
+	result.width = MaxR32(point1X, point2X) - result.x;
+	result.height = MaxR32(point1Y, point2Y) - result.y;
+	result.depth = MaxR32(point1Z, point2Z) - result.z;
+	return result;
+}
+box NewBoxBetween(r32 point1X, r32 point1Y, r32 point1Z, v3 point2)
+{
+	box result;
+	result.x = MinR32(point1X, point2.x);
+	result.y = MinR32(point1Y, point2.y);
+	result.z = MinR32(point1Z, point2.z);
+	result.width = MaxR32(point1X, point2.x) - result.x;
+	result.height = MaxR32(point1Y, point2.y) - result.y;
+	result.depth = MaxR32(point1Z, point2.z) - result.z;
+	return result;
+}
+box NewBoxBetween(v3 point1, r32 point2X, r32 point2Y, r32 point2Z)
+{
+	box result;
+	result.x = MinR32(point1.x, point2X);
+	result.y = MinR32(point1.y, point2Y);
+	result.z = MinR32(point1.z, point2Z);
+	result.width = MaxR32(point1.x, point2X) - result.x;
+	result.height = MaxR32(point1.y, point2Y) - result.y;
+	result.depth = MaxR32(point1.z, point2Z) - result.z;
+	return result;
+}
+box NewBoxBetween(v3 point1, v3 point2)
+{
+	box result;
+	result.x = MinR32(point1.x, point2.x);
+	result.y = MinR32(point1.y, point2.y);
+	result.z = MinR32(point1.z, point2.z);
+	result.width = MaxR32(point1.x, point2.x) - result.x;
+	result.height = MaxR32(point1.y, point2.y) - result.y;
+	result.depth = MaxR32(point1.z, point2.z) - result.z;
+	return result;
+}
 
 boxi NewBoxi(i32 x, i32 y, i32 z, i32 width, i32 height, i32 depth)
 {
@@ -402,6 +525,50 @@ boxi NewBoxi(v3i topLeft, v3i size)
 	boxi result;
 	result.topLeft = topLeft;
 	result.size = size;
+	return result;
+}
+boxi NewBoxiBetween(i32 point1X, i32 point1Y, i32 point1Z, i32 point2X, i32 point2Y, i32 point2Z)
+{
+	boxi result;
+	result.x = MinI32(point1X, point2X);
+	result.y = MinI32(point1Y, point2Y);
+	result.z = MinI32(point1Z, point2Z);
+	result.width = MaxI32(point1X, point2X) - result.x;
+	result.height = MaxI32(point1Y, point2Y) - result.y;
+	result.depth = MaxI32(point1Z, point2Z) - result.z;
+	return result;
+}
+boxi NewBoxiBetween(i32 point1X, i32 point1Y, i32 point1Z, v3i point2)
+{
+	boxi result;
+	result.x = MinI32(point1X, point2.x);
+	result.y = MinI32(point1Y, point2.y);
+	result.z = MinI32(point1Z, point2.z);
+	result.width = MaxI32(point1X, point2.x) - result.x;
+	result.height = MaxI32(point1Y, point2.y) - result.y;
+	result.depth = MaxI32(point1Z, point2.z) - result.z;
+	return result;
+}
+boxi NewBoxiBetween(v3i point1, i32 point2X, i32 point2Y, i32 point2Z)
+{
+	boxi result;
+	result.x = MinI32(point1.x, point2X);
+	result.y = MinI32(point1.y, point2Y);
+	result.z = MinI32(point1.z, point2Z);
+	result.width = MaxI32(point1.x, point2X) - result.x;
+	result.height = MaxI32(point1.y, point2Y) - result.y;
+	result.depth = MaxI32(point1.z, point2Z) - result.z;
+	return result;
+}
+boxi NewBoxiBetween(v3i point1, v3i point2)
+{
+	boxi result;
+	result.x = MinI32(point1.x, point2.x);
+	result.y = MinI32(point1.y, point2.y);
+	result.z = MinI32(point1.z, point2.z);
+	result.width = MaxI32(point1.x, point2.x) - result.x;
+	result.height = MaxI32(point1.y, point2.y) - result.y;
+	result.depth = MaxI32(point1.z, point2.z) - result.z;
 	return result;
 }
 
@@ -442,7 +609,48 @@ obb2 NewObb2D(v2 center, v2 size, r32 rotation)
 	return result;
 }
 
-//TODO: Add New functions for OBB3D_t
+#if OBB3D_AVAILABLE
+obb3 NewObb3D(r32 centerX, r32 centerY, r32 centerZ, r32 width, r32 height, r32 depth, quat rotation)
+{
+	obb3 result;
+	result.center.x = centerX;
+	result.center.y = centerY;
+	result.center.z = centerZ;
+	result.width = width;
+	result.height = height;
+	result.depth = depth;
+	result.rotation = rotation;
+	return result;
+}
+obb3 NewObb3D(r32 centerX, r32 centerY, r32 centerZ, v3 size, quat rotation)
+{
+	obb3 result;
+	result.center.x = centerX;
+	result.center.y = centerY;
+	result.center.z = centerZ;
+	result.size = size;
+	result.rotation = rotation;
+	return result;
+}
+obb3 NewObb3D(v3 center, r32 width, r32 height, r32 depth, quat rotation)
+{
+	obb3 result;
+	result.center = center;
+	result.width = width;
+	result.height = height;
+	result.depth = depth;
+	result.rotation = rotation;
+	return result;
+}
+obb3 NewObb3D(v3 center, v3 size, quat rotation)
+{
+	obb3 result;
+	result.center = center;
+	result.size = size;
+	result.rotation = rotation;
+	return result;
+}
+#endif
 
 // +--------------------------------------------------------------+
 // |                   Simple Value Definitions                   |
@@ -453,7 +661,9 @@ obb2 NewObb2D(v2 center, v2 size, r32 rotation)
 #define Box_Zero    NewBox(0, 0, 0, 0, 0, 0)
 #define Boxi_Zero   NewBoxi(0, 0, 0, 0, 0, 0)
 #define Obb2_Zero   NewObb2D(0, 0, 0, 0, 0)
-// #define Obb3_Zero NewObb2D(0, 0, 0, 0, 0, 0, Quat_Identity) //TODO: Uncomment me!
+#if OBB3D_AVAILABLE
+#define Obb3_Zero   NewObb3D(0, 0, 0, 0, 0, 0, Quat_Identity)
+#endif
 
 // +--------------------------------------------------------------+
 // |                 Simple Conversions and Casts                 |
