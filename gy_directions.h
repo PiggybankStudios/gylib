@@ -167,6 +167,22 @@ v3i ToVec3i(Dir3_t dir3)
 	if (IsFlagSet(dir3, Dir3_Backward)) { result.z -= 1; }
 	return result;
 }
+v3 ToVec3(Axis_t axis)
+{
+	v3 result = {};
+	if (IsFlagSet(axis, Axis_X)) { result.x += 1.0f; }
+	if (IsFlagSet(axis, Axis_Y)) { result.y += 1.0f; }
+	if (IsFlagSet(axis, Axis_Z)) { result.z += 1.0f; }
+	return result;
+}
+v3i ToVec3i(Axis_t axis)
+{
+	v3i result = {};
+	if (IsFlagSet(axis, Axis_X)) { result.x += 1; }
+	if (IsFlagSet(axis, Axis_Y)) { result.y += 1; }
+	if (IsFlagSet(axis, Axis_Z)) { result.z += 1; }
+	return result;
+}
 
 Dir2_t ToDir2(v2 vector)
 {

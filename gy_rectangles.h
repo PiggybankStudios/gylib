@@ -683,6 +683,7 @@ obb2 ToObb2D(rec rectangle)
 	result.x = rectangle.x + rectangle.width/2;
 	result.y = rectangle.y + rectangle.height/2;
 	result.size = rectangle.size;
+	result.rotation = 0;
 	return result;
 }
 box ToBox(boxi boundingBox)
@@ -696,6 +697,18 @@ box ToBox(boxi boundingBox)
 	result.depth  = (r32)boundingBox.depth;
 	return result;
 }
+#if OBB3D_AVAILABLE
+obb3 ToObb3D(box boundingBox)
+{
+	obb3 result;
+	result.x = boundingBox.x + boundingBox.width/2;
+	result.y = boundingBox.y + boundingBox.height/2;
+	result.z = boundingBox.z + boundingBox.depth/2;
+	result.size = boundingBox.size;
+	result.rotation = Quat_Identity;
+	return result;
+}
+#endif
 
 // +--------------------------------------------------------------+
 // |                Operator Overload Equivalents                 |
@@ -2311,6 +2324,7 @@ obb2 NewObb2D(v2 center, v2 size, r32 rotation)
 rec ToRec(reci rectangle)
 obb2 ToObb2D(rec rectangle)
 box ToBox(boxi boundingBox)
+obb3 ToObb3D(box boundingBox)
 rec RecShift(rec rectangle, r32 amountX, r32 amountY)
 rec RecScale(rec rectangle, r32 scalar)
 rec RecScale2(rec rectangle, r32 scaleX, r32 scaleY)
