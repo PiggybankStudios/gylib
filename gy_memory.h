@@ -38,6 +38,9 @@ Description:
 	(TODO: Add support for quickly taking a preallocated pntr and size and turning into a Buffer arena)
 */
 
+//TODO: Add some standard way to copy an arena, perform some operations that should leave no changes, and then compare the
+//      new state to the old state to find leaked allocations or inefficiencies in the arena implementation
+
 #ifndef _GY_MEMORY_H
 #define _GY_MEMORY_H
 
@@ -79,6 +82,7 @@ enum AllocAlignment_t
 	AllocAlignment_None    = 0,
 	AllocAlignment_4Bytes  = 4,
 	AllocAlignment_8Bytes  = 8,
+	AllocAlignment_16Bytes = 16,
 	AllocAlignment_64Bytes = 64,
 	AllocAlignment_Max = AllocAlignment_64Bytes,
 };
@@ -1235,6 +1239,12 @@ while(0)
 	NotNull(pntrToAssign);                           \
 	InPlaceNew(type, (pntrToAssign), ##__VA_ARGS__); \
 } while(0)
+#define ArenaDelete(type, pntr, arena) do   \
+{                                           \
+	(pntr)->~type();                        \
+	FreeMem((arena), (pntr), sizeof(type)); \
+	pntr = nullptr;                         \
+} while(0)
 
 #endif //  _GY_MEMORY_H
 
@@ -1254,6 +1264,7 @@ MemArenaType_Buffer
 AllocAlignment_None
 AllocAlignment_4Bytes
 AllocAlignment_8Bytes
+AllocAlignment_16Bytes
 AllocAlignment_64Bytes
 AllocAlignment_Max
 @Types
@@ -1305,6 +1316,7 @@ char* PrintInArena(MemArena_t* arena, const char* formatString, ...)
 int PrintVa_Measure(const char* formatString, va_list args)
 void PrintVa_Print(const char* formatString, va_list args, char* allocatedSpace, int previousResult)
 #define PrintInArenaVa(arena, resultName, resultLengthName, formatString)
+#define InPlaceNew(type, pntrToClass, ...)
 #define ArenaNew(type, pntrToAssign, arena, ...)
-#define InPlaceNew(pntrToClass, type, ...);
+#define ArenaDelete(type, pntr, arena)
 */

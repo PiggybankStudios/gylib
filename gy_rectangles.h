@@ -2316,6 +2316,7 @@ boxi
 @Functions
 rec NewRec(v2 topLeft, v2 size)
 rec NewRecCentered(v2 center, v2 size)
+rec NewRecBetween(r32 point1X, r32 point1Y, r32 point2X, r32 point2Y)
 reci NewReci(v2i topLeft, v2i size)
 box NewBox(v3 topLeft, v3 size)
 box NewBoxCentered(v3 center, v3 size)

@@ -129,6 +129,9 @@ extern void GyLibAssertFailure(const char* filePath, int lineNumber, const char*
 #define NotNull3Msg_(variable1, variable2, variable3, message)            AssertMsg_((variable1) != nullptr && (variable2) != nullptr && (variable3) != nullptr, (message))
 #define NotNull4Msg_(variable1, variable2, variable3, variable4, message) AssertMsg_((variable1) != nullptr && (variable2) != nullptr && (variable3) != nullptr && (variable4) != nullptr, (message))
 
+#define Unimplemented()  AssertMsg(false, "This code path is unimplemented!")
+#define Unimplemented_() AssertMsg_(false, "This code path is unimplemented!")
+
 #endif //  _GY_ASSERT_H
 
 // +--------------------------------------------------------------+
@@ -172,4 +175,6 @@ void GyLibAssertFailure(const char* filePath, int lineNumber, const char* funcNa
 #define NotNull2Msg_(variable1, variable2, message)
 #define NotNull3Msg_(variable1, variable2, variable3, message)
 #define NotNull4Msg_(variable1, variable2, variable3, variable4, message)
+#define Unimplemented()
+#define Unimplemented_()
 */
