@@ -494,6 +494,55 @@ Description:
 	}
 // +--------------------------------------------------------------+
 
+// +--------------------------------------------------------------+
+// |                        Monokai Colors                        |
+// +--------------------------------------------------------------+
+	#define NUM_PREDEF_MONOKAI_COLORS       20
+	
+	#define MonokaiBack_Value               0xFF3B3A32
+	#define MonokaiYellow_Value             0xFFE6DB74
+	#define MonokaiLightYellow_Value        0xFFFFE792
+	#define MonokaiFadedYellow_Value        0xFFFFEFB7
+	#define MonokaiPurple_Value             0xFFAE81FF
+	#define MonokaiLightPurple_Value        0xFFE777FF
+	#define MonokaiGreen_Value              0xFFA6E22E
+	#define MonokaiDarkGreen_Value          0xFF829520
+	#define MonokaiOrange_Value             0xFFFD971F
+	#define MonokaiBrown_Value              0xFF9D550F
+	#define MonokaiMagenta_Value            0xFFF92672
+	#define MonokaiRed_Value                0xFFF83333
+	#define MonokaiLightRed_Value           0xFFFF5959
+	#define MonokaiBlue_Value               0xFF66D9EF
+	#define MonokaiLightBlue_Value          0xFFA9FFFF
+	#define MonokaiWhite_Value              0xFFF8F8F2
+	#define MonokaiLightGray_Value          0xFFBBBBBB
+	#define MonokaiGray1_Value              0xFFAFAFA2
+	#define MonokaiGray2_Value              0xFF75715E
+	#define MonokaiDarkGray_Value           0xFF212121
+
+	#define MonokaiBack                     NewColor(MonokaiBack_Value)
+	#define MonokaiYellow                   NewColor(MonokaiYellow_Value)
+	#define MonokaiLightYellow              NewColor(MonokaiLightYellow_Value)
+	#define MonokaiFadedYellow              NewColor(MonokaiFadedYellow_Value)
+	#define MonokaiPurple                   NewColor(MonokaiPurple_Value)
+	#define MonokaiLightPurple              NewColor(MonokaiLightPurple_Value)
+	#define MonokaiGreen                    NewColor(MonokaiGreen_Value)
+	#define MonokaiDarkGreen                NewColor(MonokaiDarkGreen_Value)
+	#define MonokaiOrange                   NewColor(MonokaiOrange_Value)
+	#define MonokaiBrown                    NewColor(MonokaiBrown_Value)
+	#define MonokaiMagenta                  NewColor(MonokaiMagenta_Value)
+	#define MonokaiRed                      NewColor(MonokaiRed_Value)
+	#define MonokaiLightRed                 NewColor(MonokaiLightRed_Value)
+	#define MonokaiBlue                     NewColor(MonokaiBlue_Value)
+	#define MonokaiLightBlue                NewColor(MonokaiLightBlue_Value)
+	#define MonokaiWhite                    NewColor(MonokaiWhite_Value)
+	#define MonokaiLightGray                NewColor(MonokaiLightGray_Value)
+	#define MonokaiGray1                    NewColor(MonokaiGray1_Value)
+	#define MonokaiGray2                    NewColor(MonokaiGray2_Value)
+	#define MonokaiDarkGray                 NewColor(MonokaiDarkGray_Value)
+	
+// +--------------------------------------------------------------+
+
 #endif //  _GY_STANDARD_COLORS_H
 
 // +--------------------------------------------------------------+
@@ -716,6 +765,47 @@ PalBlackDark
 PalBlack
 PalBlackLight
 PalBlackLighter
+NUM_PREDEF_MONOKAI_COLORS
+MonokaiBack_Value
+MonokaiYellow_Value
+MonokaiLightYellow_Value
+MonokaiFadedYellow_Value
+MonokaiPurple_Value
+MonokaiLightPurple_Value
+MonokaiGreen_Value
+MonokaiDarkGreen_Value
+MonokaiOrange_Value
+MonokaiBrown_Value
+MonokaiMagenta_Value
+MonokaiRed_Value
+MonokaiLightRed_Value
+MonokaiBlue_Value
+MonokaiLightBlue_Value
+MonokaiWhite_Value
+MonokaiLightGray_Value
+MonokaiGray1_Value
+MonokaiGray2_Value
+MonokaiDarkGray_Value
+MonokaiBack
+MonokaiYellow
+MonokaiLightYellow
+MonokaiFadedYellow
+MonokaiPurple
+MonokaiLightPurple
+MonokaiGreen
+MonokaiDarkGreen
+MonokaiOrange
+MonokaiBrown
+MonokaiMagenta
+MonokaiRed
+MonokaiLightRed
+MonokaiBlue
+MonokaiLightBlue
+MonokaiWhite
+MonokaiLightGray
+MonokaiGray1
+MonokaiGray2
+MonokaiDarkGray
 @Types
 @Functions
 Color_t GetPureColorByIndex(u64 index)

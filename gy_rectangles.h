@@ -2255,6 +2255,31 @@ obb2 Obb2Line(v2 start, v2 end, r32 thickness)
 	return result;
 }
 
+bool RecsIntersect(rec rectangle1, rec rectangle2, bool inclusive = true)
+{
+	if (inclusive)
+	{
+		if (rectangle1.x <= rectangle2.x + rectangle2.width &&
+			rectangle1.x + rectangle1.width >= rectangle2.x &&
+			rectangle1.y <= rectangle2.y + rectangle2.height &&
+			rectangle1.y + rectangle1.height >= rectangle2.y)
+		{
+			return true;
+		}
+	}
+	else
+	{
+		if (rectangle1.x < rectangle2.x + rectangle2.width &&
+			rectangle1.x + rectangle1.width > rectangle2.x &&
+			rectangle1.y < rectangle2.y + rectangle2.height &&
+			rectangle1.y + rectangle1.height > rectangle2.y)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 // +--------------------------------------------------------------+
 // |                      Operator Overloads                      |
 // +--------------------------------------------------------------+
@@ -2442,4 +2467,6 @@ bool IsInsideBoxi(boxi boundingBox, v3i point, bool includePositiveEdges = false
 bool IsInsideObb2D(obb2 rectangle, v2 point)
 v2 GetObb2DRelativePos(obb2 box, v2 point)
 v2 GetObb2DWorldPoint(obb2 box, v2 relativeOffset)
+obb2 Obb2Line(v2 start, v2 end, r32 thickness)
+bool RecsIntersect(rec rectangle1, rec rectangle2, bool inclusive = true)
 */

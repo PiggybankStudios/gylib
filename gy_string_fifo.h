@@ -51,13 +51,13 @@ struct StringFifo_t
 // +--------------------------------------------------------------+
 u64 GetFifoLineTotalSize(const StringFifoLine_t* line)
 {
-	NotNull(line);
+	NotNull_(line);
 	return sizeof(StringFifoLine_t) + line->metaStructSize + line->metaStringLength+1 + line->textLength+1;
 }
 void* GetFifoLineMetaStruct_(StringFifoLine_t* line, u64 expectedStructSize)
 {
-	NotNull(line);
-	Assert(line->metaStructSize == expectedStructSize);
+	NotNull_(line);
+	Assert_(line->metaStructSize == expectedStructSize);
 	return (void*)(line + 1);
 }
 const void* GetFifoLineMetaStruct_(const StringFifoLine_t* line, u64 expectedStructSize) //const-variant
@@ -68,7 +68,7 @@ const void* GetFifoLineMetaStruct_(const StringFifoLine_t* line, u64 expectedStr
 #define GetFifoLineMetaStruct(linePntr, type) (type*)GetFifoLineMetaStruct_((linePntr), sizeof(type))
 MyStr_t GetFifoLineMetaString(const StringFifoLine_t* line)
 {
-	NotNull(line);
+	NotNull_(line);
 	MyStr_t result;
 	result.pntr = (char*)(line + 1) + line->metaStructSize;
 	result.length = line->metaStringLength;
@@ -76,7 +76,7 @@ MyStr_t GetFifoLineMetaString(const StringFifoLine_t* line)
 }
 MyStr_t GetFifoLineText(const StringFifoLine_t* line)
 {
-	NotNull(line);
+	NotNull_(line);
 	MyStr_t result;
 	result.pntr = (char*)(line + 1) + line->metaStructSize + line->metaStringLength+1;
 	result.length = line->textLength;
@@ -84,22 +84,22 @@ MyStr_t GetFifoLineText(const StringFifoLine_t* line)
 }
 const void* GetFifoLineEndPntr(const StringFifoLine_t* line)
 {
-	NotNull(line);
+	NotNull_(line);
 	return (const void*)((const char*)(line + 1) + line->metaStructSize + line->metaStringLength+1 + line->textLength+1);
 }
 
 u64 GetStringFifoPntrIndex(const StringFifo_t* fifo, const void* pntr)
 {
-	NotNull(fifo);
-	NotNull(pntr);
-	Assert(((const u8*)pntr) >= fifo->buffer && ((const u8*)pntr) < fifo->buffer + fifo->bufferSize);
+	NotNull_(fifo);
+	NotNull_(pntr);
+	Assert_(((const u8*)pntr) >= fifo->buffer && ((const u8*)pntr) < fifo->buffer + fifo->bufferSize);
 	return (u64)(((const u8*)pntr) - ((const u8*)fifo->buffer));
 }
 u64 GetStringFifoTailIndex(const StringFifo_t* fifo)
 {
 	if (fifo->firstLine == nullptr)
 	{
-		Assert(fifo->lastLine == nullptr);
+		Assert_(fifo->lastLine == nullptr);
 		return 0;
 	}
 	return GetStringFifoPntrIndex(fifo, fifo->firstLine);
@@ -108,7 +108,7 @@ u64 GetStringFifoHeadIndex(const StringFifo_t* fifo)
 {
 	if (fifo->lastLine == nullptr)
 	{
-		Assert(fifo->firstLine == nullptr);
+		Assert_(fifo->firstLine == nullptr);
 		return 0;
 	}
 	return GetStringFifoPntrIndex(fifo, GetFifoLineEndPntr((const StringFifoLine_t*)fifo->lastLine));
@@ -119,7 +119,7 @@ u64 GetStringFifoHeadIndex(const StringFifo_t* fifo)
 // +--------------------------------------------------------------+
 void DestroyStringFifo(StringFifo_t* fifo)
 {
-	NotNull(fifo);
+	NotNull_(fifo);
 	if (fifo->allocArena != nullptr)
 	{
 		FreeMem(fifo->allocArena, fifo->buffer);
@@ -129,9 +129,9 @@ void DestroyStringFifo(StringFifo_t* fifo)
 
 void CreateStringFifo(StringFifo_t* fifo, u64 bufferSize, u8* bufferPntr)
 {
-	NotNull(fifo);
-	NotNull(bufferPntr);
-	Assert(bufferSize > 0);
+	NotNull_(fifo);
+	NotNull_(bufferPntr);
+	Assert_(bufferSize > 0);
 	ClearPointer(fifo);
 	fifo->allocArena = nullptr;
 	fifo->bufferSize = bufferSize;
@@ -144,8 +144,8 @@ void CreateStringFifo(StringFifo_t* fifo, u64 bufferSize, u8* bufferPntr)
 }
 void CreateStringFifoInArena(StringFifo_t* fifo, MemArena_t* memArena, u64 bufferSize)
 {
-	NotNull(fifo);
-	Assert(bufferSize > 0);
+	NotNull_(fifo);
+	Assert_(bufferSize > 0);
 	ClearPointer(fifo);
 	fifo->allocArena = memArena;
 	fifo->bufferSize = bufferSize;
@@ -156,17 +156,17 @@ void CreateStringFifoInArena(StringFifo_t* fifo, MemArena_t* memArena, u64 buffe
 	fifo->nextLineNumber = 1;
 	
 	fifo->buffer = AllocArray(memArena, u8, bufferSize);
-	NotNull(fifo->buffer);
+	NotNull_(fifo->buffer);
 	MyMemSet(&fifo->buffer[0], 0x00, bufferSize);
 }
 
 void StringFifoPopLine(StringFifo_t* fifo)
 {
-	NotNull(fifo);
-	Assert(fifo->numLines > 0);
-	NotNull(fifo->buffer);
-	NotNull(fifo->firstLine);
-	NotNull(fifo->lastLine);
+	NotNull_(fifo);
+	Assert_(fifo->numLines > 0);
+	NotNull_(fifo->buffer);
+	NotNull_(fifo->firstLine);
+	NotNull_(fifo->lastLine);
 	
 	//TODO: Add a callback to let the code that manages this fifo know that a line is getting popped off
 	
@@ -183,14 +183,14 @@ void StringFifoPopLine(StringFifo_t* fifo)
 	{
 		fifo->lastLine = nullptr;
 	}
-	Assert(fifo->used >= poppedLineSize);
+	Assert_(fifo->used >= poppedLineSize);
 	fifo->used -= poppedLineSize;
 }
 
 StringFifoLine_t* StringFifoPushLineExt(StringFifo_t* fifo, MyStr_t text, u64 metaStructSize, const void* metaStructPntr, MyStr_t metaString)
 {
-	NotNull(fifo);
-	NotNull(fifo->buffer);
+	NotNull_(fifo);
+	NotNull_(fifo->buffer);
 	NotNullStr(&text);
 	NotNullStr(&metaString);
 	
@@ -211,13 +211,14 @@ StringFifoLine_t* StringFifoPushLineExt(StringFifo_t* fifo, MyStr_t text, u64 me
 	while (fifo->numLines > 0 || !triedEmptyArena)
 	{
 		if (fifo->numLines == 0) { triedEmptyArena = true; }
+		DebugAssert_(fifo->used <= fifo->bufferSize);
 		
 		u64 fifoHeadIndex = GetStringFifoHeadIndex(fifo);
 		u64 fifoTailIndex = GetStringFifoTailIndex(fifo);
 		
 		u64 nextAvailableSize = 0;
 		u64 otherAvailableSize = 0;
-		if (fifoHeadIndex >= fifoTailIndex)
+		if (fifoHeadIndex > fifoTailIndex || (fifoHeadIndex == fifoTailIndex && fifo->numLines == 0))
 		{
 			//other   T      H   next
 			//[-------<######>------]
@@ -227,7 +228,8 @@ StringFifoLine_t* StringFifoPushLineExt(StringFifo_t* fifo, MyStr_t text, u64 me
 		else
 		{
 			//     H  next   T       (no other)
-			//[####>---------<######]
+			//[####>---------<######] 
+			// (also includes scenario where we are perfectly caught up with our tail)
 			nextAvailableSize = fifoTailIndex - fifoHeadIndex;
 			otherAvailableSize = 0;
 		}
@@ -242,6 +244,7 @@ StringFifoLine_t* StringFifoPushLineExt(StringFifo_t* fifo, MyStr_t text, u64 me
 			fifo->numLines++;
 			fifo->lastLine = result;
 			fifo->used += allocationSize;
+			Assert_(fifo->used <= fifo->bufferSize);
 			break;
 		}
 		else if (otherAvailableSize >= allocationSize)
@@ -254,6 +257,7 @@ StringFifoLine_t* StringFifoPushLineExt(StringFifo_t* fifo, MyStr_t text, u64 me
 			fifo->numLines++;
 			fifo->lastLine = result;
 			fifo->used += allocationSize;
+			Assert_(fifo->used <= fifo->bufferSize);
 			break;
 		}
 		else
@@ -291,6 +295,8 @@ StringFifoLine_t* StringFifoPushLineExt(StringFifo_t* fifo, MyStr_t text, u64 me
 		}
 	}
 	
+	DebugAssert_(fifo->firstLine == nullptr || fifo->firstLine->prev == nullptr);
+	DebugAssert_(fifo->lastLine == nullptr || fifo->lastLine->next == nullptr);
 	return result;
 }
 StringFifoLine_t* StringFifoPushLine(StringFifo_t* fifo, MyStr_t text)
