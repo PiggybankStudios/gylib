@@ -1966,6 +1966,15 @@ rec RecBoth(rec rectangle1, rec rectangle2)
 	result.height = MaxR32(rectangle1.y + rectangle1.height, rectangle2.y + rectangle2.height) - result.y;
 	return result;
 }
+rec RecOverlap(rec rectangle1, rec rectangle2)
+{
+	r32 minX = MaxR32(rectangle1.x, rectangle2.x);
+	r32 minY = MaxR32(rectangle1.y, rectangle2.y);
+	r32 maxX = MinR32(rectangle1.x+rectangle1.width, rectangle2.x+rectangle2.width);
+	r32 maxY = MinR32(rectangle1.y+rectangle1.height, rectangle2.y+rectangle2.height);
+	rec result = NewRec(minX, minY, MaxR32(maxX-minX, 0), MaxR32(maxY-minY, 0));
+	return result;
+}
 
 // +==============================+
 // |             Reci             |
@@ -2016,7 +2025,25 @@ reci ReciUninvert(reci rectangle)
 	result.height = AbsI32(rectangle.height);
 	return result;
 }
-//TODO: Add ReciBoth
+reci ReciBoth(reci rectangle1, reci rectangle2)
+{
+	reci result;
+	result.x = MinI32(rectangle1.x, rectangle2.x);
+	result.y = MinI32(rectangle1.y, rectangle2.y);
+	result.width = MaxI32(rectangle1.x + rectangle1.width, rectangle2.x + rectangle2.width) - result.x;
+	result.height = MaxI32(rectangle1.y + rectangle1.height, rectangle2.y + rectangle2.height) - result.y;
+	return result;
+}
+reci ReciOverlap(reci rectangle1, reci rectangle2)
+{
+	i32 minX = MaxI32(rectangle1.x, rectangle2.x);
+	i32 minY = MaxI32(rectangle1.y, rectangle2.y);
+	i32 maxX = MinI32(rectangle1.x+rectangle1.width, rectangle2.x+rectangle2.width);
+	i32 maxY = MinI32(rectangle1.y+rectangle1.height, rectangle2.y+rectangle2.height);
+	reci result = NewReci(minX, minY, MaxI32(maxX-minX, 0), MaxI32(maxY-minY, 0));
+	return result;
+}
+
 
 // +==============================+
 // |             Box              |
@@ -2088,7 +2115,7 @@ box BoxUninvert(box boundingBox)
 	result.depth = AbsR32(boundingBox.depth);
 	return result;
 }
-//TODO: Add BoxBoth
+//TODO: Add BoxBoth and BoxOverlap
 
 // +==============================+
 // |             Boxi             |
@@ -2160,7 +2187,7 @@ boxi BoxiUninvert(boxi boundingBox)
 	result.depth = AbsI32(boundingBox.depth);
 	return result;
 }
-//TODO: Add BoxiBoth
+//TODO: Add BoxiBoth and BoxiOverlap
 
 // +==============================+
 // |            Obb2D             |
@@ -2396,57 +2423,57 @@ void RecLayoutBetweenY(rec* rectangleOut, r32 topSide, r32 bottomSide, r32 topMa
 {
 	DebugAssert_(rectangleOut != nullptr);
 	rectangleOut->y = topSide + topMargin;
-	rectangleOut->height = MaxR32(minHeight, bottomSide - bottomMargin - rectangleOut->x);
+	rectangleOut->height = MaxR32(minHeight, bottomSide - bottomMargin - rectangleOut->y);
 }
 
-void RecLayoutLeftPortionOf(rec* rectangleOut, rec* otherRectangle, r32 portionWidth, bool shrinkOtherRec = false)
+void RecLayoutLeftPortionOf(rec* rectangleOut, rec* otherRectangle, r32 portionWidth, bool shrinkOtherRec = false, r32 offsetAmount = 0)
 {
 	DebugAssert_(rectangleOut != nullptr);
-	rectangleOut->x = otherRectangle->x;
+	rectangleOut->x = otherRectangle->x + offsetAmount;
 	rectangleOut->y = otherRectangle->y;
 	rectangleOut->width = portionWidth;
 	rectangleOut->height = otherRectangle->height;
 	if (shrinkOtherRec)
 	{
-		otherRectangle->x += portionWidth;
-		otherRectangle->width -= portionWidth;
+		otherRectangle->x += portionWidth + offsetAmount;
+		otherRectangle->width -= portionWidth + offsetAmount;
 	}
 }
-void RecLayoutRightPortionOf(rec* rectangleOut, rec* otherRectangle, r32 portionWidth, bool shrinkOtherRec = false)
+void RecLayoutRightPortionOf(rec* rectangleOut, rec* otherRectangle, r32 portionWidth, bool shrinkOtherRec = false, r32 offsetAmount = 0)
 {
 	DebugAssert_(rectangleOut != nullptr);
-	rectangleOut->x = otherRectangle->x + otherRectangle->width - portionWidth;
+	rectangleOut->x = otherRectangle->x + otherRectangle->width - portionWidth - offsetAmount;
 	rectangleOut->y = otherRectangle->y;
 	rectangleOut->width = portionWidth;
 	rectangleOut->height = otherRectangle->height;
 	if (shrinkOtherRec)
 	{
-		otherRectangle->width -= portionWidth;
+		otherRectangle->width -= portionWidth + offsetAmount;
 	}
 }
-void RecLayoutTopPortionOf(rec* rectangleOut, rec* otherRectangle, r32 portionHeight, bool shrinkOtherRec = false)
+void RecLayoutTopPortionOf(rec* rectangleOut, rec* otherRectangle, r32 portionHeight, bool shrinkOtherRec = false, r32 offsetAmount = 0)
 {
 	DebugAssert_(rectangleOut != nullptr);
 	rectangleOut->x = otherRectangle->x;
-	rectangleOut->y = otherRectangle->y;
+	rectangleOut->y = otherRectangle->y + offsetAmount;
 	rectangleOut->width = otherRectangle->width;
 	rectangleOut->height = portionHeight;
 	if (shrinkOtherRec)
 	{
-		otherRectangle->y += portionHeight;
-		otherRectangle->height -= portionHeight;
+		otherRectangle->y += portionHeight + offsetAmount;
+		otherRectangle->height -= portionHeight + offsetAmount;
 	}
 }
-void RecLayoutBottomPortionOf(rec* rectangleOut, rec* otherRectangle, r32 portionHeight, bool shrinkOtherRec = false)
+void RecLayoutBottomPortionOf(rec* rectangleOut, rec* otherRectangle, r32 portionHeight, bool shrinkOtherRec = false, r32 offsetAmount = 0)
 {
 	DebugAssert_(rectangleOut != nullptr);
 	rectangleOut->x = otherRectangle->x;
-	rectangleOut->y = otherRectangle->y + otherRectangle->height - portionHeight;
+	rectangleOut->y = otherRectangle->y + otherRectangle->height - portionHeight - offsetAmount;
 	rectangleOut->width = otherRectangle->width;
 	rectangleOut->height = portionHeight;
 	if (shrinkOtherRec)
 	{
-		otherRectangle->height -= portionHeight;
+		otherRectangle->height -= portionHeight + offsetAmount;
 	}
 }
 
@@ -2671,11 +2698,14 @@ rec RecInvertX(rec rectangle)
 rec RecInvertY(rec rectangle)
 rec RecUninvert(rec rectangle)
 rec RecBoth(rec rectangle1, rec rectangle2)
+rec RecOverlap(rec rectangle1, rec rectangle2)
 reci ReciSquarify(reci rectangle, bool makeLarger = true)
 reci ReciInvert(reci rectangle)
 reci ReciInvertX(reci rectangle)
 reci ReciInvertY(reci rectangle)
 reci ReciUninvert(reci rectangle)
+reci ReciBoth(reci rectangle1, reci rectangle2)
+reci ReciOverlap(reci rectangle1, reci rectangle2)
 box BoxCubify(box boundingBox, bool makeLarger = true, bool center = true)
 box BoxInvert(box boundingBox)
 box BoxInvertX(box boundingBox)
@@ -2708,10 +2738,10 @@ void RecLayoutRightOf(rec* rectangleOut, r32 posOfThingToLeft, r32 leftPadding =
 void RecLayoutBottomOf(rec* rectangleOut, r32 posOfThingUpwards, r32 topPadding = 0.0f)
 void RecLayoutBetweenX(rec* rectangleOut, r32 leftSide, r32 rightSide, r32 leftMargin = 0, r32 rightMargin = 0, r32 minWidth = 0)
 void RecLayoutBetweenY(rec* rectangleOut, r32 topSide, r32 bottomSide, r32 topMargin = 0, r32 bottomMargin = 0, r32 minHeight = 0)
-void RecLayoutLeftPortionOf(rec* rectangleOut, rec* otherRectangle, r32 portionWidth, bool shrinkOtherRec = false)
-void RecLayoutRightPortionOf(rec* rectangleOut, rec* otherRectangle, r32 portionWidth, bool shrinkOtherRec = false)
-void RecLayoutTopPortionOf(rec* rectangleOut, rec* otherRectangle, r32 portionHeight, bool shrinkOtherRec = false)
-void RecLayoutBottomPortionOf(rec* rectangleOut, rec* otherRectangle, r32 portionHeight, bool shrinkOtherRec = false)
+void RecLayoutLeftPortionOf(rec* rectangleOut, rec* otherRectangle, r32 portionWidth, bool shrinkOtherRec = false, r32 offsetAmount = 0)
+void RecLayoutRightPortionOf(rec* rectangleOut, rec* otherRectangle, r32 portionWidth, bool shrinkOtherRec = false, r32 offsetAmount = 0)
+void RecLayoutTopPortionOf(rec* rectangleOut, rec* otherRectangle, r32 portionHeight, bool shrinkOtherRec = false, r32 offsetAmount = 0)
+void RecLayoutBottomPortionOf(rec* rectangleOut, rec* otherRectangle, r32 portionHeight, bool shrinkOtherRec = false, r32 offsetAmount = 0)
 void RecLayoutVerticalCenter(rec* rectangleOut, rec otherRectangle, r32 percentage = 0.5f)
 void RecLayoutHorizontalCenter(rec* rectangleOut, rec otherRectangle, r32 percentage = 0.5f)
 v2 GetObb2DRelativePos(obb2 box, v2 point)
