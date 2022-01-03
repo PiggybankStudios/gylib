@@ -1320,6 +1320,31 @@ v4i Vec4iClamp(v4i vector, v4i min, v4i max)
 }
 
 // +--------------------------------------------------------------+
+// |             Quickhand Functions for Layout Code              |
+// +--------------------------------------------------------------+
+void Vec2Align(v2* vectorOut, r32 alignmentScale = 1.0f)
+{
+	DebugAssert_(vectorOut != nullptr);
+	vectorOut->x = RoundR32(vectorOut->x * alignmentScale) / alignmentScale;
+	vectorOut->y = RoundR32(vectorOut->y * alignmentScale) / alignmentScale;
+}
+void Vec3Align(v3* vectorOut, r32 alignmentScale = 1.0f)
+{
+	DebugAssert_(vectorOut != nullptr);
+	vectorOut->x = RoundR32(vectorOut->x * alignmentScale) / alignmentScale;
+	vectorOut->y = RoundR32(vectorOut->y * alignmentScale) / alignmentScale;
+	vectorOut->z = RoundR32(vectorOut->z * alignmentScale) / alignmentScale;
+}
+void Vec4Align(v4* vectorOut, r32 alignmentScale = 1.0f)
+{
+	DebugAssert_(vectorOut != nullptr);
+	vectorOut->x = RoundR32(vectorOut->x * alignmentScale) / alignmentScale;
+	vectorOut->y = RoundR32(vectorOut->y * alignmentScale) / alignmentScale;
+	vectorOut->z = RoundR32(vectorOut->z * alignmentScale) / alignmentScale;
+	vectorOut->w = RoundR32(vectorOut->w * alignmentScale) / alignmentScale;
+}
+
+// +--------------------------------------------------------------+
 // |                      Operator Overloads                      |
 // +--------------------------------------------------------------+
 inline v2 operator - (v2 vector)               { return NewVec2(-vector.x, -vector.y); }
@@ -1587,4 +1612,7 @@ r32 Vec4iLength(v4i vector)
 v4 Vec4iNormalize(v4i vector)
 i32 Vec4iDeterminant(v4i left, v4i right)
 v4i Vec4iClamp(v4i vector, v4i min, v4i max)
+void Vec2Align(v2* vectorOut, r32 alignmentScale = 1.0f)
+void Vec3Align(v3* vectorOut, r32 alignmentScale = 1.0f)
+void Vec4Align(v4* vectorOut, r32 alignmentScale = 1.0f)
 */

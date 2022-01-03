@@ -1043,6 +1043,42 @@ rec RecExpandY(rec rectangle, r32 extraHeight)
 	result.height = rectangle.height + extraHeight;
 	return result;
 }
+rec RecExpandLeft(rec rectangle, r32 extraLeft)
+{
+	rec result;
+	result.x = rectangle.x - extraLeft;
+	result.y = rectangle.y;
+	result.width = rectangle.width + extraLeft;
+	result.height = rectangle.height;
+	return result;
+}
+rec RecExpandRight(rec rectangle, r32 extraRight)
+{
+	rec result;
+	result.x = rectangle.x;
+	result.y = rectangle.y;
+	result.width = rectangle.width + extraRight;
+	result.height = rectangle.height;
+	return result;
+}
+rec RecExpandUp(rec rectangle, r32 extraUp)
+{
+	rec result;
+	result.x = rectangle.x;
+	result.y = rectangle.y - extraUp;
+	result.width = rectangle.width;
+	result.height = rectangle.height + extraUp;
+	return result;
+}
+rec RecExpandDown(rec rectangle, r32 extraDown)
+{
+	rec result;
+	result.x = rectangle.x;
+	result.y = rectangle.y;
+	result.width = rectangle.width + extraDown;
+	result.height = rectangle.height;
+	return result;
+}
 rec RecRetract(rec rectangle, r32 subWidth, r32 subHeight)
 {
 	rec result;
@@ -1181,6 +1217,42 @@ reci ReciExpandY(reci rectangle, i32 extraHeight)
 	result.topLeft = rectangle.topLeft;
 	result.width = rectangle.width;
 	result.height = rectangle.height + extraHeight;
+	return result;
+}
+reci ReciExpandLeft(reci rectangle, i32 extraLeft)
+{
+	reci result;
+	result.x = rectangle.x - extraLeft;
+	result.y = rectangle.y;
+	result.width = rectangle.width + extraLeft;
+	result.height = rectangle.height;
+	return result;
+}
+reci ReciExpandRight(reci rectangle, i32 extraRight)
+{
+	reci result;
+	result.x = rectangle.x;
+	result.y = rectangle.y;
+	result.width = rectangle.width + extraRight;
+	result.height = rectangle.height;
+	return result;
+}
+reci ReciExpandUp(reci rectangle, i32 extraUp)
+{
+	reci result;
+	result.x = rectangle.x;
+	result.y = rectangle.y - extraUp;
+	result.width = rectangle.width;
+	result.height = rectangle.height + extraUp;
+	return result;
+}
+reci ReciExpandDown(reci rectangle, i32 extraDown)
+{
+	reci result;
+	result.x = rectangle.x;
+	result.y = rectangle.y;
+	result.width = rectangle.width + extraDown;
+	result.height = rectangle.height;
 	return result;
 }
 reci ReciRetract(reci rectangle, i32 subWidth, i32 subHeight)
@@ -2156,6 +2228,31 @@ bool IsInsideRec(rec rectangle, v2i point)
 	return IsInsideRec(rectangle, ToVec2(point));
 }
 
+bool RecsIntersect(rec rectangle1, rec rectangle2, bool inclusive = true)
+{
+	if (inclusive)
+	{
+		if (rectangle1.x <= rectangle2.x + rectangle2.width &&
+			rectangle1.x + rectangle1.width >= rectangle2.x &&
+			rectangle1.y <= rectangle2.y + rectangle2.height &&
+			rectangle1.y + rectangle1.height >= rectangle2.y)
+		{
+			return true;
+		}
+	}
+	else
+	{
+		if (rectangle1.x < rectangle2.x + rectangle2.width &&
+			rectangle1.x + rectangle1.width > rectangle2.x &&
+			rectangle1.y < rectangle2.y + rectangle2.height &&
+			rectangle1.y + rectangle1.height > rectangle2.y)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 // +==============================+
 // |             Reci             |
 // +==============================+
@@ -2225,6 +2322,159 @@ bool IsInsideObb2D(obb2 rectangle, v2 point)
 //TODO: Add Obb3D functions
 
 // +--------------------------------------------------------------+
+// |             Quickhand Functions for Layout Code              |
+// +--------------------------------------------------------------+
+void RecAlign(rec* rectangleOut, r32 alignmentScale = 1.0f)
+{
+	DebugAssert_(rectangleOut != nullptr);
+	//NOTE: We do something a little more special than just rounding in this scenario
+	//      We might round up the width/height even if on their own they would round down but
+	//      if the x/y coordinate contributes enough it can round to the closest value up
+	r32 resultX = RoundR32(rectangleOut->x * alignmentScale) / alignmentScale;
+	r32 resultY = RoundR32(rectangleOut->y * alignmentScale) / alignmentScale;
+	r32 resultWidth = RoundR32((rectangleOut->x + rectangleOut->width) * alignmentScale) / alignmentScale - resultX;
+	r32 resultHeight = RoundR32((rectangleOut->y + rectangleOut->height) * alignmentScale) / alignmentScale - resultY;
+	rectangleOut->x = resultX;
+	rectangleOut->y = resultY;
+	rectangleOut->width = resultWidth;
+	rectangleOut->height = resultHeight;
+}
+void RecAlignTopLeft(rec* rectangleOut, r32 alignmentScale = 1.0f)
+{
+	DebugAssert_(rectangleOut != nullptr);
+	rectangleOut->x = RoundR32(rectangleOut->x * alignmentScale) / alignmentScale;
+	rectangleOut->y = RoundR32(rectangleOut->y * alignmentScale) / alignmentScale;
+}
+void RecAlignSize(rec* rectangleOut, r32 alignmentScale = 1.0f)
+{
+	DebugAssert_(rectangleOut != nullptr);
+	rectangleOut->width = RoundR32(rectangleOut->width * alignmentScale) / alignmentScale;
+	rectangleOut->height = RoundR32(rectangleOut->height * alignmentScale) / alignmentScale;
+}
+
+//This assumes the width is already calculated
+void RecLayoutLeftOf(rec* rectangleOut, r32 posOfThingToRight, r32 rightPadding = 0.0f)
+{
+	DebugAssert_(rectangleOut != nullptr);
+	rectangleOut->x = posOfThingToRight - rightPadding - rectangleOut->width;
+}
+//This assumes the height is already calculated
+void RecLayoutTopOf(rec* rectangleOut, r32 posOfThingDownwards, r32 bottomPadding = 0.0f)
+{
+	DebugAssert_(rectangleOut != nullptr);
+	rectangleOut->y = posOfThingDownwards - bottomPadding - rectangleOut->height;
+}
+
+void RecLayoutRightOf(rec* rectangleOut, r32 posOfThingToLeft, r32 leftPadding = 0.0f)
+{
+	DebugAssert_(rectangleOut != nullptr);
+	rectangleOut->x = posOfThingToLeft + leftPadding;
+}
+void RecLayoutRightOf(rec* rectangleOut, rec recToLeft, r32 leftPadding = 0.0f)
+{
+	DebugAssert_(rectangleOut != nullptr);
+	rectangleOut->x = recToLeft.x + recToLeft.width + leftPadding;
+}
+void RecLayoutBottomOf(rec* rectangleOut, r32 posOfThingUpwards, r32 topPadding = 0.0f)
+{
+	DebugAssert_(rectangleOut != nullptr);
+	rectangleOut->y = posOfThingUpwards + topPadding;
+}
+void RecLayoutBottomOf(rec* rectangleOut, rec recUpwards, r32 topPadding = 0.0f)
+{
+	DebugAssert_(rectangleOut != nullptr);
+	rectangleOut->y = recUpwards.y + recUpwards.height + topPadding;
+}
+
+void RecLayoutBetweenX(rec* rectangleOut, r32 leftSide, r32 rightSide, r32 leftMargin = 0, r32 rightMargin = 0, r32 minWidth = 0)
+{
+	DebugAssert_(rectangleOut != nullptr);
+	rectangleOut->x = leftSide + leftMargin;
+	rectangleOut->width = MaxR32(minWidth, rightSide - rightMargin - rectangleOut->x);
+}
+void RecLayoutBetweenY(rec* rectangleOut, r32 topSide, r32 bottomSide, r32 topMargin = 0, r32 bottomMargin = 0, r32 minHeight = 0)
+{
+	DebugAssert_(rectangleOut != nullptr);
+	rectangleOut->y = topSide + topMargin;
+	rectangleOut->height = MaxR32(minHeight, bottomSide - bottomMargin - rectangleOut->x);
+}
+
+void RecLayoutLeftPortionOf(rec* rectangleOut, rec* otherRectangle, r32 portionWidth, bool shrinkOtherRec = false)
+{
+	DebugAssert_(rectangleOut != nullptr);
+	rectangleOut->x = otherRectangle->x;
+	rectangleOut->y = otherRectangle->y;
+	rectangleOut->width = portionWidth;
+	rectangleOut->height = otherRectangle->height;
+	if (shrinkOtherRec)
+	{
+		otherRectangle->x += portionWidth;
+		otherRectangle->width -= portionWidth;
+	}
+}
+void RecLayoutRightPortionOf(rec* rectangleOut, rec* otherRectangle, r32 portionWidth, bool shrinkOtherRec = false)
+{
+	DebugAssert_(rectangleOut != nullptr);
+	rectangleOut->x = otherRectangle->x + otherRectangle->width - portionWidth;
+	rectangleOut->y = otherRectangle->y;
+	rectangleOut->width = portionWidth;
+	rectangleOut->height = otherRectangle->height;
+	if (shrinkOtherRec)
+	{
+		otherRectangle->width -= portionWidth;
+	}
+}
+void RecLayoutTopPortionOf(rec* rectangleOut, rec* otherRectangle, r32 portionHeight, bool shrinkOtherRec = false)
+{
+	DebugAssert_(rectangleOut != nullptr);
+	rectangleOut->x = otherRectangle->x;
+	rectangleOut->y = otherRectangle->y;
+	rectangleOut->width = otherRectangle->width;
+	rectangleOut->height = portionHeight;
+	if (shrinkOtherRec)
+	{
+		otherRectangle->y += portionHeight;
+		otherRectangle->height -= portionHeight;
+	}
+}
+void RecLayoutBottomPortionOf(rec* rectangleOut, rec* otherRectangle, r32 portionHeight, bool shrinkOtherRec = false)
+{
+	DebugAssert_(rectangleOut != nullptr);
+	rectangleOut->x = otherRectangle->x;
+	rectangleOut->y = otherRectangle->y + otherRectangle->height - portionHeight;
+	rectangleOut->width = otherRectangle->width;
+	rectangleOut->height = portionHeight;
+	if (shrinkOtherRec)
+	{
+		otherRectangle->height -= portionHeight;
+	}
+}
+
+//This assumes height has already been calculated
+void RecLayoutVerticalCenter(rec* rectangleOut, r32 posToCenterTo, r32 percentage = 0.5f)
+{
+	DebugAssert_(rectangleOut != nullptr);
+	rectangleOut->y = posToCenterTo - rectangleOut->height*percentage;
+}
+//This assumes height has already been calculated
+void RecLayoutVerticalCenter(rec* rectangleOut, rec otherRectangle, r32 percentage = 0.5f)
+{
+	DebugAssert_(rectangleOut != nullptr);
+	rectangleOut->y = otherRectangle.y + otherRectangle.height*percentage - rectangleOut->height*percentage;
+}
+//This assumes width has already been calculated
+void RecLayoutHorizontalCenter(rec* rectangleOut, r32 posToCenterTo, r32 percentage = 0.5f)
+{
+	DebugAssert_(rectangleOut != nullptr);
+	rectangleOut->x = posToCenterTo - rectangleOut->width*percentage;
+}
+void RecLayoutHorizontalCenter(rec* rectangleOut, rec otherRectangle, r32 percentage = 0.5f)
+{
+	DebugAssert_(rectangleOut != nullptr);
+	rectangleOut->x = otherRectangle.x + otherRectangle.width*percentage - rectangleOut->width*percentage;
+}
+
+// +--------------------------------------------------------------+
 // |                 Other Complicated Functions                  |
 // +--------------------------------------------------------------+
 v2 GetObb2DRelativePos(obb2 box, v2 point)
@@ -2253,31 +2503,6 @@ obb2 Obb2Line(v2 start, v2 end, r32 thickness)
 	result.rotation = AtanR32(end.y - start.y, end.x - start.x);
 	if (result.rotation < 0) { result.rotation += TwoPi32; }
 	return result;
-}
-
-bool RecsIntersect(rec rectangle1, rec rectangle2, bool inclusive = true)
-{
-	if (inclusive)
-	{
-		if (rectangle1.x <= rectangle2.x + rectangle2.width &&
-			rectangle1.x + rectangle1.width >= rectangle2.x &&
-			rectangle1.y <= rectangle2.y + rectangle2.height &&
-			rectangle1.y + rectangle1.height >= rectangle2.y)
-		{
-			return true;
-		}
-	}
-	else
-	{
-		if (rectangle1.x < rectangle2.x + rectangle2.width &&
-			rectangle1.x + rectangle1.width > rectangle2.x &&
-			rectangle1.y < rectangle2.y + rectangle2.height &&
-			rectangle1.y + rectangle1.height > rectangle2.y)
-		{
-			return true;
-		}
-	}
-	return false;
 }
 
 // +--------------------------------------------------------------+
@@ -2373,6 +2598,10 @@ bool Obb2DBasicallyEqual(obb2 left, obb2 right, r32 tolerance = 0.001f)
 rec RecExpand(rec rectangle, r32 extraWidth, r32 extraHeight)
 rec RecExpandX(rec rectangle, r32 extraWidth)
 rec RecExpandY(rec rectangle, r32 extraHeight)
+rec RecExpandLeft(rec rectangle, r32 extraLeft)
+rec RecExpandRight(rec rectangle, r32 extraRight)
+rec RecExpandUp(rec rectangle, r32 extraUp)
+rec RecExpandDown(rec rectangle, r32 extraDown)
 rec RecRetract(rec rectangle, r32 subWidth, r32 subHeight)
 rec RecRetractX(rec rectangle, r32 subWidth)
 rec RecRetractY(rec rectangle, r32 subHeight)
@@ -2385,6 +2614,10 @@ rec RecDeflateY(rec rectangle, r32 subHeight)
 reci ReciExpand(reci rectangle, i32 extraWidth, i32 extraHeight)
 reci ReciExpandX(reci rectangle, i32 extraWidth)
 reci ReciExpandY(reci rectangle, i32 extraHeight)
+reci ReciExpandLeft(reci rectangle, i32 extraLeft)
+reci ReciExpandRight(reci rectangle, i32 extraRight)
+reci ReciExpandUp(reci rectangle, i32 extraUp)
+reci ReciExpandDown(reci rectangle, i32 extraDown)
 reci ReciRetract(reci rectangle, i32 subWidth, i32 subHeight)
 reci ReciRetractX(reci rectangle, i32 subWidth)
 reci ReciRetractY(reci rectangle, i32 subHeight)
@@ -2461,12 +2694,27 @@ obb2 Obb2DInvertX(obb2 rectangle)
 obb2 Obb2DInvertY(obb2 rectangle)
 obb2 Obb2DUninvert(obb2 rectangle)
 bool IsInsideRec(rec rectangle, v2 point)
+bool RecsIntersect(rec rectangle1, rec rectangle2, bool inclusive = true)
 bool IsInsideReci(reci rectangle, v2i point, bool includePositiveEdges = false)
 bool IsInsideBox(box boundingBox, v3 point)
 bool IsInsideBoxi(boxi boundingBox, v3i point, bool includePositiveEdges = false)
 bool IsInsideObb2D(obb2 rectangle, v2 point)
+void RecAlign(rec* rectangleOut, r32 alignmentScale = 1.0f)
+void RecAlignTopLeft(rec* rectangleOut, r32 alignmentScale = 1.0f)
+void RecAlignSize(rec* rectangleOut, r32 alignmentScale = 1.0f)
+void RecLayoutLeftOf(rec* rectangleOut, r32 posOfThingToRight, r32 rightPadding = 0.0f)
+void RecLayoutTopOf(rec* rectangleOut, r32 posOfThingDownwards, r32 bottomPadding = 0.0f)
+void RecLayoutRightOf(rec* rectangleOut, r32 posOfThingToLeft, r32 leftPadding = 0.0f)
+void RecLayoutBottomOf(rec* rectangleOut, r32 posOfThingUpwards, r32 topPadding = 0.0f)
+void RecLayoutBetweenX(rec* rectangleOut, r32 leftSide, r32 rightSide, r32 leftMargin = 0, r32 rightMargin = 0, r32 minWidth = 0)
+void RecLayoutBetweenY(rec* rectangleOut, r32 topSide, r32 bottomSide, r32 topMargin = 0, r32 bottomMargin = 0, r32 minHeight = 0)
+void RecLayoutLeftPortionOf(rec* rectangleOut, rec* otherRectangle, r32 portionWidth, bool shrinkOtherRec = false)
+void RecLayoutRightPortionOf(rec* rectangleOut, rec* otherRectangle, r32 portionWidth, bool shrinkOtherRec = false)
+void RecLayoutTopPortionOf(rec* rectangleOut, rec* otherRectangle, r32 portionHeight, bool shrinkOtherRec = false)
+void RecLayoutBottomPortionOf(rec* rectangleOut, rec* otherRectangle, r32 portionHeight, bool shrinkOtherRec = false)
+void RecLayoutVerticalCenter(rec* rectangleOut, rec otherRectangle, r32 percentage = 0.5f)
+void RecLayoutHorizontalCenter(rec* rectangleOut, rec otherRectangle, r32 percentage = 0.5f)
 v2 GetObb2DRelativePos(obb2 box, v2 point)
 v2 GetObb2DWorldPoint(obb2 box, v2 relativeOffset)
 obb2 Obb2Line(v2 start, v2 end, r32 thickness)
-bool RecsIntersect(rec rectangle1, rec rectangle2, bool inclusive = true)
 */
