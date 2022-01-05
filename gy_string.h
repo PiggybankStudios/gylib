@@ -323,6 +323,41 @@ i32 StrCompareIgnoreCase(const char* str1, const char* str2, u64 compareLength)
 	return 0;
 }
 
+bool StrStartsWith(MyStr_t str, MyStr_t prefix, bool ignoreCase = false)
+{
+	NotNullStr_(&str);
+	NotNullStr_(&prefix);
+	if (prefix.length == 0) { return true; }
+	if (str.length < prefix.length) { return false; }
+	if (ignoreCase)
+	{
+		if (StrCompareIgnoreCase(str, prefix, prefix.length) == 0) { return true; }
+	}
+	else
+	{
+		if (MyStrCompare(str.pntr, prefix.pntr, prefix.length) == 0) { return true; }
+	}
+	return false;
+}
+bool StrStartsWith(MyStr_t str, const char* nullTermPrefixStr, bool ignoreCase = false)
+{
+	NotNull_(nullTermPrefixStr);
+	return StrStartsWith(str, NewStr(nullTermPrefixStr), ignoreCase);
+}
+bool StrStartsWith(const char* nullTermStr, MyStr_t prefix, bool ignoreCase = false)
+{
+	NotNull_(nullTermStr);
+	return StrStartsWith(NewStr(nullTermStr), prefix, ignoreCase);
+}
+bool StrStartsWith(const char* nullTermStr, const char* nullTermPrefixStr, bool ignoreCase = false)
+{
+	NotNull_(nullTermStr);
+	NotNull_(nullTermPrefixStr);
+	return StrStartsWith(NewStr(nullTermStr), NewStr(nullTermPrefixStr), ignoreCase);
+}
+
+//TODO: Add StrEndsWith
+
 MyStr_t* SplitString(MemArena_t* memArena, MyStr_t target, MyStr_t delineator, u64* numPiecesOut = nullptr, bool ignoreCase = false)
 {
 	NotNull(memArena);
@@ -633,12 +668,64 @@ u64 StrReplaceInPlace(MyStr_t str, const char* target, const char* replacement, 
 	return StrReplaceInPlace(str, NewStr(target), NewStr(replacement), ignoreCase);
 }
 
+// +--------------------------------------------------------------+
+// |                   Unicode String Functions                   |
+// +--------------------------------------------------------------+
 #ifdef _GY_UNICODE_H
 u8 GetCodepointForUtf8Str(MyStr_t str, u64 index, u32* codepointOut)
 {
 	Assert(index <= str.length);
 	return GetCodepointForUtf8(str.length - index, str.pntr + index, codepointOut);
 }
+
+MyStr_t ConvertWideStrToUtf8(MemArena_t* memArena, const wchar_t* wideStrPntr, u64 wideStrLength)
+{
+	Assert(wideStrPntr != nullptr || wideStrLength == 0);
+	MyStr_t result = MyStr_Empty;
+	u64 resultSize = 0;
+	for (u8 pass = 0; pass < 2; pass++)
+	{
+		u64 byteIndex = 0;
+		
+		u8 encodeBuffer[UTF8_MAX_CHAR_SIZE];
+		for (u64 cIndex = 0; cIndex < wideStrLength; cIndex++)
+		{
+			wchar_t wideChar = wideStrPntr[cIndex];
+			//TODO: Should we just straight convert wide characters to unicode points by casting to u32!?
+			u8 encodeSize = GetUtf8BytesForCode((u32)wideChar, &encodeBuffer[0], false);
+			if (encodeSize == 0)
+			{
+				return result;
+			}
+			if (result.pntr != nullptr)
+			{
+				Assert(result.length >= byteIndex + encodeSize);
+				MyMemCopy(&result.pntr[byteIndex], &encodeBuffer[0], encodeSize);
+			}
+			byteIndex += encodeSize;
+		}
+		
+		if (pass == 0)
+		{
+			result.length = byteIndex;
+			if (memArena == nullptr) { return result; }
+			result.pntr = AllocArray(memArena, char, result.length+1);
+			NotNull(result.pntr);
+		}
+		else
+		{
+			Assert(byteIndex == result.length);
+			result.pntr[result.length] = '\0';
+		}
+	}
+	return result;
+}
+MyStr_t ConvertWideStrToUtf8Nt(MemArena_t* memArena, const wchar_t* nullTermWideStr)
+{
+	NotNull(nullTermWideStr);
+	return ConvertWideStrToUtf8(memArena, nullTermWideStr, MyWideStrLength(nullTermWideStr));
+}
+
 #endif //_GY_UNICODE_H
 
 #endif //  _GY_STRING_H
@@ -671,6 +758,7 @@ MyStr_t StrSubstringLength(MyStr_t* target, u64 startIndex, u64 length)
 MyStr_t CombineStrs(MemArena_t* memArena, MyStr_t str1, MyStr_t str2)
 bool StrEquals(MyStr_t target, MyStr_t comparison)
 i32 StrCompareIgnoreCase(MyStr_t str1, MyStr_t str2)
+bool StrStartsWith(MyStr_t str, MyStr_t prefix, bool ignoreCase = false)
 MyStr_t* SplitString(MemArena_t* memArena, MyStr_t target, MyStr_t delineator, u64* numPiecesOut = nullptr, bool ignoreCase = false)
 u64 UnescapeQuotedStringInPlace(MyStr_t* target, bool removeQuotes = true, bool allowNewLineEscapes = true, bool allowOtherEscapeCodes = false)
 MyStr_t UnescapeQuotedStringInArena(MemArena_t* memArena, MyStr_t target, bool removeQuotes = true, bool allowNewLineEscapes = true, bool allowOtherEscapeCodes = false)
@@ -678,4 +766,6 @@ void SplitFilePath(MyStr_t fullPath, MyStr_t* directoryOut, MyStr_t* fileNameOut
 MyStr_t GetFileNamePart(MyStr_t filePath, bool includeExtension = true)
 u64 StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ignoreCase = false)
 u8 GetCodepointForUtf8Str(MyStr_t str, u64 index, u32* codepointOut)
+MyStr_t ConvertWideStrToUtf8(MemArena_t* memArena, const wchar_t* wideStrPntr, u64 wideStrLength)
+MyStr_t ConvertWideStrToUtf8Nt(MemArena_t* memArena, const wchar_t* nullTermWideStr)
 */

@@ -253,10 +253,32 @@ Color_t ColorLerp(Color_t start, Color_t end, r32 amount)
 	result.a = ClampI32toU8(RoundR32i(LerpR32((r32)start.a, (r32)end.a, amount)));
 	return result;
 }
+
+Color_t ColorDarken(Color_t color, u8 amount)
+{
+	Color_t result = color;
+	if (result.r > amount) { result.r -= amount; }
+	else { result.r = 0; }
+	if (result.g > amount) { result.g -= amount; }
+	else { result.g = 0; }
+	if (result.b > amount) { result.b -= amount; }
+	else { result.b = 0; }
+	return result;
+}
+Color_t ColorLighten(Color_t color, u8 amount)
+{
+	Color_t result = color;
+	if (result.r < 255 - amount) { result.r += amount; }
+	else { result.r = 255; }
+	if (result.g < 255 - amount) { result.g += amount; }
+	else { result.g = 255; }
+	if (result.b < 255 - amount) { result.b += amount; }
+	else { result.b = 255; }
+	return result;
+}
+
 //TODO: ColorMultiply
 //TODO: ColorMultiplyAlpha
-//TODO: ColorDarken
-//TODO: ColorLighten
 //TODO: ColorOpposite
 
 // +==============================+
@@ -271,6 +293,12 @@ Colorf_t ColorfLerp(Colorf_t start, Colorf_t end, r32 amount)
 	result.a = LerpR32(start.a, end.a, amount);
 	return result;
 }
+
+//TODO: ColorfMultiply
+//TODO: ColorfMultiplyAlpha
+//TODO: ColorfDarken
+//TODO: ColorfLighten
+//TODO: ColorfOpposite
 
 // +--------------------------------------------------------------+
 // |                   Color Space Conversions                    |
@@ -428,6 +456,8 @@ inline Color_t ColorTransparent(Color_t color, r32 alpha)
 inline Colorf_t ToColorf(Color_t color)
 inline ColorHSV_t ToColorHsv(v3 vector3)
 Color_t ColorLerp(Color_t start, Color_t end, r32 amount)
+Color_t ColorDarken(Color_t color, u8 amount)
+Color_t ColorLighten(Color_t color, u8 amount)
 Colorf_t ColorfLerp(Colorf_t start, Colorf_t end, r32 amount)
 Color_t ColorRGBFromHSV(ColorHSV_t colorHsv)
 ColorHSV_t ColorHSVFromRGB(Color_t color)
