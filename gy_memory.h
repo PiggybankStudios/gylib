@@ -395,6 +395,7 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 			{
 				HeapAllocPrefix_t* allocPntr = (HeapAllocPrefix_t*)allocBytePntr;
 				u8* allocAfterPrefixPntr = (allocBytePntr + sizeof(HeapAllocPrefix_t));
+				UNUSED(allocAfterPrefixPntr);
 				bool isAllocFilled = IsAllocPrefixFilled(allocPntr->size);
 				u64 allocSize = UnpackAllocPrefixSize(allocPntr->size);
 				if (allocSize < sizeof(HeapAllocPrefix_t))
@@ -403,6 +404,7 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 					return false;
 				}
 				u64 allocAfterPrefixSize = allocSize - sizeof(HeapAllocPrefix_t);
+				UNUSED(allocAfterPrefixSize);
 				if (isAllocFilled)
 				{
 					if (numFilledSections + 1 > arena->numAllocations)

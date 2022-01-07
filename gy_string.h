@@ -682,7 +682,6 @@ MyStr_t ConvertWideStrToUtf8(MemArena_t* memArena, const wchar_t* wideStrPntr, u
 {
 	Assert(wideStrPntr != nullptr || wideStrLength == 0);
 	MyStr_t result = MyStr_Empty;
-	u64 resultSize = 0;
 	for (u8 pass = 0; pass < 2; pass++)
 	{
 		u64 byteIndex = 0;

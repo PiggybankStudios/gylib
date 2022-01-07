@@ -445,6 +445,7 @@ void LinkedListClear_(LinkedList_t* list, u64 itemSize)
 {
 	NotNull(list);
 	NotNull(list->allocArena);
+	UNUSED(itemSize); //potentially can be unused by FreeMem
 	LinkedListNode_t* nodePntr = list->firstItem;
 	while (nodePntr != nullptr)
 	{
