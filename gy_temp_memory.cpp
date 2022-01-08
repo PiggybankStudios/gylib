@@ -45,6 +45,28 @@ static GetTempArena_f* GetTempArena = GetTempArena_Stub;
 #define TempPrintVa(resultName, resultLengthName, formatString) PrintInArenaVa(GetTempArena(), resultName, resultLengthName, formatString)
 #define TempPrintStr(formatString, ...) PrintInArenaStr(GetTempArena(), formatString, ##__VA_ARGS__)
 
+// +--------------------------------------------------------------+
+// |                        Format Macros                         |
+// +--------------------------------------------------------------+
+#if defined(_GY_TIME_H ) && defined(_GY_STRING_H)
+MyStr_t TempFormatRealTime(const RealTime_t* realTime, bool includeDayOfWeek = true, bool includeHourMinuteSecond = true, bool includeMonthDayYear = true)
+{
+	return FormatRealTime(realTime, TempArena, includeDayOfWeek, includeHourMinuteSecond, includeMonthDayYear);
+}
+const char* TempFormatRealTimeNt(const RealTime_t* realTime, bool includeDayOfWeek = true, bool includeHourMinuteSecond = true, bool includeMonthDayYear = true)
+{
+	return FormatRealTimeNt(realTime, TempArena, includeDayOfWeek, includeHourMinuteSecond, includeMonthDayYear);
+}
+MyStr_t TempFormatMilliseconds(u64 milliseconds)
+{
+	return FormatMilliseconds(milliseconds, TempArena);
+}
+const char* TempFormatMillisecondsNt(u64 milliseconds)
+{
+	return FormatMillisecondsNt(milliseconds, TempArena);
+}
+#endif //defined(_GY_TIME_H ) && defined(_GY_STRING_H)
+
 #endif //  _GY_TEMP_MEMORY_CPP
 
 // +--------------------------------------------------------------+
@@ -66,4 +88,8 @@ MemArena_t* GetTempArena()
 #define TempPrint(formatString, ...)
 #define TempPrintVa(resultName, resultLengthName, formatString)
 #define TempPrintStr(formatString, ...)
+MyStr_t TempFormatRealTime(const RealTime_t* realTime, bool includeDayOfWeek = true, bool includeHourMinuteSecond = true, bool includeMonthDayYear = true)
+const char* TempFormatRealTimeNt(const RealTime_t* realTime, bool includeDayOfWeek = true, bool includeHourMinuteSecond = true, bool includeMonthDayYear = true)
+MyStr_t TempFormatMilliseconds(u64 milliseconds)
+const char* TempFormatMillisecondsNt(u64 milliseconds)
 */

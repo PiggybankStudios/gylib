@@ -724,8 +724,150 @@ MyStr_t ConvertWideStrToUtf8Nt(MemArena_t* memArena, const wchar_t* nullTermWide
 	NotNull(nullTermWideStr);
 	return ConvertWideStrToUtf8(memArena, nullTermWideStr, MyWideStrLength(nullTermWideStr));
 }
-
 #endif //_GY_UNICODE_H
+
+// +--------------------------------------------------------------+
+// |                    Time String Functions                     |
+// +--------------------------------------------------------------+
+#ifdef _GY_TIME_H
+MyStr_t FormatRealTime(const RealTime_t* realTime, MemArena_t* memArena, bool includeDayOfWeek = true, bool includeHourMinuteSecond = true, bool includeMonthDayYear = true)
+{
+	NotNull(realTime);
+	NotNull(memArena);
+	MyStr_t result;
+	if (includeDayOfWeek)
+	{
+		if (includeHourMinuteSecond)
+		{
+			if (includeMonthDayYear)
+			{
+				result = PrintInArenaStr(memArena,
+					"%s %u:%02u:%02u%s (%s %s, %u)",
+					GetDayOfWeekStr(realTime->dayOfWeek),
+					Convert24HourTo12Hour(realTime->hour), realTime->minute, realTime->second,
+					IsPostMeridian(realTime->hour) ? "pm" : "am",
+					GetMonthStr(realTime->month), GetDayOfMonthString(realTime->day), realTime->year
+				);
+			}
+			else
+			{
+				result = PrintInArenaStr(memArena,
+					"%s %u:%02u:%02u%s",
+					GetDayOfWeekStr(realTime->dayOfWeek),
+					Convert24HourTo12Hour(realTime->hour), realTime->minute, realTime->second,
+					IsPostMeridian(realTime->hour) ? "pm" : "am"
+				);
+			}
+		}
+		else
+		{
+			if (includeMonthDayYear)
+			{
+				result = PrintInArenaStr(memArena,
+					"%s (%s %s, %u)",
+					GetDayOfWeekStr(realTime->dayOfWeek),
+					GetMonthStr(realTime->month), GetDayOfMonthString(realTime->day), realTime->year
+				);
+			}
+			else
+			{
+				result = PrintInArenaStr(memArena, "%s", GetDayOfWeekStr(realTime->dayOfWeek));
+			}
+		}
+	}
+	else
+	{
+		if (includeHourMinuteSecond)
+		{
+			if (includeMonthDayYear)
+			{
+				result = PrintInArenaStr(memArena,
+					"%u:%02u:%02u%s (%s %s, %u)",
+					Convert24HourTo12Hour(realTime->hour), realTime->minute, realTime->second,
+					IsPostMeridian(realTime->hour) ? "pm" : "am",
+					GetMonthStr(realTime->month), GetDayOfMonthString(realTime->day), realTime->year
+				);
+			}
+			else
+			{
+				result = PrintInArenaStr(memArena, "%u:%02u:%02u%s", Convert24HourTo12Hour(realTime->hour), realTime->minute, realTime->second, IsPostMeridian(realTime->hour) ? "pm" : "am");
+			}
+		}
+		else
+		{
+			if (includeMonthDayYear)
+			{
+				result = PrintInArenaStr(memArena, "(%s %s, %u)", GetMonthStr(realTime->month), GetDayOfMonthString(realTime->day), realTime->year);
+			}
+			else
+			{
+				return NewStringInArenaNt(memArena, "");
+			}
+		}
+	}
+	return result;
+}
+const char* FormatRealTimeNt(const RealTime_t* realTime, MemArena_t* memArena, bool includeDayOfWeek = true, bool includeHourMinuteSecond = true, bool includeMonthDayYear = true)
+{
+	return FormatRealTime(realTime, memArena, includeDayOfWeek, includeHourMinuteSecond, includeMonthDayYear).pntr;
+}
+
+MyStr_t FormatMilliseconds(u64 milliseconds, MemArena_t* memArena)
+{
+	NotNull(memArena);
+	if (milliseconds < NUM_MS_PER_DAY)
+	{
+		if (milliseconds < NUM_MS_PER_HOUR)
+		{
+			if (milliseconds < NUM_MS_PER_MINUTE)
+			{
+				if (milliseconds < NUM_MS_PER_SECOND)
+				{
+					return PrintInArenaStr(memArena, "%llums", milliseconds);
+				}
+				else
+				{
+					return PrintInArenaStr(memArena, "%llus %llums",
+						milliseconds/NUM_MS_PER_SECOND,
+						milliseconds%NUM_MS_PER_SECOND
+					);
+				}
+			}
+			else
+			{
+				return PrintInArenaStr(memArena, "%llum %llus %llums",
+					milliseconds/NUM_MS_PER_MINUTE,
+					(milliseconds%NUM_MS_PER_MINUTE)/NUM_MS_PER_SECOND,
+					milliseconds%NUM_MS_PER_SECOND
+				);
+			}
+		}
+		else
+		{
+			return PrintInArenaStr(memArena, "%lluh %llum %llus %llums",
+				milliseconds/NUM_MS_PER_HOUR,
+				(milliseconds%NUM_MS_PER_HOUR)/NUM_MS_PER_MINUTE,
+				(milliseconds%NUM_MS_PER_MINUTE)/NUM_MS_PER_SECOND,
+				milliseconds%NUM_MS_PER_SECOND
+			);
+		}
+	}
+	else
+	{
+		return PrintInArenaStr(memArena, "%llud %lluh %llum %llus %llums",
+			milliseconds/NUM_MS_PER_DAY,
+			(milliseconds%NUM_MS_PER_DAY)/NUM_MS_PER_HOUR,
+			(milliseconds%NUM_MS_PER_HOUR)/NUM_MS_PER_MINUTE,
+			(milliseconds%NUM_MS_PER_MINUTE)/NUM_MS_PER_SECOND,
+			milliseconds%NUM_MS_PER_SECOND
+		);
+	}
+}
+const char* FormatMillisecondsNt(u64 milliseconds, MemArena_t* memArena)
+{
+	return FormatMilliseconds(milliseconds, memArena).pntr;
+}
+#endif //_GY_TIME_H
 
 #endif //  _GY_STRING_H
 
@@ -767,4 +909,8 @@ u64 StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ign
 u8 GetCodepointForUtf8Str(MyStr_t str, u64 index, u32* codepointOut)
 MyStr_t ConvertWideStrToUtf8(MemArena_t* memArena, const wchar_t* wideStrPntr, u64 wideStrLength)
 MyStr_t ConvertWideStrToUtf8Nt(MemArena_t* memArena, const wchar_t* nullTermWideStr)
+MyStr_t FormatRealTime(const RealTime_t* realTime, MemArena_t* memArena, bool includeDayOfWeek = true, bool includeHourMinuteSecond = true, bool includeMonthDayYear = true)
+const char* FormatRealTimeNt(const RealTime_t* realTime, MemArena_t* memArena, bool includeDayOfWeek = true, bool includeHourMinuteSecond = true, bool includeMonthDayYear = true)
+MyStr_t FormatMilliseconds(u64 milliseconds, MemArena_t* memArena)
+const char* FormatMillisecondsNt(u64 milliseconds, MemArena_t* memArena)
 */
