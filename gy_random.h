@@ -9,6 +9,11 @@ Description:
 #ifndef _GY_RANDOM_H
 #define _GY_RANDOM_H
 
+#include "gy_defines_check.h"
+#include "gy_std.h"
+#include "gy_types.h"
+#include "gy_assert.h"
+
 #define RAND_FLOAT_PRECISION_R32 8000000UL //8 million
 #define RAND_FLOAT_PRECISION_R64 400000000000000ULL //400 trillion
 
