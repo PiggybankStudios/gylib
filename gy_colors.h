@@ -37,19 +37,20 @@ union ColorHSV_t
 };
 union ColorXYZ_t
 {
-	v4 values;
-	struct { r32 x, y, z, a; };
+	r64 values[4];
+	struct { r64 x, y, z, a; };
+	struct { r64 unused1, unused2, unused3, alpha; };
 };
 union ColorLCH_t
 {
-	v4 values;
-	struct { r32 l, c, h, a; };
-	struct { r32 luminence, chroma, hue, alpha; };
+	r64 values[4];
+	struct { r64 l, c, h, a; };
+	struct { r64 luminence, chroma, hue, alpha; };
 };
 union ColorLAB_t
 {
-	v4 values;
-	struct { r32 l, a, b, alpha; };
+	r64 values[4];
+	struct { r64 l, a, b, alpha; };
 };
 
 // +--------------------------------------------------------------+
@@ -277,13 +278,51 @@ Color_t ColorLighten(Color_t color, u8 amount)
 	return result;
 }
 
-//TODO: ColorMultiply
-//TODO: ColorMultiplyAlpha
-//TODO: ColorOpposite
+//TODO: Does this need to convert to/from linear color space before/after
+Color_t ColorMultiply(Color_t color1, Color_t color2)
+{
+	Color_t result;
+	result.r = ClampI32toU8(RoundR32i(((r32)color1.r / 255.0f) * ((r32)color2.r / 255.0f) * 255));
+	result.g = ClampI32toU8(RoundR32i(((r32)color1.g / 255.0f) * ((r32)color2.g / 255.0f) * 255));
+	result.b = ClampI32toU8(RoundR32i(((r32)color1.b / 255.0f) * ((r32)color2.b / 255.0f) * 255));
+	result.a = ClampI32toU8(RoundR32i(((r32)color1.a / 255.0f) * ((r32)color2.a / 255.0f) * 255));
+	return result;
+}
+Color_t ColorMultiplyAlpha(Color_t color, u8 alphaValue)
+{
+	Color_t result = color;
+	result.a = ClampI32toU8(RoundR32i(((r32)color.a / 255.0f) * ((r32)alphaValue / 255.0f) * 255));
+	return result;
+}
+Color_t ColorMultiplyAlphaR32(Color_t color, r32 amount)
+{
+	Color_t result = color;
+	result.a = ClampI32toU8(RoundR32i(((r32)color.a / 255.0f) * amount * 255));
+	return result;
+}
+
+Color_t ColorOpposite(Color_t color)
+{
+	Color_t result;
+	result.r = 255 - color.r;
+	result.g = 255 - color.g;
+	result.b = 255 - color.b;
+	result.a = 255 - color.a;
+	return result;
+}
 
 // +==============================+
 // |            Colorf            |
 // +==============================+
+bool BasicallyEqualColorf(Colorf_t left, Colorf_t right, r32 tolerance = 0.001f)
+{
+	if (!BasicallyEqualR32(left.r, right.r, tolerance)) { return false; }
+	if (!BasicallyEqualR32(left.g, right.g, tolerance)) { return false; }
+	if (!BasicallyEqualR32(left.b, right.b, tolerance)) { return false; }
+	if (!BasicallyEqualR32(left.a, right.a, tolerance)) { return false; }
+	return true;
+}
+
 Colorf_t ColorfLerp(Colorf_t start, Colorf_t end, r32 amount)
 {
 	Colorf_t result = {};
@@ -294,41 +333,112 @@ Colorf_t ColorfLerp(Colorf_t start, Colorf_t end, r32 amount)
 	return result;
 }
 
-//TODO: ColorfMultiply
-//TODO: ColorfMultiplyAlpha
-//TODO: ColorfDarken
-//TODO: ColorfLighten
-//TODO: ColorfOpposite
+Colorf_t ColorfDarken(Colorf_t color, r32 amount)
+{
+	Colorf_t result = color;
+	result.r = ClampR32(result.r - amount, 0, 1.0f);
+	result.g = ClampR32(result.g - amount, 0, 1.0f);
+	result.b = ClampR32(result.b - amount, 0, 1.0f);
+	return result;
+}
+Colorf_t ColorfLighten(Colorf_t color, r32 amount)
+{
+	Colorf_t result = color;
+	result.r = ClampR32(result.r + amount, 0, 1.0f);
+	result.g = ClampR32(result.g + amount, 0, 1.0f);
+	result.b = ClampR32(result.b + amount, 0, 1.0f);
+	return result;
+}
+
+//TODO: Does this need to convert to/from linear color space before/after?
+Colorf_t ColorfMultiply(Colorf_t color1, Colorf_t color2)
+{
+	Colorf_t result;
+	result.r = color1.r * color2.r;
+	result.g = color1.g * color2.g;
+	result.b = color1.b * color2.b;
+	result.a = color1.a * color2.a;
+	return result;
+}
+Colorf_t ColorfMultiplyAlpha(Colorf_t color, r32 alphaValue)
+{
+	Colorf_t result = color;
+	result.a *= alphaValue;
+	return result;
+}
+
+Colorf_t ColorfOpposite(Colorf_t color)
+{
+	Colorf_t result;
+	result.r = 1.0f - color.r;
+	result.g = 1.0f - color.g;
+	result.b = 1.0f - color.b;
+	result.a = 1.0f - color.a;
+	return result;
+}
+
+// +--------------------------------------------------------------+
+// |                Illuminant/Observer Constants                 |
+// +--------------------------------------------------------------+
+//NOTE: These values are copied from https://www.easyrgb.com/en/math.php
+typedef enum
+{
+	ColorObserver_TwoDegree = 0x00, //CIE 1931
+	ColorObserver_TenDegree,        //CIE 1964
+	ColorObserver_NumOptions,
+} ColorObserver_t;
+
+typedef enum
+{
+	ColorIlluminant_A = 0x00, //Incandescent/tungsten
+	ColorIlluminant_B,        //Old direct sunlight at noon
+	ColorIlluminant_C,        //Old daylight
+	ColorIlluminant_D50,      //ICC profile PCS
+	ColorIlluminant_D55,      //Mid-morning daylight
+	ColorIlluminant_D65,      //Daylight, sRGB, Adobe-RGB
+	ColorIlluminant_D75,      //North sky daylight
+	ColorIlluminant_E,        //Equal energy
+	ColorIlluminant_F1,       //Daylight Fluorescent
+	ColorIlluminant_F2,       //Cool fluorescent
+	ColorIlluminant_F3,       //White Fluorescent
+	ColorIlluminant_F4,       //Warm White Fluorescent
+	ColorIlluminant_F5,       //Daylight Fluorescent
+	ColorIlluminant_F6,       //Lite White Fluorescent
+	ColorIlluminant_F7,       //Daylight fluorescent, D65 simulator
+	ColorIlluminant_F8,       //Sylvania F40, D50 simulator
+	ColorIlluminant_F9,       //Cool White Fluorescent
+	ColorIlluminant_F10,      //Ultralume 50, Philips TL85
+	ColorIlluminant_F11,      //Ultralume 40, Philips TL84
+	ColorIlluminant_F12,      //Ultralume 30, Philips TL83
+	ColorIlluminant_NumOptions,
+} ColorIlluminant_t;
+
+const r64 ColorIllumValues[ColorIlluminant_NumOptions][ColorObserver_NumOptions][3] = {
+	{ { 109.850, 100.000, 35.585  }, { 111.144, 100.000, 35.200  } },
+	{ { 99.0927, 100.000, 85.313  }, { 99.178,  100.000, 84.3493 } },
+	{ { 98.074,  100.000, 118.232 }, { 97.285,  100.000, 116.145 } },
+	{ { 96.422,  100.000, 82.521  }, { 96.720,  100.000, 81.427  } },
+	{ { 95.682,  100.000, 92.149  }, { 95.799,  100.000, 90.926  } },
+	{ { 95.047,  100.000, 108.883 }, { 94.811,  100.000, 107.304 } },
+	{ { 94.972,  100.000, 122.638 }, { 94.416,  100.000, 120.641 } },
+	{ { 100.000, 100.000, 100.000 }, { 100.000, 100.000, 100.000 } },
+	{ { 92.834,  100.000, 103.665 }, { 94.791,  100.000, 103.191 } },
+	{ { 99.187,  100.000, 67.395  }, { 103.280, 100.000, 69.026  } },
+	{ { 103.754, 100.000, 49.861  }, { 108.968, 100.000, 51.965  } },
+	{ { 109.147, 100.000, 38.813  }, { 114.961, 100.000, 40.963  } },
+	{ { 90.872,  100.000, 98.723  }, { 93.369,  100.000, 98.636  } },
+	{ { 97.309,  100.000, 60.191  }, { 102.148, 100.000, 62.074  } },
+	{ { 95.044,  100.000, 108.755 }, { 95.792,  100.000, 107.687 } },
+	{ { 96.413,  100.000, 82.333  }, { 97.115,  100.000, 81.135  } },
+	{ { 100.365, 100.000, 67.868  }, { 102.116, 100.000, 67.826  } },
+	{ { 96.174,  100.000, 81.712  }, { 99.001,  100.000, 83.134  } },
+	{ { 100.966, 100.000, 64.370  }, { 103.866, 100.000, 65.627  } },
+	{ { 108.046, 100.000, 39.228  }, { 111.428, 100.000, 40.353  } }
+};
 
 // +--------------------------------------------------------------+
 // |                   Color Space Conversions                    |
 // +--------------------------------------------------------------+
-//TODO: What does this do??
-#if 0
-r32 HueToRGB(r32 value1, r32 value2, r32 vH)
-{
-	if (vH < 0) { vH += 1; }
-	if (vH > 1) { vH -= 1; }
-	
-	if (6*vH < 1)
-	{
-		return (value1 + (value2-value1) * 6 * vH);
-	}
-	else if (2*vH < 1)
-	{
-		return value2;
-	}
-	else if (3*vH < 2)
-	{
-		return (value1 + (value2-value1) * ((2.0f/3) - vH) * 6);
-	}
-	else
-	{
-		return value1;
-	}
-}
-#endif
-
 //TODO: These HSV <-> RGB functions seem to have problems!
 Color_t ColorRGBFromHSV(ColorHSV_t colorHsv)
 {
@@ -426,11 +536,206 @@ ColorHSV_t ColorHSVFromRGB(Color_t color)
 	return result;
 }
 
+//NOTE: I don't remember how these work. What the heck is the <= 0.04045 check?
+//Convert sRGB to linear RGB
+r64 ExpandNonLinearSrgb(r64 nonlinearValue)
+{
+	return (nonlinearValue <= 0.04045) ? (nonlinearValue / 12.92) : (PowR64((nonlinearValue+0.055)/1.055, 2.4));
+}
+//Convert linear RGB to sRGB
+r64 CompressLinearSrgb(r64 linearValue)
+{
+	return (linearValue <= 0.0031308) ? (linearValue * 12.92) : (1.055 * PowR64(linearValue, 1.0/2.4) - 0.055);
+}
+
+ColorXYZ_t ColorXyzFromSrgb(Color_t color)
+{
+	r64 linearRed   = ExpandNonLinearSrgb((r64)color.r / 255.0);
+	r64 linearGreen = ExpandNonLinearSrgb((r64)color.g / 255.0);
+	r64 linearBlue  = ExpandNonLinearSrgb((r64)color.b / 255.0);
+	
+	//NOTE: X, Y and Z output refer to a D65/2° standard illuminant
+	ColorXYZ_t result = {};
+	result.x = (linearRed * 0.4124 + linearGreen * 0.3576 + linearBlue * 0.1805) * 100;
+	result.y = (linearRed * 0.2126 + linearGreen * 0.7152 + linearBlue * 0.0722) * 100;
+	result.z = (linearRed * 0.0193 + linearGreen * 0.1192 + linearBlue * 0.9505) * 100;
+	result.a = ((r64)color.a / 255.0);
+	return result;
+}
+Color_t ColorSrgbFromXyz(ColorXYZ_t colorXyz, bool* isValidColorOut = nullptr)
+{
+	r64 nonlinearRed   = CompressLinearSrgb((colorXyz.x *  3.2406 + colorXyz.y * -1.5372 + colorXyz.z * -0.4986) / 100.0);
+	r64 nonlinearGreen = CompressLinearSrgb((colorXyz.x * -0.9689 + colorXyz.y *  1.8758 + colorXyz.z *  0.0415) / 100.0);
+	r64 nonlinearBlue  = CompressLinearSrgb((colorXyz.x *  0.0557 + colorXyz.y * -0.2040 + colorXyz.z *  1.0570) / 100.0);
+	
+	Color_t result = {};
+	result.r = ClampI32toU8((i32)RoundR64i(nonlinearRed * 255));
+	result.g = ClampI32toU8((i32)RoundR64i(nonlinearGreen * 255));
+	result.b = ClampI32toU8((i32)RoundR64i(nonlinearBlue * 255));
+	result.a = ClampI32toU8((i32)RoundR64i(colorXyz.a * 255));
+	if (isValidColorOut != nullptr)
+	{
+		if      (nonlinearRed   < 0.0f || nonlinearRed   > 1.0f) { *isValidColorOut = false; }
+		else if (nonlinearGreen < 0.0f || nonlinearGreen > 1.0f) { *isValidColorOut = false; }
+		else if (nonlinearBlue  < 0.0f || nonlinearBlue  > 1.0f) { *isValidColorOut = false; }
+		else { *isValidColorOut = true; }
+		
+	}
+	return result;
+}
+
+r64 DoSpecialThing(r64 xyzValue) //TODO: Rename me!
+{
+	return (xyzValue > 0.008856) ? (CbrtR64(xyzValue)) : ((7.787 * xyzValue) + (16.0 / 116.0));
+}
+r64 UndoSpecialThing(r64 specialValue) //TODO: Rename me!
+{
+	return ((specialValue*specialValue*specialValue) > 0.008856) ? (Cube(specialValue)) : ((specialValue - (16.0 / 116.0)) / 7.787);
+}
+
+ColorLAB_t ColorLabFromXyz(ColorXYZ_t colorXyz, ColorObserver_t observer = ColorObserver_TwoDegree, ColorIlluminant_t illuminant = ColorIlluminant_D65)
+{
+	Assert(observer < ColorObserver_NumOptions);
+	Assert(illuminant < ColorIlluminant_NumOptions);
+	
+	// MyLibPrintLine_D("colorXyz = (%f, %f, %f)", colorXyz.x, colorXyz.y, colorXyz.z);
+	// MyLibPrintLine_D("IllumValues[%u][%u] = {%f, %f, %f}", illuminant, observer, ColorIllumValues[illuminant][observer][0], ColorIllumValues[illuminant][observer][1], ColorIllumValues[illuminant][observer][2]);
+	r64 xValue = colorXyz.x / ColorIllumValues[illuminant][observer][0];
+	r64 yValue = colorXyz.y / ColorIllumValues[illuminant][observer][1];
+	r64 zValue = colorXyz.z / ColorIllumValues[illuminant][observer][2];
+	// MyLibPrintLine_D("zyzValues = (%f, %f, %f)", xValue, yValue, zValue);
+	
+	xValue = DoSpecialThing(xValue);
+	yValue = DoSpecialThing(yValue);
+	zValue = DoSpecialThing(zValue);
+	// MyLibPrintLine_D("specialValues = (%f, %f, %f)", xValue, yValue, zValue);
+	
+	ColorLAB_t result = {};
+	result.l = (116 * yValue) - 16;
+	result.a = 500 * (xValue - yValue);
+	result.b = 200 * (yValue - zValue);
+	result.alpha = colorXyz.alpha;
+	return result;
+}
+ColorXYZ_t ColorXyzFromLab(ColorLAB_t colorLab, ColorObserver_t observer = ColorObserver_TwoDegree, ColorIlluminant_t illuminant = ColorIlluminant_D65)
+{
+	Assert(observer < ColorObserver_NumOptions);
+	Assert(illuminant < ColorIlluminant_NumOptions);
+	
+	r64 yValue = (colorLab.l + 16) / 116;
+	r64 xValue = (colorLab.a / 500) + yValue;
+	r64 zValue = yValue - (colorLab.b / 200);
+	
+	xValue = UndoSpecialThing(xValue);
+	yValue = UndoSpecialThing(yValue);
+	zValue = UndoSpecialThing(zValue);
+	
+	ColorXYZ_t result = {};
+	result.x = xValue * ColorIllumValues[illuminant][observer][0];
+	result.y = yValue * ColorIllumValues[illuminant][observer][1];
+	result.z = zValue * ColorIllumValues[illuminant][observer][2];
+	result.alpha = colorLab.alpha;
+	return result;
+}
+
+ColorLCH_t ColorLchFromLab(ColorLAB_t colorLab)
+{
+	r64 hValue = AtanR64(colorLab.b, colorLab.a);
+	
+	if (hValue > 0) { hValue = (hValue/Pi64) * 180; }
+	else { hValue = 360 - ((AbsR64(hValue) / Pi64) * 180); }
+	
+	ColorLCH_t result = {};
+	result.l = colorLab.l;
+	result.c = SqrtR64(colorLab.a*colorLab.a + colorLab.b*colorLab.b);
+	result.h = hValue;
+	result.alpha = colorLab.alpha;
+	return result;
+}
+ColorLAB_t ColorLabFromLch(ColorLCH_t colorLch)
+{
+	ColorLAB_t result = {};
+	result.l = colorLch.l;
+	result.a = CosR64(ToRadians64(colorLch.h)) * colorLch.c;
+	result.b = SinR64(ToRadians64(colorLch.h)) * colorLch.c;
+	result.alpha = colorLch.alpha;
+	return result;
+}
+
 // +--------------------------------------------------------------+
-// |                       Other Functions                        |
+// |                  Complicated Manipulations                   |
 // +--------------------------------------------------------------+
-//TODO: ColorComplimentary
-//TODO: ColorDesaturate
+// +==============================+
+// |           Color_t            |
+// +==============================+
+Color_t ColorComplementary(Color_t color)
+{
+	ColorHSV_t colorHueFlipped = ColorHSVFromRGB(color);
+	colorHueFlipped.hue = ModR32(colorHueFlipped.hue + 180, 360);
+	ColorHSV_t colorValueFlipped = colorHueFlipped;
+	colorValueFlipped.v = DecimalPartR32(colorHueFlipped.v + 0.5f);
+	Color_t result = ColorRGBFromHSV(colorHueFlipped);
+	Color_t valueFlippedResult = ColorRGBFromHSV(colorValueFlipped);
+	result = ColorLerp(result, valueFlippedResult, 1-colorHueFlipped.s);
+	return result;
+}
+Color_t ColorComplementaryOld(Color_t color)
+{
+	Color_t result;
+	result.r = (u8)(((u32)color.r + 128) % 256);
+	result.g = (u8)(((u32)color.g + 128) % 256);
+	result.b = (u8)(((u32)color.b + 128) % 256);
+	result.a = color.a;
+	return result;
+}
+
+Color_t ColorDesaturate(Color_t color, r32 saturation)
+{
+	v3 colorVec = ToVec3(color);
+	u8 intensity = ClampI32toU8(RoundR32i(Vec3Dot(colorVec, NewVec3(0.2125f, 0.7154f, 0.0721f)) * 255));
+	return ColorLerp(NewColor(intensity, intensity, intensity, color.a), color, saturation);
+}
+
+// +==============================+
+// |           Colorf_t           |
+// +==============================+
+Colorf_t ColorfComplementary(Colorf_t color)
+{
+	Colorf_t result;
+	result.r = DecimalPartR32(color.r + 0.5f);
+	result.g = DecimalPartR32(color.g + 0.5f);
+	result.b = DecimalPartR32(color.b + 0.5f);
+	result.a = color.a;
+	return result;
+}
+
+Colorf_t ColorfDesaturate(Colorf_t color, r32 saturation)
+{
+	v3 colorVec = ToVec3(color);
+	r32 intensity = Vec3Dot(colorVec, NewVec3(0.2125f, 0.7154f, 0.0721f));
+	return ColorfLerp(NewColorf(intensity, intensity, intensity, color.a), color, saturation);
+}
+
+// +--------------------------------------------------------------+
+// |                      Operator Overloads                      |
+// +--------------------------------------------------------------+
+inline bool operator == (Color_t left, Color_t right) { return  (left.r == right.r && left.g == right.g && left.b == right.b && left.a == right.a); }
+inline bool operator != (Color_t left, Color_t right) { return !(left.r == right.r && left.g == right.g && left.b == right.b && left.a == right.a); }
+
+inline bool operator == (Colorf_t left, Colorf_t right) { return  (left.r == right.r && left.g == right.g && left.b == right.b && left.a == right.a); }
+inline bool operator != (Colorf_t left, Colorf_t right) { return !(left.r == right.r && left.g == right.g && left.b == right.b && left.a == right.a); }
+
+inline bool operator == (ColorHSV_t left, ColorHSV_t right) { return  (left.h == right.h && left.s == right.s && left.v == right.v && left.a == right.a); }
+inline bool operator != (ColorHSV_t left, ColorHSV_t right) { return !(left.h == right.h && left.s == right.s && left.v == right.v && left.a == right.a); }
+
+inline bool operator == (ColorXYZ_t left, ColorXYZ_t right) { return  (left.x == right.x && left.y == right.y && left.z == right.z && left.a == right.a); }
+inline bool operator != (ColorXYZ_t left, ColorXYZ_t right) { return !(left.x == right.x && left.y == right.y && left.z == right.z && left.a == right.a); }
+
+inline bool operator == (ColorLCH_t left, ColorLCH_t right) { return  (left.l == right.l && left.c == right.c && left.h == right.h && left.a == right.a); }
+inline bool operator != (ColorLCH_t left, ColorLCH_t right) { return !(left.l == right.l && left.c == right.c && left.h == right.h && left.a == right.a); }
+
+inline bool operator == (ColorLAB_t left, ColorLAB_t right) { return  (left.l == right.l && left.a == right.a && left.b == right.b && left.b == right.b); }
+inline bool operator != (ColorLAB_t left, ColorLAB_t right) { return !(left.l == right.l && left.a == right.a && left.b == right.b && left.b == right.b); }
 
 #endif //  _GY_COLORS_H
 
@@ -439,7 +744,6 @@ ColorHSV_t ColorHSVFromRGB(Color_t color)
 // +--------------------------------------------------------------+
 /*
 @Defines
-
 @Types
 Color_t
 Colorf_t
@@ -458,7 +762,22 @@ inline ColorHSV_t ToColorHsv(v3 vector3)
 Color_t ColorLerp(Color_t start, Color_t end, r32 amount)
 Color_t ColorDarken(Color_t color, u8 amount)
 Color_t ColorLighten(Color_t color, u8 amount)
+Color_t ColorMultiply(Color_t color1, Color_t color2)
+Color_t ColorMultiplyAlpha(Color_t color, u8 alphaValue)
+Color_t ColorMultiplyAlphaR32(Color_t color, r32 amount)
+Color_t ColorOpposite(Color_t color)
+bool BasicallyEqualColorf(Colorf_t left, Colorf_t right, r32 tolerance = 0.001f)
 Colorf_t ColorfLerp(Colorf_t start, Colorf_t end, r32 amount)
+Colorf_t ColorfDarken(Colorf_t color, r32 amount)
+Colorf_t ColorfLighten(Colorf_t color, r32 amount)
+Colorf_t ColorfMultiply(Colorf_t color1, Colorf_t color2)
+Colorf_t ColorfMultiplyAlpha(Colorf_t color, r32 alphaValue)
+Colorf_t ColorfOpposite(Colorf_t color)
 Color_t ColorRGBFromHSV(ColorHSV_t colorHsv)
 ColorHSV_t ColorHSVFromRGB(Color_t color)
+Color_t ColorComplementary(Color_t color)
+Color_t ColorComplementaryOld(Color_t color)
+Color_t ColorDesaturate(Color_t color, r32 saturation)
+Colorf_t ColorfComplementary(Colorf_t color)
+Colorf_t ColorfDesaturate(Colorf_t color, r32 saturation)
 */
