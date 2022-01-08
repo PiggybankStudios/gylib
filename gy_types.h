@@ -145,6 +145,8 @@ typedef I32_FUNC_DEF(I32Func_f);
 #define UNREFERENCED(varName)  (void)sizeof(varName)
 #endif
 
+#define SWAP_VARIABLES(varType, var1, var2) do { varType tempVarWithLongNameThatWontConflict = (var2); (var2) = (var1); (var1) = tempVarWithLongNameThatWontConflict; } while(0)
+
 // +--------------------------------------------------------------+
 // |                   Packed and Export Macros                   |
 // +--------------------------------------------------------------+
@@ -261,6 +263,7 @@ I32Func_f
 #define I32_FUNC_DEF(functionName)
 #define UNUSED(varName)
 #define UNREFERENCED(varName)
+#define SWAP_VARIABLES(varType, var1, var2)
 #define PACKED(class_to_pack)
 #define START_PACK()
 #define END_PACK()

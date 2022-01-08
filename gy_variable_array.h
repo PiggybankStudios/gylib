@@ -35,7 +35,7 @@ struct VarArray_t
 };
 
 // +--------------------------------------------------------------+
-// |                      Create and Destroy                      |
+// |                       Create and Free                        |
 // +--------------------------------------------------------------+
 void FreeVarArray(VarArray_t* array)
 {
