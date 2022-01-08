@@ -664,6 +664,25 @@ void BktArraySolidify(BktArray_t* array, bool deallocateEmptyBuckets = false, bo
 	}
 }
 
+// +--------------------------------------------------------------+
+// |                           Sorting                            |
+// +--------------------------------------------------------------+
+#ifdef _MY_SORTING_H 
+//TODO: Can we get this to work without solidifying the array?
+void BktArraySort(BktArray_t* array, CompareFunc_f* compareFunc, void* contextPntr)
+{
+	NotNull(array);
+	NotNull(compareFunc);
+	Assert(array->itemSize > 0);
+	void* workingSpace = alloca(array->itemSize*2);
+	NotNull(workingSpace);
+	BktArraySolidify(array, true, true);
+	Assert(array->numBuckets == 1);
+	Assert(array->length == 0 || array->length == array->firstBucket->numItems);
+	QuickSort(array->firstBucket->items, array->firstBucket->numItems, array->itemSize, workingSpace, compareFunc, contextPntr);
+}
+#endif
+
 #endif //  _GY_BUCKET_ARRAY_H
 
 // +--------------------------------------------------------------+
@@ -691,4 +710,5 @@ void BktArrayClear(BktArray_t* array, bool reduceToSingleBucket = false)
 void BktArrayRemoveAt(BktArray_t* array, u64 index)
 void BktArrayRemoveLast(BktArray_t* array)
 void BktArraySolidify(BktArray_t* array, bool deallocateEmptyBuckets = false, bool singleBucket = false)
+void BktArraySort(BktArray_t* array, CompareFunc_f* compareFunc, void* contextPntr)
 */
