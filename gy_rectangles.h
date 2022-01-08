@@ -83,9 +83,9 @@ struct Box_t
 {
 	union
 	{
-		v3 topLeft;
+		v3 bottomLeft;
 		struct { r32 x, y, z; };
-		struct { r32 left, top, front; };
+		struct { r32 left, bottom, back; };
 	};
 	union
 	{
@@ -95,12 +95,12 @@ struct Box_t
 	
 	inline Box_t& operator += (v3 vector)
 	{
-		this->topLeft += vector;
+		this->bottomLeft += vector;
 		return *this;
 	}
 	inline Box_t& operator -= (v3 vector)
 	{
-		this->topLeft -= vector;
+		this->bottomLeft -= vector;
 		return *this;
 	}
 };
@@ -109,9 +109,9 @@ struct Boxi_t
 {
 	union
 	{
-		v3i topLeft;
+		v3i bottomLeft;
 		struct { i32 x, y, z; };
-		struct { i32 left, top, front; };
+		struct { i32 left, bottom, back; };
 	};
 	union
 	{
@@ -121,12 +121,12 @@ struct Boxi_t
 	
 	inline Boxi_t& operator += (v3i vector)
 	{
-		this->topLeft += vector;
+		this->bottomLeft += vector;
 		return *this;
 	}
 	inline Boxi_t& operator -= (v3i vector)
 	{
-		this->topLeft -= vector;
+		this->bottomLeft -= vector;
 		return *this;
 	}
 };
@@ -381,10 +381,10 @@ box NewBox(r32 x, r32 y, r32 z, r32 width, r32 height, r32 depth)
 	result.depth = depth;
 	return result;
 }
-box NewBox(v3 topLeft, r32 width, r32 height, r32 depth)
+box NewBox(v3 bottomLeft, r32 width, r32 height, r32 depth)
 {
 	box result;
-	result.topLeft = topLeft;
+	result.bottomLeft = bottomLeft;
 	result.width = width;
 	result.height = height;
 	result.depth = depth;
@@ -399,10 +399,10 @@ box NewBox(r32 x, r32 y, r32 z, v3 size)
 	result.size = size;
 	return result;
 }
-box NewBox(v3 topLeft, v3 size)
+box NewBox(v3 bottomLeft, v3 size)
 {
 	box result;
-	result.topLeft = topLeft;
+	result.bottomLeft = bottomLeft;
 	result.size = size;
 	return result;
 }
@@ -502,10 +502,10 @@ boxi NewBoxi(i32 x, i32 y, i32 z, i32 width, i32 height, i32 depth)
 	result.depth = depth;
 	return result;
 }
-boxi NewBoxi(v3i topLeft, i32 width, i32 height, i32 depth)
+boxi NewBoxi(v3i bottomLeft, i32 width, i32 height, i32 depth)
 {
 	boxi result;
-	result.topLeft = topLeft;
+	result.bottomLeft = bottomLeft;
 	result.width = width;
 	result.height = height;
 	result.depth = depth;
@@ -520,10 +520,10 @@ boxi NewBoxi(i32 x, i32 y, i32 z, v3i size)
 	result.size = size;
 	return result;
 }
-boxi NewBoxi(v3i topLeft, v3i size)
+boxi NewBoxi(v3i bottomLeft, v3i size)
 {
 	boxi result;
-	result.topLeft = topLeft;
+	result.bottomLeft = bottomLeft;
 	result.size = size;
 	return result;
 }
@@ -1366,7 +1366,7 @@ reci ReciDeflateY(reci rectangle, i32 subHeight)
 box BoxExpand(box boundingBox, r32 extraWidth, r32 extraHeight, r32 extraDepth)
 {
 	box result;
-	result.topLeft = boundingBox.topLeft;
+	result.bottomLeft = boundingBox.bottomLeft;
 	result.width = boundingBox.width + extraWidth;
 	result.height = boundingBox.height + extraHeight;
 	result.depth = boundingBox.depth + extraDepth;
@@ -1375,7 +1375,7 @@ box BoxExpand(box boundingBox, r32 extraWidth, r32 extraHeight, r32 extraDepth)
 box BoxExpand(box boundingBox, v3 extraSize)
 {
 	box result;
-	result.topLeft = boundingBox.topLeft;
+	result.bottomLeft = boundingBox.bottomLeft;
 	result.width = boundingBox.width + extraSize.width;
 	result.height = boundingBox.height + extraSize.height;
 	result.depth = boundingBox.depth + extraSize.depth;
@@ -1384,7 +1384,7 @@ box BoxExpand(box boundingBox, v3 extraSize)
 box BoxExpandX(box boundingBox, r32 extraWidth)
 {
 	box result;
-	result.topLeft = boundingBox.topLeft;
+	result.bottomLeft = boundingBox.bottomLeft;
 	result.width = boundingBox.width + extraWidth;
 	result.height = boundingBox.height;
 	result.depth = boundingBox.depth;
@@ -1393,7 +1393,7 @@ box BoxExpandX(box boundingBox, r32 extraWidth)
 box BoxExpandY(box boundingBox, r32 extraHeight)
 {
 	box result;
-	result.topLeft = boundingBox.topLeft;
+	result.bottomLeft = boundingBox.bottomLeft;
 	result.width = boundingBox.width;
 	result.height = boundingBox.height + extraHeight;
 	result.depth = boundingBox.depth;
@@ -1402,7 +1402,7 @@ box BoxExpandY(box boundingBox, r32 extraHeight)
 box BoxExpandZ(box boundingBox, r32 extraDepth)
 {
 	box result;
-	result.topLeft = boundingBox.topLeft;
+	result.bottomLeft = boundingBox.bottomLeft;
 	result.width = boundingBox.width;
 	result.height = boundingBox.height;
 	result.depth = boundingBox.depth + extraDepth;
@@ -1411,7 +1411,7 @@ box BoxExpandZ(box boundingBox, r32 extraDepth)
 box BoxRetract(box boundingBox, r32 subWidth, r32 subHeight, r32 subDepth)
 {
 	box result;
-	result.topLeft = boundingBox.topLeft;
+	result.bottomLeft = boundingBox.bottomLeft;
 	result.width = boundingBox.width - subWidth;
 	result.height = boundingBox.height - subHeight;
 	result.depth = boundingBox.depth - subDepth;
@@ -1420,7 +1420,7 @@ box BoxRetract(box boundingBox, r32 subWidth, r32 subHeight, r32 subDepth)
 box BoxRetract(box boundingBox, v3 subSize)
 {
 	box result;
-	result.topLeft = boundingBox.topLeft;
+	result.bottomLeft = boundingBox.bottomLeft;
 	result.width = boundingBox.width - subSize.width;
 	result.height = boundingBox.height - subSize.height;
 	result.depth = boundingBox.depth - subSize.depth;
@@ -1429,7 +1429,7 @@ box BoxRetract(box boundingBox, v3 subSize)
 box BoxRetractX(box boundingBox, r32 subWidth)
 {
 	box result;
-	result.topLeft = boundingBox.topLeft;
+	result.bottomLeft = boundingBox.bottomLeft;
 	result.width = boundingBox.width - subWidth;
 	result.height = boundingBox.height;
 	result.depth = boundingBox.depth;
@@ -1438,7 +1438,7 @@ box BoxRetractX(box boundingBox, r32 subWidth)
 box BoxRetractY(box boundingBox, r32 subHeight)
 {
 	box result;
-	result.topLeft = boundingBox.topLeft;
+	result.bottomLeft = boundingBox.bottomLeft;
 	result.width = boundingBox.width;
 	result.height = boundingBox.height - subHeight;
 	result.depth = boundingBox.depth;
@@ -1447,7 +1447,7 @@ box BoxRetractY(box boundingBox, r32 subHeight)
 box BoxRetractZ(box boundingBox, r32 subDepth)
 {
 	box result;
-	result.topLeft = boundingBox.topLeft;
+	result.bottomLeft = boundingBox.bottomLeft;
 	result.width = boundingBox.width;
 	result.height = boundingBox.height;
 	result.depth = boundingBox.depth - subDepth;
@@ -1570,7 +1570,7 @@ box BoxDeflateZ(box boundingBox, r32 subDepth)
 boxi BoxiExpand(boxi boundingBox, i32 extraWidth, i32 extraHeight, i32 extraDepth)
 {
 	boxi result;
-	result.topLeft = boundingBox.topLeft;
+	result.bottomLeft = boundingBox.bottomLeft;
 	result.width = boundingBox.width + extraWidth;
 	result.height = boundingBox.height + extraHeight;
 	result.depth = boundingBox.depth + extraDepth;
@@ -1579,7 +1579,7 @@ boxi BoxiExpand(boxi boundingBox, i32 extraWidth, i32 extraHeight, i32 extraDept
 boxi BoxiExpand(boxi boundingBox, v3i extraSize)
 {
 	boxi result;
-	result.topLeft = boundingBox.topLeft;
+	result.bottomLeft = boundingBox.bottomLeft;
 	result.width = boundingBox.width + extraSize.width;
 	result.height = boundingBox.height + extraSize.height;
 	result.depth = boundingBox.depth + extraSize.depth;
@@ -1588,7 +1588,7 @@ boxi BoxiExpand(boxi boundingBox, v3i extraSize)
 boxi BoxiExpandX(boxi boundingBox, i32 extraWidth)
 {
 	boxi result;
-	result.topLeft = boundingBox.topLeft;
+	result.bottomLeft = boundingBox.bottomLeft;
 	result.width = boundingBox.width + extraWidth;
 	result.height = boundingBox.height;
 	result.depth = boundingBox.depth;
@@ -1597,7 +1597,7 @@ boxi BoxiExpandX(boxi boundingBox, i32 extraWidth)
 boxi BoxiExpandY(boxi boundingBox, i32 extraHeight)
 {
 	boxi result;
-	result.topLeft = boundingBox.topLeft;
+	result.bottomLeft = boundingBox.bottomLeft;
 	result.width = boundingBox.width;
 	result.height = boundingBox.height + extraHeight;
 	result.depth = boundingBox.depth;
@@ -1606,7 +1606,7 @@ boxi BoxiExpandY(boxi boundingBox, i32 extraHeight)
 boxi BoxiExpandZ(boxi boundingBox, i32 extraDepth)
 {
 	boxi result;
-	result.topLeft = boundingBox.topLeft;
+	result.bottomLeft = boundingBox.bottomLeft;
 	result.width = boundingBox.width;
 	result.height = boundingBox.height;
 	result.depth = boundingBox.depth + extraDepth;
@@ -1615,7 +1615,7 @@ boxi BoxiExpandZ(boxi boundingBox, i32 extraDepth)
 boxi BoxiRetract(boxi boundingBox, i32 subWidth, i32 subHeight, i32 subDepth)
 {
 	boxi result;
-	result.topLeft = boundingBox.topLeft;
+	result.bottomLeft = boundingBox.bottomLeft;
 	result.width = boundingBox.width - subWidth;
 	result.height = boundingBox.height - subHeight;
 	result.depth = boundingBox.depth - subDepth;
@@ -1624,7 +1624,7 @@ boxi BoxiRetract(boxi boundingBox, i32 subWidth, i32 subHeight, i32 subDepth)
 boxi BoxiRetract(boxi boundingBox, v3i subSize)
 {
 	boxi result;
-	result.topLeft = boundingBox.topLeft;
+	result.bottomLeft = boundingBox.bottomLeft;
 	result.width = boundingBox.width - subSize.width;
 	result.height = boundingBox.height - subSize.height;
 	result.depth = boundingBox.depth - subSize.depth;
@@ -1633,7 +1633,7 @@ boxi BoxiRetract(boxi boundingBox, v3i subSize)
 boxi BoxiRetractX(boxi boundingBox, i32 subWidth)
 {
 	boxi result;
-	result.topLeft = boundingBox.topLeft;
+	result.bottomLeft = boundingBox.bottomLeft;
 	result.width = boundingBox.width - subWidth;
 	result.height = boundingBox.height;
 	result.depth = boundingBox.depth;
@@ -1642,7 +1642,7 @@ boxi BoxiRetractX(boxi boundingBox, i32 subWidth)
 boxi BoxiRetractY(boxi boundingBox, i32 subHeight)
 {
 	boxi result;
-	result.topLeft = boundingBox.topLeft;
+	result.bottomLeft = boundingBox.bottomLeft;
 	result.width = boundingBox.width;
 	result.height = boundingBox.height - subHeight;
 	result.depth = boundingBox.depth;
@@ -1651,7 +1651,7 @@ boxi BoxiRetractY(boxi boundingBox, i32 subHeight)
 boxi BoxiRetractZ(boxi boundingBox, i32 subDepth)
 {
 	boxi result;
-	result.topLeft = boundingBox.topLeft;
+	result.bottomLeft = boundingBox.bottomLeft;
 	result.width = boundingBox.width;
 	result.height = boundingBox.height;
 	result.depth = boundingBox.depth - subDepth;
@@ -2595,9 +2595,9 @@ rec NewRec(v2 topLeft, v2 size)
 rec NewRecCentered(v2 center, v2 size)
 rec NewRecBetween(r32 point1X, r32 point1Y, r32 point2X, r32 point2Y)
 reci NewReci(v2i topLeft, v2i size)
-box NewBox(v3 topLeft, v3 size)
+box NewBox(v3 bottomLeft, v3 size)
 box NewBoxCentered(v3 center, v3 size)
-boxi NewBoxi(v3i topLeft, v3i size)
+boxi NewBoxi(v3i bottomLeft, v3i size)
 obb2 NewObb2D(v2 center, v2 size, r32 rotation)
 rec ToRec(reci rectangle)
 obb2 ToObb2D(rec rectangle)
