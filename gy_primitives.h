@@ -418,8 +418,30 @@ void FreePrimitiveIndexedVerts(PrimitiveIndexedVerts_t* indexedVerts)
 	ClearPointer(indexedVerts);
 }
 
+void InvertPrimitiveVerts(PrimitiveIndexedVerts_t* indexedVerts)
+{
+	NotNull(indexedVerts);
+	if (indexedVerts->numVertices == 0) { return; }
+	if (indexedVerts->numIndices == 0) { return; }
+	NotNull2(indexedVerts->vertices, indexedVerts->indices);
+	for (u64 iIndex = 0; iIndex+3 <= indexedVerts->numIndices; iIndex += 3)
+	{
+		PrimitiveIndex3D_t* index0 = &indexedVerts->indices[iIndex + 0];
+		PrimitiveIndex3D_t* index1 = &indexedVerts->indices[iIndex + 1];
+		PrimitiveIndex3D_t* index2 = &indexedVerts->indices[iIndex + 2];
+		index0->normal = -index0->normal;
+		index1->normal = -index1->normal;
+		index2->normal = -index2->normal;
+		PrimitiveIndex3D_t temp = {};
+		MyMemCopy(&temp, index1, sizeof(PrimitiveIndex3D_t));
+		MyMemCopy(index1, index2, sizeof(PrimitiveIndex3D_t));
+		MyMemCopy(index2, &temp, sizeof(PrimitiveIndex3D_t));
+	}
+}
+
 //NOTE: Passing nullptr for memArena in these functions will fill out the result struct with numVertices, numIndices, and numFaces but nothing else
 
+//Face Indices: top=0 right=1 front=2 left=3 back=4 bottom=5
 PrimitiveIndexedVerts_t GenerateVertsForBox(Box_t boundingBox, MemArena_t* memArena)
 {
 	PrimitiveIndexedVerts_t result = {};
@@ -504,6 +526,146 @@ PrimitiveIndexedVerts_t GenerateVertsForBox(Box_t boundingBox, MemArena_t* memAr
 	return result;
 }
 
+PrimitiveIndexedVerts_t GenerateVertsForSphere(Sphere_t sphere, u64 numRings, u64 numSegments, bool smoothShading, MemArena_t* memArena)
+{
+	Assert(numRings >= 1);
+	Assert(numSegments >= 3);
+	
+	PrimitiveIndexedVerts_t result = {};
+	result.numVertices = 2; //top and bottom verts
+	result.numVertices += numSegments * numRings;
+	result.numIndices = numSegments * 2 * 3; //top and bottom triangles
+	result.numIndices += numSegments*2 * (numRings-1) * 3;
+	if (memArena == nullptr) { return result; }
+	
+	result.allocArena = memArena;
+	result.vertices = AllocArray(memArena, PrimitiveVert3D_t, result.numVertices);
+	NotNull(result.vertices);
+	result.indices = AllocArray(memArena, PrimitiveIndex3D_t, result.numIndices);
+	NotNull(result.indices);
+	MyMemSet(result.indices, 0x00, sizeof(PrimitiveIndex3D_t) * result.numIndices); //TODO: Remove me!
+	
+	const u64 bottomCenterIndex = 0;
+	const u64 topCenterIndex = result.numVertices-1;
+	
+	result.vertices[topCenterIndex].position    = NewVec3(sphere.x, sphere.y + sphere.radius, sphere.z);
+	result.vertices[bottomCenterIndex].position = NewVec3(sphere.x, sphere.y - sphere.radius, sphere.z);
+	
+	r32 ringStep = Pi32 / (r32)(numRings+1);
+	r32 segmentStep = TwoPi32 / (r32)(numSegments);
+	for (u64 rIndex = 0; rIndex < numRings; rIndex++)
+	{
+		r32 ringAngle = -HalfPi32 + (ringStep * (rIndex+1));
+		r32 ringY = sphere.y + (SinR32(ringAngle) * sphere.radius);
+		r32 ringRadius = CosR32(ringAngle) * sphere.radius;
+		for (u64 sIndex = 0; sIndex < numSegments; sIndex++)
+		{
+			r32 segmentAngle = (sIndex * segmentStep);
+			u64 ringVertIndex = 1 + (rIndex * numSegments) + sIndex;
+			Assert(ringVertIndex < result.numVertices);
+			result.vertices[ringVertIndex].position = NewVec3(sphere.x + CosR32(segmentAngle) * ringRadius, ringY, sphere.z + SinR32(segmentAngle) * ringRadius);
+		}
+	}
+	
+	for (u64 rIndex = 0; rIndex <= numRings; rIndex++)
+	{
+		r32 ringAngle = -HalfPi32 + (ringStep * (rIndex+1));
+		r32 ringY = sphere.y + (SinR32(ringAngle) * sphere.radius);
+		r32 ringRadius = CosR32(ringAngle) * sphere.radius;
+		for (u64 sIndex = 0; sIndex < numSegments; sIndex++)
+		{
+			r32 segmentAngle = (sIndex * segmentStep);
+			
+			u64 upperVertIndex = 0;
+			if (rIndex < numRings) { upperVertIndex = 1 + (rIndex * numSegments) + sIndex; }
+			else { upperVertIndex = topCenterIndex; }
+			Assert(upperVertIndex < result.numVertices);
+			
+			u64 lowerVertIndex = 0;
+			if (rIndex > 0) { lowerVertIndex = 1 + ((rIndex-1) * numSegments) + sIndex; }
+			else { lowerVertIndex = bottomCenterIndex; }
+			Assert(lowerVertIndex < result.numVertices);
+			
+			u64 upperNextVertIndex = 0;
+			if (rIndex < numRings)
+			{
+				if (sIndex+1 < numSegments) { upperNextVertIndex = 1 + (rIndex * numSegments) + (sIndex+1); }
+				else { upperNextVertIndex = 1 + (rIndex * numSegments) + (0); }
+			}
+			else { upperNextVertIndex = topCenterIndex; }
+			Assert(upperNextVertIndex < result.numVertices);
+			
+			u64 lowerNextVertIndex = 0;
+			if (rIndex > 0)
+			{
+				if (sIndex+1 < numSegments) { lowerNextVertIndex = 1 + ((rIndex-1) * numSegments) + (sIndex+1); }
+				else { lowerNextVertIndex = 1 + ((rIndex-1) * numSegments) + (0); }
+			}
+			else { lowerNextVertIndex = bottomCenterIndex; }
+			Assert(lowerNextVertIndex < result.numVertices);
+			
+			u64 ringBaseIndex = 0;
+			if (rIndex > 0) { ringBaseIndex = (numSegments * 3) + (numSegments * (rIndex-1) * 3 * 2); }
+			if (rIndex > 0 && rIndex < numRings)
+			{
+				u64 triIndex1 = ringBaseIndex + (sIndex * 3 * 2) + 0;
+				u64 triIndex2 = ringBaseIndex + (sIndex * 3 * 2) + 3;
+				Assert(triIndex1+3 <= result.numIndices);
+				Assert(triIndex2+3 <= result.numIndices);
+				
+				result.indices[triIndex1 + 0].index = upperVertIndex;     result.indices[triIndex1 + 0].faceIndex = sIndex;
+				result.indices[triIndex1 + 1].index = lowerVertIndex;     result.indices[triIndex1 + 2].faceIndex = sIndex;
+				result.indices[triIndex1 + 2].index = upperNextVertIndex; result.indices[triIndex1 + 1].faceIndex = sIndex;
+				
+				result.indices[triIndex2 + 0].index = lowerNextVertIndex; result.indices[triIndex2 + 0].faceIndex = sIndex;
+				result.indices[triIndex2 + 1].index = upperNextVertIndex; result.indices[triIndex2 + 2].faceIndex = sIndex;
+				result.indices[triIndex2 + 2].index = lowerVertIndex;     result.indices[triIndex2 + 1].faceIndex = sIndex;
+			}
+			else
+			{
+				u64 triIndex = ringBaseIndex + (sIndex * 3);
+				Assert(triIndex < result.numIndices);
+				if (rIndex == 0)
+				{
+					result.indices[triIndex + 0].index = lowerVertIndex;     result.indices[triIndex + 0].faceIndex = sIndex;
+					result.indices[triIndex + 1].index = upperNextVertIndex; result.indices[triIndex + 1].faceIndex = sIndex;
+					result.indices[triIndex + 2].index = upperVertIndex;     result.indices[triIndex + 2].faceIndex = sIndex;
+				}
+				else //rIndex == numRings
+				{
+					result.indices[triIndex + 0].index = upperVertIndex;     result.indices[triIndex + 0].faceIndex = sIndex;
+					result.indices[triIndex + 1].index = lowerVertIndex;     result.indices[triIndex + 1].faceIndex = sIndex;
+					result.indices[triIndex + 2].index = lowerNextVertIndex; result.indices[triIndex + 2].faceIndex = sIndex;
+				}
+			}
+		}
+	}
+	
+	if (smoothShading)
+	{
+		for (u64 iIndex = 0; iIndex < result.numIndices; iIndex++)
+		{
+			PrimitiveIndex3D_t* index = &result.indices[iIndex];
+			index->normal = Vec3Normalize(result.vertices[index->index].position - sphere.center);
+		}
+	}
+	else
+	{
+		for (u64 iIndex = 0; iIndex+3 <= result.numIndices; iIndex += 3)
+		{
+			PrimitiveIndex3D_t* index0 = &result.indices[iIndex + 0];
+			PrimitiveIndex3D_t* index1 = &result.indices[iIndex + 1];
+			PrimitiveIndex3D_t* index2 = &result.indices[iIndex + 2];
+			v3 normal = Vec3Normalize(Vec3Cross(result.vertices[index2->index].position - result.vertices[index0->index].position, result.vertices[index1->index].position - result.vertices[index0->index].position));
+			index0->normal = normal;
+			index1->normal = normal;
+			index2->normal = normal;
+		}
+	}
+	
+	return result;
+}
+
 #endif //  _GY_PRIMITIVES_H
 
 // +--------------------------------------------------------------+
@@ -527,5 +689,7 @@ Cone_t NewCone(v3 base, r32 height, r32 radius)
 Pyramid_t NewPyramid(v3 base, r32 height, v2 baseSize)
 Wedge_t NewWedge(v3 bottomLeft, v3 size)
 void FreePrimitiveIndexedVerts(PrimitiveIndexedVerts_t* indexedVerts)
+void InvertPrimitiveVerts(PrimitiveIndexedVerts_t* indexedVerts)
 PrimitiveIndexedVerts_t GenerateVertsForBox(Box_t box, MemArena_t* memArena)
+PrimitiveIndexedVerts_t GenerateVertsForSphere(Sphere_t sphere, u64 numRings, u64 numSegments, bool smoothShading, MemArena_t* memArena)
 */
