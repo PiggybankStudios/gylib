@@ -122,7 +122,7 @@ u64 TrimLeadingWhitespace(MyStr_t* target, bool trimNewLines = false)
 	u64 result = 0;
 	while (target->length > 0)
 	{
-		if (target->pntr[0] == ' ' ||
+		if (target->pntr[0] == ' ' || target->pntr[0] == '\t' ||
 			(trimNewLines && (target->pntr[0] == '\n' || target->pntr[0] == '\r')))
 		{
 			target->length--;
@@ -139,7 +139,7 @@ u64 TrimTrailingWhitespace(MyStr_t* target, bool trimNewLines = false)
 	u64 result = 0;
 	while (target->length > 0)
 	{
-		if (target->pntr[target->length-1] == ' ' ||
+		if (target->pntr[target->length-1] == ' ' || target->pntr[target->length-1] == '\t' ||
 			(trimNewLines && (target->pntr[target->length-1] == '\n' || target->pntr[target->length-1] == '\r')))
 		{
 			target->length--;
