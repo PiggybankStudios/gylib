@@ -116,6 +116,48 @@ MyStr_t PrintInArenaStr(MemArena_t* arena, const char* formatString, ...)
 // +--------------------------------------------------------------+
 // |                Helpful Manipulation Functions                |
 // +--------------------------------------------------------------+
+u64 TrimLeadingWhitespace(MyStr_t* target, bool trimNewLines = false)
+{
+	NotNullStr(target);
+	u64 result = 0;
+	while (target->length > 0)
+	{
+		if (target->pntr[0] == ' ' ||
+			(trimNewLines && (target->pntr[0] == '\n' || target->pntr[0] == '\r')))
+		{
+			target->length--;
+			target->pntr++;
+			result++;
+		}
+		else { break; }
+	}
+	return result;
+}
+u64 TrimTrailingWhitespace(MyStr_t* target, bool trimNewLines = false)
+{
+	NotNullStr(target);
+	u64 result = 0;
+	while (target->length > 0)
+	{
+		if (target->pntr[target->length-1] == ' ' ||
+			(trimNewLines && (target->pntr[target->length-1] == '\n' || target->pntr[target->length-1] == '\r')))
+		{
+			target->length--;
+			result++;
+		}
+		else { break; }
+	}
+	return result;
+}
+u64 TrimWhitespace(MyStr_t* target, bool trimNewLines = false)
+{
+	NotNullStr(target);
+	u64 result = 0;
+	result += TrimLeadingWhitespace(target, trimNewLines);
+	result += TrimTrailingWhitespace(target, trimNewLines);
+	return result;
+}
+
 MyStr_t StrSubstring(MyStr_t* target, u64 startIndex)
 {
 	NotNullStr(target);
@@ -894,6 +936,9 @@ bool IsStrNullTerminated(const MyStr_t* target)
 #define NewStringInArenaNt(arena, nullTermStr)
 #define FreeString(arena, strPntr)
 MyStr_t PrintInArenaStr(MemArena_t* arena, const char* formatString, ...)
+u64 TrimLeadingWhitespace(MyStr_t* target, bool trimNewLines = false)
+u64 TrimTrailingWhitespace(MyStr_t* target, bool trimNewLines = false)
+u64 TrimWhitespace(MyStr_t* target, bool trimNewLines = false)
 MyStr_t StrSubstring(MyStr_t* target, u64 startIndex, u64 endIndex)
 MyStr_t StrSubstringLength(MyStr_t* target, u64 startIndex, u64 length)
 MyStr_t CombineStrs(MemArena_t* memArena, MyStr_t str1, MyStr_t str2)
