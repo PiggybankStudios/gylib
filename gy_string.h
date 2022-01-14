@@ -472,6 +472,63 @@ MyStr_t* SplitString(MemArena_t* memArena, const char* targetNt, const char* del
 	return SplitString(memArena, target, delineator, numPiecesOut, ignoreCase);
 }
 
+MyStr_t* SplitStringBySpacesFastTemp(MemArena_t* tempArena, MyStr_t target, u64* numPiecesOut)
+{
+	DebugAssert(tempArena != nullptr);
+	DebugAssert(tempArena->type == MemArenaType_MarkedStack);
+	DebugAssert(target.pntr != nullptr || target.length == 0);
+	DebugAssert(numPiecesOut != nullptr);
+	*numPiecesOut = 0;
+	MyStr_t* result = nullptr;
+	u64 previousSplitIndex = 0;
+	for (u64 cIndex = 0; cIndex <= target.length; cIndex++)
+	{
+		if (cIndex == target.length || target.pntr[cIndex] == ' ')
+		{
+			if (cIndex > previousSplitIndex)
+			{
+				MyStr_t* newStr = AllocStruct(tempArena, MyStr_t);
+				DebugAssert(newStr != nullptr);
+				DebugAssert(result == nullptr || newStr == result + (*numPiecesOut));
+				newStr->length = cIndex - previousSplitIndex;
+				newStr->pntr = &target.pntr[previousSplitIndex];
+				if (result == nullptr) { result = newStr; }
+				*numPiecesOut = (*numPiecesOut) + 1;
+			}
+			previousSplitIndex = cIndex+1;
+		}
+	}
+	return result;
+}
+MyStr_t* SplitStringBySlashesFastTemp(MemArena_t* tempArena, MyStr_t target, u64* numPiecesOut)
+{
+	DebugAssert(tempArena != nullptr);
+	DebugAssert(tempArena->type == MemArenaType_MarkedStack);
+	DebugAssert(target.pntr != nullptr || target.length == 0);
+	DebugAssert(numPiecesOut != nullptr);
+	*numPiecesOut = 0;
+	MyStr_t* result = nullptr;
+	u64 previousSplitIndex = 0;
+	for (u64 cIndex = 0; cIndex <= target.length; cIndex++)
+	{
+		if (cIndex == target.length || target.pntr[cIndex] == '/')
+		{
+			if (cIndex > previousSplitIndex)
+			{
+				MyStr_t* newStr = AllocStruct(tempArena, MyStr_t);
+				DebugAssert(newStr != nullptr);
+				DebugAssert(result == nullptr || newStr == result + (*numPiecesOut));
+				newStr->length = cIndex - previousSplitIndex;
+				newStr->pntr = &target.pntr[previousSplitIndex];
+				if (result == nullptr) { result = newStr; }
+				*numPiecesOut = (*numPiecesOut) + 1;
+			}
+			previousSplitIndex = cIndex+1;
+		}
+	}
+	return result;
+}
+
 //TODO: This doesn't play SUPER nice with unicode strings. It shouldn't really "fail" though
 //TODO: Add support for hex or unicode sequences
 //Returns the number of bytes that the string shrunk by after unescaping

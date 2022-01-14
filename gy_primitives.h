@@ -569,13 +569,8 @@ PrimitiveIndexedVerts_t GenerateVertsForSphere(Sphere_t sphere, u64 numRings, u6
 	
 	for (u64 rIndex = 0; rIndex <= numRings; rIndex++)
 	{
-		r32 ringAngle = -HalfPi32 + (ringStep * (rIndex+1));
-		r32 ringY = sphere.y + (SinR32(ringAngle) * sphere.radius);
-		r32 ringRadius = CosR32(ringAngle) * sphere.radius;
 		for (u64 sIndex = 0; sIndex < numSegments; sIndex++)
 		{
-			r32 segmentAngle = (sIndex * segmentStep);
-			
 			u64 upperVertIndex = 0;
 			if (rIndex < numRings) { upperVertIndex = 1 + (rIndex * numSegments) + sIndex; }
 			else { upperVertIndex = topCenterIndex; }

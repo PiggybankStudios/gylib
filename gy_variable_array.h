@@ -234,8 +234,8 @@ const void* VarArrayGet_(const VarArray_t* array, u64 index, u64 itemSize, bool 
 	return (const void*)VarArrayGet_((VarArray_t*)array, index, itemSize, assertOnFailure);
 }
 
-#define VarArrayGetHard(array, index, type) (type*)VarArrayGet_((array), (index), sizeof(type), true)
-#define VarArrayGetSoft(array, index, type) (type*)VarArrayGet_((array), (index), sizeof(type), false)
+#define VarArrayGetHard(array, index, type) ((type*)VarArrayGet_((array), (index), sizeof(type), true))
+#define VarArrayGetSoft(array, index, type) ((type*)VarArrayGet_((array), (index), sizeof(type), false))
 #define VarArrayGet(array, index, type) VarArrayGetHard((array), (index), type)
 
 #define VarArrayGetFirstHard(array, type) VarArrayGetHard((array), 0, type)
