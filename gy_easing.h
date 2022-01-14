@@ -6,6 +6,31 @@ Description:
 	** Holds functions that allow you to easily perform easing (aka tweening or interpolation)
 */
 
+/*
+//TODO: Make sure I have these names the correct way around
+In Functions: (slow start, fast end)
+f(t)
+^           ^
+|           |
+|           /
+|          |
+|        _/
+|   __--/
+|_--
++------------> t
+
+Out Functions: (fast start, slow end)
+f(t)
+^       ___-->      
+|    _--         
+|   /          
+|  |          
+| |           
+||            
+||            
++------------> t
+*/
+
 #ifndef _GY_EASING_H
 #define _GY_EASING_H
 
