@@ -101,11 +101,19 @@ extern void GyLibAssertFailure(const char* filePath, int lineNumber, const char*
 #define DebugAssert_(Expression)             Assert_((Expression))
 #define DebugAssertMsg(Expression, message)  AssertMsg((Expression), (message))
 #define DebugAssertMsg_(Expression, message) AssertMsg_((Expression), (message))
+#define DebugAssertAndUnused(Expression, unusedVarInRelease)              DebugAssert(Expression)
+#define DebugAssertAndUnused_(Expression, unusedVarInRelease)             DebugAssert_(Expression)
+#define DebugAssertAndUnusedMsg(Expression, unusedVarInRelease, message)  DebugAssertMsg((Expression), message)
+#define DebugAssertAndUnusedMsg_(Expression, unusedVarInRelease, message) DebugAssertMsg_((Expression), message)
 #else
 #define DebugAssert(Expression)              //null
 #define DebugAssert_(Expression)             //null
 #define DebugAssertMsg(Expression, message)  //null
 #define DebugAssertMsg_(Expression, message) //null
+#define DebugAssertAndUnused(Expression, unusedVarInRelease)              UNUSED(unusedVarInRelease)
+#define DebugAssertAndUnused_(Expression, unusedVarInRelease)             UNUSED(unusedVarInRelease)
+#define DebugAssertAndUnusedMsg(Expression, unusedVarInRelease, message)  UNUSED(unusedVarInRelease)
+#define DebugAssertAndUnusedMsg_(Expression, unusedVarInRelease, message) UNUSED(unusedVarInRelease)
 #endif
 
 //Quick-hand for something != nullptr && something != nullptr && ...
@@ -159,6 +167,10 @@ void GyLibAssertFailure(const char* filePath, int lineNumber, const char* funcNa
 #define DebugAssert_(Expression)
 #define DebugAssertMsg(Expression, message)
 #define DebugAssertMsg_(Expression, message)
+#define DebugAssertAndUnused(Expression, unusedVarInRelease)
+#define DebugAssertAndUnused_(Expression, unusedVarInRelease)
+#define DebugAssertAndUnusedMsg(Expression, unusedVarInRelease, message)
+#define DebugAssertAndUnusedMsg_(Expression, unusedVarInRelease, message)
 #define NotNull(variable)
 #define NotNull2(variable1, variable2)
 #define NotNull3(variable1, variable2, variable3)
