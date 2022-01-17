@@ -568,7 +568,7 @@ PrimitiveIndexedVerts_t GenerateVertsForSphere(Sphere_t sphere, u64 numRings, u6
 	}
 	
 	r32 texCoordStepX = 1.0f / (r32)numSegments;
-	r32 texCoordStepY = 1.0f / (r32)(numRings+1);
+	r32 texCoordStepY = 1.0f / (r32)(numRings-1);
 	for (u64 rIndex = 0; rIndex <= numRings; rIndex++)
 	{
 		for (u64 sIndex = 0; sIndex < numSegments; sIndex++)
