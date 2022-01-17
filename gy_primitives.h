@@ -567,6 +567,8 @@ PrimitiveIndexedVerts_t GenerateVertsForSphere(Sphere_t sphere, u64 numRings, u6
 		}
 	}
 	
+	r32 texCoordStepX = 1.0f / (r32)numSegments;
+	r32 texCoordStepY = 1.0f / (r32)(numRings+1);
 	for (u64 rIndex = 0; rIndex <= numRings; rIndex++)
 	{
 		for (u64 sIndex = 0; sIndex < numSegments; sIndex++)
@@ -599,6 +601,9 @@ PrimitiveIndexedVerts_t GenerateVertsForSphere(Sphere_t sphere, u64 numRings, u6
 			else { lowerNextVertIndex = bottomCenterIndex; }
 			Assert(lowerNextVertIndex < result.numVertices);
 			
+			v2 upperTexCoord = NewVec2(1.0f - (r32)sIndex     * texCoordStepX, 1.0f - (r32)rIndex     * texCoordStepY);
+			v2 lowerTexCoord = NewVec2(1.0f - (r32)(sIndex+1) * texCoordStepX, 1.0f - (r32)(rIndex-1) * texCoordStepY);
+			
 			u64 ringBaseIndex = 0;
 			if (rIndex > 0) { ringBaseIndex = (numSegments * 3) + (numSegments * (rIndex-1) * 3 * 2); }
 			if (rIndex > 0 && rIndex < numRings)
@@ -608,13 +613,13 @@ PrimitiveIndexedVerts_t GenerateVertsForSphere(Sphere_t sphere, u64 numRings, u6
 				Assert(triIndex1+3 <= result.numIndices);
 				Assert(triIndex2+3 <= result.numIndices);
 				
-				result.indices[triIndex1 + 0].index = upperVertIndex;     result.indices[triIndex1 + 0].faceIndex = sIndex;
-				result.indices[triIndex1 + 1].index = lowerVertIndex;     result.indices[triIndex1 + 2].faceIndex = sIndex;
-				result.indices[triIndex1 + 2].index = upperNextVertIndex; result.indices[triIndex1 + 1].faceIndex = sIndex;
+				result.indices[triIndex1 + 0].index = upperVertIndex;     result.indices[triIndex1 + 0].faceIndex = sIndex; result.indices[triIndex1 + 0].texCoord = NewVec2(upperTexCoord.x, upperTexCoord.y);
+				result.indices[triIndex1 + 1].index = lowerVertIndex;     result.indices[triIndex1 + 2].faceIndex = sIndex; result.indices[triIndex1 + 1].texCoord = NewVec2(upperTexCoord.x, lowerTexCoord.y);
+				result.indices[triIndex1 + 2].index = upperNextVertIndex; result.indices[triIndex1 + 1].faceIndex = sIndex; result.indices[triIndex1 + 2].texCoord = NewVec2(lowerTexCoord.x, upperTexCoord.y);
 				
-				result.indices[triIndex2 + 0].index = lowerNextVertIndex; result.indices[triIndex2 + 0].faceIndex = sIndex;
-				result.indices[triIndex2 + 1].index = upperNextVertIndex; result.indices[triIndex2 + 2].faceIndex = sIndex;
-				result.indices[triIndex2 + 2].index = lowerVertIndex;     result.indices[triIndex2 + 1].faceIndex = sIndex;
+				result.indices[triIndex2 + 0].index = lowerNextVertIndex; result.indices[triIndex2 + 0].faceIndex = sIndex; result.indices[triIndex2 + 0].texCoord = NewVec2(lowerTexCoord.x, lowerTexCoord.y);
+				result.indices[triIndex2 + 1].index = upperNextVertIndex; result.indices[triIndex2 + 2].faceIndex = sIndex; result.indices[triIndex2 + 1].texCoord = NewVec2(lowerTexCoord.x, upperTexCoord.y);
+				result.indices[triIndex2 + 2].index = lowerVertIndex;     result.indices[triIndex2 + 1].faceIndex = sIndex; result.indices[triIndex2 + 2].texCoord = NewVec2(upperTexCoord.x, lowerTexCoord.y);
 			}
 			else
 			{
@@ -622,15 +627,15 @@ PrimitiveIndexedVerts_t GenerateVertsForSphere(Sphere_t sphere, u64 numRings, u6
 				Assert(triIndex < result.numIndices);
 				if (rIndex == 0)
 				{
-					result.indices[triIndex + 0].index = lowerVertIndex;     result.indices[triIndex + 0].faceIndex = sIndex;
-					result.indices[triIndex + 1].index = upperNextVertIndex; result.indices[triIndex + 1].faceIndex = sIndex;
-					result.indices[triIndex + 2].index = upperVertIndex;     result.indices[triIndex + 2].faceIndex = sIndex;
+					result.indices[triIndex + 0].index = lowerVertIndex;     result.indices[triIndex + 0].faceIndex = sIndex; result.indices[triIndex + 0].texCoord = NewVec2(upperTexCoord.x, lowerTexCoord.y);
+					result.indices[triIndex + 1].index = upperNextVertIndex; result.indices[triIndex + 1].faceIndex = sIndex; result.indices[triIndex + 1].texCoord = NewVec2(lowerTexCoord.x, upperTexCoord.y);
+					result.indices[triIndex + 2].index = upperVertIndex;     result.indices[triIndex + 2].faceIndex = sIndex; result.indices[triIndex + 2].texCoord = NewVec2(upperTexCoord.x, upperTexCoord.y);
 				}
 				else //rIndex == numRings
 				{
-					result.indices[triIndex + 0].index = upperVertIndex;     result.indices[triIndex + 0].faceIndex = sIndex;
-					result.indices[triIndex + 1].index = lowerVertIndex;     result.indices[triIndex + 1].faceIndex = sIndex;
-					result.indices[triIndex + 2].index = lowerNextVertIndex; result.indices[triIndex + 2].faceIndex = sIndex;
+					result.indices[triIndex + 0].index = upperVertIndex;     result.indices[triIndex + 0].faceIndex = sIndex; result.indices[triIndex + 0].texCoord = NewVec2(upperTexCoord.x, upperTexCoord.y);
+					result.indices[triIndex + 1].index = lowerVertIndex;     result.indices[triIndex + 1].faceIndex = sIndex; result.indices[triIndex + 1].texCoord = NewVec2(upperTexCoord.x, lowerTexCoord.y);
+					result.indices[triIndex + 2].index = lowerNextVertIndex; result.indices[triIndex + 2].faceIndex = sIndex; result.indices[triIndex + 2].texCoord = NewVec2(lowerTexCoord.x, lowerTexCoord.y);
 				}
 			}
 		}

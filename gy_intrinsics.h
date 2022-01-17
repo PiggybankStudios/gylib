@@ -583,6 +583,20 @@ inline r32 SawR32(r32 angle)
 		return 1 - (offset * 2);
 	}
 }
+inline r64 SawR64(r64 angle)
+{
+	r64 x = (angle-Pi64/2) / (Pi64);
+	i64 section = FloorR64i(x);
+	r64 offset = x - (r64)section;
+	if ((section%2) == 0)
+	{
+		return -1 + (offset * 2);
+	}
+	else
+	{
+		return 1 - (offset * 2);
+	}
+}
 
 // +==============================+
 // |             Pow              |
@@ -1056,6 +1070,7 @@ inline r64 AcosR64(r64 value)
 inline r32 AtanR32(r32 y, r32 x)
 inline r64 AtanR64(r64 y, r64 x)
 inline r32 SawR32(r32 angle)
+inline r64 SawR64(r64 angle)
 inline r32 PowR32(r32 value, r32 power)
 inline r64 PowR64(r64 value, r64 power)
 inline r32 SqrtR32(r32 value)
