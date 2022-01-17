@@ -1169,6 +1169,19 @@ void PopMemMark(MemArena_t* arena)
 	stackHeader->numMarks--;
 }
 
+u64 GetNumMarks(MemArena_t* arena)
+{
+	NotNull(arena);
+	Assert(arena->type == MemArenaType_MarkedStack);
+	NotNull(arena->headerPntr);
+	NotNull(arena->otherPntr);
+	
+	MarkedStackArenaHeader_t* stackHeader = (MarkedStackArenaHeader_t*)arena->headerPntr;
+	Assert(stackHeader->maxNumMarks > 0);
+	Assert(stackHeader->numMarks <= stackHeader->maxNumMarks);
+	return stackHeader->numMarks;
+}
+
 // +--------------------------------------------------------------+
 // |                    Arena Print Functions                     |
 // +--------------------------------------------------------------+
@@ -1314,6 +1327,7 @@ void* ReallocMem(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 
 #define SoftReallocMem(arena, allocPntr, newSize)
 void PushMemMark(MemArena_t* arena)
 void PopMemMark(MemArena_t* arena)
+u64 GetNumMarks(MemArena_t* arena)
 char* PrintInArena(MemArena_t* arena, const char* formatString, ...)
 int PrintVa_Measure(const char* formatString, va_list args)
 void PrintVa_Print(const char* formatString, va_list args, char* allocatedSpace, int previousResult)
