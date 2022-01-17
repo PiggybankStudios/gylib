@@ -42,14 +42,14 @@ MyStr_t NewStr(u64 length, const char* pntr)
 MyStr_t NewStr(char* nullTermStr)
 {
 	MyStr_t result;
-	result.length = MyStrLength64(nullTermStr);
+	result.length = ((nullTermStr != nullptr) ? MyStrLength64(nullTermStr) : 0);
 	result.pntr = nullTermStr;
 	return result;
 }
 MyStr_t NewStr(const char* nullTermStr)
 {
 	MyStr_t result;
-	result.length = MyStrLength64(nullTermStr);
+	result.length = ((nullTermStr != nullptr) ? MyStrLength64(nullTermStr) : 0);
 	result.pntr = (char*)nullTermStr;
 	return result;
 }

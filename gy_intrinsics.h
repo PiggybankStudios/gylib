@@ -863,7 +863,7 @@ inline bool BasicallyEqualR32(r32 value1, r32 value2, r32 tolerance = 0.001f)
 {
 	return (AbsR32(value1 - value2) <= tolerance);
 }
-inline bool BasicallyEqualR64(r64 value1, r64 value2, r64 tolerance = 0.001f)
+inline bool BasicallyEqualR64(r64 value1, r64 value2, r64 tolerance = 0.001)
 {
 	return (AbsR64(value1 - value2) <= tolerance);
 }
