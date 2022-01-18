@@ -24,6 +24,11 @@ struct StringFifoLine_t
 {
 	StringFifoLine_t* prev;
 	StringFifoLine_t* next;
+	
+	//NOTE: Any information that is contained in here that isn't directly referred to by StringFifoInsertLinesFromFifo will
+	//      get thrown away (regenerated) as part of that process. In this case it means that lines that were already on the
+	//      buffer will get reassigned a line number. This is kind of fine though so we're not solving it for now.
+	//      Just don't add any mission critical data here without solving that problem
 	u64 lineNumber;
 	
 	//These can be found immediately following this structure
@@ -160,6 +165,18 @@ void CreateStringFifoInArena(StringFifo_t* fifo, MemArena_t* memArena, u64 buffe
 	MyMemSet(&fifo->buffer[0], 0x00, bufferSize);
 }
 
+void ClearStringFifo(StringFifo_t* fifo)
+{
+	NotNull(fifo);
+	fifo->used = 0;
+	fifo->firstLine = nullptr;
+	fifo->lastLine = nullptr;
+	fifo->numLines = 0;
+}
+
+// +--------------------------------------------------------------+
+// |                             Pop                              |
+// +--------------------------------------------------------------+
 void StringFifoPopLine(StringFifo_t* fifo)
 {
 	NotNull_(fifo);
@@ -187,6 +204,9 @@ void StringFifoPopLine(StringFifo_t* fifo)
 	fifo->used -= poppedLineSize;
 }
 
+// +--------------------------------------------------------------+
+// |                             Push                             |
+// +--------------------------------------------------------------+
 StringFifoLine_t* StringFifoPushLineExt(StringFifo_t* fifo, MyStr_t text, u64 metaStructSize, const void* metaStructPntr, MyStr_t metaString)
 {
 	NotNull_(fifo);
@@ -279,7 +299,7 @@ StringFifoLine_t* StringFifoPushLineExt(StringFifo_t* fifo, MyStr_t text, u64 me
 		void* metaStructSpace = GetFifoLineMetaStruct_(result, metaStructSize);
 		MyStr_t metaStringSpace = GetFifoLineMetaString(result);
 		MyStr_t textSpace = GetFifoLineText(result);
-		if (metaStructSize > 0)
+		if (metaStructSize > 0 && metaStructPntr != nullptr)
 		{
 			MyMemCopy(metaStructSpace, metaStructPntr, metaStructSize);
 		}
@@ -304,4 +324,302 @@ StringFifoLine_t* StringFifoPushLine(StringFifo_t* fifo, MyStr_t text)
 	return StringFifoPushLineExt(fifo, text, 0, nullptr, MyStr_Empty);
 }
 
+// +--------------------------------------------------------------+
+// |                             Copy                             |
+// +--------------------------------------------------------------+
+void CopyStringFifo(StringFifo_t* destFifo, const StringFifo_t* srcFifo, MemArena_t* memArena, bool shrinkBufferToMatchContents)
+{
+	NotNull(destFifo);
+	NotNull(srcFifo);
+	if (srcFifo->used == 0 && shrinkBufferToMatchContents)
+	{
+		//Nothing to do in this scenario
+		ClearPointer(destFifo);
+		return;
+	}
+	
+	CreateStringFifoInArena(destFifo, memArena, shrinkBufferToMatchContents ? srcFifo->used : srcFifo->bufferSize);
+	if (shrinkBufferToMatchContents)
+	{
+		const StringFifoLine_t* srcLine = srcFifo->firstLine;
+		while (srcLine != nullptr)
+		{
+			MyStr_t srcText = GetFifoLineText(srcLine);
+			const void* srcMetaStruct = ((srcLine->metaStructSize > 0) ? GetFifoLineMetaStruct_(srcLine, srcLine->metaStructSize) : nullptr);
+			MyStr_t srcMetaString = GetFifoLineMetaString(srcLine);
+			StringFifoLine_t* newLine = StringFifoPushLineExt(destFifo, srcText, srcLine->metaStructSize, srcMetaStruct, srcMetaString);
+			NotNull(newLine);
+			srcLine = srcLine->next;
+		}
+		DebugAssert(destFifo->used == destFifo->bufferSize);
+	}
+	else
+	{
+		//In this case, we can just copy and fixup the pointers and then we are done
+		destFifo->used = srcFifo->used;
+		destFifo->numLines = srcFifo->numLines;
+		MyMemCopy(destFifo->buffer, srcFifo->buffer, srcFifo->bufferSize);
+		NotNull(srcFifo->firstLine);
+		destFifo->firstLine = (StringFifoLine_t*)(destFifo->buffer + (u64)((u8*)srcFifo->firstLine - srcFifo->buffer));
+		destFifo->lastLine = (StringFifoLine_t*)(destFifo->buffer + (u64)((u8*)srcFifo->lastLine - srcFifo->buffer));
+		StringFifoLine_t* line = destFifo->firstLine;
+		StringFifoLine_t* prevLine = nullptr;
+		while (line != nullptr)
+		{
+			Assert((u8*)line >= destFifo->buffer && (u8*)line < destFifo->buffer + destFifo->bufferSize);
+			line->next = (StringFifoLine_t*)(destFifo->buffer + (u64)((u8*)line->next - srcFifo->buffer));
+			line->prev = prevLine;
+			prevLine = line;
+			line = line->next;
+		}
+	}
+}
+
+// +--------------------------------------------------------------+
+// |                      Push another Fifo                       |
+// +--------------------------------------------------------------+
+//NOTE: If you modify the size of metaStructSize then the new requested size will be allocated but not automatically filled.
+//      It will be up to the after callback to fill the new space.
+#define GY_STRING_FIFO_PUSH_LINES_BEFORE_CALLBACK_DEF(functionName) bool functionName(StringFifo_t* fifo, const StringFifo_t* srcFifo, const StringFifoLine_t* srcLine, u64* metaStructSize, void* userPntr)
+typedef GY_STRING_FIFO_PUSH_LINES_BEFORE_CALLBACK_DEF(StringFifoPushLineBefore_f);
+
+#define GY_STRING_FIFO_PUSH_LINES_AFTER_CALLBACK_DEF(functionName) void functionName(StringFifo_t* fifo, const StringFifo_t* srcFifo, const StringFifoLine_t* srcLine, StringFifoLine_t* newLine, void* userPntr)
+typedef GY_STRING_FIFO_PUSH_LINES_AFTER_CALLBACK_DEF(StringFifoPushLineAfter_f);
+
+void StringFifoPushLinesFromFifo(StringFifo_t* fifo, const StringFifo_t* srcFifo,
+	bool includeMetaStructs = true, bool includeMetaStrings = true,
+	StringFifoPushLineBefore_f* beforeCallback = nullptr, StringFifoPushLineAfter_f* afterCallback = nullptr, void* userPntr = nullptr)
+{
+	NotNull(fifo);
+	NotNull(srcFifo);
+	if (srcFifo->numLines == 0) { return; }
+	NotNull(srcFifo->firstLine);
+	
+	const StringFifoLine_t* srcLine = srcFifo->firstLine;
+	while (srcLine != nullptr)
+	{
+		u64 newMetaStructSize = 0;
+		if (beforeCallback == nullptr || beforeCallback(fifo, srcFifo, srcLine, &newMetaStructSize, userPntr))
+		{
+			MyStr_t text = GetFifoLineText(srcLine);
+			const void* metaStruct = ((includeMetaStructs && newMetaStructSize == 0) ? GetFifoLineMetaStruct_(srcLine, srcLine->metaStructSize) : nullptr);
+			MyStr_t metaString = GetFifoLineMetaString(srcLine);
+			StringFifoLine_t* newLine = StringFifoPushLineExt(
+				fifo,
+				text,
+				((newMetaStructSize == 0) ? (includeMetaStructs ? srcLine->metaStructSize : 0) : newMetaStructSize),
+				metaStruct,
+				(includeMetaStrings ? metaString : MyStr_Empty)
+			);
+			if (afterCallback != nullptr)
+			{
+				afterCallback(fifo, srcFifo, srcLine, newLine, userPntr);
+			}
+		}
+		srcLine = srcLine->next;
+	}
+}
+
+//NOTE: fifoLine may come from EITHER fifo or srcFifo
+#define GY_STRING_FIFO_PUSH_LINES_SORT_CALLBACK_DEF(functionName) u64 functionName(StringFifo_t* fifo, const StringFifo_t* srcFifo, const StringFifoLine_t* fifoLine, void* userPntr)
+typedef GY_STRING_FIFO_PUSH_LINES_SORT_CALLBACK_DEF(StringFifoPushLineSort_f);
+
+//TODO: We probably need to take into account the lineNumber and update nextLineNumber in the fifo
+void StringFifoInsertLinesFromFifo(StringFifo_t* fifo, const StringFifo_t* srcFifo, StringFifoPushLineSort_f* sortCallback, MemArena_t* arenaForTempSpace,
+	bool includeMetaStructs = true, bool includeMetaStrings = true,
+	StringFifoPushLineBefore_f* beforeCallback = nullptr, StringFifoPushLineAfter_f* afterCallback = nullptr, void* userPntr = nullptr)
+{
+	NotNull(fifo);
+	NotNull(srcFifo);
+	NotNull(sortCallback);
+	NotNull(arenaForTempSpace);
+	if (srcFifo->numLines == 0) { return; }
+	
+	// +================================================+
+	// | Find the minimum sort value fomr srcFifo lines |
+	// +================================================+
+	u64 minSrcSortValue = UINT64_MAX;
+	const StringFifoLine_t* srcLine = srcFifo->firstLine;
+	while (srcLine != nullptr)
+	{
+		u64 sortValue = sortCallback(fifo, srcFifo, srcLine, userPntr);
+		if (sortValue < minSrcSortValue)
+		{
+			minSrcSortValue = sortValue;
+		}
+		srcLine = srcLine->next;
+	}
+	
+	// +==================================================+
+	// | Figure out how many lines we need to interleave  |
+	// +==================================================+
+	u64 totalTempSpaceNeeded = 0;
+	u64 numLinesToInterleave = 0;
+	StringFifoLine_t* fifoLine = fifo->lastLine;
+	while (fifoLine != nullptr)
+	{
+		u64 sortValue = sortCallback(fifo, srcFifo, fifoLine, userPntr);
+		if (sortValue <= minSrcSortValue) { break; }
+		u64 lineSize = GetFifoLineTotalSize(fifoLine);
+		totalTempSpaceNeeded += lineSize;
+		numLinesToInterleave++;
+		fifoLine = fifoLine->prev;
+	}
+	if (numLinesToInterleave == 0)
+	{
+		//no interleaving required. That's the same as StringFifoPushLinesFromFifo
+		StringFifoPushLinesFromFifo(fifo, srcFifo, includeMetaStructs, includeMetaStrings, beforeCallback, afterCallback, userPntr);
+		return;
+	}
+	
+	bool usePushPop = (arenaForTempSpace->type == MemArenaType_MarkedStack);
+	if (usePushPop) { PushMemMark(arenaForTempSpace); }
+	
+	// +====================================================+
+	// | Move lines already in Fifo into Temporary Storage  |
+	// +====================================================+
+	u8* tempSpace = AllocArray(arenaForTempSpace, u8, totalTempSpaceNeeded);
+	NotNull(tempSpace);
+	
+	//walk back to the first line we want to store in temporary buffer
+	fifoLine = fifo->lastLine;
+	for (u64 lIndex = 0; lIndex < numLinesToInterleave-1; lIndex++) { NotNull(fifoLine); fifoLine = fifoLine->prev; }
+	
+	StringFifoLine_t* firstTempLine = (StringFifoLine_t*)&tempSpace[0];
+	u64 tempSpaceWriteIndex = 0;
+	StringFifoLine_t* prevLine = nullptr;
+	while (fifoLine != nullptr)
+	{
+		u64 lineSize = GetFifoLineTotalSize(fifoLine);
+		Assert(tempSpaceWriteIndex + lineSize <= totalTempSpaceNeeded);
+		StringFifoLine_t* tempLine = (StringFifoLine_t*)&tempSpace[tempSpaceWriteIndex];
+		MyMemCopy(tempLine, fifoLine, lineSize);
+		tempLine->prev = prevLine;
+		tempLine->next = nullptr;
+		if (prevLine != nullptr) { prevLine->next = tempLine; }
+		prevLine = tempLine;
+		tempSpaceWriteIndex += lineSize;
+		fifoLine = fifoLine->next;
+	}
+	
+	// +==============================+
+	// | Remove lines from main fifo  |
+	// +==============================+
+	StringFifoLine_t* lastLineBeforeInterleave = fifo->lastLine;
+	for (u64 lIndex = 0; lIndex < numLinesToInterleave; lIndex++) { NotNull(lastLineBeforeInterleave); lastLineBeforeInterleave = lastLineBeforeInterleave->prev; }
+	if (lastLineBeforeInterleave != nullptr)
+	{
+		lastLineBeforeInterleave->next = nullptr;
+		fifo->lastLine = lastLineBeforeInterleave;
+		Assert(totalTempSpaceNeeded < fifo->used);
+		Assert(numLinesToInterleave < fifo->numLines);
+		fifo->used -= totalTempSpaceNeeded;
+		fifo->numLines -= numLinesToInterleave;
+	}
+	else
+	{
+		//we must be removing all of the lines
+		Assert(numLinesToInterleave == fifo->numLines);
+		fifo->firstLine = nullptr;
+		fifo->lastLine = nullptr;
+		fifo->numLines = 0;
+		fifo->used = 0;
+	}
+	
+	const StringFifoLine_t* srcLineIter = srcFifo->firstLine;
+	const StringFifoLine_t* tempLineIter = firstTempLine;
+	while (srcLineIter != nullptr || tempLineIter != nullptr)
+	{
+		bool addSrcLine = false;
+		if (srcLineIter != nullptr && tempLineIter != nullptr)
+		{
+			u64 srcSortValue = sortCallback(fifo, srcFifo, srcLineIter, userPntr);
+			u64 tempSortValue = sortCallback(fifo, srcFifo, tempLineIter, userPntr);
+			addSrcLine = (tempSortValue > srcSortValue);
+		}
+		else if (srcLineIter != nullptr)
+		{
+			addSrcLine = true;
+		}
+		else if (tempLineIter != nullptr)
+		{
+			addSrcLine = false;
+		}
+		else { Assert(false); } //should be impossible because of while condition
+		
+		
+		if (addSrcLine)
+		{
+			u64 newMetaStructSize = 0;
+			if (beforeCallback != nullptr)
+			{
+				bool beforeResult = beforeCallback(fifo, srcFifo, srcLineIter, &newMetaStructSize, userPntr);
+				AssertMsg(beforeResult, "We don't support adding only some liens when interleaving right now");
+			}
+			
+			MyStr_t srcText = GetFifoLineText(srcLineIter);
+			const void* srcMetaStruct = ((includeMetaStructs && newMetaStructSize == 0) ? GetFifoLineMetaStruct_(srcLineIter, srcLineIter->metaStructSize) : nullptr);
+			MyStr_t srcMetaString = GetFifoLineMetaString(srcLineIter);
+			StringFifoLine_t* newLine = StringFifoPushLineExt(
+				fifo,
+				srcText,
+				((newMetaStructSize == 0) ? (includeMetaStructs ? srcLineIter->metaStructSize : 0) : newMetaStructSize),
+				srcMetaStruct,
+				(includeMetaStrings ? srcMetaString : MyStr_Empty)
+			);
+			if (newLine != nullptr && afterCallback != nullptr)
+			{
+				afterCallback(fifo, srcFifo, srcLineIter, newLine, userPntr);
+			}
+			srcLineIter = srcLineIter->next;
+		}
+		else
+		{
+			MyStr_t tempText = GetFifoLineText(tempLineIter);
+			const void* tempMetaStruct = GetFifoLineMetaStruct_(tempLineIter, tempLineIter->metaStructSize);
+			MyStr_t tempMetaString = GetFifoLineMetaString(tempLineIter);
+			StringFifoLine_t* newLine = StringFifoPushLineExt(fifo, tempText, tempLineIter->metaStructSize, tempMetaStruct, tempMetaString);
+			tempLineIter = tempLineIter->next;
+		}
+	}
+	
+	if (usePushPop) { PopMemMark(arenaForTempSpace); }
+	else { FreeMem(arenaForTempSpace, tempSpace, totalTempSpaceNeeded); }
+}
+
 #endif //  _GY_STRING_FIFO_H
+
+// +--------------------------------------------------------------+
+// |                   Autocomplete Dictionary                    |
+// +--------------------------------------------------------------+
+/*
+@Defines
+@Types
+StringFifoLine_t
+StringFifo_t
+StringFifoPushLineBefore_f
+StringFifoPushLineAfter_f
+StringFifoPushLineSort_f
+@Functions
+u64 GetFifoLineTotalSize(const StringFifoLine_t* line)
+void* GetFifoLineMetaStruct_(StringFifoLine_t* line, u64 expectedStructSize)
+#define GetFifoLineMetaStruct(linePntr, type)
+MyStr_t GetFifoLineMetaString(const StringFifoLine_t* line)
+MyStr_t GetFifoLineText(const StringFifoLine_t* line)
+const void* GetFifoLineEndPntr(const StringFifoLine_t* line)
+u64 GetStringFifoPntrIndex(const StringFifo_t* fifo, const void* pntr)
+u64 GetStringFifoTailIndex(const StringFifo_t* fifo)
+u64 GetStringFifoHeadIndex(const StringFifo_t* fifo)
+void DestroyStringFifo(StringFifo_t* fifo)
+void CreateStringFifo(StringFifo_t* fifo, u64 bufferSize, u8* bufferPntr)
+void CreateStringFifoInArena(StringFifo_t* fifo, MemArena_t* memArena, u64 bufferSize)
+void StringFifoPopLine(StringFifo_t* fifo)
+StringFifoLine_t* StringFifoPushLineExt(StringFifo_t* fifo, MyStr_t text, u64 metaStructSize, const void* metaStructPntr, MyStr_t metaString)
+StringFifoLine_t* StringFifoPushLine(StringFifo_t* fifo, MyStr_t text)
+void CopyStringFifo(StringFifo_t* destFifo, const StringFifo_t* srcFifo, MemArena_t* memArena, bool shrinkBufferToMatchContents)
+#define GY_STRING_FIFO_PUSH_LINES_BEFORE_CALLBACK_DEF(functionName)
+#define GY_STRING_FIFO_PUSH_LINES_AFTER_CALLBACK_DEF(functionName)
+void StringFifoPushLinesFromFifo(StringFifo_t* fifo, const StringFifo_t* srcFifo, bool includeMetaStructs = true, bool includeMetaStrings = true, StringFifoPushLineBefore_f* beforeCallback = nullptr, StringFifoPushLineAfter_f* afterCallback = nullptr, void* userPntr = nullptr)
+#define GY_STRING_FIFO_PUSH_LINES_SORT_CALLBACK_DEF(functionName)
+void StringFifoInsertLinesFromFifo(StringFifo_t* fifo, const StringFifo_t* srcFifo, StringFifoPushLineSort_f* sortCallback, MemArena_t* arenaForTempSpace, bool includeMetaStructs = true, bool includeMetaStrings = true, StringFifoPushLineBefore_f* beforeCallback = nullptr, StringFifoPushLineAfter_f* afterCallback = nullptr, void* userPntr = nullptr)
+*/
