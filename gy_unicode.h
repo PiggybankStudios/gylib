@@ -47,6 +47,17 @@ char GetUppercaseAnsiiChar(char c)
 	return c;
 }
 
+u32 GetLowercaseCodepoint(u32 codepoint)
+{
+	if (codepoint >= 'A' && codepoint <= 'Z') { return 'a' + (codepoint - 'A'); }
+	return codepoint;
+}
+u32 GetUppercaseCodepoint(u32 codepoint)
+{
+	if (codepoint >= 'a' && codepoint <= 'z') { return 'A' + (codepoint - 'z'); }
+	return codepoint;
+}
+
 u8 CharToU8(char c)
 {
 	return *((u8*)&c);
@@ -311,6 +322,8 @@ UNICODE_KATAKANA_END
 @Functions
 char GetLowercaseAnsiiChar(char c)
 char GetUppercaseAnsiiChar(char c)
+u32 GetLowercaseCodepoint(u32 codepoint)
+u32 GetUppercaseCodepoint(u32 codepoint)
 u8 CharToU8(char c)
 u32 CharToU32(char c)
 char GetHexChar(u8 hexValue, bool upperCase = true)

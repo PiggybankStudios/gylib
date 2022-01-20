@@ -146,6 +146,17 @@ typedef I32_FUNC_DEF(I32Func_f);
 #endif
 
 #define SWAP_VARIABLES(varType, var1, var2) do { varType tempVarWithLongNameThatWontConflict = (var2); (var2) = (var1); (var1) = tempVarWithLongNameThatWontConflict; } while(0)
+#define SWAP_POINTERS(varType, pntr1, pntr2) do                                \
+{                                                                              \
+	varType tempVarWithLongNameThatWontConflict;                               \
+	MyMemCopy(&tempVarWithLongNameThatWontConflict, (pntr2), sizeof(varType)); \
+	MyMemCopy((pntr2), (pntr1), sizeof(varType));                              \
+	MyMemCopy((pntr1), &tempVarWithLongNameThatWontConflict, sizeof(varType)); \
+	varType* tempPntrWithLongNameThatWontConflict;                             \
+	tempPntrWithLongNameThatWontConflict = (pntr2);                            \
+	(pntr2) = (pntr1);                                                         \
+	(pntr1) = tempPntrWithLongNameThatWontConflict;                            \
+} while(0)
 
 // +--------------------------------------------------------------+
 // |                   Packed and Export Macros                   |
@@ -264,6 +275,7 @@ I32Func_f
 #define UNUSED(varName)
 #define UNREFERENCED(varName)
 #define SWAP_VARIABLES(varType, var1, var2)
+#define SWAP_POINTERS(varType, pntr1, pntr2)
 #define PACKED(class_to_pack)
 #define START_PACK()
 #define END_PACK()

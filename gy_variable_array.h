@@ -454,6 +454,58 @@ void VarArrayCopy(VarArray_t* destArray, const VarArray_t* sourceArray, MemArena
 	}
 }
 
+// +--------------------------------------------------------------+
+// |                             Move                             |
+// +--------------------------------------------------------------+
+void* VarArrayMove(VarArray_t* array, u64 fromIndex, u64 toIndex, bool swapWithTarget = true)
+{
+	NotNull(array);
+	NotNull(array->items);
+	Assert(fromIndex < array->length);
+	Assert(toIndex < array->length);
+	if (fromIndex == toIndex) { return VarArrayGet_(array, fromIndex, array->itemSize, true); } //no work to do
+	
+	VarArrayExpand(array, array->length+1);
+	Assert(array->allocLength > array->length);
+	void* tempSpace = (void*)(((u8*)array->items) + (array->length * array->itemSize));
+	
+	void* movingItem = VarArrayGet_(array, fromIndex, array->itemSize, true);
+	void* replaceItem = VarArrayGet_(array, toIndex, array->itemSize, true);
+	if (swapWithTarget)
+	{
+		MyMemCopy(tempSpace, movingItem, array->itemSize);
+		MyMemCopy(movingItem, replaceItem, array->itemSize);
+		MyMemCopy(replaceItem, tempSpace, array->itemSize);
+	}
+	else
+	{
+		MyMemCopy(tempSpace, movingItem, array->itemSize);
+		if (toIndex > fromIndex)
+		{
+			//shift things in-between down by one
+			for (u64 index = fromIndex; index < toIndex; index++)
+			{
+				void* thisItem = VarArrayGet_(array, index, array->itemSize, true);
+				void* nextItem = VarArrayGet_(array, index+1, array->itemSize, true);
+				MyMemCopy(thisItem, nextItem, array->itemSize);
+			}
+		}
+		else
+		{
+			//shift things in-between up by one
+			for (u64 index = fromIndex; index > toIndex; index--)
+			{
+				void* thisItem = VarArrayGet_(array, index, array->itemSize, true);
+				void* prevItem = VarArrayGet_(array, index-1, array->itemSize, true);
+				MyMemCopy(thisItem, prevItem, array->itemSize);
+			}
+		}
+		MyMemCopy(replaceItem, tempSpace, array->itemSize);
+	}
+	
+	return replaceItem;
+}
+
 //TODO: Add VarArraySort if gy_sorting.h is included?
 
 #endif //  _GY_VARIABLE_ARRAY_H
@@ -499,4 +551,5 @@ void VarArrayAddVarArray(VarArray_t* destArray, const VarArray_t* sourceArray, u
 #define VarArrayMerge(destArray, sourceArray)
 #define VarArrayRemoveRange(array, index, numItemsToRemove, type)
 void VarArrayCopy(VarArray_t* destArray, const VarArray_t* sourceArray, MemArena_t* memArena)
+void* VarArrayMove(VarArray_t* array, u64 fromIndex, u64 toIndex, bool swapWithTarget = true)
 */

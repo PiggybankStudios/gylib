@@ -16,6 +16,7 @@ Description:
 #include "gylib/gy_intrinsics.h"
 #include "gylib/gy_unicode.h"
 #include "gylib/gy_string.h"
+#include "gylib/gy_vectors.h"
 
 #define GY_MAX_FLOAT_PARSE_LENGTH 64 //characters
 
@@ -406,6 +407,51 @@ bool TryParseBool(MyStr_t str, bool* valueOut, TryParseFailureReason_t* reasonOu
 	return true;
 }
 
+bool TryParseV2i(MyStr_t str, v2i* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
+{
+	NotNullStr(&str);
+	if (StrStartsWith(str, "(")) { str = StrSubstring(&str, 1); }
+	if (StrEndsWith(str, ")")) { str = StrSubstring(&str, 0, str.length-1); }
+	u64 commaIndex = 0;
+	bool strContainsComma = FindSubstring(str, ",", &commaIndex);
+	if (!strContainsComma) { return false; }
+	MyStr_t xStr = StrSubstring(&str, 0, commaIndex);
+	MyStr_t yStr = StrSubstring(&str, commaIndex+1);
+	v2i vector = Vec2i_Zero;
+	if (!TryParseI32(xStr, &vector.x, reasonOut))
+	{
+		return false;
+	}
+	if (!TryParseI32(yStr, &vector.y, reasonOut))
+	{
+		return false;
+	}
+	if (valueOut != nullptr) { *valueOut = vector; }
+	return true;
+}
+bool TryParseV2(MyStr_t str, v2* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
+{
+	NotNullStr(&str);
+	if (StrStartsWith(str, "(")) { str = StrSubstring(&str, 1); }
+	if (StrEndsWith(str, ")")) { str = StrSubstring(&str, 0, str.length-1); }
+	u64 commaIndex = 0;
+	bool strContainsComma = FindSubstring(str, ",", &commaIndex);
+	if (!strContainsComma) { return false; }
+	MyStr_t xStr = StrSubstring(&str, 0, commaIndex);
+	MyStr_t yStr = StrSubstring(&str, commaIndex+1);
+	v2 vector = Vec2_Zero;
+	if (!TryParseR32(xStr, &vector.x, reasonOut))
+	{
+		return false;
+	}
+	if (!TryParseR32(yStr, &vector.y, reasonOut))
+	{
+		return false;
+	}
+	if (valueOut != nullptr) { *valueOut = vector; }
+	return true;
+}
+
 #endif //  _GY_PARSING_H
 
 // +--------------------------------------------------------------+
@@ -625,4 +671,6 @@ bool TryParseI8(MyStr_t str, i8* valueOut, TryParseFailureReason_t* reasonOut = 
 bool TryParseR64(MyStr_t str, r64* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowInfinity = false)
 bool TryParseR32(MyStr_t str, r32* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowSuffix = true, bool allowInfinity = false)
 bool TryParseBool(MyStr_t str, bool* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
+bool TryParseV2i(MyStr_t str, v2i* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
+bool TryParseV2(MyStr_t str, v2* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
 */
