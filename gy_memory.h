@@ -245,7 +245,7 @@ void InitMemArena_PagedHeapFuncs(MemArena_t* arena, u64 pageSize, AllocationFunc
 	UNUSED(freeFunc);
 	UNUSED(maxNumPages);
 	UNUSED(alignment);
-	//TODO: Implement me!
+	Unimplemented(); //TODO: Implement me!
 }
 void InitMemArena_PagedHeapArena(MemArena_t* arena, u64 pageSize, MemArena_t* sourceArena, u64 maxNumPages = 0, AllocAlignment_t alignment = AllocAlignment_None)
 {
@@ -254,7 +254,7 @@ void InitMemArena_PagedHeapArena(MemArena_t* arena, u64 pageSize, MemArena_t* so
 	UNUSED(sourceArena);
 	UNUSED(maxNumPages);
 	UNUSED(alignment);
-	//TODO: Implement me!
+	Unimplemented(); //TODO: Implement me!
 }
 void InitMemArena_MarkedStack(MemArena_t* arena, u64 size, void* memoryPntr, u64 maxNumMarks, AllocAlignment_t alignment = AllocAlignment_None)
 {
@@ -303,6 +303,13 @@ void InitMemArena_Buffer(MemArena_t* arena, u64 bufferSize, void* bufferPntr, bo
 }
 
 #define CreateBufferArenaOnStack(arenaName, bufferName, size) MemArena_t arenaName; u8 bufferName[size]; InitMemArena_Buffer(&arenaName, (size), &bufferName[0])
+
+void UpdateMemArenaFuncPntrs(MemArena_t* arena, AllocationFunction_f* allocFunc, FreeFunction_f* freeFunc)
+{
+	Assert(arena->type == MemArenaType_Redirect || MemArenaType_PagedHeap);
+	arena->allocFunc = allocFunc;
+	arena->freeFunc = freeFunc;
+}
 
 // +--------------------------------------------------------------+
 // |                    Information Functions                     |

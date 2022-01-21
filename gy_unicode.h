@@ -255,6 +255,65 @@ u8 GetCodepointForUtf8(u64 maxNumChars, const char* strPntr, u32* codepointOut =
 	}
 }
 
+//Using the startIndex as a known max length to walk backwards this function will look backwards through a string until it finds a full encoded character
+//Returns the number of bytes that encoded character took up and stores the codepoint for it in codepointOut
+u8 GetCodepointBeforeIndex(const char* strPntr, u64 startIndex, u32* codepointOut = nullptr)
+{
+	if (startIndex == 0) { return 0; }
+	NotNull(strPntr);
+	for (u8 encodedSize = 1; encodedSize <= UTF8_MAX_CHAR_SIZE && encodedSize <= startIndex; encodedSize++)
+	{
+		char thisChar = strPntr[startIndex - encodedSize];
+		u8 thisByte = CharToU8(thisChar);
+		if (thisByte <= 127)
+		{
+			if (codepointOut != nullptr) { *codepointOut = (u32)thisByte; }
+			return 1;
+		}
+		else if (thisByte < 0xC0)
+		{
+			//The 10xx xxxx format means a second/third/fourth byte in a sequence, keep walking
+		}
+		else if (thisByte < 0xE0)
+		{
+			if (encodedSize != 2) { return 0; } //We walked either too many characters before finding this 2-byte encoding start, or not enough
+			u8 nextByte = CharToU8(strPntr[startIndex - 1]);
+			if (nextByte < 0x80 || nextByte >= 0xC0) { return 0; } //not sure how this would happen?
+			if (codepointOut != nullptr) { *codepointOut = ((u32)(thisByte & 0x1F) << 6) | ((u32)(nextByte & 0x3F) << 0); }
+			return 2;
+		}
+		else if (thisByte < 0xF0)
+		{
+			if (encodedSize != 3) { return 0; } //We walked either too many characters before finding this 2-byte encoding start, or not enough
+			u8 nextByte = CharToU8(strPntr[startIndex - 2]);
+			u8 nextNextByte = CharToU8(strPntr[startIndex - 1]);
+			if (nextByte < 0x80 || nextByte >= 0xC0) { return 0; } //not sure how this would happen?
+			if (nextNextByte < 0x80 || nextNextByte >= 0xC0) { return 0; } //not sure how this would happen?
+			if (codepointOut != nullptr) { *codepointOut = ((u32)(thisByte & 0x0F) << 12) | ((u32)(nextByte & 0x3F) << 6) | ((u32)(nextNextByte & 0x3F) << 0); }
+			return 3;
+		}
+		else if (thisByte < 0xF8)
+		{
+			if (encodedSize != 4) { return 0; } //We walked either too many characters before finding this 2-byte encoding start, or not enough
+			u8 nextByte = CharToU8(strPntr[startIndex - 3]);
+			u8 nextNextByte = CharToU8(strPntr[startIndex - 2]);
+			u8 nextNextNextByte = CharToU8(strPntr[startIndex - 1]);
+			if (nextByte < 0x80 || nextByte >= 0xC0) { return 0; } //not sure how this would happen?
+			if (nextNextByte < 0x80 || nextNextByte >= 0xC0) { return 0; } //not sure how this would happen?
+			if (nextNextNextByte < 0x80 || nextNextNextByte >= 0xC0) { return 0; } //not sure how this would happen?
+			if (codepointOut != nullptr) { *codepointOut = ((u32)(thisByte & 0x07) << 18) | ((u32)(nextByte & 0x3F) << 12) | ((u32)(nextNextByte & 0x3F) << 6) | ((u32)(nextNextNextByte & 0x3F) << 0); }
+			return 4;
+		}
+		else
+		{
+			//Everything above this point is considered an invalid character to exist in UTF-8 encoded strings
+			return 0;
+		}
+	}
+	//We had to walk farther than 4 bytes (or the length of the string). Something is wrong with this encoding
+	return 0;
+}
+
 // +--------------------------------------------------------------+
 // |                       String Functions                       |
 // +--------------------------------------------------------------+
@@ -343,5 +402,6 @@ bool IsCharPunctuationStart(u32 codepoint)
 bool IsCharPunctuationEnd(u32 codepoint)
 u8 GetUtf8BytesForCode(u32 codepoint, u8* byteBufferOut = nullptr, bool doAssertions = true)
 u8 GetCodepointForUtf8(u64 maxNumChars, const char* strPntr, u32* codepointOut = nullptr)
+u8 GetCodepointBeforeIndex(const char* strPntr, u64 startIndex, u32* codepointOut = nullptr)
 bool IsStringValidIdentifier(u64 strLength, const char* strPntr, bool allowUnderscores = true, bool allowNumbers = true, bool allowLeadingNumbers = false, bool allowEmpty = false, bool allowSpaces = false)
 */
