@@ -35,6 +35,8 @@ enum TryParseFailureReason_t
 	TryParseFailureReason_Infinity,
 	TryParseFailureReason_FloatParseFailure,
 	TryParseFailureReason_UnknownString,
+	TryParseFailureReason_NotEnoughCommas,
+	TryParseFailureReason_TooManyCommas,
 	TryParseFailureReason_NumReasons,
 };
 
@@ -52,6 +54,8 @@ const char* GetTryParseFailureReasonStr(TryParseFailureReason_t reason)
 		case TryParseFailureReason_Infinity:          return "Infinity";
 		case TryParseFailureReason_FloatParseFailure: return "FloatParseFailure";
 		case TryParseFailureReason_UnknownString:     return "UnknownString";
+		case TryParseFailureReason_NotEnoughCommas:   return "NotEnoughCommas";
+		case TryParseFailureReason_TooManyCommas:     return "TooManyCommas";
 		default: return "Unknown";
 	}
 }
@@ -414,7 +418,11 @@ bool TryParseV2i(MyStr_t str, v2i* valueOut, TryParseFailureReason_t* reasonOut 
 	if (StrEndsWith(str, ")")) { str = StrSubstring(&str, 0, str.length-1); }
 	u64 commaIndex = 0;
 	bool strContainsComma = FindSubstring(str, ",", &commaIndex);
-	if (!strContainsComma) { return false; }
+	if (!strContainsComma)
+	{
+		if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_NotEnoughCommas; }
+		return false;
+	}
 	MyStr_t xStr = StrSubstring(&str, 0, commaIndex);
 	MyStr_t yStr = StrSubstring(&str, commaIndex+1);
 	v2i vector = Vec2i_Zero;
@@ -436,7 +444,11 @@ bool TryParseV2(MyStr_t str, v2* valueOut, TryParseFailureReason_t* reasonOut = 
 	if (StrEndsWith(str, ")")) { str = StrSubstring(&str, 0, str.length-1); }
 	u64 commaIndex = 0;
 	bool strContainsComma = FindSubstring(str, ",", &commaIndex);
-	if (!strContainsComma) { return false; }
+	if (!strContainsComma)
+	{
+		if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_NotEnoughCommas; }
+		return false;
+	}
 	MyStr_t xStr = StrSubstring(&str, 0, commaIndex);
 	MyStr_t yStr = StrSubstring(&str, commaIndex+1);
 	v2 vector = Vec2_Zero;
@@ -449,6 +461,56 @@ bool TryParseV2(MyStr_t str, v2* valueOut, TryParseFailureReason_t* reasonOut = 
 		return false;
 	}
 	if (valueOut != nullptr) { *valueOut = vector; }
+	return true;
+}
+
+bool TryParseReci(MyStr_t str, reci* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
+{
+	NotNullStr(&str);
+	if (StrStartsWith(str, "(")) { str = StrSubstring(&str, 1); }
+	if (StrEndsWith(str, ")")) { str = StrSubstring(&str, 0, str.length-1); }
+	u8 numCommasFound = 0;
+	u64 commaIndices[3];
+	for (u64 cIndex = 0; cIndex < str.length; cIndex++)
+	{
+		if (str.pntr[cIndex] == ',')
+		{
+			if (numCommasFound >= 3)
+			{
+				if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_TooManyCommas; }
+				return false;
+			}
+			commaIndices[numCommasFound] = cIndex;
+			numCommasFound++;
+		}
+	}
+	if (numCommasFound < 3)
+	{
+		if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_NotEnoughCommas; }
+		return false;
+	}
+	MyStr_t xStr = StrSubstring(&str, 0, commaIndices[0]);
+	MyStr_t yStr = StrSubstring(&str, commaIndices[0]+1, commaIndices[1]);
+	MyStr_t widthStr = StrSubstring(&str, commaIndices[1]+1, commaIndices[2]);
+	MyStr_t heightStr = StrSubstring(&str, commaIndices[2]+1);
+	reci rectangle = Reci_Zero;
+	if (!TryParseI32(xStr, &rectangle.x, reasonOut))
+	{
+		return false;
+	}
+	if (!TryParseI32(yStr, &rectangle.y, reasonOut))
+	{
+		return false;
+	}
+	if (!TryParseI32(widthStr, &rectangle.width, reasonOut))
+	{
+		return false;
+	}
+	if (!TryParseI32(heightStr, &rectangle.height, reasonOut))
+	{
+		return false;
+	}
+	if (valueOut != nullptr) { *valueOut = rectangle; }
 	return true;
 }
 
@@ -673,4 +735,5 @@ bool TryParseR32(MyStr_t str, r32* valueOut, TryParseFailureReason_t* reasonOut 
 bool TryParseBool(MyStr_t str, bool* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
 bool TryParseV2i(MyStr_t str, v2i* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
 bool TryParseV2(MyStr_t str, v2* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
+bool TryParseReci(MyStr_t str, reci* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
 */

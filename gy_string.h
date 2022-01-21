@@ -818,6 +818,13 @@ MyStr_t GetFileNamePart(MyStr_t filePath, bool includeExtension = true)
 	NotNullStr(&result);
 	return result;
 }
+MyStr_t GetDirectoryPart(MyStr_t filePath)
+{
+	MyStr_t result;
+	SplitFilePath(filePath, &result, nullptr, nullptr);
+	NotNullStr(&result);
+	return result;
+}
 
 //Returns the number of instances replaced
 u64 StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ignoreCase = false)
@@ -1098,6 +1105,7 @@ u64 UnescapeQuotedStringInPlace(MyStr_t* target, bool removeQuotes = true, bool 
 MyStr_t UnescapeQuotedStringInArena(MemArena_t* memArena, MyStr_t target, bool removeQuotes = true, bool allowNewLineEscapes = true, bool allowOtherEscapeCodes = false)
 void SplitFilePath(MyStr_t fullPath, MyStr_t* directoryOut, MyStr_t* fileNameOut, MyStr_t* extensionOut = nullptr)
 MyStr_t GetFileNamePart(MyStr_t filePath, bool includeExtension = true)
+MyStr_t GetDirectoryPart(MyStr_t filePath)
 u64 StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ignoreCase = false)
 bool FindSubstring(MyStr_t target, MyStr_t substring, u64* indexOut = nullptr, bool ignoreCase = false)
 u8 GetCodepointForUtf8Str(MyStr_t str, u64 index, u32* codepointOut)
