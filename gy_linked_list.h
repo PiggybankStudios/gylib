@@ -306,6 +306,14 @@ void LinkedListRemove_(LinkedList_t* list, u64 itemSize, void* itemPntr, bool sk
 	DebugAssert(IsItemInLinkedList(list, itemPntr));
 	
 	LinkedListNode_t* nodePntr = (LinkedListNode_t*)(((u8*)itemPntr) - sizeof(LinkedListNode_t));
+	if (list->lastItem == nodePntr)
+	{
+		list->lastItem = nodePntr->prev;
+	}
+	if (list->firstItem == nodePntr)
+	{
+		list->firstItem = nodePntr->next;
+	}
 	if (nodePntr->prev != nullptr)
 	{
 		nodePntr->prev->next = nodePntr->next;
@@ -313,15 +321,6 @@ void LinkedListRemove_(LinkedList_t* list, u64 itemSize, void* itemPntr, bool sk
 	if (nodePntr->next != nullptr)
 	{
 		nodePntr->next->prev = nodePntr->prev;
-	}
-	if (list->count == 1)
-	{
-		Assert(nodePntr->next == nullptr);
-		Assert(nodePntr->prev == nullptr);
-		Assert(list->firstItem == nodePntr);
-		Assert(list->lastItem == nodePntr);
-		list->firstItem = nullptr;
-		list->lastItem = nullptr;
 	}
 	list->count--;
 	
