@@ -216,6 +216,109 @@ u64 TrimWhitespace(MyStr_t* target, bool trimNewLines = false)
 	return result;
 }
 
+bool FindNextCharInStr(MyStr_t target, u64 startIndex, MyStr_t searchCharsStr, u64* indexOut = nullptr, bool ignoreCharsInQuotes = false)
+{
+	NotNullStr(&target);
+	bool inString = false;
+	u32 previousCodepoint = 0;
+	for (u64 cIndex = startIndex; cIndex < target.length; )
+	{
+		u32 codepoint = 0;
+		u8 codepointSize = GetCodepointForUtf8Str(target, cIndex, &codepoint);
+		if (codepointSize == 0) { cIndex++; continue; } //invalid utf-8 encoding in target
+		for (u64 sIndex = 0; sIndex < searchCharsStr.length; )
+		{
+			u32 searchCodepoint = 0;
+			u8 searchCodepointSize = GetCodepointForUtf8Str(searchCharsStr, sIndex, &searchCodepoint);
+			DebugAssert(searchCodepointSize > 0);
+			if (searchCodepointSize == 0) { return false; } //invalid utf-8 encoding in searchCharsStr
+			if (codepoint == searchCodepoint && !inString)
+			{
+				if (indexOut != nullptr) { *indexOut = cIndex; }
+				return true;
+			}
+			sIndex += searchCodepointSize;
+		}
+		if (ignoreCharsInQuotes && codepoint == '"' && !(inString && previousCodepoint == '\\'))
+		{
+			inString = !inString;
+		}
+		previousCodepoint = codepoint;
+		cIndex += codepointSize;
+	}
+	return false;
+}
+bool FindNextCharInStr(MyStr_t target, u64 startIndex, const char* nullTermSearchCharsStr, u64* indexOut = nullptr, bool ignoreCharsInQuotes = false)
+{
+	return FindNextCharInStr(target, startIndex, NewStr(nullTermSearchCharsStr), indexOut, ignoreCharsInQuotes);
+}
+bool FindNextUnknownCharInStr(MyStr_t target, u64 startIndex, MyStr_t knownCharsStr, u64* indexOut = nullptr, bool ignoreCharsInQuotes = false)
+{
+	NotNullStr(&target);
+	bool inString = false;
+	u32 previousCodepoint = 0;
+	for (u64 cIndex = startIndex; cIndex < target.length; )
+	{
+		u32 codepoint = 0;
+		u8 codepointSize = GetCodepointForUtf8Str(target, cIndex, &codepoint);
+		if (codepointSize == 0) { cIndex++; continue; } //invalid utf-8 encoding in target
+		bool isUnknownChar = true;
+		for (u64 sIndex = 0; sIndex < knownCharsStr.length; )
+		{
+			u32 knownCodepoint = 0;
+			u8 knownCodepointSize = GetCodepointForUtf8Str(knownCharsStr, sIndex, &knownCodepoint);
+			DebugAssert(knownCodepointSize > 0);
+			if (knownCodepointSize == 0) { return false; } //invalid utf-8 encoding in knownCharsStr
+			if (codepoint == knownCodepoint && !inString)
+			{
+				isUnknownChar = false;
+				break;
+			}
+			sIndex += knownCodepointSize;
+		}
+		if (isUnknownChar)
+		{
+			if (indexOut != nullptr) { *indexOut = cIndex; }
+			return true;
+		}
+		if (ignoreCharsInQuotes && codepoint == '"' && !(inString && previousCodepoint == '\\'))
+		{
+			inString = !inString;
+		}
+		previousCodepoint = codepoint;
+		cIndex += codepointSize;
+	}
+	return false;
+}
+bool FindNextUnknownCharInStr(MyStr_t target, u64 startIndex, const char* nullTermKnownCharsStr, u64* indexOut = nullptr, bool ignoreCharsInQuotes = false)
+{
+	return FindNextUnknownCharInStr(target, startIndex, NewStr(nullTermKnownCharsStr), indexOut, ignoreCharsInQuotes);
+}
+bool FindNextWhitespaceInStr(MyStr_t target, u64 startIndex, u64* indexOut = nullptr, bool ignoreCharsInQuotes = false)
+{
+	NotNullStr(&target);
+	bool inString = false;
+	u32 previousCodepoint = 0;
+	for (u64 cIndex = startIndex; cIndex < target.length; )
+	{
+		u32 codepoint = 0;
+		u8 codepointSize = GetCodepointForUtf8Str(target, cIndex, &codepoint);
+		if (codepointSize == 0) { cIndex++; continue; } //invalid utf-8 encoding in target
+		if (IsCharWhitespace(codepoint))
+		{
+			if (indexOut != nullptr) { *indexOut = cIndex; }
+			return true;
+		}
+		if (ignoreCharsInQuotes && codepoint == '"' && !(inString && previousCodepoint == '\\'))
+		{
+			inString = !inString;
+		}
+		previousCodepoint = codepoint;
+		cIndex += codepointSize;
+	}
+	return false;
+}
+
 MyStr_t StrSubstring(MyStr_t* target, u64 startIndex)
 {
 	NotNullStr(target);
@@ -922,6 +1025,40 @@ bool FindSubstring(const char* nullTermTarget, const char* nullTermSubstring, u6
 	return FindSubstring(NewStr(nullTermTarget), NewStr(nullTermSubstring), indexOut, ignoreCase);
 }
 
+MyStr_t FindStrParensPart(MyStr_t target, char openParensChar = '(', char closeParensChar = ')')
+{
+	NotNullStr(&target);
+	u64 openParensIndex = target.length;
+	u64 parensLevel = 0;
+	for (u64 cIndex = 0; cIndex < target.length; cIndex++)
+	{
+		if (target.pntr[cIndex] == openParensChar)
+		{
+			if (parensLevel == 0)
+			{
+				openParensIndex = cIndex;
+			}
+			parensLevel++;
+		}
+		else if (target.pntr[cIndex] == closeParensChar)
+		{
+			if (parensLevel > 1)
+			{
+				parensLevel--;
+			}
+			else if (parensLevel == 1)
+			{
+				return NewStr(cIndex+1 - openParensIndex, &target.pntr[openParensIndex]);
+			}
+		}
+	}
+	return MyStr_Empty;
+}
+MyStr_t FindStrParensPart(const char* nullTermTarget, char openParensChar = '(', char closeParensChar = ')')
+{
+	return FindStrParensPart(NewStr(nullTermTarget), openParensChar, closeParensChar);
+}
+
 // +--------------------------------------------------------------+
 // |                    Time String Functions                     |
 // +--------------------------------------------------------------+
@@ -1093,6 +1230,9 @@ MyStr_t PrintInArenaStr(MemArena_t* arena, const char* formatString, ...)
 u64 TrimLeadingWhitespace(MyStr_t* target, bool trimNewLines = false)
 u64 TrimTrailingWhitespace(MyStr_t* target, bool trimNewLines = false)
 u64 TrimWhitespace(MyStr_t* target, bool trimNewLines = false)
+bool FindNextCharInStr(MyStr_t target, u64 startIndex, MyStr_t searchCharsStr, u64* indexOut = nullptr, bool ignoreCharsInQuotes = false)
+bool FindNextUnknownCharInStr(MyStr_t target, u64 startIndex, MyStr_t knownCharsStr, u64* indexOut = nullptr, bool ignoreCharsInQuotes = false)
+bool FindNextWhitespaceInStr(MyStr_t target, u64 startIndex, u64* indexOut = nullptr, bool ignoreCharsInQuotes = false)
 MyStr_t StrSubstring(MyStr_t* target, u64 startIndex, u64 endIndex)
 MyStr_t StrSubstringLength(MyStr_t* target, u64 startIndex, u64 length)
 MyStr_t CombineStrs(MemArena_t* memArena, MyStr_t str1, MyStr_t str2)
@@ -1108,6 +1248,7 @@ MyStr_t GetFileNamePart(MyStr_t filePath, bool includeExtension = true)
 MyStr_t GetDirectoryPart(MyStr_t filePath)
 u64 StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ignoreCase = false)
 bool FindSubstring(MyStr_t target, MyStr_t substring, u64* indexOut = nullptr, bool ignoreCase = false)
+MyStr_t FindStrParensPart(MyStr_t target, char openParensChar = '[', char closeParensChar = ']')
 u8 GetCodepointForUtf8Str(MyStr_t str, u64 index, u32* codepointOut)
 MyStr_t ConvertWideStrToUtf8(MemArena_t* memArena, const wchar_t* wideStrPntr, u64 wideStrLength)
 MyStr_t ConvertWideStrToUtf8Nt(MemArena_t* memArena, const wchar_t* nullTermWideStr)

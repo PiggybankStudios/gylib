@@ -150,29 +150,6 @@ bool IsInsideTriangle(v2 p0, v2 p1, v2 p2, v2 test)
 }
 
 // +--------------------------------------------------------------+
-// |                Bezier Curve Related Functions                |
-// +--------------------------------------------------------------+
-v2 BezierCurve3(v2 start, v2 control, v2 end, r32 time)
-{
-	return NewVec2(
-		((1 - time)*(1 - time)*start.x) + (2*time*(1 - time)*control.x) + time*time*end.x,
-		((1 - time)*(1 - time)*start.y) + (2*time*(1 - time)*control.y) + time*time*end.y
-	);
-}
-v2 BezierCurve4(v2 start, v2 control1, v2 control2, v2 end, r32 time)
-{
-	v2 midPoint = (control1 + control2) / 2;
-	if (time <= 0.5f)
-	{
-		return BezierCurve3(start, control1, midPoint, SubAnimAmountR32(time, 0.0f, 0.5f));
-	}
-	else
-	{
-		return BezierCurve3(midPoint, control2, end, SubAnimAmountR32(time, 0.5f, 1.0f));
-	}
-}
-
-// +--------------------------------------------------------------+
 // |                   Miscellaneous Functions                    |
 // +--------------------------------------------------------------+
 bool MinNoInfinitiesR32(r32 value1, r32 value2, r32 value3, r32* outValue, u8* whichIsMaxOut = nullptr)
@@ -437,8 +414,6 @@ r32 AngleLerpR32(r32 angleFrom, r32 angleTo, r32 amount)
 r64 AngleLerpR64(r64 angleFrom, r64 angleTo, r64 amount)
 bool IsTriangleClockwise(v2 p0, v2 p1, v2 p2)
 bool IsInsideTriangle(v2 p0, v2 p1, v2 p2, v2 test)
-v2 BezierCurve3(v2 start, v2 control, v2 end, r32 time)
-v2 BezierCurve4(v2 start, v2 control1, v2 control2, v2 end, r32 time)
 bool MinNoInfinitiesR32(r32 value1, r32 value2, r32 value3, r32* outValue, u8* whichIsMaxOut = nullptr)
 bool MinNoInfinitiesR64(r64 value1, r64 value2, r64 value3, r64* outValue, u8* whichIsMaxOut = nullptr)
 u8 NumDecimalDigitsU32(u32 number)

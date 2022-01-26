@@ -674,7 +674,20 @@ PrimitiveIndexedVerts_t GenerateVertsForSphere(Sphere_t sphere, u64 numRings, u6
 /*
 @Defines
 @Types
+PrimitiveVert3D_t
+PrimitiveIndex3D_t
+PrimitiveIndexedVerts_t
 Frustum_t
+Plane_t
+Triangle2D_t
+Triangle3D_t
+Simplex_t
+Circle_t
+Sphere_t
+Cylinder_t
+Cone_t
+Pyramid_t
+Wedge_t
 @Functions
 PrimitiveIndex3D_t NewPrimitiveIndex3D(u64 index, u64 faceIndex, v3 normal, v2 texCoord)
 Frustum_t NewFrustum(v3 origin, v3 direction, v3 upVector, v2 fov, r32 zNear, r32 zFar)

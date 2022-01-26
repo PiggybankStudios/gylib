@@ -82,12 +82,44 @@ u8 GetLowerNibble(u8 value)
 	return ((value & 0x0F) >> 0);
 }
 
+u8 GetHexCharValue(char hexChar)
+{
+	if (hexChar >= '0' && hexChar <= '9')
+	{
+		return (u8)(hexChar - '0');
+	}
+	else if (hexChar >= 'A' && hexChar <= 'F')
+	{
+		return (u8)(hexChar - 'A') + 10;
+	}
+	else if (hexChar >= 'a' && hexChar <= 'f')
+	{
+		return (u8)(hexChar - 'a') + 10;
+	}
+	else { return 0; }
+}
+
 // +--------------------------------------------------------------+
 // |                         Char Classes                         |
 // +--------------------------------------------------------------+
 bool IsCharNumeric(u32 codepoint)
 {
 	return (codepoint >= '0' && codepoint <= '9');
+}
+bool IsCharHexadecimal(u32 codepoint)
+{
+	return ((codepoint >= '0' && codepoint <= '9') ||
+		(codepoint >= 'A' && codepoint <= 'F') ||
+		(codepoint >= 'a' && codepoint <= 'f'));
+}
+bool AreCharsHexidecimal(u64 numChars, char* charsPntr)
+{
+	AssertIf(numChars > 0, charsPntr != nullptr);
+	for (u64 cIndex = 0; cIndex < numChars; cIndex++)
+	{
+		if (!IsCharHexadecimal(CharToU32(charsPntr[cIndex]))) { return false; }
+	}
+	return true;
 }
 bool IsCharAlphabetic(u32 codepoint)
 {
@@ -388,7 +420,10 @@ u32 CharToU32(char c)
 char GetHexChar(u8 hexValue, bool upperCase = true)
 u8 GetUpperNibble(u8 value)
 u8 GetLowerNibble(u8 value)
+u8 GetHexCharValue(char hexChar)
 bool IsCharNumeric(u32 codepoint)
+bool IsCharHexadecimal(u32 codepoint)
+bool AreCharsHexidecimal(u64 numChars, char* charsPntr)
 bool IsCharAlphabetic(u32 codepoint)
 bool IsCharLowercaseAlphabet(u32 codepoint)
 bool IsCharUppercaseAlphabet(u32 codepoint)

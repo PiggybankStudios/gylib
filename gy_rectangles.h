@@ -711,6 +711,63 @@ obb3 ToObb3D(box boundingBox)
 #endif
 
 // +--------------------------------------------------------------+
+// |                 Simple Information Functions                 |
+// +--------------------------------------------------------------+
+// +==============================+
+// |            Obb2D             |
+// +==============================+
+v2 GetObb2DRelativePos(obb2 boundingBox, v2 point)
+{
+	v2 result;
+	v2 rotVec = NewVec2(CosR32(boundingBox.rotation), SinR32(boundingBox.rotation));
+	result.x = Vec2Dot(point - boundingBox.center, rotVec);
+	result.y = Vec2Dot(point - boundingBox.center, Vec2PerpRight(rotVec));
+	return result;
+}
+v2 GetObb2DWorldPoint(obb2 boundingBox, v2 relativeOffset)
+{
+	v2 result = boundingBox.center;
+	v2 rotVec = NewVec2(CosR32(boundingBox.rotation), SinR32(boundingBox.rotation));
+	result += (-boundingBox.width/2 + relativeOffset.x) * rotVec;
+	result += (-boundingBox.height/2 + relativeOffset.y) * Vec2PerpRight(rotVec);
+	return result;
+}
+
+v2 GetObb2DRightVec(obb2 boundingBox)
+{
+	return Vec2FromAngle(boundingBox.rotation);
+}
+v2 GetObb2DDownVec(obb2 boundingBox)
+{
+	return Vec2PerpRight(Vec2FromAngle(boundingBox.rotation));
+}
+v2 GetObb2DLeftVec(obb2 boundingBox)
+{
+	return -Vec2FromAngle(boundingBox.rotation);
+}
+v2 GetObb2DUpVec(obb2 boundingBox)
+{
+	return Vec2PerpLeft(Vec2FromAngle(boundingBox.rotation));
+}
+
+v2 GetObb2DTopLeft(obb2 boundingBox)
+{
+	return GetObb2DWorldPoint(boundingBox, Vec2_Zero);
+}
+v2 GetObb2DTopRight(obb2 boundingBox)
+{
+	return GetObb2DWorldPoint(boundingBox, NewVec2(boundingBox.width, 0));
+}
+v2 GetObb2DBottomLeft(obb2 boundingBox)
+{
+	return GetObb2DWorldPoint(boundingBox, NewVec2(0, boundingBox.height));
+}
+v2 GetObb2DBottomRight(obb2 boundingBox)
+{
+	return GetObb2DWorldPoint(boundingBox, NewVec2(boundingBox.width, boundingBox.height));
+}
+
+// +--------------------------------------------------------------+
 // |                Operator Overload Equivalents                 |
 // +--------------------------------------------------------------+
 // +==============================+
@@ -2504,23 +2561,6 @@ void RecLayoutHorizontalCenter(rec* rectangleOut, rec otherRectangle, r32 percen
 // +--------------------------------------------------------------+
 // |                 Other Complicated Functions                  |
 // +--------------------------------------------------------------+
-v2 GetObb2DRelativePos(obb2 box, v2 point)
-{
-	v2 result;
-	v2 rotVec = NewVec2(CosR32(box.rotation), SinR32(box.rotation));
-	result.x = Vec2Dot(point - box.center, rotVec);
-	result.y = Vec2Dot(point - box.center, Vec2PerpRight(rotVec));
-	return result;
-}
-v2 GetObb2DWorldPoint(obb2 box, v2 relativeOffset)
-{
-	v2 result = box.center;
-	v2 rotVec = NewVec2(CosR32(box.rotation), SinR32(box.rotation));
-	result += (-box.width/2 + relativeOffset.x) * rotVec;
-	result += (-box.height/2 + relativeOffset.y) * Vec2PerpRight(rotVec);
-	return result;
-}
-
 obb2 Obb2Line(v2 start, v2 end, r32 thickness)
 {
 	obb2 result;
@@ -2603,6 +2643,16 @@ rec ToRec(reci rectangle)
 obb2 ToObb2D(rec rectangle)
 box ToBox(boxi boundingBox)
 obb3 ToObb3D(box boundingBox)
+v2 GetObb2DRelativePos(obb2 boundingBox, v2 point)
+v2 GetObb2DWorldPoint(obb2 boundingBox, v2 relativeOffset)
+v2 GetObb2DRightVec(obb2 boundingBox)
+v2 GetObb2DDownVec(obb2 boundingBox)
+v2 GetObb2DLeftVec(obb2 boundingBox)
+v2 GetObb2DUpVec(obb2 boundingBox)
+v2 GetObb2DTopLeft(obb2 boundingBox)
+v2 GetObb2DTopRight(obb2 boundingBox)
+v2 GetObb2DBottomLeft(obb2 boundingBox)
+v2 GetObb2DBottomRight(obb2 boundingBox)
 rec RecShift(rec rectangle, r32 amountX, r32 amountY)
 rec RecScale(rec rectangle, r32 scalar)
 rec RecScale2(rec rectangle, r32 scaleX, r32 scaleY)
@@ -2744,7 +2794,5 @@ void RecLayoutTopPortionOf(rec* rectangleOut, rec* otherRectangle, r32 portionHe
 void RecLayoutBottomPortionOf(rec* rectangleOut, rec* otherRectangle, r32 portionHeight, bool shrinkOtherRec = false, r32 offsetAmount = 0)
 void RecLayoutVerticalCenter(rec* rectangleOut, rec otherRectangle, r32 percentage = 0.5f)
 void RecLayoutHorizontalCenter(rec* rectangleOut, rec otherRectangle, r32 percentage = 0.5f)
-v2 GetObb2DRelativePos(obb2 box, v2 point)
-v2 GetObb2DWorldPoint(obb2 box, v2 relativeOffset)
 obb2 Obb2Line(v2 start, v2 end, r32 thickness)
 */

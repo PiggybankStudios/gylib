@@ -240,6 +240,26 @@ v4 ToVec4(Colorf_t color)
 }
 
 // +--------------------------------------------------------------+
+// |                    Color Channel Helpers                     |
+// +--------------------------------------------------------------+
+u8 ColorChannelToU8(r32 valueR32)
+{
+	return ClampI32toU8(RoundR32i(valueR32 * 255.0f));
+}
+r32 ColorChannelToR32(u8 valueU8)
+{
+	return (r32)valueU8 / 255.0f;
+}
+u8 MultiplyColorChannelU8(u8 left, u8 right)
+{
+	return ColorChannelToU8(ColorChannelToR32(left) * ColorChannelToR32(right));
+}
+u8 MultiplyColorChannelR32(u8 left, r32 rightR32)
+{
+	return ColorChannelToU8(ColorChannelToR32(left) * rightR32);
+}
+
+// +--------------------------------------------------------------+
 // |                     Basic Manipulations                      |
 // +--------------------------------------------------------------+
 // +==============================+
@@ -759,6 +779,10 @@ Color_t ToColor(Colorf_t colorf)
 inline Color_t ColorTransparent(Color_t color, r32 alpha)
 inline Colorf_t ToColorf(Color_t color)
 inline ColorHSV_t ToColorHsv(v3 vector3)
+u8 ColorChannelToU8(r32 valueR32)
+r32 ColorChannelToR32(u8 valueU8)
+u8 MultiplyColorChannelU8(u8 left, u8 right)
+u8 MultiplyColorChannelR32(u8 left, r32 rightR32)
 Color_t ColorLerp(Color_t start, Color_t end, r32 amount)
 Color_t ColorDarken(Color_t color, u8 amount)
 Color_t ColorLighten(Color_t color, u8 amount)

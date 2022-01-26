@@ -37,6 +37,7 @@ enum TryParseFailureReason_t
 	TryParseFailureReason_UnknownString,
 	TryParseFailureReason_NotEnoughCommas,
 	TryParseFailureReason_TooManyCommas,
+	TryParseFailureReason_WrongNumCharacters,
 	TryParseFailureReason_NumReasons,
 };
 
@@ -44,18 +45,19 @@ const char* GetTryParseFailureReasonStr(TryParseFailureReason_t reason)
 {
 	switch (reason)
 	{
-		case TryParseFailureReason_None:              return "None";
-		case TryParseFailureReason_InvalidCharacter:  return "InvalidCharacter";
-		case TryParseFailureReason_InvalidUtf8:       return "InvalidUtf8";
-		case TryParseFailureReason_Underflow:         return "Underflow";
-		case TryParseFailureReason_Overflow:          return "Overflow";
-		case TryParseFailureReason_NoNumbers:         return "NoNumbers";
-		case TryParseFailureReason_StringOverflow:    return "StringOverflow";
-		case TryParseFailureReason_Infinity:          return "Infinity";
-		case TryParseFailureReason_FloatParseFailure: return "FloatParseFailure";
-		case TryParseFailureReason_UnknownString:     return "UnknownString";
-		case TryParseFailureReason_NotEnoughCommas:   return "NotEnoughCommas";
-		case TryParseFailureReason_TooManyCommas:     return "TooManyCommas";
+		case TryParseFailureReason_None:               return "None";
+		case TryParseFailureReason_InvalidCharacter:   return "InvalidCharacter";
+		case TryParseFailureReason_InvalidUtf8:        return "InvalidUtf8";
+		case TryParseFailureReason_Underflow:          return "Underflow";
+		case TryParseFailureReason_Overflow:           return "Overflow";
+		case TryParseFailureReason_NoNumbers:          return "NoNumbers";
+		case TryParseFailureReason_StringOverflow:     return "StringOverflow";
+		case TryParseFailureReason_Infinity:           return "Infinity";
+		case TryParseFailureReason_FloatParseFailure:  return "FloatParseFailure";
+		case TryParseFailureReason_UnknownString:      return "UnknownString";
+		case TryParseFailureReason_NotEnoughCommas:    return "NotEnoughCommas";
+		case TryParseFailureReason_TooManyCommas:      return "TooManyCommas";
+		case TryParseFailureReason_WrongNumCharacters: return "WrongNumCharacters";
 		default: return "Unknown";
 	}
 }
@@ -178,7 +180,7 @@ bool TryParseU16(MyStr_t str, u16* valueOut, TryParseFailureReason_t* reasonOut 
 	if (valueOut != nullptr) { *valueOut = (u16)resultU64; }
 	return true;
 }
-bool TryParseU8(MyStr_t str, u16* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true)
+bool TryParseU8(MyStr_t str, u8* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true)
 {
 	u64 resultU64 = 0;
 	if (!TryParseU64(str, &resultU64, reasonOut, allowHex, allowBinary)) { return false; }
@@ -514,6 +516,56 @@ bool TryParseReci(MyStr_t str, reci* valueOut, TryParseFailureReason_t* reasonOu
 	return true;
 }
 
+bool TryParseColor(MyStr_t str, Color_t* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool alphaAtBeginning = true)
+{
+	NotNullStr(&str);
+	Color_t result = TransparentBlack;
+	if (StrStartsWith(str, "#")) { str = StrSubstring(&str, 1); }
+	if (str.length == 8)
+	{
+		if (!AreCharsHexidecimal(str.length, str.pntr))
+		{
+			if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_InvalidCharacter; }
+			return false;
+		}
+		if (alphaAtBeginning)
+		{
+			result.a = (GetHexCharValue(str.pntr[0]) << 4) | (GetHexCharValue(str.pntr[1]) << 0);
+			result.r = (GetHexCharValue(str.pntr[2]) << 4) | (GetHexCharValue(str.pntr[3]) << 0);
+			result.g = (GetHexCharValue(str.pntr[4]) << 4) | (GetHexCharValue(str.pntr[5]) << 0);
+			result.b = (GetHexCharValue(str.pntr[6]) << 4) | (GetHexCharValue(str.pntr[7]) << 0);
+		}
+		else
+		{
+			result.r = (GetHexCharValue(str.pntr[0]) << 4) | (GetHexCharValue(str.pntr[1]) << 0);
+			result.g = (GetHexCharValue(str.pntr[2]) << 4) | (GetHexCharValue(str.pntr[3]) << 0);
+			result.b = (GetHexCharValue(str.pntr[4]) << 4) | (GetHexCharValue(str.pntr[5]) << 0);
+			result.a = (GetHexCharValue(str.pntr[6]) << 4) | (GetHexCharValue(str.pntr[7]) << 0);
+		}
+		if (valueOut != nullptr) { *valueOut = result; }
+		return true;
+	}
+	else if (str.length == 6)
+	{
+		result.a = 255;
+		if (!AreCharsHexidecimal(str.length, str.pntr))
+		{
+			if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_InvalidCharacter; }
+			return false;
+		}
+		result.r = (GetHexCharValue(str.pntr[0]) << 4) | (GetHexCharValue(str.pntr[1]) << 0);
+		result.g = (GetHexCharValue(str.pntr[2]) << 4) | (GetHexCharValue(str.pntr[3]) << 0);
+		result.b = (GetHexCharValue(str.pntr[4]) << 4) | (GetHexCharValue(str.pntr[5]) << 0);
+		if (valueOut != nullptr) { *valueOut = result; }
+		return true;
+	}
+	else
+	{
+		if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_WrongNumCharacters; }
+		return false;
+	}
+}
+
 #endif //  _GY_PARSING_H
 
 // +--------------------------------------------------------------+
@@ -717,6 +769,9 @@ TryParseFailureReason_StringOverflow
 TryParseFailureReason_Infinity
 TryParseFailureReason_FloatParseFailure
 TryParseFailureReason_UnknownString
+TryParseFailureReason_NotEnoughCommas
+TryParseFailureReason_TooManyCommas
+TryParseFailureReason_WrongNumCharacters
 TryParseFailureReason_NumReasons
 @Types
 TryParseFailureReason_t
@@ -725,7 +780,7 @@ const char* GetTryParseFailureReasonStr(TryParseFailureReason_t reason)
 bool TryParseU64(MyStr_t str, u64* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true)
 bool TryParseU32(MyStr_t str, u32* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true)
 bool TryParseU16(MyStr_t str, u16* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true)
-bool TryParseU8(MyStr_t str, u16* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true)
+bool TryParseU8(MyStr_t str, u8* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true)
 bool TryParseI64(MyStr_t str, i64* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true)
 bool TryParseI32(MyStr_t str, i32* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true)
 bool TryParseI16(MyStr_t str, i16* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true)

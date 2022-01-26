@@ -131,22 +131,22 @@ mat4 Mat4Multiply(mat4 outer, mat4 left, mat4 right)
 }
 
 //TODO: These functions should really be checked to make sure they do what is mathematically correct
-v2 Mat4MultiplyVec2(mat4 matrix, v2 vector)
+v2 Mat4MultiplyVec2(mat4 matrix, v2 vector, bool includeTranslation = true)
 {
 	v2 result = NewVec2(
-		matrix.r0c0*vector.x + matrix.r0c1*vector.y + matrix.r0c2*0.0f + matrix.r0c3*1.0f,
-		matrix.r1c0*vector.x + matrix.r1c1*vector.y + matrix.r1c2*0.0f + matrix.r1c3*1.0f
+		matrix.r0c0*vector.x + matrix.r0c1*vector.y + matrix.r0c2*0.0f + matrix.r0c3*(r32)(includeTranslation ? 1 : 0),
+		matrix.r1c0*vector.x + matrix.r1c1*vector.y + matrix.r1c2*0.0f + matrix.r1c3*(r32)(includeTranslation ? 1 : 0)
 	);
 	//TODO: Do we need to divide by w result?
 	
 	return  result;
 }
-v3 Mat4MultiplyVec3(mat4 matrix, v3 vector, r32* wOut = nullptr)
+v3 Mat4MultiplyVec3(mat4 matrix, v3 vector, bool includeTranslation = true, r32* wOut = nullptr)
 {
 	v3 result = NewVec3(
-		matrix.r0c0*vector.x + matrix.r0c1*vector.y + matrix.r0c2*vector.z + matrix.r0c3*1.0f,
-		matrix.r1c0*vector.x + matrix.r1c1*vector.y + matrix.r1c2*vector.z + matrix.r1c3*1.0f,
-		matrix.r2c0*vector.x + matrix.r2c1*vector.y + matrix.r2c2*vector.z + matrix.r2c3*1.0f
+		matrix.r0c0*vector.x + matrix.r0c1*vector.y + matrix.r0c2*vector.z + matrix.r0c3*(r32)(includeTranslation ? 1 : 0),
+		matrix.r1c0*vector.x + matrix.r1c1*vector.y + matrix.r1c2*vector.z + matrix.r1c3*(r32)(includeTranslation ? 1 : 0),
+		matrix.r2c0*vector.x + matrix.r2c1*vector.y + matrix.r2c2*vector.z + matrix.r2c3*(r32)(includeTranslation ? 1 : 0)
 	);
 	
 	r32 wValue = matrix.r3c0*vector.x + matrix.r3c1*vector.y + matrix.r3c2*vector.z + matrix.r3c3*1.0f;
@@ -451,8 +451,8 @@ mat4 NewMat4(r32 r0c0, r32 r0c1, r32 r0c2, r32 r0c3, r32 r1c0, r32 r1c1, r32 r1c
 mat4 Mat4Fill(r32 all)
 mat4 Mat4Diagonal(r32 r0c0, r32 r1c1, r32 r2c2, r32 r3c3, r32 other = 0.0f)
 mat4 Mat4Multiply(mat4 left, mat4 right)
-v2 Mat4MultiplyVec2(mat4 matrix, v2 vector)
-v3 Mat4MultiplyVec3(mat4 matrix, v3 vector, r32* wOut = nullptr)
+v2 Mat4MultiplyVec2(mat4 matrix, v2 vector, bool includeTranslation = true)
+v3 Mat4MultiplyVec3(mat4 matrix, v3 vector, bool includeTranslation = true, r32* wOut = nullptr)
 v3 Mat4MultiplyRightVec3(v3 vector, mat4 matrix, r32* wOut = nullptr)
 v4 Mat4MultiplyVec4(mat4 matrix, v4 vector)
 #define Mat4ApplyLeft(matrix, transformation)
