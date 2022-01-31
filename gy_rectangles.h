@@ -2023,6 +2023,15 @@ rec RecBoth(rec rectangle1, rec rectangle2)
 	result.height = MaxR32(rectangle1.y + rectangle1.height, rectangle2.y + rectangle2.height) - result.y;
 	return result;
 }
+rec RecExpandToVec2(rec rectangle, v2 newPoint)
+{
+	rec result;
+	result.x = MinR32(rectangle.x, newPoint.x);
+	result.y = MinR32(rectangle.y, newPoint.y);
+	result.width = MaxR32(rectangle.x + rectangle.width, newPoint.x) - result.x;
+	result.height = MaxR32(rectangle.y + rectangle.height, newPoint.y) - result.y;
+	return result;
+}
 rec RecOverlap(rec rectangle1, rec rectangle2)
 {
 	r32 minX = MaxR32(rectangle1.x, rectangle2.x);
@@ -2089,6 +2098,15 @@ reci ReciBoth(reci rectangle1, reci rectangle2)
 	result.y = MinI32(rectangle1.y, rectangle2.y);
 	result.width = MaxI32(rectangle1.x + rectangle1.width, rectangle2.x + rectangle2.width) - result.x;
 	result.height = MaxI32(rectangle1.y + rectangle1.height, rectangle2.y + rectangle2.height) - result.y;
+	return result;
+}
+reci ReciExpandToVec2i(reci rectangle, v2i newPoint)
+{
+	reci result;
+	result.x = MinI32(rectangle.x, newPoint.x);
+	result.y = MinI32(rectangle.y, newPoint.y);
+	result.width = MaxI32(rectangle.x + rectangle.width, newPoint.x) - result.x;
+	result.height = MaxI32(rectangle.y + rectangle.height, newPoint.y) - result.y;
 	return result;
 }
 reci ReciOverlap(reci rectangle1, reci rectangle2)
@@ -2288,6 +2306,14 @@ obb2 Obb2DUninvert(obb2 rectangle)
 	result.center = rectangle.center;
 	result.width = AbsR32(rectangle.width);
 	result.height = AbsR32(rectangle.height);
+	return result;
+}
+rec GetObb2DAlignedBounds(obb2 boundingBox)
+{
+	rec result = NewRec(GetObb2DTopLeft(boundingBox), Vec2_Zero);
+	result = RecExpandToVec2(result, GetObb2DTopRight(boundingBox));
+	result = RecExpandToVec2(result, GetObb2DBottomLeft(boundingBox));
+	result = RecExpandToVec2(result, GetObb2DBottomRight(boundingBox));
 	return result;
 }
 
@@ -2748,6 +2774,7 @@ rec RecInvertX(rec rectangle)
 rec RecInvertY(rec rectangle)
 rec RecUninvert(rec rectangle)
 rec RecBoth(rec rectangle1, rec rectangle2)
+rec RecExpandToVec2(rec rectangle, v2 newPoint)
 rec RecOverlap(rec rectangle1, rec rectangle2)
 reci ReciSquarify(reci rectangle, bool makeLarger = true)
 reci ReciInvert(reci rectangle)
@@ -2755,6 +2782,7 @@ reci ReciInvertX(reci rectangle)
 reci ReciInvertY(reci rectangle)
 reci ReciUninvert(reci rectangle)
 reci ReciBoth(reci rectangle1, reci rectangle2)
+reci ReciExpandToVec2i(reci rectangle, v2i newPoint)
 reci ReciOverlap(reci rectangle1, reci rectangle2)
 box BoxCubify(box boundingBox, bool makeLarger = true, bool center = true)
 box BoxInvert(box boundingBox)
@@ -2773,6 +2801,7 @@ obb2 Obb2DInvert(obb2 rectangle)
 obb2 Obb2DInvertX(obb2 rectangle)
 obb2 Obb2DInvertY(obb2 rectangle)
 obb2 Obb2DUninvert(obb2 rectangle)
+rec GetObb2DAlignedBounds(obb2 boundingBox)
 bool IsInsideRec(rec rectangle, v2 point)
 bool RecsIntersect(rec rectangle1, rec rectangle2, bool inclusive = true)
 bool IsInsideReci(reci rectangle, v2i point, bool includePositiveEdges = false)

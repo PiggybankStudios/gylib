@@ -557,6 +557,14 @@ inline r64 AcosR64(r64 value)
 // +==============================+
 // |             Atan             |
 // +==============================+
+inline r32 AtanJoinedR32(r32 value)
+{
+	return atanf(value);
+}
+inline r64 AtanJoinedR64(r64 value)
+{
+	return atan(value);
+}
 inline r32 AtanR32(r32 y, r32 x)
 {
 	return atan2f(y, x);
@@ -1067,6 +1075,8 @@ inline r32 AsinR32(r32 value)
 inline r64 AsinR64(r64 value)
 inline r32 AcosR32(r32 value)
 inline r64 AcosR64(r64 value)
+inline r32 AtanJoinedR32(r32 value)
+inline r64 AtanJoinedR64(r64 value)
 inline r32 AtanR32(r32 y, r32 x)
 inline r64 AtanR64(r64 y, r64 x)
 inline r32 SawR32(r32 angle)

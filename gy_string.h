@@ -1059,6 +1059,27 @@ MyStr_t FindStrParensPart(const char* nullTermTarget, char openParensChar = '(',
 	return FindStrParensPart(NewStr(nullTermTarget), openParensChar, closeParensChar);
 }
 
+//takes the str and returns a string that repeats that str some number of times
+MyStr_t StringRepeat(MemArena_t* memArena, MyStr_t str, u64 numRepetitions)
+{
+	NotNull(memArena);
+	NotNullStr(&str);
+	MyStr_t result;
+	result.length = str.length * numRepetitions;
+	result.pntr = AllocArray(memArena, char, result.length+1);
+	NotNull(result.pntr);
+	for (u64 rIndex = 0; rIndex < numRepetitions; rIndex++)
+	{
+		MyMemCopy(&result.pntr[rIndex * str.length], str.pntr, str.length);
+	}
+	result.pntr[result.length] = '\0';
+	return result;
+}
+MyStr_t StringRepeat(MemArena_t* memArena, const char* nullTermStr, u64 numRepetitions)
+{
+	return StringRepeat(memArena, NewStr(nullTermStr), numRepetitions);
+}
+
 // +--------------------------------------------------------------+
 // |                    Time String Functions                     |
 // +--------------------------------------------------------------+
@@ -1249,6 +1270,7 @@ MyStr_t GetDirectoryPart(MyStr_t filePath)
 u64 StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ignoreCase = false)
 bool FindSubstring(MyStr_t target, MyStr_t substring, u64* indexOut = nullptr, bool ignoreCase = false)
 MyStr_t FindStrParensPart(MyStr_t target, char openParensChar = '[', char closeParensChar = ']')
+MyStr_t StringRepeat(MemArena_t* memArena, MyStr_t str, u64 numRepetitions)
 u8 GetCodepointForUtf8Str(MyStr_t str, u64 index, u32* codepointOut)
 MyStr_t ConvertWideStrToUtf8(MemArena_t* memArena, const wchar_t* wideStrPntr, u64 wideStrLength)
 MyStr_t ConvertWideStrToUtf8Nt(MemArena_t* memArena, const wchar_t* nullTermWideStr)

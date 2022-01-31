@@ -142,6 +142,12 @@ bool IsInsideTriangle(v2 p0, v2 p1, v2 p2, v2 test)
 	v2 perp0 = Vec2PerpRight(p1 - p0);
 	v2 perp1 = Vec2PerpRight(p2 - p1);
 	v2 perp2 = Vec2PerpRight(p0 - p2);
+	if (p0.x == p1.x && test.x == p0.x && test.y >= MinR32(p0.y, p1.y) && test.y <= MaxR32(p0.y, p1.y)) { return true; }
+	if (p1.x == p2.x && test.x == p1.x && test.y >= MinR32(p1.y, p2.y) && test.y <= MaxR32(p1.y, p2.y)) { return true; }
+	if (p2.x == p0.x && test.x == p2.x && test.y >= MinR32(p2.y, p0.y) && test.y <= MaxR32(p2.y, p0.y)) { return true; }
+	if (p0.y == p1.y && test.y == p0.y && test.x >= MinR32(p0.x, p1.x) && test.x <= MaxR32(p0.x, p1.x)) { return true; }
+	if (p1.y == p2.y && test.y == p1.y && test.x >= MinR32(p1.x, p2.x) && test.x <= MaxR32(p1.x, p2.x)) { return true; }
+	if (p2.y == p0.y && test.y == p2.y && test.x >= MinR32(p2.x, p0.x) && test.x <= MaxR32(p2.x, p0.x)) { return true; }
 	return (
 		SignOfR32(Vec2Dot(p2 - p0, perp0)) == SignOfR32(Vec2Dot(test - p0, perp0)) &&
 		SignOfR32(Vec2Dot(p0 - p1, perp1)) == SignOfR32(Vec2Dot(test - p1, perp1)) &&

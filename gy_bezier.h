@@ -57,7 +57,14 @@ enum BezierPathPartType_t
 	BezierPathPartType_Line,
 	BezierPathPartType_Curve3,
 	BezierPathPartType_Curve4,
+	BezierPathPartType_EllipseArc,
 	BezierPathPartType_NumTypes,
+};
+enum BezierPathPartArcFlag_t
+{
+	BezierPathPartArcFlag_None  = 0x00,
+	BezierPathPartArcFlag_Large = 0x01,
+	BezierPathPartArcFlag_Sweep = 0x02,
 };
 struct BezierPathPart_t
 {
@@ -65,6 +72,9 @@ struct BezierPathPart_t
 	v2 endPos;
 	v2 control1; //only if BezierPathPartType_Curve3 or BezierPathPartType_Curve4
 	v2 control2; //only if BezierPathPartType_Curve4
+	v2 radius; //only if BezierPathPartType_EllipseArc
+	r32 axisAngle; //only if BezierPathPartType_EllipseArc
+	u8 arcFlags; //only if BezierPathPartType_EllipseArc
 	bool detached;
 	v2 startPos; //only if detached
 };
@@ -77,6 +87,10 @@ struct BezierPath_t
 // +--------------------------------------------------------------+
 // |                     Curve Math Functions                     |
 // +--------------------------------------------------------------+
+v2 ParemetricLine(v2 start, v2 end, r32 time)
+{
+	return start + ((end - start) * time);
+}
 v2 BezierCurve3(v2 start, v2 control, v2 end, r32 time)
 {
 	r32 invTime = (1 - time);
@@ -92,6 +106,67 @@ v2 BezierCurve4(v2 start, v2 control1, v2 control2, v2 end, r32 time)
 		(Cube(invTime)*start.x) + 3*Square(invTime)*time*control1.x + (3*(invTime)*Square(time)*control2.x) + Cube(time)*end.x,
 		(Cube(invTime)*start.y) + 3*Square(invTime)*time*control1.y + (3*(invTime)*Square(time)*control2.y) + Cube(time)*end.y
 	);
+}
+v2 EllipseArcCurve(v2 center, v2 radius, r32 axisAngle, r32 startAngle, r32 angleDelta, r32 time)
+{
+	r32 angle = startAngle + angleDelta*time;
+	v2 result = center;
+	result += radius.x * CosR32(angle) * Vec2FromAngle(axisAngle);
+	result += radius.y * SinR32(angle) * Vec2PerpRight(Vec2FromAngle(axisAngle));
+	return result;
+}
+bool GetEllipseArcCurveCenterAndAngles(v2 start, v2 radius, r32 axisAngle, u8 arcFlags, v2 end, v2* centerOut = nullptr, r32* startAngleOut = nullptr, r32* angleDeltaOut = nullptr)
+{
+	//https://www.w3.org/TR/SVG2/implnote.html#ArcConversionEndpointToCenter
+	//https://observablehq.com/@toja/ellipse-and-elliptical-arc-conversion
+	v2 midpoint = (start + end) / 2;
+	v2 posPrime = Vec2_Zero;
+	posPrime.x =  CosR32(axisAngle) * ((start.x - end.x) / 2) + SinR32(axisAngle) * ((start.y - end.y) / 2);
+	posPrime.y = -SinR32(axisAngle) * ((start.x - end.x) / 2) + CosR32(axisAngle) * ((start.y - end.y) / 2);
+	r32 solutionCeof = (
+		(Square(radius.x) * Square(radius.y) - Square(radius.x) * Square(posPrime.y) - Square(radius.y) * Square(posPrime.x))
+		/
+		(Square(radius.x) * Square(posPrime.y) + Square(radius.y) * Square(posPrime.x))
+	);
+	if (solutionCeof < 0) { return false; }
+	solutionCeof = SqrtR32(solutionCeof);
+	v2 centerPrime = Vec2_Zero;
+	centerPrime.x = solutionCeof * (( radius.x * posPrime.y) / radius.y);
+	centerPrime.y = solutionCeof * ((-radius.y * posPrime.x) / radius.x);
+	if (IsFlagSet(arcFlags, BezierPathPartArcFlag_Large) == IsFlagSet(arcFlags, BezierPathPartArcFlag_Sweep))
+	{
+		centerPrime = -centerPrime;
+	}
+	v2 center = Vec2_Zero;
+	center.x = CosR32(axisAngle)  * centerPrime.x - SinR32(axisAngle) * centerPrime.y + midpoint.x;
+	center.y = SinR32(axisAngle)  * centerPrime.x + CosR32(axisAngle) * centerPrime.y + midpoint.y;
+	
+	v2 someVector = NewVec2((posPrime.x - centerPrime.x) / radius.x, (posPrime.y - centerPrime.y) / radius.y);
+	v2 someVector2 = NewVec2((-posPrime.x - centerPrime.x) / radius.x, (-posPrime.y - centerPrime.y) / radius.y);
+	r32 startAngle = Vec2AngleBetween(Vec2_Right, someVector);
+	r32 angleDelta = Vec2AngleBetween(someVector, someVector2);
+	angleDelta = ModR32(angleDelta, TwoPi32);
+	if (!IsFlagSet(arcFlags, BezierPathPartArcFlag_Sweep) && angleDelta > 0) { angleDelta -= TwoPi32; }
+	if (IsFlagSet(arcFlags, BezierPathPartArcFlag_Sweep) && angleDelta < 0) { angleDelta += TwoPi32; }
+	
+	if (centerOut != nullptr) { *centerOut = center; }
+	if (startAngleOut != nullptr) { *startAngleOut = startAngle; }
+	if (angleDeltaOut != nullptr) { *angleDeltaOut = angleDelta; }
+	return true;
+}
+v2 EllipseArcCurveStartEnd(v2 start, v2 radius, r32 axisAngle, u8 arcFlags, v2 end, r32 time)
+{
+	v2 center = Vec2_Zero;
+	r32 startAngle = 0;
+	r32 angleDelta = 0;
+	if (GetEllipseArcCurveCenterAndAngles(start, radius, axisAngle, arcFlags, end, &center, &startAngle, &angleDelta))
+	{
+		return EllipseArcCurve(center, radius, axisAngle, startAngle, angleDelta, time);
+	}
+	else
+	{
+		return ParemetricLine(start, end, time);
+	}
 }
 
 // +--------------------------------------------------------------+
@@ -256,6 +331,49 @@ u64 GetNumVerticesInBezierPath(const BezierPath_t* path)
 		{
 			result += (part->detached ? 2 : 1);
 		}
+	}
+	return result;
+}
+v2 GetPointOnBezierPathPart(v2 currentPos, const BezierPathPart_t* part, r32 time)
+{
+	if (part->detached) { currentPos = part->startPos; }
+	switch (part->type)
+	{
+		case BezierPathPartType_Line: return currentPos + (part->endPos - currentPos) * time;
+		case BezierPathPartType_Curve3: return BezierCurve3(currentPos, part->control1, part->endPos, time);
+		case BezierPathPartType_Curve4: return BezierCurve4(currentPos, part->control1, part->control2, part->endPos, time);
+		case BezierPathPartType_EllipseArc: return EllipseArcCurveStartEnd(currentPos, part->radius, part->axisAngle, part->arcFlags, part->endPos, time);
+		default: DebugAssert(false); return currentPos;
+	}
+}
+
+rec GetBoundsForBezierPathPart(v2 currentPos, const BezierPathPart_t* part)
+{
+	NotNull(part);
+	rec result = NewRecBetween(currentPos, part->endPos);
+	if (part->type != BezierPathPartType_Line)
+	{
+		const u64 subdivideCount = 100;
+		for (u64 tIndex = 0; tIndex < subdivideCount; tIndex++)
+		{
+			v2 pointOnCurve = GetPointOnBezierPathPart(currentPos, part, (r32)tIndex / (r32)subdivideCount);
+			result = RecExpandToVec2(result, pointOnCurve);
+		}
+	}
+	return result;
+}
+rec GetBoundsForBezierPath(const BezierPath_t* path)
+{
+	NotNull(path);
+	rec result = Rec_Zero;
+	v2 currentPos = Vec2_Zero;
+	VarArrayLoop(&path->parts, pIndex)
+	{
+		VarArrayLoopGet(BezierPathPart_t, pathPart, &path->parts, pIndex);
+		if (pathPart->detached) { currentPos = pathPart->startPos; }
+		if (pIndex == 0) { result = GetBoundsForBezierPathPart(currentPos, pathPart); }
+		else { result = RecBoth(result, GetBoundsForBezierPathPart(currentPos, pathPart)); }
+		currentPos = pathPart->endPos;
 	}
 	return result;
 }
