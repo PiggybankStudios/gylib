@@ -21,6 +21,31 @@ Description:
 #include "gy_primitives.h"
 
 // +--------------------------------------------------------------+
+// |                           Structs                            |
+// +--------------------------------------------------------------+
+struct TriangulateResult_t
+{
+	MemArena_t* allocArena;
+	u64* indices;
+	u64 numIndices;
+	u64 numParts;
+	u64 numHoles;
+};
+
+struct TriangulatePart_t
+{
+	u64 numVertices;
+	const v2* vertices;
+	
+	//Used by the algorithm. They don't need to be filled beforehand
+	bool isClockwise;
+	bool isHole;
+	u64 holeParentIndex;
+	bool hasHoles;
+	u64 numHoles;
+};
+
+// +--------------------------------------------------------------+
 // |                   Clockwise Polygon Check                    |
 // +--------------------------------------------------------------+
 bool IsPolygonClockwise(u64 numVertices, v2* vertices)
@@ -233,5 +258,150 @@ u64* Triangulate2DEarClip(MemArena_t* memArena, MemArena_t* tempArena, u64 numVe
 	
 	return result;
 }
+
+// +--------------------------------------------------------------+
+// |            Polyong With Multiple Pieces and Holes            |
+// +--------------------------------------------------------------+
+#if 0
+struct TriangulateWithHolesPart_t
+{
+	u64 numVertices;
+	const v2* vertices;
+	
+	bool isClockwise;
+	
+	bool isHole;
+	u64 holeParentIndex;
+	bool hasHoles;
+	u64 numHoles;
+};
+bool Triangulate2DMultiPolygonWithHoles(MemArena_t* memArena, MemArena_t* tempArena, u64 numParts, TriangulatePart_t* parts, TriangulateResult_t* result, bool debugDontDeallocate = false)
+{
+	if (numParts == 0) { return false; }
+	NotNull(parts);
+	AssertIf(memArena != nullptr, tempArena != nullptr);
+	NotNull(result);
+	
+	//if just one part, then no holes
+	if (numParts == 1)
+	{
+		ClearPointer(result);
+		result->allocArena = memArena;
+		result->numParts = 1;
+		result->numHoles = 0;
+		result->indices = Triangulate2DEarClip(memArena, tempArena, parts[0].numVertices, parts[0].vertices, &result->numIndices, debugDontDeallocate);
+		return (result->indices != nullptr);
+	}
+	
+	// +====================================+
+	// | Calculate Clockwise for All Parts  |
+	// +====================================+
+	u64 numClockwiseParts = 0;
+	u64 numAntiClockwiseParts = 0;
+	for (u64 pIndex = 0; pIndex < numParts; pIndex++)
+	{
+		TriangulateWithHolesPart_t* part = &parts[pIndex];
+		Assert(part->numVertices > 0);
+		NotNull(part->vertices);
+		part->isHole = false;
+		part->isClockwise = IsPolygonClockwise(part->numVertices, part->vertices);
+		if (part->isClockwise) { numClockwiseParts++; }
+		else { numAntiClockwiseParts++; }
+	}
+	
+	//if no opposite winding orders, than no holes
+	if (numClockwiseParts == 0 || numAntiClockwiseParts == 0)
+	{
+		//TODO: Implement this!
+	}
+	
+	// +==============================+
+	// | Pair up Holes to Outer Parts |
+	// +==============================+
+	u64 maxVerticesPerPart = 0;
+	u64 numNonHoleParts = 0;
+	u64 numHoleParts = 0;
+	u64 numTrianglesTotal = 0;
+	for (u64 pIndex = 0; pIndex < numParts; pIndex++)
+	{
+		TriangulateWithHolesPart_t* part = &parts[pIndex];
+		if (!part->isHole)
+		{
+			numNonHoleParts++;
+			part->hasHoles = false;
+			part->numHoles = 0;
+			u64 numVerticesInPart = part->numVertices;
+			for (u64 hIndex = pIndex+1; hIndex < numParts; hIndex++)
+			{
+				TriangulateWithHolesPart_t* holePart = &parts[pIndex];
+				//TODO: We should do a check to make sure at least one of the vertices in the holePart is inside the part
+				if (holePart->isClockwise != part->isClockwise)
+				{
+					holePart->isHole = true;
+					holePart->holeParentIndex = pIndex;
+					part->hasHoles = true;
+					part->numHoles++;
+					numVerticesInPart += holePart->numVertices;
+				}
+			}
+			maxVerticesPerPart = MaxU64(maxVerticesPerPart, numVerticesInPart);
+			
+			u64 numTriangles = (numVerticesInPart + part->numHoles*2)-2;
+			numTrianglesTotal += numTriangles;
+		}
+		else
+		{
+			numHoleParts++;
+		}
+	}
+	
+	u64 numIndicesTotal = numTrianglesTotal*3;
+	if (memArena == nullptr)
+	{
+		ClearPointer(result);
+		result->numIndices = numIndicesTotal;
+		result->numParts = numNonHoleParts;
+		result->numHoles = numHoleParts;
+		return true;
+	}
+	
+	PushMemMark(tempArena);
+	{
+		Assert(maxVerticesPerPart > 0);
+		v2* workingVerts = AllocArray(tempArena, v2, maxVerticesPerPart);
+		NotNull(workingVerts);
+		
+		// +==================================================+
+		// | Splice Hole Vertices Into Parts and Triangulate  |
+		// +==================================================+
+		for (u64 pIndex = 0; pIndex < numParts; pIndex++)
+		{
+			TriangulateWithHolesPart_t* part = &parts[pIndex];
+			if (!part->isHole)
+			{
+				u64 numWorkingVerts = 0;
+				
+				MyMemCopy(&workingVerts[numWorkingVerts], part->vertices, sizeof(v2) * part->numVertices);
+				numWorkingVerts += part->numVertices;
+				
+				for (u64 hIndex = pIndex+1; hIndex < numParts; hIndex++)
+				{
+					TriangulateWithHolesPart_t* holePart = &workingParts[pIndex];
+					if (holePart->isHole && holePart->holeParentIndex == pIndex)
+					{
+						//TODO: Find a mutually visible point on the hole and point in the polygon and splice in the vertices of the hole
+					}
+				}
+				Assert(numWorkingVerts <= maxVerticesPerPart);
+				
+				
+			}
+		}
+	}
+	PopMemMark(tempArena);
+	
+	return true;
+}
+#endif
 
 #endif //  _GY_TRIANGULATION_H

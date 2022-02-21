@@ -162,7 +162,7 @@ void FreeLinkedList(InDblLinkedList_t* list)
 	ClearPointer(list);
 }
 
-bool IsItemInLinkedList(LinkedList_t* list, const void* itemPntr, u64* indexOut = nullptr)
+bool IsItemInLinkedList(const LinkedList_t* list, const void* itemPntr, u64* indexOut = nullptr)
 {
 	NotNull(list);
 	NotNull(itemPntr);
@@ -183,7 +183,7 @@ bool IsItemInLinkedList(LinkedList_t* list, const void* itemPntr, u64* indexOut 
 	return false;
 }
 //TODO: Implement intrusive variants
-u64 GetItemIndexInLinkedList(LinkedList_t* list, const void* itemPntr)
+u64 GetItemIndexInLinkedList(const LinkedList_t* list, const void* itemPntr)
 {
 	u64 itemIndex = 0;
 	bool foundItem = IsItemInLinkedList(list, itemPntr, &itemIndex);
@@ -473,8 +473,8 @@ InDblLinkedList_t
 @Functions
 #define CreateLinkedList(list, memArena, type)
 void FreeLinkedList(LinkedList_t* list)
-bool IsItemInLinkedList(LinkedList_t* list, const void* itemPntr, u64* indexOut = nullptr)
-u64 GetItemIndexInLinkedList(LinkedList_t* list, const void* itemPntr)
+bool IsItemInLinkedList(const LinkedList_t* list, const void* itemPntr, u64* indexOut = nullptr)
+u64 GetItemIndexInLinkedList(const LinkedList_t* list, const void* itemPntr)
 #define LinkedListFirst(list, type)
 #define LinkedListLast(list, type)
 #define LinkedListNext(list, type, itemPntr)
