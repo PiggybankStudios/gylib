@@ -1080,6 +1080,40 @@ MyStr_t StringRepeat(MemArena_t* memArena, const char* nullTermStr, u64 numRepet
 	return StringRepeat(memArena, NewStr(nullTermStr), numRepetitions);
 }
 
+MyStr_t FormatBytes(u64 numBytes, MemArena_t* memArena)
+{
+	u64 gigabytes = numBytes/Gigabytes(1);
+	u64 megabytes = (numBytes%Gigabytes(1))/Megabytes(1);
+	u64 kilobytes = (numBytes%Megabytes(1))/Kilobytes(1);
+	u64 remainder = (numBytes % Kilobytes(1));
+	if (numBytes >= Kilobytes(1))
+	{
+		if (numBytes >= Megabytes(1))
+		{
+			if (numBytes >= Gigabytes(1))
+			{
+				return PrintInArenaStr(memArena, "%lluG %lluM %lluk %llub", gigabytes, megabytes, kilobytes, remainder);
+			}
+			else
+			{
+				return PrintInArenaStr(memArena, "%lluM %lluk %llub", megabytes, kilobytes, remainder);
+			}
+		}
+		else
+		{
+			return PrintInArenaStr(memArena, "%lluk %llub", kilobytes, remainder);
+		}
+	}
+	else
+	{
+		return PrintInArenaStr(memArena, "%llub", remainder);
+	}
+}
+const char* FormatBytesNt(u64 numBytes, MemArena_t* memArena)
+{
+	return FormatBytes(numBytes, memArena).pntr;
+}
+
 // +--------------------------------------------------------------+
 // |                    Time String Functions                     |
 // +--------------------------------------------------------------+
@@ -1274,6 +1308,8 @@ MyStr_t StringRepeat(MemArena_t* memArena, MyStr_t str, u64 numRepetitions)
 u8 GetCodepointForUtf8Str(MyStr_t str, u64 index, u32* codepointOut)
 MyStr_t ConvertWideStrToUtf8(MemArena_t* memArena, const wchar_t* wideStrPntr, u64 wideStrLength)
 MyStr_t ConvertWideStrToUtf8Nt(MemArena_t* memArena, const wchar_t* nullTermWideStr)
+MyStr_t FormatBytes(u64 numBytes, MemArena_t* memArena)
+const char* FormatBytesNt(u64 numBytes, MemArena_t* memArena)
 MyStr_t FormatRealTime(const RealTime_t* realTime, MemArena_t* memArena, bool includeDayOfWeek = true, bool includeHourMinuteSecond = true, bool includeMonthDayYear = true)
 const char* FormatRealTimeNt(const RealTime_t* realTime, MemArena_t* memArena, bool includeDayOfWeek = true, bool includeHourMinuteSecond = true, bool includeMonthDayYear = true)
 MyStr_t FormatMilliseconds(u64 milliseconds, MemArena_t* memArena)
