@@ -346,6 +346,31 @@ u8 GetCodepointBeforeIndex(const char* strPntr, u64 startIndex, u32* codepointOu
 	return 0;
 }
 
+//Compares two characters for alphabetic order
+i32 CompareCodepoints(u32 codepoint1, u32 codepoint2)
+{
+	if (codepoint1 == codepoint2) { return 0; }
+	u32 majorClass1 = 0;
+	if (IsCharNumeric(codepoint1)) { majorClass1 = 1; }
+	if (IsCharAlphabetic(codepoint1)) { majorClass1 = 2; }
+	u32 majorClass2 = 0;
+	if (IsCharNumeric(codepoint2)) { majorClass2 = 1; }
+	if (IsCharAlphabetic(codepoint2)) { majorClass2 = 2; }
+	if (majorClass1 < majorClass2) { return -1; }
+	else if (majorClass1 > majorClass2) { return 1; }
+	if (majorClass1 == 2) //alphabet
+	{
+		u32 lower1 = GetLowercaseCodepoint(codepoint1);
+		u32 lower2 = GetLowercaseCodepoint(codepoint2);
+		if (lower1 < lower2) { return -1; }
+		else if (lower1 > lower2) { return 1; }
+		else { return 0; }
+	}
+	if (codepoint1 < codepoint2) { return -1; }
+	else if (codepoint1 > codepoint2) { return 1; }
+	else { return 0; }
+}
+
 // +--------------------------------------------------------------+
 // |                       String Functions                       |
 // +--------------------------------------------------------------+
@@ -438,5 +463,6 @@ bool IsCharPunctuationEnd(u32 codepoint)
 u8 GetUtf8BytesForCode(u32 codepoint, u8* byteBufferOut = nullptr, bool doAssertions = true)
 u8 GetCodepointForUtf8(u64 maxNumChars, const char* strPntr, u32* codepointOut = nullptr)
 u8 GetCodepointBeforeIndex(const char* strPntr, u64 startIndex, u32* codepointOut = nullptr)
+i32 CompareCodepoints(u32 codepoint1, u32 codepoint2)
 bool IsStringValidIdentifier(u64 strLength, const char* strPntr, bool allowUnderscores = true, bool allowNumbers = true, bool allowLeadingNumbers = false, bool allowEmpty = false, bool allowSpaces = false)
 */

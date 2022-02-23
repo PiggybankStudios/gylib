@@ -25,6 +25,123 @@ Description:
 typedef COMPARE_FUNC_DEFINITION(CompareFunc_f);
 
 // +--------------------------------------------------------------+
+// |                      Compare Functions                       |
+// +--------------------------------------------------------------+
+i32 CompareFuncU8(const void* left, const void* right, void* contextPntr)
+{
+	NotNull2(left, right);
+	u8* leftValue = (u8*)left;
+	u8* rightValue = (u8*)right;
+	if (*leftValue < *rightValue) { return -1; }
+	else if (*leftValue > *rightValue) { return 1; }
+	else { return 0; }
+}
+i32 CompareFuncU16(const void* left, const void* right, void* contextPntr)
+{
+	NotNull2(left, right);
+	u16* leftValue = (u16*)left;
+	u16* rightValue = (u16*)right;
+	if (*leftValue < *rightValue) { return -1; }
+	else if (*leftValue > *rightValue) { return 1; }
+	else { return 0; }
+}
+i32 CompareFuncU32(const void* left, const void* right, void* contextPntr)
+{
+	NotNull2(left, right);
+	u32* leftValue = (u32*)left;
+	u32* rightValue = (u32*)right;
+	if (*leftValue < *rightValue) { return -1; }
+	else if (*leftValue > *rightValue) { return 1; }
+	else { return 0; }
+}
+i32 CompareFuncU64(const void* left, const void* right, void* contextPntr)
+{
+	NotNull2(left, right);
+	u64* leftValue = (u64*)left;
+	u64* rightValue = (u64*)right;
+	if (*leftValue < *rightValue) { return -1; }
+	else if (*leftValue > *rightValue) { return 1; }
+	else { return 0; }
+}
+i32 CompareFuncI8(const void* left, const void* right, void* contextPntr)
+{
+	NotNull2(left, right);
+	i8* leftValue = (i8*)left;
+	i8* rightValue = (i8*)right;
+	if (*leftValue < *rightValue) { return -1; }
+	else if (*leftValue > *rightValue) { return 1; }
+	else { return 0; }
+}
+i32 CompareFuncI16(const void* left, const void* right, void* contextPntr)
+{
+	NotNull2(left, right);
+	i16* leftValue = (i16*)left;
+	i16* rightValue = (i16*)right;
+	if (*leftValue < *rightValue) { return -1; }
+	else if (*leftValue > *rightValue) { return 1; }
+	else { return 0; }
+}
+i32 CompareFuncI32(const void* left, const void* right, void* contextPntr)
+{
+	NotNull2(left, right);
+	i32* leftValue = (i32*)left;
+	i32* rightValue = (i32*)right;
+	if (*leftValue < *rightValue) { return -1; }
+	else if (*leftValue > *rightValue) { return 1; }
+	else { return 0; }
+}
+i32 CompareFuncI64(const void* left, const void* right, void* contextPntr)
+{
+	NotNull2(left, right);
+	i64* leftValue = (i64*)left;
+	i64* rightValue = (i64*)right;
+	if (*leftValue < *rightValue) { return -1; }
+	else if (*leftValue > *rightValue) { return 1; }
+	else { return 0; }
+}
+i32 CompareFuncR32(const void* left, const void* right, void* contextPntr)
+{
+	NotNull2(left, right);
+	r32* leftValue = (r32*)left;
+	r32* rightValue = (r32*)right;
+	if (*leftValue < *rightValue) { return -1; }
+	else if (*leftValue > *rightValue) { return 1; }
+	else { return 0; }
+}
+i32 CompareFuncR64(const void* left, const void* right, void* contextPntr)
+{
+	NotNull2(left, right);
+	r64* leftValue = (r64*)left;
+	r64* rightValue = (r64*)right;
+	if (*leftValue < *rightValue) { return -1; }
+	else if (*leftValue > *rightValue) { return 1; }
+	else { return 0; }
+}
+i32 CompareFuncMyStr(const void* left, const void* right, void* contextPntr)
+{
+	NotNull2(left, right);
+	MyStr_t* leftStr = (MyStr_t*)left;
+	MyStr_t* rightStr = (MyStr_t*)right;
+	u64 leftIndex = 0;
+	u64 rightIndex = 0;
+	while (leftIndex <= leftStr->length && rightIndex <= rightStr->length)
+	{
+		if (leftIndex == leftStr->length && rightIndex == rightStr->length) { break; }
+		if (leftIndex == leftStr->length) { return -1; }
+		if (rightIndex == rightStr->length) { return 1; }
+		u32 leftCodepoint = 0;
+		u8 leftCharSize = GetCodepointForUtf8(leftStr->length - leftIndex, &leftStr->pntr[leftIndex], &leftCodepoint);
+		u32 rightCodepoint = 0;
+		u8 rightCharSize = GetCodepointForUtf8(rightStr->length - rightIndex, &rightStr->pntr[rightIndex], &rightCodepoint);
+		i32 charCompareResult = CompareCodepoints(leftCodepoint, rightCodepoint);
+		if (charCompareResult != 0) { return charCompareResult; }
+		leftIndex += leftCharSize;
+		rightIndex += rightCharSize;
+	}
+	return 0;
+}
+
+// +--------------------------------------------------------------+
 // |                          Quick Sort                          |
 // +--------------------------------------------------------------+
 i64 QuickSortPartition(void* arrayPntr, u64 numElements, u64 elementSize, void* workingSpace, CompareFunc_f* compareFunc, void* contextPntr = nullptr)
@@ -114,6 +231,17 @@ void QuickSortAlloc(void* arrayPntr, u64 numElements, u64 elementSize, MemArena_
 CompareFunc_f
 @Functions
 #define COMPARE_FUNC_DEFINITION(functionName)
+i32 CompareFuncU8(const void* left, const void* right, void* contextPntr)
+i32 CompareFuncU16(const void* left, const void* right, void* contextPntr)
+i32 CompareFuncU32(const void* left, const void* right, void* contextPntr)
+i32 CompareFuncU64(const void* left, const void* right, void* contextPntr)
+i32 CompareFuncI8(const void* left, const void* right, void* contextPntr)
+i32 CompareFuncI16(const void* left, const void* right, void* contextPntr)
+i32 CompareFuncI32(const void* left, const void* right, void* contextPntr)
+i32 CompareFuncI64(const void* left, const void* right, void* contextPntr)
+i32 CompareFuncR32(const void* left, const void* right, void* contextPntr)
+i32 CompareFuncR64(const void* left, const void* right, void* contextPntr)
+i32 CompareFuncMyStr(const void* left, const void* right, void* contextPntr)
 i64 QuickSortPartition(void* arrayPntr, u64 numElements, u64 elementSize, void* workingSpace, CompareFunc_f* compareFunc, void* contextPntr = nullptr)
 void QuickSort(void* arrayPntr, u64 numElements, u64 elementSize, void* workingSpace, CompareFunc_f* compareFunc, void* contextPntr)
 void QuickSortAlloc(void* arrayPntr, u64 numElements, u64 elementSize, MemArena_t* workingAllocArena, CompareFunc_f* compareFunc, void* contextPntr = nullptr)

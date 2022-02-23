@@ -506,6 +506,21 @@ void* VarArrayMove(VarArray_t* array, u64 fromIndex, u64 toIndex, bool swapWithT
 	return replaceItem;
 }
 
+// +--------------------------------------------------------------+
+// |                           Sorting                            |
+// +--------------------------------------------------------------+
+#ifdef _GY_SORTING_H
+void VarArraySort(VarArray_t* array, CompareFunc_f* compareFunc, void* contextPntr)
+{
+	NotNull(array);
+	NotNull(compareFunc);
+	Assert(array->itemSize > 0);
+	void* workingSpace = alloca(array->itemSize*2);
+	NotNull(workingSpace);
+	QuickSort(array->items, array->length, array->itemSize, workingSpace, compareFunc, contextPntr);
+}
+#endif
+
 //TODO: Add VarArraySort if gy_sorting.h is included?
 
 #endif //  _GY_VARIABLE_ARRAY_H
@@ -552,4 +567,5 @@ void VarArrayAddVarArray(VarArray_t* destArray, const VarArray_t* sourceArray, u
 #define VarArrayRemoveRange(array, index, numItemsToRemove, type)
 void VarArrayCopy(VarArray_t* destArray, const VarArray_t* sourceArray, MemArena_t* memArena)
 void* VarArrayMove(VarArray_t* array, u64 fromIndex, u64 toIndex, bool swapWithTarget = true)
+void VarArraySort(VarArray_t* array, CompareFunc_f* compareFunc, void* contextPntr)
 */

@@ -667,7 +667,7 @@ void BktArraySolidify(BktArray_t* array, bool deallocateEmptyBuckets = false, bo
 // +--------------------------------------------------------------+
 // |                           Sorting                            |
 // +--------------------------------------------------------------+
-#ifdef _MY_SORTING_H 
+#ifdef _GY_SORTING_H
 //TODO: Can we get this to work without solidifying the array?
 void BktArraySort(BktArray_t* array, CompareFunc_f* compareFunc, void* contextPntr)
 {
