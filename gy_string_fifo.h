@@ -9,6 +9,11 @@ Description:
 	** with some options for arbitrary length strings to feed those meta structures as well.
 	** This is primarily used to hold the data for a debug output console window which also stores the
 	** filePath and functionName of the code that generated each line of output.
+	** Later on we recognized the need for a consistent way to "build-up" a line of text between multiple calls
+	** so we added StringFifoBuild which is only functional if you call StringFifoAddBuildBuffer first.
+	** This facilitates patterns line StringFifoBuild(...), StringFifoBuild(...), StringFifoPushLinet(...)
+	** where all 3 calls would, together, produce a single line in the string fifo.
+	** The metaStruct and metaString for this line pull from the first call that started the line.
 */
 
 #ifndef _GY_STRING_FIFO_H
@@ -40,6 +45,7 @@ struct StringFifoLine_t
 struct StringFifo_t
 {
 	MemArena_t* allocArena; //if nullptr then DestroyStringFifo does nothing. Someone external is managing this memory
+	MemArena_t* buildBuffArena;
 	
 	u64 numLines;
 	u64 nextLineNumber;
@@ -49,11 +55,24 @@ struct StringFifo_t
 	u64 bufferSize;
 	u64 used;
 	u8* buffer;
+	
+	u64 buildBuffSize;
+	bool buildLineActive;
+	StringFifoLine_t buildLine; //textLength, metaStringLength and metaStructSize are important in here
+	u8* buildLineMetaStruct; //points into the buildBuff
+	char* buildLineMetaStr; //points into the buildBuff
+	char* buildLineText; //points into the buildBuff
+	u8* buildBuff;
 };
 
 // +--------------------------------------------------------------+
 // |                       Helper Functions                       |
 // +--------------------------------------------------------------+
+u64 GetFifoLineMetaSize(const StringFifoLine_t* line)
+{
+	NotNull_(line);
+	return line->metaStructSize + line->metaStringLength+1;
+}
 u64 GetFifoLineTotalSize(const StringFifoLine_t* line)
 {
 	NotNull_(line);
@@ -127,7 +146,11 @@ void DestroyStringFifo(StringFifo_t* fifo)
 	NotNull_(fifo);
 	if (fifo->allocArena != nullptr)
 	{
-		FreeMem(fifo->allocArena, fifo->buffer);
+		FreeMem(fifo->allocArena, fifo->buffer, fifo->bufferSize);
+	}
+	if (fifo->buildBuffArena != nullptr)
+	{
+		FreeMem(fifo->buildBuffArena, fifo->buildBuff, fifo->buildBuffSize);
 	}
 	ClearPointer(fifo);
 }
@@ -163,6 +186,41 @@ void CreateStringFifoInArena(StringFifo_t* fifo, MemArena_t* memArena, u64 buffe
 	fifo->buffer = AllocArray(memArena, u8, bufferSize);
 	NotNull_(fifo->buffer);
 	MyMemSet(&fifo->buffer[0], 0x00, bufferSize);
+}
+
+void StringFifoAddBuildBufferInArena(StringFifo_t* fifo, u64 buildBufferSize, MemArena_t* memArena)
+{
+	NotNull(fifo);
+	Assert(fifo->buildBuff == nullptr);
+	Assert(buildBufferSize > 0);
+	NotNull(memArena);
+	
+	fifo->buildBuffArena = memArena;
+	fifo->buildBuff = AllocArray(memArena, u8, buildBufferSize);
+	NotNull(fifo->buildBuff);
+	fifo->buildBuffSize = buildBufferSize;
+	fifo->buildLineActive = false;
+	ClearStruct(fifo->buildLine);
+	fifo->buildLineMetaStruct = nullptr;
+	fifo->buildLineMetaStr = nullptr;
+	fifo->buildLineText = nullptr;
+}
+void StringFifoAddBuildBuffer(StringFifo_t* fifo, u64 buildBufferSize, u8* buildSpace)
+{
+	NotNull(fifo);
+	Assert(fifo->buildBuff == nullptr);
+	Assert(buildBufferSize > 0);
+	NotNull(buildSpace);
+	
+	fifo->buildBuffArena = nullptr;
+	fifo->buildBuff = buildSpace;
+	NotNull(fifo->buildBuff);
+	fifo->buildBuffSize = buildBufferSize;
+	fifo->buildLineActive = false;
+	ClearStruct(fifo->buildLine);
+	fifo->buildLineMetaStruct = nullptr;
+	fifo->buildLineMetaStr = nullptr;
+	fifo->buildLineText = nullptr;
 }
 
 void ClearStringFifo(StringFifo_t* fifo)
@@ -215,9 +273,18 @@ StringFifoLine_t* StringFifoPushLineExt(StringFifo_t* fifo, MyStr_t text, u64 me
 	NotNullStr(&metaString);
 	
 	StringFifoLine_t dummyLine = {};
-	dummyLine.metaStructSize = metaStructSize;
-	dummyLine.metaStringLength = metaString.length;
-	dummyLine.textLength = text.length;
+	if (fifo->buildLineActive)
+	{
+		dummyLine.metaStructSize = fifo->buildLine.metaStructSize;
+		dummyLine.metaStringLength = fifo->buildLine.metaStringLength;
+		dummyLine.textLength = fifo->buildLine.textLength + text.length;
+	}
+	else
+	{
+		dummyLine.metaStructSize = metaStructSize;
+		dummyLine.metaStringLength = metaString.length;
+		dummyLine.textLength = text.length;
+	}
 	u64 allocationSize = GetFifoLineTotalSize(&dummyLine);
 	
 	if (allocationSize > fifo->bufferSize)
@@ -288,30 +355,71 @@ StringFifoLine_t* StringFifoPushLineExt(StringFifo_t* fifo, MyStr_t text, u64 me
 	
 	if (result != nullptr)
 	{
-		result->metaStructSize = metaStructSize;
-		result->metaStringLength = metaString.length;
-		result->textLength = text.length;
-		
 		result->lineNumber = fifo->nextLineNumber;
 		fifo->nextLineNumber++;
 		
-		//Copy the data into the correct places
-		void* metaStructSpace = GetFifoLineMetaStruct_(result, metaStructSize);
-		MyStr_t metaStringSpace = GetFifoLineMetaString(result);
-		MyStr_t textSpace = GetFifoLineText(result);
-		if (metaStructSize > 0 && metaStructPntr != nullptr)
+		if (fifo->buildLineActive)
 		{
-			MyMemCopy(metaStructSpace, metaStructPntr, metaStructSize);
+			result->metaStructSize = fifo->buildLine.metaStructSize;
+			result->metaStringLength = fifo->buildLine.metaStringLength;
+			result->textLength = fifo->buildLine.textLength + text.length;
+			
+			void* metaStructSpace = GetFifoLineMetaStruct_(result, metaStructSize);
+			MyStr_t metaStringSpace = GetFifoLineMetaString(result);
+			MyStr_t textSpace = GetFifoLineText(result);
+			
+			if (fifo->buildLine.metaStructSize > 0)
+			{
+				NotNull(fifo->buildLineMetaStruct);
+				MyMemCopy(metaStructSpace, fifo->buildLineMetaStruct, fifo->buildLine.metaStructSize);
+			}
+			if (fifo->buildLine.metaStringLength > 0)
+			{
+				NotNull(fifo->buildLineMetaStr);
+				MyMemCopy(metaStringSpace.pntr, fifo->buildLineMetaStr, fifo->buildLine.metaStringLength);
+				metaStringSpace.pntr[fifo->buildLine.metaStringLength] = '\0';
+			}
+			if (fifo->buildLine.textLength + text.length > 0)
+			{
+				if (fifo->buildLine.textLength > 0)
+				{
+					NotNull(fifo->buildLineText);
+					MyMemCopy(&textSpace.pntr[0], fifo->buildLineText, fifo->buildLine.textLength);
+				}
+				if (text.length > 0)
+				{
+					MyMemCopy(&textSpace.pntr[fifo->buildLine.textLength], text.pntr, text.length);
+				}
+				textSpace.pntr[fifo->buildLine.textLength + text.length] = '\0';
+			}
+			
+			fifo->buildLineActive = false;
 		}
-		if (metaString.length > 0)
+		else
 		{
-			MyMemCopy(metaStringSpace.pntr, metaString.pntr, metaString.length);
-			metaStringSpace.pntr[metaString.length] = '\0';
-		}
-		if (text.length > 0)
-		{
-			MyMemCopy(textSpace.pntr, text.pntr, text.length);
-			textSpace.pntr[text.length] = '\0';
+			result->metaStructSize = metaStructSize;
+			result->metaStringLength = metaString.length;
+			result->textLength = text.length;
+			
+			//Copy the data into the correct places
+			void* metaStructSpace = GetFifoLineMetaStruct_(result, metaStructSize);
+			MyStr_t metaStringSpace = GetFifoLineMetaString(result);
+			MyStr_t textSpace = GetFifoLineText(result);
+			
+			if (metaStructSize > 0 && metaStructPntr != nullptr)
+			{
+				MyMemCopy(metaStructSpace, metaStructPntr, metaStructSize);
+			}
+			if (metaString.length > 0)
+			{
+				MyMemCopy(metaStringSpace.pntr, metaString.pntr, metaString.length);
+				metaStringSpace.pntr[metaString.length] = '\0';
+			}
+			if (text.length > 0)
+			{
+				MyMemCopy(textSpace.pntr, text.pntr, text.length);
+				textSpace.pntr[text.length] = '\0';
+			}
 		}
 	}
 	
@@ -322,6 +430,63 @@ StringFifoLine_t* StringFifoPushLineExt(StringFifo_t* fifo, MyStr_t text, u64 me
 StringFifoLine_t* StringFifoPushLine(StringFifo_t* fifo, MyStr_t text)
 {
 	return StringFifoPushLineExt(fifo, text, 0, nullptr, MyStr_Empty);
+}
+
+void StringFifoBuildEx(StringFifo_t* fifo, MyStr_t text, u64 metaStructSize, const void* metaStructPntr, MyStr_t metaString)
+{
+	NotNull(fifo);
+	Assert(fifo->buildBuff != nullptr);
+	NotNullStr(&text);
+	AssertIf(metaStructSize > 0, metaStructPntr != nullptr);
+	NotNullStr(&metaString);
+	
+	if (!fifo->buildLineActive)
+	{
+		u64 metaSpaceSize = metaStructSize + metaString.length+1;
+		if (metaSpaceSize >= fifo->buildBuffSize-1) { return; } //We can't fit the meta info with any space left for the line
+		ClearStruct(fifo->buildLine);
+		fifo->buildLine.textLength = text.length;
+		fifo->buildLine.metaStructSize = metaStructSize;
+		fifo->buildLine.metaStringLength = metaString.length;
+		if (fifo->buildLine.textLength > fifo->buildBuffSize-1 - metaSpaceSize)
+		{
+			fifo->buildLine.textLength = fifo->buildBuffSize-1 - metaSpaceSize;
+		}
+		fifo->buildLineMetaStruct = &fifo->buildBuff[0];
+		fifo->buildLineMetaStr = (char*)(&fifo->buildBuff[metaStructSize]);
+		fifo->buildLineText = (char*)(&fifo->buildBuff[metaSpaceSize]);
+		if (metaStructSize > 0)
+		{
+			MyMemCopy(fifo->buildLineMetaStruct, metaStructPntr, metaStructSize);
+		}
+		if (metaString.length > 0)
+		{
+			MyMemCopy(fifo->buildLineMetaStr, metaString.pntr, metaString.length);
+			fifo->buildLineMetaStr[metaString.length] = '\0';
+		}
+		if (fifo->buildLine.textLength > 0)
+		{
+			MyMemCopy(fifo->buildLineText, text.pntr, fifo->buildLine.textLength);
+			fifo->buildLineText[fifo->buildLine.textLength] = '\0';
+		}
+		fifo->buildLineActive = true;
+	}
+	else
+	{
+		u64 metaSpaceSize = fifo->buildLine.metaStructSize + fifo->buildLine.metaStringLength+1;
+		Assert(metaSpaceSize + fifo->buildLine.textLength <= fifo->buildBuffSize-1);
+		u64 textSpaceLeft = fifo->buildBuffSize - (metaSpaceSize + fifo->buildLine.textLength+1);
+		if (text.length > textSpaceLeft) { text.length = textSpaceLeft; }
+		if (textSpaceLeft > 0)
+		{
+			MyMemCopy(&fifo->buildLineText[fifo->buildLine.textLength], text.pntr, text.length);
+			fifo->buildLine.textLength += text.length;
+		}
+	}
+}
+void StringFifoBuild(StringFifo_t* fifo, MyStr_t text, u64 metaStructSize, const void* metaStructPntr, MyStr_t metaString)
+{
+	StringFifoBuildEx(fifo, text, 0, nullptr, MyStr_Empty);
 }
 
 // +--------------------------------------------------------------+
@@ -601,6 +766,7 @@ StringFifoPushLineBefore_f
 StringFifoPushLineAfter_f
 StringFifoPushLineSort_f
 @Functions
+u64 GetFifoLineMetaSize(const StringFifoLine_t* line)
 u64 GetFifoLineTotalSize(const StringFifoLine_t* line)
 void* GetFifoLineMetaStruct_(StringFifoLine_t* line, u64 expectedStructSize)
 #define GetFifoLineMetaStruct(linePntr, type)
@@ -613,9 +779,13 @@ u64 GetStringFifoHeadIndex(const StringFifo_t* fifo)
 void DestroyStringFifo(StringFifo_t* fifo)
 void CreateStringFifo(StringFifo_t* fifo, u64 bufferSize, u8* bufferPntr)
 void CreateStringFifoInArena(StringFifo_t* fifo, MemArena_t* memArena, u64 bufferSize)
+void StringFifoAddBuildBufferInArena(StringFifo_t* fifo, u64 buildBufferSize, MemArena_t* memArena)
+void StringFifoAddBuildBuffer(StringFifo_t* fifo, u64 buildBufferSize, u8* buildSpace)
 void StringFifoPopLine(StringFifo_t* fifo)
 StringFifoLine_t* StringFifoPushLineExt(StringFifo_t* fifo, MyStr_t text, u64 metaStructSize, const void* metaStructPntr, MyStr_t metaString)
 StringFifoLine_t* StringFifoPushLine(StringFifo_t* fifo, MyStr_t text)
+void StringFifoBuildEx(StringFifo_t* fifo, MyStr_t text, u64 metaStructSize, const void* metaStructPntr, MyStr_t metaString)
+void StringFifoBuild(StringFifo_t* fifo, MyStr_t text, u64 metaStructSize, const void* metaStructPntr, MyStr_t metaString)
 void CopyStringFifo(StringFifo_t* destFifo, const StringFifo_t* srcFifo, MemArena_t* memArena, bool shrinkBufferToMatchContents)
 #define GY_STRING_FIFO_PUSH_LINES_BEFORE_CALLBACK_DEF(functionName)
 #define GY_STRING_FIFO_PUSH_LINES_AFTER_CALLBACK_DEF(functionName)
