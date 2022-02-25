@@ -963,6 +963,99 @@ u64 StrReplaceInPlace(MyStr_t str, const char* target, const char* replacement, 
 	return StrReplaceInPlace(str, NewStr(target), NewStr(replacement), ignoreCase);
 }
 
+//TODO: Add ignoreCase support to this implementation!
+MyStr_t StrReplace(MyStr_t str, MyStr_t target, MyStr_t replacement, MemArena_t* memArena)
+{
+	NotNullStr(&str);
+	NotNullStr(&target);
+	NotNullStr(&replacement);
+	Assert(target.length > 0);
+	
+	MyStr_t result = {};
+	for (u8 pass = 0; pass < 2; pass++)
+	{
+		u64 numBytesNeeded = 0;
+		
+		for (u64 bIndex = 0; bIndex < str.length; )
+		{
+			if (bIndex + target.length <= str.length)
+			{
+				bool foundTarget = true;
+				for (u64 tIndex = 0; tIndex < target.length; )
+				{
+					u32 strCodepoint = 0;
+					u8 strByteSize = GetCodepointForUtf8Str(str, bIndex + tIndex, &strCodepoint);
+					if (strByteSize == 0) { strByteSize = 1; strCodepoint = CharToU32(str.pntr[bIndex + tIndex]); } //invalid unicode
+					u32 targetCodepoint = 0;
+					u8 targetByteSize = GetCodepointForUtf8Str(target, tIndex, &targetCodepoint);
+					if (targetByteSize == 0) { targetByteSize = 1; targetCodepoint = target.pntr[tIndex]; } //invalid unicode
+					if (strCodepoint != targetCodepoint)
+					{
+						foundTarget = false;
+						break;
+					}
+					Assert(targetByteSize == strByteSize); //TODO: Get rid of this assumption by having 2 iteration variables, not just tIndex
+					tIndex += strByteSize;
+				}
+				
+				if (foundTarget)
+				{
+					if (result.pntr != nullptr)
+					{
+						Assert(numBytesNeeded + replacement.length <= result.length);
+						MyMemCopy(&result.pntr[numBytesNeeded], replacement.pntr, replacement.length);
+					}
+					numBytesNeeded += replacement.length;
+					bIndex += target.length;
+				}
+				else
+				{
+					u32 codepoint = 0;
+					u8 charByteSize = GetCodepointForUtf8Str(str, bIndex, &codepoint);
+					if (charByteSize == 0) { charByteSize = 1; codepoint = CharToU32(str.pntr[bIndex]); } //invalid unicode
+					if (result.pntr != nullptr)
+					{
+						Assert(numBytesNeeded + charByteSize <= result.length);
+						MyMemCopy(&result.pntr[numBytesNeeded], &str.pntr[bIndex], charByteSize);
+					}
+					numBytesNeeded += charByteSize;
+					bIndex += charByteSize;
+				}
+			}
+			else
+			{
+				u32 codepoint = 0;
+				u8 charByteSize = GetCodepointForUtf8Str(str, bIndex, &codepoint);
+				if (charByteSize == 0) { charByteSize = 1; codepoint = CharToU32(str.pntr[bIndex]); } //invalid unicode
+				if (result.pntr != nullptr)
+				{
+					Assert(numBytesNeeded + charByteSize <= result.length);
+					MyMemCopy(&result.pntr[numBytesNeeded], &str.pntr[bIndex], charByteSize);
+				}
+				numBytesNeeded += charByteSize;
+				bIndex += charByteSize;
+			}
+		}
+		
+		if (pass == 0)
+		{
+			result.length = numBytesNeeded;
+			result.pntr = AllocArray(memArena, char, result.length+1);
+			Assert(result.pntr);
+		}
+		else
+		{
+			Assert(numBytesNeeded == result.length);
+			result.pntr[result.length] = '\0';
+		}
+	}
+	return result;
+}
+MyStr_t StrReplace(MyStr_t str, const char* target, const char* replacement, MemArena_t* memArena)
+{
+	return StrReplace(str, NewStr(target), NewStr(replacement), memArena);
+}
+
 bool FindSubstring(MyStr_t target, MyStr_t substring, u64* indexOut = nullptr, bool ignoreCase = false)
 {
 	NotNullStr(&target);
@@ -1302,6 +1395,7 @@ void SplitFilePath(MyStr_t fullPath, MyStr_t* directoryOut, MyStr_t* fileNameOut
 MyStr_t GetFileNamePart(MyStr_t filePath, bool includeExtension = true)
 MyStr_t GetDirectoryPart(MyStr_t filePath)
 u64 StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ignoreCase = false)
+MyStr_t StrReplace(MyStr_t str, MyStr_t target, MyStr_t replacement, MemArena_t* memArena)
 bool FindSubstring(MyStr_t target, MyStr_t substring, u64* indexOut = nullptr, bool ignoreCase = false)
 MyStr_t FindStrParensPart(MyStr_t target, char openParensChar = '[', char closeParensChar = ']')
 MyStr_t StringRepeat(MemArena_t* memArena, MyStr_t str, u64 numRepetitions)
