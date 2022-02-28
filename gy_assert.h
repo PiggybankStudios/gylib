@@ -60,13 +60,13 @@ Description:
 // +--------------------------------------------------------------+
 #if GYLIB_ASSERTIONS_ENABLED
 
-#define AssertMsg_(Expression, message) do { if (!(Expression)) { MyDebugBreak(); } } while(0)
+#define AssertMsg_(Expression, message) do { if (!(Expression)) { MyBreak(); } } while(0)
 
 #if GYLIB_USE_ASSERT_FAILURE_FUNC
 extern void GyLibAssertFailure(const char* filePath, int lineNumber, const char* funcName, const char* expressionStr, const char* messageStr);
-#define AssertMsg(Expression, message) do { if (!(Expression)) { GyLibAssertFailure(__FILE__, __LINE__, __func__, #Expression, (message)); MyDebugBreak(); } } while(0)
+#define AssertMsg(Expression, message) do { if (!(Expression)) { GyLibAssertFailure(__FILE__, __LINE__, __func__, #Expression, (message)); } } while(0)
 #else
-#define AssertMsg(Expression, message) do { if (!(Expression)) { MyDebugBreak(); } } while(0)
+#define AssertMsg(Expression, message) do { if (!(Expression)) { MyBreak(); } } while(0)
 #endif
 
 #else //!GYLIB_ASSERTIONS_ENABLED

@@ -921,12 +921,22 @@ MyStr_t GetFileNamePart(MyStr_t filePath, bool includeExtension = true)
 	NotNullStr(&result);
 	return result;
 }
+
 MyStr_t GetDirectoryPart(MyStr_t filePath)
 {
 	MyStr_t result;
 	SplitFilePath(filePath, &result, nullptr, nullptr);
 	NotNullStr(&result);
 	return result;
+}
+
+const char* GetFileNamePartNt(const char* filePath)
+{
+	NotNull(filePath);
+	MyStr_t result;
+	SplitFilePath(NewStr(filePath), nullptr, &result);
+	NotNullStr(&result);
+	return result.pntr;
 }
 
 //Returns the number of instances replaced
@@ -1394,6 +1404,7 @@ MyStr_t UnescapeQuotedStringInArena(MemArena_t* memArena, MyStr_t target, bool r
 void SplitFilePath(MyStr_t fullPath, MyStr_t* directoryOut, MyStr_t* fileNameOut, MyStr_t* extensionOut = nullptr)
 MyStr_t GetFileNamePart(MyStr_t filePath, bool includeExtension = true)
 MyStr_t GetDirectoryPart(MyStr_t filePath)
+const char* GetFileNamePartNt(const char* filePath)
 u64 StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ignoreCase = false)
 MyStr_t StrReplace(MyStr_t str, MyStr_t target, MyStr_t replacement, MemArena_t* memArena)
 bool FindSubstring(MyStr_t target, MyStr_t substring, u64* indexOut = nullptr, bool ignoreCase = false)
