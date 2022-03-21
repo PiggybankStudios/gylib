@@ -243,12 +243,6 @@ void InitMemArena_FixedHeap(MemArena_t* arena, u64 size, void* memoryPntr, Alloc
 }
 void InitMemArena_PagedHeapFuncs(MemArena_t* arena, u64 pageSize, AllocationFunction_f* allocFunc, FreeFunction_f* freeFunc, u64 maxNumPages = 0, AllocAlignment_t alignment = AllocAlignment_None)
 {
-	UNUSED(arena);
-	UNUSED(pageSize);
-	UNUSED(allocFunc);
-	UNUSED(freeFunc);
-	UNUSED(maxNumPages);
-	UNUSED(alignment);
 	ClearPointer(arena);
 	arena->type = MemArenaType_PagedHeap;
 	arena->alignment = alignment;
