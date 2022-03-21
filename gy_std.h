@@ -9,11 +9,11 @@ Date:   09\14\2021
 
 #include "gy_defines_check.h"
 
-#if GY_STD_LIB_ALLOWED
+#if !GY_CUSTOM_STD_LIB
 
 #include <stdbool.h>
 #include <stdint.h>
-#include <algorithm> //Used for min and max functions
+#include <algorithm.h> //Used for min and max functions
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -28,9 +28,13 @@ Date:   09\14\2021
 #include <signal.h>
 #endif
 
-#else //!GY_STD_LIB_ALLOWED
+#else //GY_CUSTOM_STD_LIB
 
+// +--------------------------------------------------------------+
+// |                Custom stdint Implementations                 |
+// +--------------------------------------------------------------+
 #if WINDOWS_COMPILATION
+
 #if (_MSC_VER < 1300)
 	typedef signed char       int8_t;
 	typedef signed short      int16_t;
@@ -46,33 +50,26 @@ Date:   09\14\2021
 	typedef unsigned __int16  uint16_t;
 	typedef unsigned __int32  uint32_t;
 #endif
+
+//TODO: Add support for all the other standard library functions we might use (like we did in gy_std_wasm.h)
+
 #elif OSX_COMPILATION
+
 //TODO: Add support for OSX
+
 #elif LINUX_COMPILATION
-//TODO: Add support for Linux	
+
+//TODO: Add support for Linux
+	
+#elif WASM_COMPILATION
+#include "gy_std_wasm.h"
 #endif
 
-//TODO: Add custom implementations for all of our commonly used stdlib functions
-// MyMemSet
-// MyMemCompare
-// MyMemCopy
-// MyMemMove
-// MyStrCopyNt
-// MyStrCompareNt
-// MyStrCompare
-// MyStrLength
-// MyStrLength32
-// MyStrLength64
-// MyWideStrLength
-// MyWideStrLength32
-// MyStrStrNt
-// MyMalloc
-// MyRealloc
-// MyFree
-// MyVaListPrintf
+#endif //GY_CUSTOM_STD_LIB
 
-#endif //!GY_STD_LIB_ALLOWED
-
+// +--------------------------------------------------------------+
+// |                    Our Reroute Functions                     |
+// +--------------------------------------------------------------+
 #ifndef __cplusplus
 #define bool   _Bool
 #define false  0
@@ -117,15 +114,6 @@ Date:   09\14\2021
 #endif
 #ifndef MyStrStrNt
 #define MyStrStrNt(str1, str2)            strstr(str1, str2)
-#endif
-#ifndef MyMalloc
-#define MyMalloc(size)                    malloc(size)
-#endif
-#ifndef MyRealloc
-#define MyRealloc(pntr, newSize)          realloc(pntr, size)
-#endif
-#ifndef MyFree
-#define MyFree(size)                      free(size)
 #endif
 #ifndef MyVaListPrintf
 	#if 0//TODO: Do we want to default back to vsnprintf in some cases?

@@ -879,6 +879,34 @@ inline i16 ClampR32toI16(r32 value)
 }
 
 // +==============================+
+// |      ConvertSampleXToY       |
+// +==============================+
+inline i8 ConvertSampleR64ToI8(r64 sample)
+{
+	return (i8)RoundR64i(sample * INT8_MAX);
+}
+inline i16 ConvertSampleR64ToI16(r64 sample)
+{
+	return (i16)RoundR64i(sample * INT16_MAX);
+}
+inline i32 ConvertSampleR64ToI32(r64 sample)
+{
+	return (i32)RoundR64i(sample * INT32_MAX);
+}
+inline r64 ConvertSampleI8ToR64(i8 sampleI8)
+{
+	return ((r64)sampleI8 / (r64)INT8_MAX);
+}
+inline r64 ConvertSampleI16ToR64(i16 sampleI16)
+{
+	return ((r64)sampleI16 / (r64)INT16_MAX);
+}
+inline r64 ConvertSampleI32ToR64(i32 sampleI32)
+{
+	return ((r64)sampleI32 / (r64)INT32_MAX);
+}
+
+// +==============================+
 // |        BasicallyEqual        |
 // +==============================+
 inline bool BasicallyEqualR32(r32 value1, r32 value2, r32 tolerance = 0.001f)
@@ -1124,6 +1152,12 @@ inline i16 ClampI32toI16(i32 value)
 inline u32 ClampI32toU32(i32 value)
 inline i32 ClampU32toI32(u32 value)
 inline i16 ClampR32toI16(r32 value)
+inline i8 ConvertSampleR64ToI8(r64 sample)
+inline i16 ConvertSampleR64ToI16(r64 sample)
+inline i32 ConvertSampleR64ToI32(r64 sample)
+inline r64 ConvertSampleI8ToR64(i8 sampleI8)
+inline r64 ConvertSampleI16ToR64(i16 sampleI16)
+inline r64 ConvertSampleI32ToR64(i32 sampleI32)
 inline bool BasicallyEqualR32(r32 value1, r32 value2, r32 tolerance = 0.001f)
 inline bool BasicallyEqualR64(r64 value1, r64 value2, r64 tolerance = 0.001f)
 inline u8 FlagsDiffU8(u8 flags1, u8 flags2)

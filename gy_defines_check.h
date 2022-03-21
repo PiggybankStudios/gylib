@@ -7,8 +7,8 @@ Date:   09\14\2021
 #ifndef _GY_DEFINES_CHECK_H
 #define _GY_DEFINES_CHECK_H
 
-#if !defined(WINDOWS_COMPILATION) && !defined(OSX_COMPILATION) && !defined(LINUX_COMPILATION)
-#error Either WINDOWS_COMPILATION, OSX_COMPILATION, or LINUX_COMPILATION must be defined before including anything from Common
+#if !defined(WINDOWS_COMPILATION) && !defined(OSX_COMPILATION) && !defined(LINUX_COMPILATION) && !defined(WASM_COMPILATION)
+#error Either WINDOWS_COMPILATION, OSX_COMPILATION, LINUX_COMPILATION, or WASM_COMPILATION must be defined before including anything from Common
 #endif
 
 #ifdef WINDOWS_COMPILATION
@@ -32,11 +32,18 @@ Date:   09\14\2021
 #define LINUX_COMPILATION 0
 #endif
 
-#if defined(GY_STD_LIB_ALLOWED)
-#undef GY_STD_LIB_ALLOWED
-#define GY_STD_LIB_ALLOWED 1
+#ifdef WASM_COMPILATION
+#undef WASM_COMPILATION
+#define WASM_COMPILATION 1
 #else
-#define GY_STD_LIB_ALLOWED 0
+#define WASM_COMPILATION 0
+#endif
+
+#if defined(GY_CUSTOM_STD_LIB)
+#undef GY_CUSTOM_STD_LIB
+#define GY_CUSTOM_STD_LIB 1
+#else
+#define GY_CUSTOM_STD_LIB 0
 #endif
 
 #endif //  _GY_DEFINES_CHECK_H
@@ -49,7 +56,7 @@ Date:   09\14\2021
 WINDOWS_COMPILATION
 OSX_COMPILATION
 LINUX_COMPILATION
-GY_STD_LIB_ALLOWED
+GY_CUSTOM_STD_LIB
 @Types
 @Functions
 */

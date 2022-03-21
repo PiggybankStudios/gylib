@@ -47,6 +47,8 @@ Description:
 #define MyBreak() raise(SIGINT)
 #elif LINUX_COMPILATION
 #define MyBreak() raise(SIGINT)
+#elif WASM_COMPILATION
+#define MyBreak() __builtin_abort()
 #endif
 
 #if DEBUG_BUILD

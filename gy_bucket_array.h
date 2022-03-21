@@ -667,7 +667,8 @@ void BktArraySolidify(BktArray_t* array, bool deallocateEmptyBuckets = false, bo
 // +--------------------------------------------------------------+
 // |                           Sorting                            |
 // +--------------------------------------------------------------+
-#ifdef _GY_SORTING_H
+//TODO: If we can get rid of the use of alloca then we can have this, even if we don't have the standard library
+#if defined(_GY_SORTING_H) && !GY_CUSTOM_STD_LIB
 //TODO: Can we get this to work without solidifying the array?
 void BktArraySort(BktArray_t* array, CompareFunc_f* compareFunc, void* contextPntr)
 {

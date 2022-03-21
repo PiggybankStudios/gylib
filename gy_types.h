@@ -158,6 +158,9 @@ typedef I32_FUNC_DEF(I32Func_f);
 	(pntr1) = tempPntrWithLongNameThatWontConflict;                            \
 } while(0)
 
+#define EXTERN_C_START extern "C" {
+#define EXTERN_C_END }
+
 // +--------------------------------------------------------------+
 // |                   Packed and Export Macros                   |
 // +--------------------------------------------------------------+
@@ -186,20 +189,9 @@ typedef I32_FUNC_DEF(I32Func_f);
 // +--------------------------------------------------------------+
 // |                        Memset Macros                         |
 // +--------------------------------------------------------------+
-#if GY_STD_LIB_ALLOWED
-#if WINDOWS_COMPILATION
-#include <string.h>
-#elif OSX_COMPILATION
-//TODO: Add support for OSX compilation
-#elif LINUX_COMPILATION
-//TODO: Add support for OSX compilation
-#endif
-
 #define ClearArray(Array)      MyMemSet((Array), '\0', sizeof((Array)))
 #define ClearStruct(Structure) MyMemSet(&(Structure), '\0', sizeof((Structure)))
 #define ClearPointer(Pointer)  MyMemSet((Pointer), '\0', sizeof(*(Pointer)));
-
-#endif //GY_STD_LIB_ALLOWED
 
 #endif //  _GY_TYPES_H
 

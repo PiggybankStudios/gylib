@@ -204,6 +204,7 @@ void InitMemArena_Alias(MemArena_t* arena, MemArena_t* sourceArena)
 }
 void InitMemArena_StdHeap(MemArena_t* arena)
 {
+	#if !GY_CUSTOM_STD_LIB
 	NotNull(arena);
 	ClearPointer(arena);
 	arena->type = MemArenaType_StdHeap;
@@ -213,6 +214,9 @@ void InitMemArena_StdHeap(MemArena_t* arena)
 	
 	arena->telemetryEnabled = true;
 	arena->highAllocMark = arena->numAllocations;
+	#else
+	AssertMsg_(false, "StdHeap type memory arena is not supported without the standard library being present!");
+	#endif //GY_CUSTOM_STD_LIB
 }
 void InitMemArena_FixedHeap(MemArena_t* arena, u64 size, void* memoryPntr, AllocAlignment_t alignment = AllocAlignment_None)
 {
@@ -237,7 +241,7 @@ void InitMemArena_FixedHeap(MemArena_t* arena, u64 size, void* memoryPntr, Alloc
 	arena->highUsedMark = arena->used;
 	arena->highAllocMark = arena->numAllocations;
 }
-void InitMemArena_PagedHeapFuncs(MemArena_t* arena, u64 pageSize, AllocationFunction_f* allocFunc, AllocationFunction_f* freeFunc, u64 maxNumPages = 0, AllocAlignment_t alignment = AllocAlignment_None)
+void InitMemArena_PagedHeapFuncs(MemArena_t* arena, u64 pageSize, AllocationFunction_f* allocFunc, FreeFunction_f* freeFunc, u64 maxNumPages = 0, AllocAlignment_t alignment = AllocAlignment_None)
 {
 	UNUSED(arena);
 	UNUSED(pageSize);
@@ -245,7 +249,24 @@ void InitMemArena_PagedHeapFuncs(MemArena_t* arena, u64 pageSize, AllocationFunc
 	UNUSED(freeFunc);
 	UNUSED(maxNumPages);
 	UNUSED(alignment);
-	Unimplemented(); //TODO: Implement me!
+	ClearPointer(arena);
+	arena->type = MemArenaType_PagedHeap;
+	arena->alignment = alignment;
+	arena->pageSize = pageSize;
+	arena->maxNumPages = maxNumPages;
+	arena->singleAlloc = false;
+	arena->allocFunc = allocFunc;
+	arena->freeFunc = freeFunc;
+	arena->size = 0;
+	arena->used = 0;
+	arena->numPages = 0;
+	arena->numAllocations = 0;
+	arena->headerPntr = nullptr;
+	arena->mainPntr = nullptr;
+	arena->otherPntr = nullptr;
+	arena->telemetryEnabled = true;
+	arena->highUsedMark = 0;
+	arena->highAllocMark = 0;
 }
 void InitMemArena_PagedHeapArena(MemArena_t* arena, u64 pageSize, MemArena_t* sourceArena, u64 maxNumPages = 0, AllocAlignment_t alignment = AllocAlignment_None)
 {
@@ -254,7 +275,23 @@ void InitMemArena_PagedHeapArena(MemArena_t* arena, u64 pageSize, MemArena_t* so
 	UNUSED(sourceArena);
 	UNUSED(maxNumPages);
 	UNUSED(alignment);
-	Unimplemented(); //TODO: Implement me!
+	ClearPointer(arena);
+	arena->type = MemArenaType_PagedHeap;
+	arena->alignment = alignment;
+	arena->pageSize = pageSize;
+	arena->maxNumPages = maxNumPages;
+	arena->singleAlloc = false;
+	arena->sourceArena = sourceArena;
+	arena->size = 0;
+	arena->used = 0;
+	arena->numPages = 0;
+	arena->numAllocations = 0;
+	arena->headerPntr = nullptr;
+	arena->mainPntr = nullptr;
+	arena->otherPntr = nullptr;
+	arena->telemetryEnabled = true;
+	arena->highUsedMark = 0;
+	arena->highAllocMark = 0;
 }
 void InitMemArena_MarkedStack(MemArena_t* arena, u64 size, void* memoryPntr, u64 maxNumMarks, AllocAlignment_t alignment = AllocAlignment_None)
 {
@@ -577,6 +614,7 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride =
 			}
 		} break;
 		
+		#if !GY_CUSTOM_STD_LIB
 		// +==============================+
 		// |     MemArenaType_StdHeap     |
 		// +==============================+
@@ -592,6 +630,7 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride =
 				if (arena->highAllocMark < arena->numAllocations) { arena->highAllocMark = arena->numAllocations; }
 			}
 		} break;
+		#endif //GY_CUSTOM_STD_LIB
 		
 		// +==============================+
 		// |    MemArenaType_FixedHeap    |
@@ -612,6 +651,7 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride =
 				bool isAllocFilled = IsAllocPrefixFilled(allocPntr->size);
 				u64 allocSize = UnpackAllocPrefixSize(allocPntr->size);
 				AssertMsg(allocSize >= sizeof(HeapAllocPrefix_t), "Found an allocation header that claimed to be smaller than the header itself in Fixed Heap");
+				AssertMsg(allocOffset + allocSize <= arena->size, "Found an allocation header with invalid size. Would extend past the end of the arena!");
 				u64 allocAfterPrefixSize = allocSize - sizeof(HeapAllocPrefix_t);
 				if (!isAllocFilled)
 				{
@@ -657,10 +697,163 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride =
 		// +==============================+
 		// |    MemArenaType_PagedHeap    |
 		// +==============================+
-		// case MemArenaType_PagedHeap:
-		// {
-		// 	//TODO: Implement me!
-		// } break;
+		case MemArenaType_PagedHeap:
+		{
+			HeapPageHeader_t* pageHeader = (HeapPageHeader_t*)arena->headerPntr;
+			u64 pageIndex = 0;
+			while (pageHeader != nullptr)
+			{
+				if (pageHeader->size - pageHeader->used < numBytes)
+				{
+					pageHeader = pageHeader->next;
+					pageIndex++;
+					continue;
+				}
+				
+				u64 allocOffset = 0;
+				u8* allocBytePntr = (u8*)(pageHeader + 1);
+				u64 sectionIndex = 0;
+				while (allocOffset < pageHeader->size)
+				{
+					HeapAllocPrefix_t* allocPntr = (HeapAllocPrefix_t*)allocBytePntr;
+					u8* allocAfterPrefixPntr = (allocBytePntr + sizeof(HeapAllocPrefix_t));
+					bool isAllocFilled = IsAllocPrefixFilled(allocPntr->size);
+					u64 allocSize = UnpackAllocPrefixSize(allocPntr->size);
+					AssertMsg(allocSize >= sizeof(HeapAllocPrefix_t), "Found an allocation header that claimed to be smaller than the header itself in Fixed Heap");
+					AssertMsg(allocOffset + allocSize <= pageHeader->size, "Found an allocation header with invalid size. Would extend past the end of a page!");
+					u64 allocAfterPrefixSize = allocSize - sizeof(HeapAllocPrefix_t);
+					if (!isAllocFilled)
+					{
+						u8 alignOffset = OffsetToAlign(allocAfterPrefixPntr, alignment);
+						if (allocAfterPrefixSize >= alignOffset + numBytes)
+						{
+							result = allocAfterPrefixPntr + alignOffset;
+							if (allocAfterPrefixSize > alignOffset + numBytes + sizeof(HeapAllocPrefix_t))
+							{
+								//Split the section into 2 (one filled and one empty)
+								allocPntr->size = PackAllocPrefixSize(true, sizeof(HeapAllocPrefix_t) + alignOffset + numBytes);
+								HeapAllocPrefix_t* newSection = (HeapAllocPrefix_t*)(allocAfterPrefixPntr + alignOffset + numBytes);
+								newSection->size = PackAllocPrefixSize(false, allocAfterPrefixSize - (alignOffset + numBytes));
+								pageHeader->used += alignOffset + numBytes + sizeof(HeapAllocPrefix_t);
+								arena->used += alignOffset + numBytes + sizeof(HeapAllocPrefix_t);
+								Assert(pageHeader->used <= pageHeader->size);
+								Assert(arena->used <= arena->size);
+							}
+							else
+							{
+								//This entire section is getting used (or there's not enough extra room to make another empty section)
+								allocPntr->size = PackAllocPrefixSize(true, allocSize);
+								pageHeader->used += allocSize - sizeof(HeapAllocPrefix_t);
+								arena->used += allocSize - sizeof(HeapAllocPrefix_t);
+								Assert(pageHeader->used <= pageHeader->size);
+								Assert(arena->used <= arena->size);
+							}
+							arena->numAllocations++;
+							if (arena->telemetryEnabled)
+							{
+								if (arena->highUsedMark < arena->used) { arena->highUsedMark = arena->used; }
+								if (arena->highAllocMark < arena->numAllocations) { arena->highAllocMark = arena->numAllocations; }
+							}
+							break;
+						}
+					}
+					
+					allocBytePntr += allocSize;
+					allocOffset += allocSize;
+					sectionIndex++;
+				}
+				UNUSED(sectionIndex); //used for debug purposes
+				
+				pageHeader = pageHeader->next;
+				pageIndex++;
+			}
+			
+			if (result == nullptr)
+			{
+				u64 maxNeededSize = sizeof(HeapAllocPrefix_t) + numBytes + AllocAlignment_Max;
+				u64 newPageSize = arena->pageSize;
+				if (newPageSize < maxNeededSize) { newPageSize = maxNeededSize; }
+				
+				HeapPageHeader_t* newPageHeader = nullptr;
+				if (arena->sourceArena != nullptr)
+				{
+					DebugAssert(arena->sourceArena != arena);
+					newPageHeader = (HeapPageHeader_t*)AllocMem(arena->sourceArena, sizeof(HeapPageHeader_t) + newPageSize, alignment);
+					// NotNullMsg(newPageHeader, "Failed to allocate new page from arena for paged heap");
+					if (newPageHeader == nullptr) { return nullptr; }
+				}
+				else if (arena->allocFunc != nullptr)
+				{
+					newPageHeader = (HeapPageHeader_t*)arena->allocFunc(sizeof(HeapPageHeader_t) + newPageSize);
+					// NotNullMsg(newPageHeader, "Failed to allocate new page for paged heap");
+					if (newPageHeader == nullptr) { return nullptr; }
+				}
+				NotNullMsg(newPageHeader, "sourceArena and allocFunc are both not filled!");
+				
+				arena->size += newPageSize;
+				arena->used += sizeof(HeapAllocPrefix_t);
+				
+				ClearPointer(newPageHeader);
+				newPageHeader->next = nullptr;
+				newPageHeader->size = newPageSize;
+				newPageHeader->used = 0;
+				
+				u8* pageBase = (u8*)(newPageHeader + 1);
+				HeapAllocPrefix_t* allocPntr = (HeapAllocPrefix_t*)pageBase;
+				u8* allocAfterPrefixPntr = (pageBase + sizeof(HeapAllocPrefix_t));
+				u64 allocAfterPrefixSize = newPageSize - sizeof(HeapAllocPrefix_t);
+				u8 alignOffset = OffsetToAlign(allocAfterPrefixPntr, alignment);
+				AssertMsg(allocAfterPrefixSize >= alignOffset + numBytes, "Paged heap has a bug where we didn't allocate enough space in the new page to fit the allocation");
+				result = allocAfterPrefixPntr + alignOffset;
+				if (allocAfterPrefixSize > alignOffset + numBytes + sizeof(HeapAllocPrefix_t))
+				{
+					//Split the section into 2 (one filled and one empty)
+					allocPntr->size = PackAllocPrefixSize(true, sizeof(HeapAllocPrefix_t) + alignOffset + numBytes);
+					HeapAllocPrefix_t* newSection = (HeapAllocPrefix_t*)(allocAfterPrefixPntr + alignOffset + numBytes);
+					newSection->size = PackAllocPrefixSize(false, allocAfterPrefixSize - (alignOffset + numBytes));
+					newPageHeader->used += alignOffset + numBytes + sizeof(HeapAllocPrefix_t);
+					arena->used += alignOffset + numBytes + sizeof(HeapAllocPrefix_t);
+					Assert(newPageHeader->used <= newPageHeader->size);
+					Assert(arena->used <= arena->size);
+				}
+				else
+				{
+					//This entire section is getting used (or there's not enough extra room to make another empty section)
+					allocPntr->size = PackAllocPrefixSize(true, newPageSize);
+					newPageHeader->used += newPageSize - sizeof(HeapAllocPrefix_t);
+					arena->used += newPageSize - sizeof(HeapAllocPrefix_t);
+					Assert(newPageHeader->used <= newPageHeader->size);
+					Assert(arena->used <= arena->size);
+				}
+				arena->numAllocations++;
+				
+				if (arena->numPages == 0)
+				{
+					Assert(arena->headerPntr == nullptr);
+					arena->headerPntr = newPageHeader;
+				}
+				else
+				{
+					NotNull(arena->headerPntr);
+					HeapPageHeader_t* walkPntr = (HeapPageHeader_t*)arena->headerPntr;
+					for (u64 pIndex = 0; pIndex < arena->numPages-1; pIndex++)
+					{
+						walkPntr = walkPntr->next;
+					}
+					NotNull(walkPntr);
+					Assert(walkPntr->next == nullptr);
+					walkPntr->next = newPageHeader;
+				}
+				arena->numPages++;
+				
+				if (arena->telemetryEnabled)
+				{
+					if (arena->highUsedMark < arena->used) { arena->highUsedMark = arena->used; }
+					if (arena->highAllocMark < arena->numAllocations) { arena->highAllocMark = arena->numAllocations; }
+				}
+				break;
+			}
+		} break;
 		
 		// +==============================+
 		// |   MemArenaType_MarkedStack   |
@@ -797,6 +990,7 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreN
 			arena->used = arena->sourceArena->used;
 		} break;
 		
+		#if !GY_CUSTOM_STD_LIB
 		// +==============================+
 		// |     MemArenaType_StdHeap     |
 		// +==============================+
@@ -806,6 +1000,7 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreN
 			Decrement(arena->numAllocations);
 			DecrementBy(arena->used, allocSize);
 		} break;
+		#endif //GY_CUSTOM_STD_LIB
 		
 		// +==============================+
 		// |    MemArenaType_FixedHeap    |
@@ -832,7 +1027,7 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreN
 					AssertMsg((u8*)allocPntr >= afterPrefixPntr, "Tried to free a pointer that pointed into a Fixed Heap header. This is a corrupt pointer!");
 					//TODO: Check if the allocation was actually aligned. Be more strict if it wasn't aligned
 					AssertMsg((u8*)allocPntr <= afterPrefixPntr + OffsetToAlign(afterPrefixPntr, AllocAlignment_Max), "Tried to free a pointer that pointed to the middle of a Fixed Heap section. This is a corrupt pointer!");
-					AssertMsg(isSectionFilled, "Tried to free previously freed section in Fixed Heap. This is a memory management bug");
+					AssertMsg(isSectionFilled, "Tried to double free section in Fixed Heap. This is a memory management bug");
 					if (allocSize != 0)
 					{
 						//TODO: Handle scenarios where the alignment offset or bad-fit scenarios caused the section to be slightly larger than the requested allocation size
@@ -864,7 +1059,7 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreN
 					}
 					if (prevPrefixPntr != nullptr && !IsAllocPrefixFilled(prevPrefixPntr->size))
 					{
-						// Merge the previous section with this one by making it sectionSize bigger
+						// Merge the previous section with this one by making it's sectionSize bigger
 						prevPrefixPntr->size = PackAllocPrefixSize(false, UnpackAllocPrefixSize(prevPrefixPntr->size) + sectionSize);
 						AssertMsg(arena->used >= sizeof(HeapAllocPrefix_t), "Fixed Heap used tracker was corrupted. Reached 0 too soon.");
 						arena->used -= sizeof(HeapAllocPrefix_t);
@@ -887,10 +1082,96 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreN
 		// +==============================+
 		// |    MemArenaType_PagedHeap    |
 		// +==============================+
-		// case MemArenaType_PagedHeap:
-		// {
-		// 	//TODO: Implement me!
-		// } break;
+		case MemArenaType_PagedHeap:
+		{
+			HeapPageHeader_t* pageHeader = (HeapPageHeader_t*)arena->headerPntr;
+			u64 pageIndex = 0;
+			while (pageHeader != nullptr)
+			{
+				u8* pageBase = (u8*)(pageHeader + 1);
+				if (allocPntr >= pageBase && allocPntr < pageBase + pageHeader->size)
+				{
+					bool foundAlloc = false;
+					u64 allocOffset = 0;
+					u8* allocBytePntr = pageBase;
+					u64 sectionIndex = 0;
+					HeapAllocPrefix_t* prevPrefixPntr = nullptr;
+					while (allocOffset < pageHeader->size)
+					{
+						HeapAllocPrefix_t* prefixPntr = (HeapAllocPrefix_t*)allocBytePntr;
+						u8* afterPrefixPntr = (allocBytePntr + sizeof(HeapAllocPrefix_t));
+						bool isSectionFilled = IsAllocPrefixFilled(prefixPntr->size);
+						u64 sectionSize = UnpackAllocPrefixSize(prefixPntr->size);
+						AssertMsg(sectionSize >= sizeof(HeapAllocPrefix_t), "Found an allocation header that claimed to be smaller than the header itself in Paged Heap");
+						u64 afterPrefixSize = sectionSize - sizeof(HeapAllocPrefix_t);
+						
+						if ((u8*)allocPntr >= allocBytePntr && (u8*)allocPntr < allocBytePntr + sectionSize)
+						{
+							AssertMsg((u8*)allocPntr >= afterPrefixPntr, "Tried to free a pointer that pointed into a Paged Heap header. This is a corrupt pointer!");
+							//TODO: Check if the allocation was actually aligned. Be more strict if it wasn't aligned
+							AssertMsg((u8*)allocPntr <= afterPrefixPntr + OffsetToAlign(afterPrefixPntr, AllocAlignment_Max), "Tried to free a pointer that pointed to the middle of a Paged Heap section. This is a corrupt pointer!");
+							AssertMsg(isSectionFilled, "Tried to double free section in Paged Heap. This is a memory management bug");
+							if (allocSize != 0)
+							{
+								//TODO: Handle scenarios where the alignment offset or bad-fit scenarios caused the section to be slightly larger than the requested allocation size
+								//NOTE: Right now we allow for slop in both the alignment offset and scenarios where the section that was used was only slighly larger than needed
+								//      and a second section couldn't be created because there wasn't even enough room for a HeapAllocPrefix_t
+								u64 allowedSlop = OffsetToAlign(afterPrefixPntr, AllocAlignment_Max) + sizeof(HeapAllocPrefix_t);
+								AssertMsg(AbsDiffU64(allocSize, afterPrefixSize) <= allowedSlop, "Given size did not match actual allocation size in Paged Heap during FreeMem. This is a memory management bug");
+							}
+							
+							result = true;
+							foundAlloc = true;
+							
+							prefixPntr->size = PackAllocPrefixSize(false, sectionSize);
+							AssertMsg(pageHeader->used >= afterPrefixSize, "Paged Heap used tracker was corrupted. Reached 0 too soon!");
+							AssertMsg(arena->used >= afterPrefixSize, "Paged Heap used tracker was corrupted. Reached 0 too soon!");
+							pageHeader->used -= afterPrefixSize;
+							arena->used -= afterPrefixSize;
+							AssertMsg(arena->numAllocations > 0, "Paged Heap numAllocations was corrupted. Reached 0 too soon!");
+							arena->numAllocations--;
+							
+							if (allocOffset + sectionSize < pageHeader->size)
+							{
+								Assert(allocOffset + sectionSize + sizeof(HeapAllocPrefix_t) <= pageHeader->size);
+								HeapAllocPrefix_t* nextPrefixPntr = (HeapAllocPrefix_t*)(allocBytePntr + sectionSize);
+								if (!IsAllocPrefixFilled(nextPrefixPntr->size))
+								{
+									// Merge the next section with this one by making this section bigger
+									sectionSize += UnpackAllocPrefixSize(nextPrefixPntr->size);
+									prefixPntr->size = PackAllocPrefixSize(false, sectionSize);
+									AssertMsg(pageHeader->used >= sizeof(HeapAllocPrefix_t), "Paged Heap page->used tracker was corrupted. Reached 0 too soon.");
+									AssertMsg(arena->used >= sizeof(HeapAllocPrefix_t), "Paged Heap used tracker was corrupted. Reached 0 too soon.");
+									pageHeader->used -= sizeof(HeapAllocPrefix_t);
+									arena->used -= sizeof(HeapAllocPrefix_t);
+								}
+							}
+							if (prevPrefixPntr != nullptr && !IsAllocPrefixFilled(prevPrefixPntr->size))
+							{
+								// Merge the previous section with this one by making it's sectionSize bigger
+								prevPrefixPntr->size = PackAllocPrefixSize(false, UnpackAllocPrefixSize(prevPrefixPntr->size) + sectionSize);
+								AssertMsg(pageHeader->used >= sizeof(HeapAllocPrefix_t), "Paged Heap page->used tracker was corrupted. Reached 0 too soon.");
+								AssertMsg(arena->used >= sizeof(HeapAllocPrefix_t), "Paged Heap used tracker was corrupted. Reached 0 too soon.");
+								pageHeader->used -= sizeof(HeapAllocPrefix_t);
+								arena->used -= sizeof(HeapAllocPrefix_t);
+							}
+							
+							break;
+						}
+						
+						prevPrefixPntr = prefixPntr;
+						allocOffset += sectionSize;
+						allocBytePntr += sectionSize;
+						sectionIndex++;
+					}
+					AssertMsg(foundAlloc, "We have a bug in our freeing walk. Couldn't find section that contained the pntr in this page!");
+				}
+				
+				pageHeader = pageHeader->next;
+				pageIndex++;
+			}
+			AssertMsg(result == true, "Tried to free pntr that isn't in any of the pages of this arena!");
+		} break;
 		
 		// +==============================+
 		// |   MemArenaType_MarkedStack   |
@@ -1053,6 +1334,7 @@ void* ReallocMem(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 
 			}
 		} break;
 		
+		#if !GY_CUSTOM_STD_LIB
 		// +==============================+
 		// |     MemArenaType_StdHeap     |
 		// +==============================+
@@ -1073,6 +1355,7 @@ void* ReallocMem(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 
 				if (increasingSize && arena->highUsedMark < arena->used) { arena->highUsedMark = arena->used; }
 			}
 		} break;
+		#endif //GY_CUSTOM_STD_LIB
 		
 		// +==============================+
 		// |    MemArenaType_FixedHeap    |
@@ -1310,7 +1593,7 @@ void InitMemArena_Redirect(MemArena_t* arena, AllocationFunction_f* allocFunc, F
 void InitMemArena_Alias(MemArena_t* arena, MemArena_t* sourceArena)
 void InitMemArena_StdHeap(MemArena_t* arena)
 void InitMemArena_FixedHeap(MemArena_t* arena, u64 size, void* memoryPntr, AllocAlignment_t alignment = AllocAlignment_None)
-void InitMemArena_PagedHeapFuncs(MemArena_t* arena, u64 pageSize, AllocationFunction_f* allocFunc, AllocationFunction_f* freeFunc, u64 maxNumPages = 0, AllocAlignment_t alignment = AllocAlignment_None)
+void InitMemArena_PagedHeapFuncs(MemArena_t* arena, u64 pageSize, AllocationFunction_f* allocFunc, FreeFunction_f* freeFunc, u64 maxNumPages = 0, AllocAlignment_t alignment = AllocAlignment_None)
 void InitMemArena_PagedHeapArena(MemArena_t* arena, u64 pageSize, MemArena_t* sourceArena, u64 maxNumPages = 0, AllocAlignment_t alignment = AllocAlignment_None)
 void InitMemArena_MarkedStack(MemArena_t* arena, u64 size, void* memoryPntr, u64 maxNumMarks, AllocAlignment_t alignment = AllocAlignment_None)
 void InitMemArena_Buffer(MemArena_t* arena, u64 bufferSize, void* bufferPntr, bool singleAlloc = false, AllocAlignment_t alignment = AllocAlignment_None)
