@@ -17,7 +17,8 @@ typedef char          int8_t;
 typedef short         int16_t;
 typedef int           int32_t;
 typedef long long     int64_t;
-typedef long          size_t;
+typedef long          ptrdiff_t;
+typedef unsigned long size_t;
 typedef unsigned long uintptr_t;
 
 typedef unsigned char       uint8_t;
@@ -49,17 +50,6 @@ typedef unsigned long long  uint64_t;
 #define MAX(a, b) ((a)>(b)?(a):(b))
 #define MIN(a, b) ((a)<(b)?(a):(b))
 #define BITOP(a, b, op) ((a)[(size_t)(b)/(8*sizeof *(a))] op (size_t)1<<((size_t)(b)%(8*sizeof *(a))))
-
-// +--------------------------------------------------------------+
-// |               Custom stdarg.h Implementations                |
-// +--------------------------------------------------------------+
-//This comes from LLVM's implementation of stdarg.h
-typedef __builtin_va_list va_list;
-#define _VA_LIST
-#define va_start(ap, param) __builtin_va_start(ap, param)
-#define va_end(ap)          __builtin_va_end(ap)
-#define va_arg(ap, type)    __builtin_va_arg(ap, type)
-#define va_copy(dest, src)  __builtin_va_copy(dest, src)
 
 // +--------------------------------------------------------------+
 // |                Custom stdlib Implementations                 |

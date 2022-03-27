@@ -13,7 +13,7 @@ Date:   09\14\2021
 
 #include <stdbool.h>
 #include <stdint.h>
-#include <algorithm.h> //Used for min and max functions
+#include <algorithm> //Used for min and max functions
 
 #include <stdarg.h>
 #include <stdio.h>
