@@ -46,6 +46,13 @@ Date:   09\14\2021
 #define GY_CUSTOM_STD_LIB 0
 #endif
 
+#if defined(GY_WASM_STD_LIB)
+#undef GY_WASM_STD_LIB
+#define GY_WASM_STD_LIB 1
+#else
+#define GY_WASM_STD_LIB 0
+#endif
+
 #endif //  _GY_DEFINES_CHECK_H
 
 // +--------------------------------------------------------------+
@@ -57,6 +64,7 @@ WINDOWS_COMPILATION
 OSX_COMPILATION
 LINUX_COMPILATION
 GY_CUSTOM_STD_LIB
+GY_WASM_STD_LIB
 @Types
 @Functions
 */

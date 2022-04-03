@@ -9,16 +9,16 @@ Date:   09\14\2021
 
 #include "gy_defines_check.h"
 
-#if !GY_CUSTOM_STD_LIB
-
 #include <stdbool.h>
 #include <stdint.h>
-#include <algorithm> //Used for min and max functions
-
+#include <stddef.h>
+#include <stdlib.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+//TODO: I don't think we actually need to include algorithm here? fmin and similar functions come from math.h
+// #include <algorithm> //Used for min and max functions
 
 #if WINDOWS_COMPILATION
 #include <intrin.h>
@@ -26,55 +26,13 @@ Date:   09\14\2021
 #include <signal.h>
 #elif LINUX_COMPILATION
 #include <signal.h>
-#endif
-
-#else //GY_CUSTOM_STD_LIB
-
-// +--------------------------------------------------------------+
-// |                Custom stdint Implementations                 |
-// +--------------------------------------------------------------+
-#if WINDOWS_COMPILATION
-
-#if (_MSC_VER < 1300)
-	typedef signed char       int8_t;
-	typedef signed short      int16_t;
-	typedef signed int        int32_t;
-	typedef unsigned char     uint8_t;
-	typedef unsigned short    uint16_t;
-	typedef unsigned int      uint32_t;
-#else
-	typedef signed __int8     int8_t;
-	typedef signed __int16    int16_t;
-	typedef signed __int32    int32_t;
-	typedef unsigned __int8   uint8_t;
-	typedef unsigned __int16  uint16_t;
-	typedef unsigned __int32  uint32_t;
-#endif
-
-//TODO: Add support for all the other standard library functions we might use (like we did in gy_std_wasm.h)
-
-#elif OSX_COMPILATION
-
-//TODO: Add support for OSX
-
-#elif LINUX_COMPILATION
-
-//TODO: Add support for Linux
-	
 #elif WASM_COMPILATION
-#include "gy_std_wasm.h"
+//TODO: Is there any wasm specific header files we want to include?
 #endif
-
-#endif //GY_CUSTOM_STD_LIB
 
 // +--------------------------------------------------------------+
 // |                    Our Reroute Functions                     |
 // +--------------------------------------------------------------+
-#ifndef __cplusplus
-#define bool   _Bool
-#define false  0
-#define true   1
-#endif
 
 #ifndef MyMemSet
 #define MyMemSet(dest, value, length)     memset(dest, value, length)

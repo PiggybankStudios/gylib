@@ -13,26 +13,6 @@ Description:
 #include "gy_std.h"
 
 // +--------------------------------------------------------------+
-// |                       Global Constants                       |
-// +--------------------------------------------------------------+
-//Actual Value of Pi: 3.1415926535897932384626433832795...
-#define Pi64          3.14159265358979311599796346854      //accurate to 15 digits
-#define Pi32          3.1415927410125732421875f            //accurate to 6 digits
-#define QuarterPi64    (Pi64/4.0)
-#define ThirdPi64      (Pi64/3.0)
-#define HalfPi64       (Pi64/2.0)
-#define ThreeHalfsPi64 (Pi64*(3.0/2.0))
-#define TwoPi64        (2*Pi64)
-#define QuarterPi32    (Pi32/4.0f)
-#define ThirdPi32      (Pi32/3.0f)
-#define HalfPi32       (Pi32/2.0f)
-#define ThreeHalfsPi32 (Pi32*(3.0f/2.0f))
-#define TwoPi32        (2*Pi32)
-//Actual Value of e:  2.7182818284590452353602874713526...
-#define e64           2.71828182845904509079559829843      //accurate to 15 digits
-#define e32           2.71828174591064453125f              //accurate to 6 digits
-
-// +--------------------------------------------------------------+
 // |                  Integer and Float Typedefs                  |
 // +--------------------------------------------------------------+
 typedef uint8_t     uint8;
@@ -70,23 +50,6 @@ typedef double      r64;
 // +--------------------------------------------------------------+
 // |                        General Macros                        |
 // +--------------------------------------------------------------+
-#define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
-
-#define IsFlagSet(BitwiseField, Bit) (((BitwiseField) & (Bit)) != 0)
-#define FlagSet(BitwiseField, Bit)   (BitwiseField) |= (Bit)
-#define FlagUnset(BitwiseField, Bit) (BitwiseField) &= ~(Bit)
-#define FlagToggle(BitwiseField, Bit) ((BitwiseField) ^= (Bit))
-#define FlagSetTo(BitwiseField, Bit, condition) if (condition) { FlagSet((BitwiseField), (Bit)); } else { FlagUnset((BitwiseField), (Bit)); }
-
-#define FlagEnumSet(BitwiseField, Bit, enumType, castType)   (BitwiseField) = (enumType)(((castType)(BitwiseField)) | (castType)(Bit))
-#define FlagEnumUnset(BitwiseField, Bit, enumType, castType) (BitwiseField) = (enumType)(((castType)(BitwiseField)) & ~((castType)(Bit)))
-#define FlagEnumToggle(BitwiseField, Bit, enumType, castType) (BitwiseField) = (enumType)(((castType)(BitwiseField)) ^ ((castType)(Bit)))
-#define FlagEnumSetTo(BitwiseField, Bit, condition, enumType, castType) if (condition) { FlagEnumSet((BitwiseField), (Bit), (enumType), (castType)); } else { FlagEnumUnset((BitwiseField), (Bit), (enumType), (castType)); }
-
-#define Kilobytes(value) ((value) * 1024UL)
-#define Megabytes(value) (Kilobytes((value)) * 1024UL)
-#define Gigabytes(value) (Megabytes((value)) * 1024UL)
-
 #define Increment(variable, max)           if ((variable) < (max)) { (variable)++; } else { (variable) = (max); }
 #define IncrementU8(variable)              if ((variable) < 0xFF) { (variable)++; } else { (variable) = 0xFF; }
 #define IncrementU16(variable)             if ((variable) < 0xFFFF) { (variable)++; } else { (variable) = 0xFFFF; }
@@ -100,11 +63,6 @@ typedef double      r64;
 #define Decrement(variable)                if ((variable) > 0) { (variable)--; } else { (variable) = 0; }
 #define DecrementBy(variable, amount)      if ((variable) >= (amount)) { (variable) -= (amount); } else { (variable) = 0; }
 
-#define ToRadians32(degrees)		((degrees)/180.0f * Pi32)
-#define ToRadians64(degrees)		((degrees)/180.0 * Pi64)
-#define ToDegrees32(radians)		((radians)/Pi32 * 180.0f)
-#define ToDegrees64(radians)		((radians)/Pi64 * 180.0)
-
 #define ReverseByteArray(array, size) do                  \
 {                                                         \
 	u8 _tempByte; u32 _bIndex = 0;                        \
@@ -116,11 +74,6 @@ typedef double      r64;
 		_bIndex++;                                        \
 	}                                                     \
 } while(0)
-
-#define IsVersionBelow(versionMajor, versionMinor, numberMajor, numberMinor) (((versionMajor) < (numberMajor)) || ((versionMajor) == (numberMajor) && (versionMinor) < (numberMinor)))
-#define IsVersionAbove(versionMajor, versionMinor, numberMajor, numberMinor) (((versionMajor) > (numberMajor)) || ((versionMajor) == (numberMajor) && (versionMinor) > (numberMinor)))
-
-#define IsEqualXor(variable1, variable2, condition1, condition2) (((variable1) == (condition1) && (variable2) == (condition2)) || ((variable1) == (condition2) && (variable2) == (condition1)))
 
 #define FlipEndianU32(variable) variable = (((*(((const u8*)&(variable)) + 0)) & 0xFF) << 24) | (((*(((const u8*)&(variable)) + 1)) & 0xFF) << 16) | (((*(((const u8*)&(variable)) + 2)) & 0xFF) << 8) | (((*(((const u8*)&(variable)) + 3)) & 0xFF) << 0);
 #define OnesComplimentU32(variable) (variable ^ 0xFFFFFFFFL)
@@ -137,14 +90,6 @@ typedef BOOL_FUNC_DEF(BoolFunc_f);
 #define I32_FUNC_DEF(functionName) i32 functionName()
 typedef I32_FUNC_DEF(I32Func_f);
 
-#if WINDOWS_COMPILATION
-#define UNUSED(varName)        (void)(varName)
-#define UNREFERENCED(varName)  (void)(varName)
-#else
-#define UNUSED(varName)        (void)sizeof(varName)
-#define UNREFERENCED(varName)  (void)sizeof(varName)
-#endif
-
 #define SWAP_VARIABLES(varType, var1, var2) do { varType tempVarWithLongNameThatWontConflict = (var2); (var2) = (var1); (var1) = tempVarWithLongNameThatWontConflict; } while(0)
 #define SWAP_POINTERS(varType, pntr1, pntr2) do                                \
 {                                                                              \
@@ -157,34 +102,6 @@ typedef I32_FUNC_DEF(I32Func_f);
 	(pntr2) = (pntr1);                                                         \
 	(pntr1) = tempPntrWithLongNameThatWontConflict;                            \
 } while(0)
-
-#define EXTERN_C_START extern "C" {
-#define EXTERN_C_END }
-
-// +--------------------------------------------------------------+
-// |                   Packed and Export Macros                   |
-// +--------------------------------------------------------------+
-#if WINDOWS_COMPILATION
-	#define PACKED(class_to_pack) __pragma( pack(push, 1) ) class_to_pack __pragma(pack(pop))
-	#define START_PACK()  __pragma(pack(push, 1))
-	#define END_PACK()    __pragma(pack(pop))
-	#define ATTR_PACKED //nothing
-	#define EXPORT __declspec(dllexport)
-	#define IMPORT __declspec(dllimport)
-	#define __func__ __FUNCTION__
-#elif OSX_COMPILATION
-	#define PACKED(class_to_pack) class_to_pack __attribute__((__packed__))
-	#define START_PACK()  //nothing
-	#define END_PACK()    //nothing
-	#define ATTR_PACKED __attribute__((__packed__))
-	//TODO: Figure out how to do EXPORT and IMPORT on OSX
-#else
-	#define PACKED(class_to_pack) class_to_pack __attribute__((__packed__))
-	#define START_PACK()  //nothing
-	#define END_PACK()    //nothing
-	#define ATTR_PACKED __attribute__((__packed__))
-	//TODO: Figure out how to do EXPORT and IMPORT on OSX
-#endif
 
 // +--------------------------------------------------------------+
 // |                        Memset Macros                         |
