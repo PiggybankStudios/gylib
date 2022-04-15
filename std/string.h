@@ -14,8 +14,8 @@ inline void* memcpy(void* __restrict dest, const void* __restrict src, size_t co
 #else
 void* memcpy(void* __restrict dest, const void* __restrict src, size_t count)
 {
-	unsigned char* destPntr = dest;
-	const unsigned char* srcPntr = src;
+	unsigned char* destPntr = (unsigned char*)dest;
+	const unsigned char* srcPntr = (const unsigned char*)src;
 	uint32_t word1, word2;
 	
 	for (; (uintptr_t)srcPntr % 4 && count; count--)
@@ -147,7 +147,7 @@ inline void* memset(void* ptr, int value, size_t num) { return __builtin_memset(
 #else
 void* memset(void* dest, int value, size_t num)
 {
-	unsigned char* charPntr = dest;
+	unsigned char* charPntr = (unsigned char*)dest;
 	size_t alignment;
 	
 	// Fill head and tail with minimal branching. Each

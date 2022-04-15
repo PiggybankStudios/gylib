@@ -13,6 +13,7 @@ Description:
 #define _GY_INTRINSICS_H
 
 #include "gy_defines_check.h"
+#include "gy_basic_macros.h"
 #include "gy_std.h"
 #include "gy_types.h"
 
@@ -383,11 +384,11 @@ Description:
 // +==============================+
 inline r32 AbsR32(r32 value)
 {
-	return abs(value);
+	return fabsf(value);
 }
 inline r64 AbsR64(r64 value)
 {
-	return abs(value);
+	return fabs(value);
 }
 inline i8 AbsI8(i8 value)
 {
@@ -399,11 +400,11 @@ inline i16 AbsI16(i16 value)
 }
 inline i32 AbsI32(i32 value)
 {
-	return abs(value);
+	return (value < 0 ? -value : value);
 }
 inline i64 AbsI64(i64 value)
 {
-	return abs(value);
+	return (value < 0 ? -value : value);
 }
 
 // +==============================+

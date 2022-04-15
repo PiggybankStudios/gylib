@@ -94,7 +94,35 @@ typedef unsigned gid_t;
 typedef int key_t;
 typedef unsigned useconds_t;
 
-struct _IO_FILE { char __x; };
+struct _IO_FILE
+{
+	unsigned flags;
+	unsigned char *rpos, *rend;
+	int (*close)(_IO_FILE *);
+	unsigned char *wend, *wpos;
+	unsigned char *mustbezero_1;
+	unsigned char *wbase;
+	size_t (*read)(_IO_FILE *, unsigned char *, size_t);
+	size_t (*write)(_IO_FILE *, const unsigned char *, size_t);
+	off_t (*seek)(_IO_FILE *, off_t, int);
+	unsigned char *buf;
+	size_t buf_size;
+	_IO_FILE *prev, *next;
+	int fd;
+	int pipe_pid;
+	long lockcount;
+	int mode;
+	volatile int lock;
+	int lbf;
+	void *cookie;
+	off_t off;
+	char *getln_buf;
+	void *mustbezero_2;
+	unsigned char *shend;
+	off_t shlim, shcnt;
+	_IO_FILE *prev_locked, *next_locked;
+	struct __locale_struct *locale;
+};
 typedef struct _IO_FILE FILE;
 
 typedef __builtin_va_list va_list;

@@ -1,117 +1,12 @@
 /*
-File:   stdlib.h
+File:   gy_test_floatscan.h
 Author: Taylor Robbins
-Date:   03\27\2022
+Date:   04\05\2022
 */
 
-#include <ctype.h>
-#include <stdint.h>
-#include <limits.h>
-#include <float.h>
-#include <math.h>
-#include <string.h>
+#ifndef _GY_TEST_FLOATSCAN_H
+#define _GY_TEST_FLOATSCAN_H
 
-#ifndef _STDLIB_H
-#define _STDLIB_H
-
-// +--------------------------------------------------------------+
-// |                           Defines                            |
-// +--------------------------------------------------------------+
-#define RAND_MAX (0x7fffffff)
-
-// +--------------------------------------------------------------+
-// |                      Parsing Functions                       |
-// +--------------------------------------------------------------+
-int atoi(const char* nullTermStr)
-{
-	int result = 0;
-	bool isNegative = 0;
-	
-	// Eat whitespace
-	while (isspace(*nullTermStr))
-	{
-		nullTermStr++;
-	}
-	
-	// Handle sign characters
-	switch (*nullTermStr)
-	{
-		case '-': isNegative = true; nullTermStr++; break;
-		case '+': nullTermStr++; break;
-	}
-	
-	// Actually parse the digits
-	// NOTE: We aggregate in the negative space to avoid overflow on INT_MAX
-	while (isdigit(*nullTermStr))
-	{
-		result = 10*result - (*nullTermStr - '0');
-		nullTermStr++;
-	}
-	
-	return (isNegative ? result : -result);
-}
-
-long atol(const char* nullTermStr)
-{
-	long result = 0;
-	bool isNegative = 0;
-	
-	// Eat whitespace
-	while (isspace(*nullTermStr))
-	{
-		nullTermStr++;
-	}
-	
-	// Handle sign characters
-	switch (*nullTermStr)
-	{
-		case '-': isNegative = true; nullTermStr++; break;
-		case '+': nullTermStr++; break;
-	}
-	
-	// Actually parse the digits
-	// NOTE: We aggregate in the negative space to avoid overflow on INT_MAX
-	while (isdigit(*nullTermStr))
-	{
-		result = 10*result - (*nullTermStr - '0');
-		nullTermStr++;
-	}
-	
-	return (isNegative ? result : -result);
-}
-
-long long atoll(const char* nullTermStr)
-{
-	long long result = 0;
-	bool isNegative = 0;
-	
-	// Eat whitespace
-	while (isspace(*nullTermStr))
-	{
-		nullTermStr++;
-	}
-	
-	// Handle sign characters
-	switch (*nullTermStr)
-	{
-		case '-': isNegative = true; nullTermStr++; break;
-		case '+': nullTermStr++; break;
-	}
-	
-	// Actually parse the digits
-	// NOTE: We aggregate in the negative space to avoid overflow on INT_MAX
-	while (isdigit(*nullTermStr))
-	{
-		result = 10*result - (*nullTermStr - '0');
-		nullTermStr++;
-	}
-	
-	return (isNegative ? result : -result);
-}
-
-// +--------------------------------------------------------------+
-// |                    Float Point Conversion                    |
-// +--------------------------------------------------------------+
 // void __shlim(FILE *, off_t);
 // #define shcnt(f) ((f)->shcnt + ((f)->rpos - (f)->buf))
 // #define shlim(f, lim) __shlim((f), (lim))
@@ -216,21 +111,23 @@ long double decfloat(FloatScanState_t* scanState, int bits, int emin, int sign)
 	long long lrp = 0; //TODO: Name this better! (negative power of position we are currently at after period? It's a long long version of rp)
 	long long dc = 0; //TODO: Name this better!
 	int lnz = 0; //TODO: Name this better!
+	bool foundPeriod = false;
+	bool foundDigits = false;
 	
 	//Trim leading 0's
 	int nextChar = _floatScanReadChar(scanState);
-	while (nextChar == '0') { nextChar = _floatScanReadChar(scanState); }
-	
-	bool foundPeriod = false;
-	bool foundDigits = false;
-	if (nextChar == '.')
+	while (nextChar == '0' || (!foundPeriod && nextChar == '.'))
 	{
-		foundPeriod = true;
-		for (nextChar = _floatScanReadChar(scanState); nextChar == '0'; nextChar = _floatScanReadChar(scanState))
+		if (foundPeriod)
 		{
 			foundDigits = true;
 			lrp--;
 		}
+		else if (nextChar == '.')
+		{
+			foundPeriod = true;
+		}
+		nextChar = _floatScanReadChar(scanState);
 	}
 	
 	// Collect digits? TODO: Figure out what this section does for real
@@ -249,7 +146,7 @@ long double decfloat(FloatScanState_t* scanState, int bits, int emin, int sign)
 		else if (digitIndex < FLOATSCAN_MAX_DIGITS-3)
 		{
 			dc++;
-			if (nextChar != '0') { lnz = dc; }
+			if (nextChar != '0') { lnz = (int)dc; }
 			
 			if (j)
 			{
@@ -299,7 +196,7 @@ long double decfloat(FloatScanState_t* scanState, int bits, int emin, int sign)
 		_floatScanStepBack(scanState);
 	}
 	
-	if (foundDigits)
+	if (!foundDigits)
 	{
 		//TODO: What should do about error states? Set errno?
 		//TODO: The example also does shlim here
@@ -338,7 +235,7 @@ long double decfloat(FloatScanState_t* scanState, int bits, int emin, int sign)
 	int a = 0; //TODO: Name this better!
 	int z = digitIndex; //TODO: Name this better!
 	int e2 = 0; //TODO: Name this better!
-	int rp = lrp; //TODO: Name this better!
+	int rp = (int)lrp; //TODO: Name this better!
 	
 	//Optimize mid to small size integers (even in exponent notation) (I guess up to 100 million? because that's what we have in p10s above?)
 	if (lnz < 9 && lnz <= rp && rp < 18)
@@ -386,13 +283,13 @@ long double decfloat(FloatScanState_t* scanState, int bits, int emin, int sign)
 			uint64_t temp = ((uint64_t)digits[digitIndex] << 29) + carry;
 			if (temp > 1000000000)
 			{
-				carry = temp / 1000000000;
+				carry = (uint32_t)(temp / 1000000000);
 				digits[digitIndex] = temp % 1000000000;
 			}
 			else
 			{
 				carry = 0;
-				digits[digitIndex] = temp;
+				digits[digitIndex] = (uint32_t)temp;
 			}
 			if (digitIndex == (z-1 & MASK) && digitIndex != a && !digits[digitIndex]) { z = digitIndex; }
 			if (digitIndex == a) { break; }
@@ -557,6 +454,7 @@ long double __floatscan(FloatScanState_t* scanState, FloatSize_t floatSize)
 		case FloatSize_32:  bits = FLT_MANT_DIG;  emin = (FLT_MIN_EXP  - bits); break;
 		case FloatSize_64:  bits = DBL_MANT_DIG;  emin = (DBL_MIN_EXP  - bits); break;
 		case FloatSize_128: bits = LDBL_MANT_DIG; emin = (LDBL_MIN_EXP - bits); break;
+		default: return 0;
 	}
 	
 	//Trim leading whitespace
@@ -605,6 +503,7 @@ long double __floatscan(FloatScanState_t* scanState, FloatSize_t floatSize)
 		return NAN;
 	}
 	
+	_floatScanStepBack(scanState);
 	if (_floatScanGetChar(scanState, 0) == '0' && _floatScanGetChar(scanState, 'x'))
 	{
 		scanState->readIndex += 2;
@@ -634,198 +533,4 @@ long double strtox(const char* nullTermStr, char** endPntrOut, FloatSize_t float
 	return y;
 }
 
-double strtod(const char* __restrict nullTermStr, char** __restrict endPtrOut)
-{
-	return strtox(nullTermStr, endPtrOut, FloatSize_64); //1 = double precision
-}
-
-double atof(const char* nullTermStr)
-{
-	return strtod(nullTermStr, nullptr);
-}
-
-// +--------------------------------------------------------------+
-// |                   Random Number Generation                   |
-// +--------------------------------------------------------------+
-static uint64_t __stdRandSeed;
-
-void srand(unsigned seed)
-{
-	__stdRandSeed = (seed - 1);
-}
-
-int rand()
-{
-	__stdRandSeed = (6364136223846793005ULL * __stdRandSeed) + 1;
-	return (__stdRandSeed >> 33);
-}
-
-// +--------------------------------------------------------------+
-// |    Potentially Important Stuff That We Currently Dont Use    |
-// +--------------------------------------------------------------+
-#if 0
-float strtof (const char *__restrict, char **__restrict);
-long double strtold (const char *__restrict, char **__restrict);
-
-long strtol (const char *__restrict, char **__restrict, int);
-unsigned long strtoul (const char *__restrict, char **__restrict, int);
-long long strtoll (const char *__restrict, char **__restrict, int);
-unsigned long long strtoull (const char *__restrict, char **__restrict, int);
-
-void *malloc (size_t);
-void *calloc (size_t, size_t);
-void *realloc (void *, size_t);
-void free (void *);
-void *aligned_alloc(size_t, size_t);
-
-_Noreturn void abort (void);
-int atexit (void (*) (void));
-_Noreturn void exit (int);
-_Noreturn void _Exit (int);
-int at_quick_exit (void (*) (void));
-_Noreturn void quick_exit (int);
-
-char *getenv (const char *);
-
-int system (const char *);
-
-void *bsearch (const void *, const void *, size_t, size_t, int (*)(const void *, const void *));
-void qsort (void *, size_t, size_t, int (*)(const void *, const void *));
-
-int abs (int);
-long labs (long);
-long long llabs (long long);
-
-typedef struct { int quot, rem; } div_t;
-typedef struct { long quot, rem; } ldiv_t;
-typedef struct { long long quot, rem; } lldiv_t;
-
-div_t div (int, int);
-ldiv_t ldiv (long, long);
-lldiv_t lldiv (long long, long long);
-
-int mblen (const char *, size_t);
-int mbtowc (wchar_t *__restrict, const char *__restrict, size_t);
-int wctomb (char *, wchar_t);
-size_t mbstowcs (wchar_t *__restrict, const char *__restrict, size_t);
-size_t wcstombs (char *__restrict, const wchar_t *__restrict, size_t);
-
-#define EXIT_FAILURE 1
-#define EXIT_SUCCESS 0
-
-size_t __ctype_get_mb_cur_max(void);
-#define MB_CUR_MAX (__ctype_get_mb_cur_max())
-
-
-#if defined(_POSIX_SOURCE) || defined(_POSIX_C_SOURCE) \
- || defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) \
- || defined(_BSD_SOURCE)
-
-#define WNOHANG    1
-#define WUNTRACED  2
-
-#define WEXITSTATUS(s) (((s) & 0xff00) >> 8)
-#define WTERMSIG(s) ((s) & 0x7f)
-#define WSTOPSIG(s) WEXITSTATUS(s)
-#define WIFEXITED(s) (!WTERMSIG(s))
-#define WIFSTOPPED(s) ((short)((((s)&0xffff)*0x10001)>>8) > 0x7f00)
-#define WIFSIGNALED(s) (((s)&0xffff)-1U < 0xffu)
-
-int posix_memalign (void **, size_t, size_t);
-int setenv (const char *, const char *, int);
-int unsetenv (const char *);
-int mkstemp (char *);
-int mkostemp (char *, int);
-char *mkdtemp (char *);
-int getsubopt (char **, char *const *, char **);
-int rand_r (unsigned *);
-
-#endif
-
-
-#if defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) \
- || defined(_BSD_SOURCE)
-char *realpath (const char *__restrict, char *__restrict);
-long int random (void);
-void srandom (unsigned int);
-char *initstate (unsigned int, char *, size_t);
-char *setstate (char *);
-int putenv (char *);
-int posix_openpt (int);
-int grantpt (int);
-int unlockpt (int);
-char *ptsname (int);
-char *l64a (long);
-long a64l (const char *);
-void setkey (const char *);
-double drand48 (void);
-double erand48 (unsigned short [3]);
-long int lrand48 (void);
-long int nrand48 (unsigned short [3]);
-long mrand48 (void);
-long jrand48 (unsigned short [3]);
-void srand48 (long);
-unsigned short *seed48 (unsigned short [3]);
-void lcong48 (unsigned short [7]);
-#endif
-
-#if defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
-#include <alloca.h>
-char *mktemp (char *);
-int mkstemps (char *, int);
-int mkostemps (char *, int, int);
-void *valloc (size_t);
-void *memalign(size_t, size_t);
-int getloadavg(double *, int);
-int clearenv(void);
-#define WCOREDUMP(s) ((s) & 0x80)
-#define WIFCONTINUED(s) ((s) == 0xffff)
-void *reallocarray (void *, size_t, size_t);
-void qsort_r (void *, size_t, size_t, int (*)(const void *, const void *, void *), void *);
-#endif
-
-#ifdef _GNU_SOURCE
-int ptsname_r(int, char *, size_t);
-char *ecvt(double, int, int *, int *);
-char *fcvt(double, int, int *, int *);
-char *gcvt(double, int, char *);
-char *secure_getenv(const char *);
-struct __locale_struct;
-float strtof_l(const char *__restrict, char **__restrict, struct __locale_struct *);
-double strtod_l(const char *__restrict, char **__restrict, struct __locale_struct *);
-long double strtold_l(const char *__restrict, char **__restrict, struct __locale_struct *);
-#endif
-
-#if defined(_LARGEFILE64_SOURCE) || defined(_GNU_SOURCE)
-#define mkstemp64 mkstemp
-#define mkostemp64 mkostemp
-#if defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
-#define mkstemps64 mkstemps
-#define mkostemps64 mkostemps
-#endif
-#endif
-
-#endif
-
-#endif //  _STDLIB_H
-
-// +--------------------------------------------------------------+
-// |                   Autocomplete Dictionary                    |
-// +--------------------------------------------------------------+
-/*
-@Defines
-RAND_MAX
-FloatSize_32
-FloatSize_64
-FloatSize_128
-@Types
-FloatSize_t
-@Functions
-int atoi(const char* nullTermStr)
-long atol(const char* nullTermStr)
-long long atoll(const char* nullTermStr)
-double strtod(const char* __restrict nullTermStr, char** __restrict endPtrOut)
-double atof(const char* nullTermStr)
-void srand(unsigned seed)
-int rand()
-*/
+#endif //  _GY_TEST_FLOATSCAN_H

@@ -33,6 +33,19 @@ int __fpclassify(double); //TODO:
 int __fpclassifyf(float);
 int __fpclassifyl(long double);
 
+static __inline unsigned __FLOAT_BITS(float valueFloat)
+{
+	union { float valueFloat; unsigned valueInt; } floatIntUnion;
+	floatIntUnion.valueFloat = valueFloat;
+	return floatIntUnion.valueInt;
+}
+static __inline unsigned long long __DOUBLE_BITS(double valueDouble)
+{
+	union { double valueDouble; unsigned long long valueInt; } doubleIntUnion;
+	doubleIntUnion.valueDouble = valueDouble;
+	return doubleIntUnion.valueInt;
+}
+
 #define fpclassify(x) ( \
 	sizeof(x) == sizeof(float) ? __fpclassifyf(x) : \
 	sizeof(x) == sizeof(double) ? __fpclassify(x) : \
@@ -68,10 +81,12 @@ inline double fmin(double value1, double value2) { return __builtin_fmin(value1,
 inline float  fmaxf(float value1, float value2)  { return __builtin_fmaxf(value1, value2); }
 inline double fmax(double value1, double value2) { return __builtin_fmax(value1, value2);  }
 
-inline float  fabsf(float value)                 { return __builtin_fabsf(value);          }
-inline double fabs(double value)                 { return __builtin_fabs(value);           }
-inline float  fmodf(float numer, float denom)    { return __builtin_fmodf(numer, denom);   }
-inline double fmod(double numer, double denom)   { return __builtin_fmod(numer, denom);    }
+inline float       fabsf(float value)                          { return __builtin_fabsf(value);          }
+inline double      fabs(double value)                          { return __builtin_fabs(value);           }
+inline long double fabsl(long double value)                    { return __builtin_fabsl(value);          }
+inline float       fmodf(float numer, float denom)             { return __builtin_fmodf(numer, denom);   }
+inline double      fmod(double numer, double denom)            { return __builtin_fmod(numer, denom);    }
+inline long double fmodl(long double numer, long double denom) { return __builtin_fmodl(numer, denom);   }
 
 inline float  roundf(float value)                { return __builtin_roundf(value);         }
 inline double round(double value)                { return __builtin_round(value);          }
@@ -102,6 +117,16 @@ inline double sqrt(double value)                 { return __builtin_sqrt(value);
 inline float  cbrtf(float value)                 { return __builtin_cbrtf(value);          }
 inline double cbrt(double value)                 { return __builtin_cbrt(value);           }
 
+//Scales x by FLT_RADIX raised to the power of n
+inline float       scalbnf(float value, int power)       { return __builtin_scalbnf(value, power); }
+inline double      scalbn(double value, int power)       { return __builtin_scalbn(value, power);  }
+inline long double scalbnl(long double value, int power) { return __builtin_scalbnl(value, power); }
+
+//Composes a floating point value with the magnitude of x and the sign of y
+inline float       copysignf(float magnitude, float sign)             { return __builtin_copysignf(magnitude, sign); }
+inline double      copysign(double magnitude, double sign)            { return __builtin_copysign(magnitude, sign);  }
+inline long double copysignl(long double magnitude, long double sign) { return __builtin_copysignl(magnitude, sign); }
+
 // +--------------------------------------------------------------+
 // |    Potentially Important Stuff That We Currently Dont Use    |
 // +--------------------------------------------------------------+
@@ -125,19 +150,6 @@ inline double cbrt(double value)                 { return __builtin_cbrt(value);
 #ifdef __FP_FAST_FMAL
 #define FP_FAST_FMAL 1
 #endif
-
-static __inline unsigned __FLOAT_BITS(float __f)
-{
-	union {float __f; unsigned __i;} __u;
-	__u.__f = __f;
-	return __u.__i;
-}
-static __inline unsigned long long __DOUBLE_BITS(double __f)
-{
-	union {double __f; unsigned long long __i;} __u;
-	__u.__f = __f;
-	return __u.__i;
-}
 
 int __signbit(double);
 int __signbitf(float);
@@ -205,10 +217,6 @@ long double cbrtl(long double);
 
 long double ceill(long double);
 
-double      copysign(double, double);
-float       copysignf(float, float);
-long double copysignl(long double, long double);
-
 long double cosl(long double);
 
 double      cosh(double);
@@ -235,8 +243,6 @@ double      expm1(double);
 float       expm1f(float);
 long double expm1l(long double);
 
-long double fabsl(long double);
-
 double      fdim(double, double);
 float       fdimf(float, float);
 long double fdiml(long double, long double);
@@ -250,8 +256,6 @@ long double fmal(long double, long double, long double);
 long double fmaxl(long double, long double);
 
 long double fminl(long double, long double);
-
-long double fmodl(long double, long double);
 
 double      frexp(double, int *);
 float       frexpf(float, int *);
@@ -348,10 +352,6 @@ long double roundl(long double);
 double      scalbln(double, long);
 float       scalblnf(float, long);
 long double scalblnl(long double, long);
-
-double      scalbn(double, int);
-float       scalbnf(float, int);
-long double scalbnl(long double, int);
 
 long double sinl(long double);
 
