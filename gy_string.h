@@ -661,6 +661,30 @@ MyStr_t* SplitString(MemArena_t* memArena, const char* targetNt, const char* del
 	return SplitString(memArena, target, delineator, numPiecesOut, ignoreCase);
 }
 
+struct SplitStringContext_t
+{
+	u64 lastSeparatorIndex;
+	MyStr_t piece;
+};
+bool SplitStringFast(SplitStringContext_t* context, MyStr_t target, char separatorChar, bool includeEmptyPieces = false)
+{
+	for (u64 cIndex = context->lastSeparatorIndex; cIndex <= target.length; cIndex++)
+	{
+		if (cIndex == target.length || target.pntr[cIndex] == separatorChar)
+		{
+			if (includeEmptyPieces || cIndex > context->lastSeparatorIndex)
+			{
+				context->piece.pntr = &target.pntr[context->lastSeparatorIndex];
+				context->piece.length = cIndex - context->lastSeparatorIndex;
+				context->lastSeparatorIndex = cIndex+1;
+				return true;
+			}
+		}
+	}
+	context->lastSeparatorIndex = target.length;
+	return false;
+}
+
 MyStr_t* SplitStringBySpacesFastTemp(MemArena_t* tempArena, MyStr_t target, u64* numPiecesOut)
 {
 	DebugAssert(tempArena != nullptr);

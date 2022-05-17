@@ -29,6 +29,7 @@ typedef COMPARE_FUNC_DEFINITION(CompareFunc_f);
 // +--------------------------------------------------------------+
 i32 CompareFuncU8(const void* left, const void* right, void* contextPntr)
 {
+	UNUSED(contextPntr);
 	NotNull2(left, right);
 	u8* leftValue = (u8*)left;
 	u8* rightValue = (u8*)right;
@@ -38,6 +39,7 @@ i32 CompareFuncU8(const void* left, const void* right, void* contextPntr)
 }
 i32 CompareFuncU16(const void* left, const void* right, void* contextPntr)
 {
+	UNUSED(contextPntr);
 	NotNull2(left, right);
 	u16* leftValue = (u16*)left;
 	u16* rightValue = (u16*)right;
@@ -47,6 +49,7 @@ i32 CompareFuncU16(const void* left, const void* right, void* contextPntr)
 }
 i32 CompareFuncU32(const void* left, const void* right, void* contextPntr)
 {
+	UNUSED(contextPntr);
 	NotNull2(left, right);
 	u32* leftValue = (u32*)left;
 	u32* rightValue = (u32*)right;
@@ -56,6 +59,7 @@ i32 CompareFuncU32(const void* left, const void* right, void* contextPntr)
 }
 i32 CompareFuncU64(const void* left, const void* right, void* contextPntr)
 {
+	UNUSED(contextPntr);
 	NotNull2(left, right);
 	u64* leftValue = (u64*)left;
 	u64* rightValue = (u64*)right;
@@ -65,6 +69,7 @@ i32 CompareFuncU64(const void* left, const void* right, void* contextPntr)
 }
 i32 CompareFuncI8(const void* left, const void* right, void* contextPntr)
 {
+	UNUSED(contextPntr);
 	NotNull2(left, right);
 	i8* leftValue = (i8*)left;
 	i8* rightValue = (i8*)right;
@@ -74,6 +79,7 @@ i32 CompareFuncI8(const void* left, const void* right, void* contextPntr)
 }
 i32 CompareFuncI16(const void* left, const void* right, void* contextPntr)
 {
+	UNUSED(contextPntr);
 	NotNull2(left, right);
 	i16* leftValue = (i16*)left;
 	i16* rightValue = (i16*)right;
@@ -83,6 +89,7 @@ i32 CompareFuncI16(const void* left, const void* right, void* contextPntr)
 }
 i32 CompareFuncI32(const void* left, const void* right, void* contextPntr)
 {
+	UNUSED(contextPntr);
 	NotNull2(left, right);
 	i32* leftValue = (i32*)left;
 	i32* rightValue = (i32*)right;
@@ -92,6 +99,7 @@ i32 CompareFuncI32(const void* left, const void* right, void* contextPntr)
 }
 i32 CompareFuncI64(const void* left, const void* right, void* contextPntr)
 {
+	UNUSED(contextPntr);
 	NotNull2(left, right);
 	i64* leftValue = (i64*)left;
 	i64* rightValue = (i64*)right;
@@ -101,6 +109,7 @@ i32 CompareFuncI64(const void* left, const void* right, void* contextPntr)
 }
 i32 CompareFuncR32(const void* left, const void* right, void* contextPntr)
 {
+	UNUSED(contextPntr);
 	NotNull2(left, right);
 	r32* leftValue = (r32*)left;
 	r32* rightValue = (r32*)right;
@@ -110,6 +119,7 @@ i32 CompareFuncR32(const void* left, const void* right, void* contextPntr)
 }
 i32 CompareFuncR64(const void* left, const void* right, void* contextPntr)
 {
+	UNUSED(contextPntr);
 	NotNull2(left, right);
 	r64* leftValue = (r64*)left;
 	r64* rightValue = (r64*)right;
@@ -119,6 +129,7 @@ i32 CompareFuncR64(const void* left, const void* right, void* contextPntr)
 }
 i32 CompareFuncMyStr(const void* left, const void* right, void* contextPntr)
 {
+	UNUSED(contextPntr);
 	NotNull2(left, right);
 	MyStr_t* leftStr = (MyStr_t*)left;
 	MyStr_t* rightStr = (MyStr_t*)right;

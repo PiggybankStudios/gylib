@@ -99,6 +99,10 @@ long long scanexp(FloatScanState_t* scanState)
 
 long double hexfloat(FloatScanState_t* scanState, int bits, int emin, int sign)
 {
+	UNUSED(scanState);
+	UNUSED(bits);
+	UNUSED(emin);
+	UNUSED(sign);
 	//TODO: Implement me!
 	return 0;
 }

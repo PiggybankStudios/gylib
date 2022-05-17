@@ -486,6 +486,9 @@ void StringFifoBuildEx(StringFifo_t* fifo, MyStr_t text, u64 metaStructSize, con
 }
 void StringFifoBuild(StringFifo_t* fifo, MyStr_t text, u64 metaStructSize, const void* metaStructPntr, MyStr_t metaString)
 {
+	UNUSED(metaString);
+	UNUSED(metaStructPntr);
+	UNUSED(metaStructSize);
 	StringFifoBuildEx(fifo, text, 0, nullptr, MyStr_Empty);
 }
 
@@ -744,6 +747,7 @@ void StringFifoInsertLinesFromFifo(StringFifo_t* fifo, const StringFifo_t* srcFi
 			const void* tempMetaStruct = GetFifoLineMetaStruct_(tempLineIter, tempLineIter->metaStructSize);
 			MyStr_t tempMetaString = GetFifoLineMetaString(tempLineIter);
 			StringFifoLine_t* newLine = StringFifoPushLineExt(fifo, tempText, tempLineIter->metaStructSize, tempMetaStruct, tempMetaString);
+			UNUSED(newLine);
 			tempLineIter = tempLineIter->next;
 		}
 	}
