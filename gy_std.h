@@ -75,6 +75,9 @@ Date:   09\14\2021
 #ifndef MyStrStrNt
 #define MyStrStrNt(str1, str2)            strstr(str1, str2)
 #endif
+#ifndef MyBufferPrintf
+#define MyBufferPrintf(buffer, bufferSize, formatStr, ...) snprintf(buffer, bufferSize, formatStr, ##__VA_ARGS__)
+#endif
 #ifndef MyVaListPrintf
 	#if 0//TODO: Do we want to default back to vsnprintf in some cases?
 	#define MyVaListPrintf(buffer, bufferSize, formatStr, vaList) vsnprintf_s(buffer, bufferSize, _TRUNCATE, formatStr, vaList)
@@ -108,5 +111,6 @@ Date:   09\14\2021
 #define MyMalloc(size)
 #define MyRealloc(pntr, newSize)
 #define MyFree(size)
+#define MyBufferPrintf(buffer, bufferSize, formatStr, ...)
 #define MyVaListPrintf(buffer, bufferSize, formatStr, vaList)
 */

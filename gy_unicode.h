@@ -236,15 +236,15 @@ u8 GetUtf8BytesForCode(u32 codepoint, u8* byteBufferOut = nullptr, bool doAssert
 }
 
 //Returns the number of bytes consumed to complete the UTF-8 encoded character pointed to by strPntr
-//If more bytes are needed for a full UTF-8 character than is specified by maxNumChars then we return 0
-//If an invalid encoding is detected then we return 0. If maxNumChars == 0 then we return 0.
+//If more bytes are needed for a full UTF-8 character than is specified by maxNumBytes then we return 0
+//If an invalid encoding is detected then we return 0. If maxNumBytes == 0 then we return 0.
 //TODO: Should we accept characters that are technically valid but encoded in a larger number of bytes than needed?
 //      Like a 4-byte encoding of \0 would be dumb because it could cause non-null-terminated UTF-8 strings to become null terminated collapsed ASCII strings
-u8 GetCodepointForUtf8(u64 maxNumChars, const char* strPntr, u32* codepointOut = nullptr) //somewhat tested
+u8 GetCodepointForUtf8(u64 maxNumBytes, const char* strPntr, u32* codepointOut = nullptr) //somewhat tested
 {
-	Assert(strPntr != nullptr || maxNumChars == 0);
+	Assert(strPntr != nullptr || maxNumBytes == 0);
 	if (codepointOut != nullptr) { *codepointOut = 0; }
-	if (maxNumChars == 0) { return 0; }
+	if (maxNumBytes == 0) { return 0; }
 	const u8* bytePntr = (const u8*)strPntr;
 	if (bytePntr[0] <= 127)
 	{
@@ -258,14 +258,14 @@ u8 GetCodepointForUtf8(u64 maxNumChars, const char* strPntr, u32* codepointOut =
 	}
 	else if (bytePntr[0] < 0xE0)
 	{
-		if (maxNumChars < 2) { return 0; }
+		if (maxNumBytes < 2) { return 0; }
 		if (bytePntr[1] < 0x80 || bytePntr[1] >= 0xC0) { return 0; }
 		if (codepointOut != nullptr) { *codepointOut = ((u32)(bytePntr[0] & 0x1F) << 6) | ((u32)(bytePntr[1] & 0x3F) << 0); }
 		return 2;
 	}
 	else if (bytePntr[0] < 0xF0)
 	{
-		if (maxNumChars < 3) { return 0; }
+		if (maxNumBytes < 3) { return 0; }
 		if (bytePntr[1] < 0x80 || bytePntr[1] >= 0xC0) { return 0; }
 		if (bytePntr[2] < 0x80 || bytePntr[2] >= 0xC0) { return 0; }
 		if (codepointOut != nullptr) { *codepointOut = ((u32)(bytePntr[0] & 0x0F) << 12) | ((u32)(bytePntr[1] & 0x3F) << 6) | ((u32)(bytePntr[2] & 0x3F) << 0); }
@@ -273,7 +273,7 @@ u8 GetCodepointForUtf8(u64 maxNumChars, const char* strPntr, u32* codepointOut =
 	}
 	else if (bytePntr[0] < 0xF8)
 	{
-		if (maxNumChars < 4) { return 0; }
+		if (maxNumBytes < 4) { return 0; }
 		if (bytePntr[1] < 0x80 || bytePntr[1] >= 0xC0) { return 0; }
 		if (bytePntr[2] < 0x80 || bytePntr[2] >= 0xC0) { return 0; }
 		if (bytePntr[3] < 0x80 || bytePntr[3] >= 0xC0) { return 0; }
@@ -372,6 +372,43 @@ i32 CompareCodepoints(u32 codepoint1, u32 codepoint2)
 }
 
 // +--------------------------------------------------------------+
+// |                       UCS-2 Functions                        |
+// +--------------------------------------------------------------+
+//returns number of 16-bit words needed to store this codepoint in UCS-2 and stores the values in wordBufferOut if not nullptr
+//NOTE: wordBufferOut is assumed to be 2 words or greater and no null-terminating character is written to the buffer
+u8 GetUcs2WordsForCode(u32 codepoint, u16* wordBufferOut, bool doAssertions = true) //untested
+{
+	if (codepoint >= 0x0000 && codepoint <= 0xD7FF)
+	{
+		wordBufferOut[0] = (u16)codepoint;
+		return 1;
+	}
+	else if (codepoint >= 0xE000 && codepoint <= 0xFFFF)
+	{
+		wordBufferOut[0] = (u16)codepoint;
+		return 1;
+	}
+	else if (codepoint >= 0x10000 && codepoint <= 0x10FFFF)
+	{
+		//0xD800-0xDFFF is the "surrogate" area where no unicode points exist so we use it to form "surrogate pairs" in UCS-2
+		wordBufferOut[0] = 0xD800 + (u16)(((codepoint - 0x10000) >> 10) & 0x03FF);
+		wordBufferOut[1] = 0xDC00 + (u16)(((codepoint - 0x10000) >>  0) & 0x03FF);
+		return 2;
+	}
+	else
+	{
+		AssertMsg(false, "Codepoint can't be converted to UCS-2. Outside supported range of characters");
+		return 0;
+	}
+}
+
+u8 GetCodepointForUcs2(u64 maxNumWords, const u16* strPntr, u32* codepointOut = nullptr) //untested
+{
+	Unimplemented(); //TODO: Implement me!
+	return 0;
+}
+
+// +--------------------------------------------------------------+
 // |                       String Functions                       |
 // +--------------------------------------------------------------+
 //NOTE: This technically works 'okay' for unicode strings, it's a bit strict in which characters are valid
@@ -461,8 +498,10 @@ bool IsCharSyntax(u32 codepoint)
 bool IsCharPunctuationStart(u32 codepoint)
 bool IsCharPunctuationEnd(u32 codepoint)
 u8 GetUtf8BytesForCode(u32 codepoint, u8* byteBufferOut = nullptr, bool doAssertions = true)
-u8 GetCodepointForUtf8(u64 maxNumChars, const char* strPntr, u32* codepointOut = nullptr)
+u8 GetCodepointForUtf8(u64 maxNumBytes, const char* strPntr, u32* codepointOut = nullptr)
 u8 GetCodepointBeforeIndex(const char* strPntr, u64 startIndex, u32* codepointOut = nullptr)
 i32 CompareCodepoints(u32 codepoint1, u32 codepoint2)
+u8 GetUcs2WordsForCode(u32 codepoint, u16* wordBufferOut, bool doAssertions = true)
+u8 GetCodepointForUcs2(u64 maxNumWords, const u16* strPntr, u32* codepointOut = nullptr)
 bool IsStringValidIdentifier(u64 strLength, const char* strPntr, bool allowUnderscores = true, bool allowNumbers = true, bool allowLeadingNumbers = false, bool allowEmpty = false, bool allowSpaces = false)
 */

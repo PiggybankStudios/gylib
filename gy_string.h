@@ -21,7 +21,18 @@ struct MyStr_t
 	{
 		char* pntr;
 		char* chars;
-		u8* bytePntr;
+		u8* bytes;
+	};
+};
+
+struct MyWideStr_t
+{
+	u64 length;
+	union
+	{
+		wchar_t* pntr;
+		wchar_t* chars;
+		u16* words;
 	};
 };
 
@@ -123,7 +134,7 @@ u8 GetCodepointForUtf8Str(MyStr_t str, u64 index, u32* codepointOut)
 	return GetCodepointForUtf8(str.length - index, str.pntr + index, codepointOut);
 }
 
-MyStr_t ConvertWideStrToUtf8(MemArena_t* memArena, const wchar_t* wideStrPntr, u64 wideStrLength)
+MyStr_t ConvertUcs2StrToUtf8(MemArena_t* memArena, const wchar_t* wideStrPntr, u64 wideStrLength)
 {
 	Assert(wideStrPntr != nullptr || wideStrLength == 0);
 	MyStr_t result = MyStr_Empty;
@@ -164,11 +175,64 @@ MyStr_t ConvertWideStrToUtf8(MemArena_t* memArena, const wchar_t* wideStrPntr, u
 	}
 	return result;
 }
-MyStr_t ConvertWideStrToUtf8Nt(MemArena_t* memArena, const wchar_t* nullTermWideStr)
+MyStr_t ConvertUcs2StrToUtf8Nt(MemArena_t* memArena, const wchar_t* nullTermWideStr)
 {
 	NotNull(nullTermWideStr);
-	return ConvertWideStrToUtf8(memArena, nullTermWideStr, MyWideStrLength(nullTermWideStr));
+	return ConvertUcs2StrToUtf8(memArena, nullTermWideStr, MyWideStrLength(nullTermWideStr));
 }
+
+MyWideStr_t ConvertUtf8StrToUcs2(MemArena_t* memArena, MyStr_t utf8Str)
+{
+	NotNull(memArena);
+	NotNullStr(&utf8Str);
+	u16 encodedWords[2];
+	
+	u64 numWordsNeeded = 0;
+	for (u64 byteIndex = 0; byteIndex < utf8Str.length; )
+	{
+		u32 codepoint = 0;
+		u8 charByteSize = GetCodepointForUtf8(utf8Str.length - byteIndex, &utf8Str.chars[byteIndex], &codepoint);
+		if (charByteSize == 0)
+		{
+			//TODO: Should we print out a warning or error or something for invalid UTF-8 encoding?
+			codepoint = CharToU32(utf8Str.chars[byteIndex]);
+			charByteSize = 1;
+		}
+		
+		u8 numWords = GetUcs2WordsForCode(codepoint, encodedWords);
+		Assert(numWords != 0);
+		numWordsNeeded += numWords;
+		byteIndex += charByteSize;
+	}
+	
+	MyWideStr_t result;
+	result.words = AllocArray(memArena, u16, numWordsNeeded);
+	result.length = 0;
+	if (result.words == nullptr) { return result; }
+	
+	for (u64 byteIndex = 0; byteIndex < utf8Str.length; )
+	{
+		u32 codepoint = 0;
+		u8 charByteSize = GetCodepointForUtf8(utf8Str.length - byteIndex, &utf8Str.chars[byteIndex], &codepoint);
+		if (charByteSize == 0)
+		{
+			//TODO: Should we print out a warning or error or something for invalid UTF-8 encoding?
+			codepoint = CharToU32(utf8Str.chars[byteIndex]);
+			charByteSize = 1;
+		}
+		
+		u8 numWords = GetUcs2WordsForCode(codepoint, encodedWords);
+		Assert(numWords != 0);
+		result.words[result.length] = encodedWords[0]; result.length++;
+		if (numWords > 1) { result.words[result.length] = encodedWords[1]; result.length++; }
+		
+		byteIndex += charByteSize;
+	}
+	
+	Assert(result.length == numWordsNeeded);
+	return result;
+}
+
 #endif //_GY_UNICODE_H
 
 // +--------------------------------------------------------------+
@@ -1394,6 +1458,7 @@ const char* FormatMillisecondsNt(u64 milliseconds, MemArena_t* memArena)
 MyStr_Empty
 @Types
 MyStr_t
+MyWideStr_t
 @Functions
 MyStr_t NewStr(u64 length, char* pntr)
 bool IsStrEmpty(MyStr_t target)
@@ -1435,8 +1500,9 @@ bool FindSubstring(MyStr_t target, MyStr_t substring, u64* indexOut = nullptr, b
 MyStr_t FindStrParensPart(MyStr_t target, char openParensChar = '[', char closeParensChar = ']')
 MyStr_t StringRepeat(MemArena_t* memArena, MyStr_t str, u64 numRepetitions)
 u8 GetCodepointForUtf8Str(MyStr_t str, u64 index, u32* codepointOut)
-MyStr_t ConvertWideStrToUtf8(MemArena_t* memArena, const wchar_t* wideStrPntr, u64 wideStrLength)
-MyStr_t ConvertWideStrToUtf8Nt(MemArena_t* memArena, const wchar_t* nullTermWideStr)
+MyStr_t ConvertUcs2StrToUtf8(MemArena_t* memArena, const wchar_t* wideStrPntr, u64 wideStrLength)
+MyStr_t ConvertUcs2StrToUtf8Nt(MemArena_t* memArena, const wchar_t* nullTermWideStr)
+MyWideStr_t ConvertUtf8StrToUcs2(MemArena_t* memArena, MyStr_t utf8Str)
 MyStr_t FormatBytes(u64 numBytes, MemArena_t* memArena)
 const char* FormatBytesNt(u64 numBytes, MemArena_t* memArena)
 MyStr_t FormatRealTime(const RealTime_t* realTime, MemArena_t* memArena, bool includeDayOfWeek = true, bool includeHourMinuteSecond = true, bool includeMonthDayYear = true)
