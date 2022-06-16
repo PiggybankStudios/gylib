@@ -530,7 +530,7 @@ long double strtox(const char* nullTermStr, char** endPntrOut, FloatSize_t float
 	scanState.readIndex = 0;
 	long double y = __floatscan(&scanState, floatSize);
 	// off_t cnt = shcnt(&file);
-	if (endPntrOut)
+	if (endPntrOut != nullptr)
 	{
 		*endPntrOut = (scanState.readIndex ? (char*)nullTermStr + scanState.readIndex : (char*)nullTermStr);
 	}

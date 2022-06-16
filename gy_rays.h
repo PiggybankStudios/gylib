@@ -55,6 +55,13 @@ Ray2_t NewRay2(v2 origin, v2 direction)
 	result.direction = direction;
 	return result;
 }
+Ray2_t NewRay2(v2 origin, r32 angle)
+{
+	Ray2_t result;
+	result.origin = origin;
+	result.direction = NewVec2(CosR32(angle), SinR32(angle));
+	return result;
+}
 Ray3_t NewRay3(v3 origin, v3 direction)
 {
 	Ray3_t result;

@@ -41,6 +41,12 @@ static GetTempArena_f* GetTempArena = GetTempArena_Stub;
 #define TempPushMark() PushMemMark(GetTempArena())
 #define TempPopMark()  PopMemMark(GetTempArena())
 
+#define TempPushMarkIf(condition) do { if (condition) { TempPushMark(); } } while(0)
+#define TempPopMarkIf(condition) do { if (condition) { TempPushMark(); } } while(0)
+
+#define TempPushMarkNotArena(memArenaPntrThatMightBeTempArena) do { if ((memArenaPntrThatMightBeTempArena) != GetTempArena()) { TempPushMark(); } } while(0)
+#define TempPopMarkNotArena(memArenaPntrThatMightBeTempArena) do { if ((memArenaPntrThatMightBeTempArena) != GetTempArena()) { TempPopMark(); } } while(0)
+
 #define TempPrint(formatString, ...) PrintInArena(GetTempArena(), (formatString), ##__VA_ARGS__)
 #define TempPrintVa(resultName, resultLengthName, formatString) PrintInArenaVa(GetTempArena(), resultName, resultLengthName, formatString)
 #define TempPrintStr(formatString, ...) PrintInArenaStr(GetTempArena(), formatString, ##__VA_ARGS__)
@@ -85,6 +91,10 @@ MemArena_t* GetTempArena()
 #define TempBytes(numBytes)
 #define TempPushMark()
 #define TempPopMark()
+#define TempPushMarkIf(condition)
+#define TempPopMarkIf(condition)
+#define TempPushMarkNotArena(memArenaPntrThatMightBeTempArena)
+#define TempPopMarkNotArena(memArenaPntrThatMightBeTempArena)
 #define TempPrint(formatString, ...)
 #define TempPrintVa(resultName, resultLengthName, formatString)
 #define TempPrintStr(formatString, ...)

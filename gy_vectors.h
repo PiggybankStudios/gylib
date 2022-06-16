@@ -1070,6 +1070,7 @@ v2 Vec2FromAngle(r32 angle, r32 radius = 1.0f)
 r32 Vec2AngleBetween(v2 vecLeft, v2 vecRight)
 {
 	r32 dotProduct = Vec2Dot(vecLeft, vecRight);
+	if (dotProduct == -1) { return Pi32; }
 	return SignOfR32(vecLeft.x * vecRight.y - vecLeft.y * vecRight.x) * AcosR32(dotProduct / (Vec2Length(vecLeft) * Vec2Length(vecRight)));
 }
 
