@@ -45,7 +45,7 @@ void FreeVarArray(VarArray_t* array)
 		NotNull(array->allocArena);
 		FreeMem(array->allocArena, array->items, array->itemSize * array->allocLength);
 	}
-	if (!IsStrEmpty(array->name))
+	if (!IsEmptyStr(array->name))
 	{
 		NotNull(array->allocArena);
 		FreeString(array->allocArena, &array->name);
@@ -291,9 +291,11 @@ void* VarArrayInsert_(VarArray_t* array, u64 index, u64 itemSize)
 	Assert(array->allocLength >= array->length+1);
 	
 	//Move all items above the index up by one slot
-	for (u64 iIndex = array->length-1; iIndex > index; iIndex--)
+	u8* itemPntr = (u8*)VarArrayGet_(array, array->length-1, itemSize, true);
+	for (u64 iIndex = array->length; iIndex > index; iIndex--)
 	{
-		MyMemCopy(VarArrayGet_(array, iIndex, itemSize, true), VarArrayGet_(array, iIndex-1, itemSize, true), array->itemSize);
+		MyMemCopy(itemPntr + array->itemSize, itemPntr, array->itemSize);
+		itemPntr -= array->itemSize;
 	}
 	
 	void* result = (((u8*)array->items) + (array->itemSize * index));

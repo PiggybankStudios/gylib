@@ -36,6 +36,23 @@ struct MyWideStr_t
 	};
 };
 
+enum WordBreakCharClass_t
+{
+	WordBreakCharClass_AlphabeticLower,
+	WordBreakCharClass_AlphabeticUpper,
+	WordBreakCharClass_WordPunctuation,
+	WordBreakCharClass_Numeric,
+	WordBreakCharClass_PunctuationOpen,
+	WordBreakCharClass_PunctuationClose,
+	WordBreakCharClass_Whitespace,
+	WordBreakCharClass_Punctuation,
+	WordBreakCharClass_Other,
+	WordBreakCharClass_NumClasses,
+};
+
+// +--------------------------------------------------------------+
+// |                        New Functions                         |
+// +--------------------------------------------------------------+
 MyStr_t NewStr(u64 length, char* pntr)
 {
 	MyStr_t result;
@@ -67,28 +84,45 @@ MyStr_t NewStr(const char* nullTermStr)
 
 #define MyStr_Empty NewStr((u64)0, (char*)nullptr)
 
-bool IsStrEmpty(MyStr_t target)
+//A "Null Str" is one that has length but pntr is nullptr
+bool IsNullStr(MyStr_t target)
 {
-	Assert(target.pntr != nullptr || target.length == 0);
+	return (target.length > 0 && target.pntr == nullptr);
+}
+bool IsNullStr(const MyStr_t* targetPntr)
+{
+	return (targetPntr == nullptr || (targetPntr->length > 0 && targetPntr->pntr == nullptr));
+}
+bool IsEmptyStr(MyStr_t target)
+{
 	return (target.length == 0);
 }
-bool IsStrNullTerminated(const MyStr_t* target)
+bool IsEmptyStr(const MyStr_t* targetPntr)
 {
-	NotNull(target);
-	if (target->pntr == nullptr) { return false; }
-	return (target->pntr[target->length] == '\0');
+	NotNull(targetPntr);
+	return (targetPntr->length == 0);
+}
+bool IsStrNullTerminated(MyStr_t target)
+{
+	if (target.pntr == nullptr) { return false; }
+	return (target.pntr[target.length] == '\0');
+}
+bool IsStrNullTerminated(const MyStr_t* targetPntr)
+{
+	NotNull(targetPntr);
+	if (targetPntr->pntr == nullptr) { return false; }
+	return (targetPntr->pntr[targetPntr->length] == '\0');
 }
 
 // +--------------------------------------------------------------+
 // |                       Assertion Macros                       |
 // +--------------------------------------------------------------+
-#define NotNullStr(strPntr)   Assert ((strPntr) != nullptr && ((strPntr)->pntr != nullptr || (strPntr)->length == 0))
-#define NotNullStr_(strPntr)  Assert_((strPntr) != nullptr && ((strPntr)->pntr != nullptr || (strPntr)->length == 0))
-#define NotEmptyStr(strPntr)  Assert ((strPntr) != nullptr && (strPntr)->pntr != nullptr && (strPntr)->length > 0)
-#define NotEmptyStr_(strPntr) Assert_((strPntr) != nullptr && (strPntr)->pntr != nullptr && (strPntr)->length > 0)
-
-#define AssertNullTerm(strPntr)  Assert(IsStrNullTerminated(strPntr))
-#define AssertNullTerm_(strPntr) Assert_(IsStrNullTerminated(strPntr))
+#define NotNullStr(strPntr)      Assert (!IsNullStr(strPntr))
+#define NotNullStr_(strPntr)     Assert_(!IsNullStr(strPntr))
+#define NotEmptyStr(strPntr)     Assert ((strPntr) != nullptr && !IsEmptyStr(strPntr))
+#define NotEmptyStr_(strPntr)    Assert_((strPntr) != nullptr && !IsEmptyStr(strPntr))
+#define AssertNullTerm(strPntr)  Assert ((strPntr) != nullptr && IsStrNullTerminated(strPntr))
+#define AssertNullTerm_(strPntr) Assert_((strPntr) != nullptr && IsStrNullTerminated(strPntr))
 
 // +--------------------------------------------------------------+
 // |                       MemArena Macros                        |
@@ -383,6 +417,7 @@ bool FindNextWhitespaceInStr(MyStr_t target, u64 startIndex, u64* indexOut = nul
 	return false;
 }
 
+//TODO: Change these so they don't take pointers?
 MyStr_t StrSubstring(MyStr_t* target, u64 startIndex)
 {
 	NotNullStr(target);
@@ -1306,6 +1341,100 @@ const char* FormatBytesNt(u64 numBytes, MemArena_t* memArena)
 }
 
 // +--------------------------------------------------------------+
+// |                   Word Break Calculations                    |
+// +--------------------------------------------------------------+
+//TODO: Subword calculation should take into account capital letters and numbers in identifiers
+//TODO: We should really dial this logic in so it matches Sublime Text logic perfectly. But for now, it's working pretty well
+WordBreakCharClass_t GetWordBreakCharClass(u32 codepoint)
+{
+	if (codepoint >= 'a' && codepoint <= 'z') { return WordBreakCharClass_AlphabeticLower; }
+	if (codepoint >= 'A' && codepoint <= 'Z') { return WordBreakCharClass_AlphabeticUpper; }
+	if (codepoint >= '0' && codepoint <= '9') { return WordBreakCharClass_Numeric; }
+	if (codepoint == '_') { return WordBreakCharClass_WordPunctuation; }
+	if (codepoint == '(' || codepoint == '[' || codepoint == '{') { return WordBreakCharClass_PunctuationOpen; }
+	if (codepoint == ')' || codepoint == ']' || codepoint == '}' || codepoint == ';') { return WordBreakCharClass_PunctuationClose; }
+	if (codepoint == ' ' || codepoint == '\t' || codepoint == '\n' || codepoint == '\r') { return WordBreakCharClass_Whitespace; }
+	if (codepoint >= 0x20 && codepoint <= 0x7F) { return WordBreakCharClass_Punctuation; }
+	return WordBreakCharClass_Other;
+}
+bool IsCharPairWordBreak(u32 prevCodepoint, u32 nextCodepoint, bool forward, bool subwords)
+{
+	WordBreakCharClass_t prevCharClass = GetWordBreakCharClass(prevCodepoint);
+	WordBreakCharClass_t nextCharClass = GetWordBreakCharClass(nextCodepoint);
+	if (!forward)
+	{
+		if (prevCharClass == WordBreakCharClass_PunctuationOpen)  { prevCharClass = WordBreakCharClass_PunctuationClose; }
+		if (prevCharClass == WordBreakCharClass_PunctuationClose) { prevCharClass = WordBreakCharClass_PunctuationOpen;  }
+		if (nextCharClass == WordBreakCharClass_PunctuationOpen)  { nextCharClass = WordBreakCharClass_PunctuationClose; }
+		if (nextCharClass == WordBreakCharClass_PunctuationClose) { nextCharClass = WordBreakCharClass_PunctuationOpen;  }
+	}
+	bool fromAlphabet = (
+		prevCharClass == WordBreakCharClass_AlphabeticLower ||
+		prevCharClass == WordBreakCharClass_AlphabeticUpper ||
+		prevCharClass == WordBreakCharClass_Numeric ||
+		(!subwords && prevCharClass == WordBreakCharClass_WordPunctuation)
+	);
+	bool toPunctuation = (
+		nextCharClass == WordBreakCharClass_Punctuation ||
+		nextCharClass == WordBreakCharClass_PunctuationOpen ||
+		nextCharClass == WordBreakCharClass_PunctuationClose ||
+		nextCharClass == WordBreakCharClass_Whitespace ||
+		nextCharClass == WordBreakCharClass_Other ||
+		(subwords && nextCharClass == WordBreakCharClass_WordPunctuation)
+	);
+	if (prevCharClass == nextCharClass) { return false; }
+	if (prevCharClass == WordBreakCharClass_Other || nextCharClass == WordBreakCharClass_Other) { return true; }
+	if (fromAlphabet && toPunctuation) { return true; }
+	if (nextCharClass == WordBreakCharClass_PunctuationClose) { return true; }
+	return false;
+}
+//This function stops at invalid UTF-8 encoding, treating them as single byte characters that always cause a word break
+u64 FindNextWordBreakInString(MyStr_t str, u64 startIndex, bool forward, bool subwords, bool includeBreakAtStartIndex = false)
+{
+	NotNullStr(&str);
+	Assert(startIndex <= str.length);
+	u64 result = startIndex;
+	u8 leftCodepointSize = 0;
+	u8 rightCodepointSize = 0;
+	for (u64 bIndex = startIndex; bIndex >= 0 && bIndex <= str.length; bIndex += (forward ? rightCodepointSize : -leftCodepointSize))
+	{
+		if ((!forward && bIndex == 0) || (forward && bIndex == str.length))
+		{
+			result = bIndex;
+			break;
+		}
+		u32 leftCodepoint = 0;
+		leftCodepointSize = GetCodepointBeforeIndex(str.pntr, bIndex, &leftCodepoint);
+		if (leftCodepointSize == 0)
+		{
+			leftCodepointSize = 1;
+			if (bIndex != startIndex) { result = bIndex; break; }
+		}
+		u32 rightCodepoint = 0;
+		rightCodepointSize = GetCodepointForUtf8Str(str, bIndex, &rightCodepoint);
+		if (rightCodepointSize == 0)
+		{
+			rightCodepointSize = 1;
+			if (bIndex != startIndex) { result = bIndex; break; }
+		}
+		if (bIndex != startIndex || (includeBreakAtStartIndex && bIndex != 0 && bIndex != str.length))
+		{
+			bool isWordBreak = IsCharPairWordBreak(
+				(forward ? leftCodepoint : rightCodepoint),
+				(forward ? rightCodepoint : leftCodepoint),
+				forward, subwords
+			);
+			if (isWordBreak)
+			{
+				result = bIndex;
+				break;
+			}
+		}
+	}
+	return result;
+}
+
+// +--------------------------------------------------------------+
 // |                    Time String Functions                     |
 // +--------------------------------------------------------------+
 #ifdef _GY_TIME_H
@@ -1456,13 +1585,25 @@ const char* FormatMillisecondsNt(u64 milliseconds, MemArena_t* memArena)
 /*
 @Defines
 MyStr_Empty
+WordBreakCharClass_AlphabeticLower
+WordBreakCharClass_AlphabeticUpper
+WordBreakCharClass_WordPunctuation
+WordBreakCharClass_Numeric
+WordBreakCharClass_PunctuationOpen
+WordBreakCharClass_PunctuationClose
+WordBreakCharClass_Whitespace
+WordBreakCharClass_Punctuation
+WordBreakCharClass_Other
+WordBreakCharClass_NumClasses
 @Types
 MyStr_t
 MyWideStr_t
+WordBreakCharClass_t
 @Functions
 MyStr_t NewStr(u64 length, char* pntr)
-bool IsStrEmpty(MyStr_t target)
-bool IsStrNullTerminated(const MyStr_t* target)
+bool IsNullStr(MyStr_t target)
+bool IsEmptyStr(MyStr_t target)
+bool IsStrNullTerminated(MyStr_t target)
 #define NotNullStr(strPntr)
 #define NotNullStr_(strPntr)
 #define NotEmptyStr(strPntr)
@@ -1505,6 +1646,9 @@ MyStr_t ConvertUcs2StrToUtf8Nt(MemArena_t* memArena, const wchar_t* nullTermWide
 MyWideStr_t ConvertUtf8StrToUcs2(MemArena_t* memArena, MyStr_t utf8Str)
 MyStr_t FormatBytes(u64 numBytes, MemArena_t* memArena)
 const char* FormatBytesNt(u64 numBytes, MemArena_t* memArena)
+WordBreakCharClass_t GetWordBreakCharClass(u32 codepoint)
+bool IsCharPairWordBreak(u32 prevCodepoint, u32 nextCodepoint, bool forward, bool subwords)
+u64 FindNextWordBreakInString(MyStr_t str, u64 startIndex, bool forward, bool subwords, bool includeBreakAtStartIndex = false)
 MyStr_t FormatRealTime(const RealTime_t* realTime, MemArena_t* memArena, bool includeDayOfWeek = true, bool includeHourMinuteSecond = true, bool includeMonthDayYear = true)
 const char* FormatRealTimeNt(const RealTime_t* realTime, MemArena_t* memArena, bool includeDayOfWeek = true, bool includeHourMinuteSecond = true, bool includeMonthDayYear = true)
 MyStr_t FormatMilliseconds(u64 milliseconds, MemArena_t* memArena)
