@@ -21,6 +21,7 @@ Description:
 // +==============================+
 // |        3D Directions         |
 // +==============================+
+// Right-Handed (Problem: When facing forward, "Right" is actually left)
 //         ^ +y
 //         |
 //         +-------+   Back
@@ -33,6 +34,20 @@ Description:
 //     / Bottom
 //    /   Down
 //   v +z
+//
+// Left-Handed
+//                  ^ +z
+//         ^ +y    / Front
+//         |      / Forward
+//         |  +--------+
+//         | /  Top   /|
+//         |/   Up   / |
+//         +--------+  +
+//    Left | Back   | / Right
+//         |Backward|/
+//         +--------+ ---> +x 
+//           Bottom
+//            Down   
 
 #ifndef _GY_DIRECTIONS_H
 #define _GY_DIRECTIONS_H

@@ -384,42 +384,81 @@ mat4 Mat4Rotate(v3 axis, r32 angle)
 	);
 }
 
-mat4 Mat4LookAt(v3 position, v3 lookAt, v3 upVector)
+mat4 Mat4LookAt(v3 position, v3 lookAt, v3 upVector, bool rightHanded = false)
 {
-	v3 lookNorm = Vec3Normalize(lookAt - position);
-	v3 rightVector = Vec3Normalize(Vec3Cross(lookNorm, upVector));
-	v3 upNorm = Vec3Normalize(Vec3Cross(rightVector, lookNorm));
-	r32 rightDot = -Vec3Dot(rightVector, position);
-	r32 upDot = -Vec3Dot(upNorm, position);
-	r32 lookDot = -Vec3Dot(lookNorm, position);
-	
+	// http://perry.cz/articles/ProjectionMatrix.xhtml
+	#if 1
+	v3 look  = Vec3Normalize(rightHanded ? (position - lookAt) : (lookAt - position));
+	v3 right = Vec3Normalize(Vec3Cross(upVector, look));
+	v3 up    = Vec3Normalize(Vec3Cross(look, right));
+	r32 rightDot = (rightHanded ? 1.0f : -1.0f) * Vec3Dot(right, position);
+	r32 upDot    = (rightHanded ? 1.0f : -1.0f) * Vec3Dot(up,    position);
+	r32 lookDot  = (rightHanded ? 1.0f : -1.0f) * Vec3Dot(look,  position);
+	// return NewMat4(
+	// 	right.x,  up.x,  look.x,  0.0f,
+	// 	right.y,  up.y,  look.y,  0.0f,
+	// 	right.z,  up.z,  look.z,  0.0f,
+	// 	rightDot, upDot, lookDot, 1.0f
+	// );
 	return NewMat4(
-		rightVector.x, rightVector.y, rightVector.z, rightDot,
-		upNorm.x     , upNorm.y     , upNorm.z     , upDot   ,
-		lookNorm.x   , lookNorm.y   , lookNorm.z   , lookDot ,
-		0.0f         , 0.0f         , 0.0f         , 1.0f
+		right.x, right.y, right.z, rightDot,
+		   up.x,    up.y,    up.z, upDot,
+		 look.x,  look.y,  look.z, lookDot,
+		0.0f,    0.0f,    0.0f,    1.0f
 	);
+	#else //Old system (right handed?)
+	v3 look = Vec3Normalize(lookAt - position);
+	v3 right = Vec3Normalize(Vec3Cross(look, upVector));
+	v3 up = Vec3Normalize(Vec3Cross(right, look));
+	r32 rightDot = -Vec3Dot(right, position);
+	r32 upDot = -Vec3Dot(up, position);
+	r32 lookDot = -Vec3Dot(look, position);
+	return NewMat4(
+		right.x, right.y, right.z, rightDot,
+		up.x   , up.y   , up.z   , upDot   ,
+		look.x , look.y , look.z , lookDot ,
+		0.0f   , 0.0f   , 0.0f   , 1.0f
+	);
+	#endif
+	
 }
 
-mat4 Mat4Perspective(r32 fovy, r32 aspectRatio, r32 zNear, r32 zFar)
+mat4 Mat4Perspective(r32 fovy, r32 aspectRatio, r32 zNear, r32 zFar, bool rightHanded = false)
 {
-	//NOTE: this is left-handed I guess?
-	
+	#if 1 //TODO: This currently assumes a OpenGL like depth axis [-1,1] when DirectX and maybe other APIs work on [0,1]
 	Assert(zFar > zNear);
 	Assert(aspectRatio > 0);
 	
+	r32 inverseFovTan = (1 / TanR32(fovy * 0.5f));
+	r32 zDepth = (zFar - zNear);
+	
+	r32 A = aspectRatio * inverseFovTan;
+	r32 B = inverseFovTan;
+	r32 C = -(zFar + zNear) / zDepth;
+	r32 D = (rightHanded ? -1.0f : 1.0f);
+	r32 E = ((rightHanded ? -2.0f : 2.0f) * zFar * zNear) / zDepth;
+	
+	return NewMat4(
+		 A,   0.0f, 0.0f, 0.0f,
+		0.0f, B,    0.0f, 0.0f,
+		0.0f, 0.0f, C,    E,
+		0.0f, 0.0f, D,    0.0f
+	);
+	#else //Old Way (this is left-handed I guess?)
+	Assert(zFar > zNear);
+	Assert(aspectRatio > 0);
 	r32 uh = 1.0f / TanR32(fovy / 2.0f);
 	r32 uw = uh / aspectRatio;
 	r32 depth = zFar - zNear;
 	r32 z1 = zFar / depth;
 	r32 z2 = (-zFar * zNear) / depth;
-	
 	return NewMat4(
 		 uw , 0.0f, 0.0f, 0.0f,
 		0.0f,  uh , 0.0f, 0.0f,
 		0.0f, 0.0f,  z1 ,  z2 ,
 		0.0f, 0.0f, 1.0f, 0.0f
 	);
+	#endif
 }
 
 mat4 Mat4Orthographic(r32 left, r32 right, r32 top, r32 bottom, r32 zNear, r32 zFar)

@@ -36,6 +36,30 @@ union Quaternion_t
 
 typedef Quaternion_t quat;
 
+enum EulerOrder_t
+{
+	EulerOrder_XYZ = 0,
+	EulerOrder_ZYX,
+	EulerOrder_XZY,
+	EulerOrder_ZXY,
+	EulerOrder_YXZ,
+	EulerOrder_YZX,
+	EulerOrder_NumOrders,
+};
+const char* GetEulerOrderStr(EulerOrder_t order)
+{
+	switch (order)
+	{
+		case EulerOrder_XYZ: return "XYZ";
+		case EulerOrder_ZYX: return "ZYX";
+		case EulerOrder_XZY: return "XZY";
+		case EulerOrder_ZXY: return "ZXY";
+		case EulerOrder_YXZ: return "YXZ";
+		case EulerOrder_YZX: return "YZX";
+		default: return "Unknown";
+	}
+}
+
 // +--------------------------------------------------------------+
 // |                        New Functions                         |
 // +--------------------------------------------------------------+
@@ -142,6 +166,67 @@ quat QuatGlobalRot(quat quaternion, v3 axis, r32 angle)
 	v3 localAxis = Mat4MultiplyRightVec3(axis, Mat4Quaternion(quaternion));
 	quat deltaQuat = NewQuat(localAxis, angle);
 	return QuatMult(quaternion, deltaQuat);
+}
+
+// +--------------------------------------------------------------+
+// |                       Euler Functions                        |
+// +--------------------------------------------------------------+
+quat NewQuatFromEuler(v3 eulerAngles, EulerOrder_t order = EulerOrder_XYZ)
+{
+	quat result = Quat_Identity;
+	Axis_t axisOrder[3] = {};
+	switch(order)
+	{
+		case EulerOrder_XYZ: axisOrder[0] = Axis_X; axisOrder[1] = Axis_Y; axisOrder[2] = Axis_Z; break;
+		case EulerOrder_ZYX: axisOrder[0] = Axis_Z; axisOrder[1] = Axis_Y; axisOrder[2] = Axis_X; break;
+		case EulerOrder_XZY: axisOrder[0] = Axis_X; axisOrder[1] = Axis_Z; axisOrder[2] = Axis_Y; break;
+		case EulerOrder_ZXY: axisOrder[0] = Axis_Z; axisOrder[1] = Axis_X; axisOrder[2] = Axis_Y; break;
+		case EulerOrder_YXZ: axisOrder[0] = Axis_Y; axisOrder[1] = Axis_X; axisOrder[2] = Axis_Z; break;
+		case EulerOrder_YZX: axisOrder[0] = Axis_Y; axisOrder[1] = Axis_Z; axisOrder[2] = Axis_X; break;
+	}
+	for (u8 aIndex = 0; aIndex < 3; aIndex++)
+	{
+		switch (axisOrder[aIndex])
+		{
+			//TODO: Remove the need for division by 2 here!
+			case Axis_X: result = QuatGlobalRot(result, Vec3_Right,   eulerAngles.x/2); break;
+			case Axis_Y: result = QuatGlobalRot(result, Vec3_Up,      eulerAngles.y/2); break;
+			case Axis_Z: result = QuatGlobalRot(result, Vec3_Forward, eulerAngles.z/2); break;
+		}
+	}
+	return result;
+}
+quat NewQuatFromEuler(r32 eulerX, r32 eulerY, r32 eulerZ, EulerOrder_t order = EulerOrder_XYZ)
+{
+	return NewQuatFromEuler(NewVec3(eulerX, eulerY, eulerZ), order);
+}
+
+// +--------------------------------------------------------------+
+// |                 Basic Information Functions                  |
+// +--------------------------------------------------------------+
+v3 QuatGetRightVec(quat quaternion)
+{
+	mat4 quaternionMatrix = Mat4Quaternion(quaternion);
+	v3 result = Mat4MultiplyVec3(quaternionMatrix, Vec3_Right, false);
+	return result;
+}
+v3 QuatGetUpVec(quat quaternion)
+{
+	mat4 quaternionMatrix = Mat4Quaternion(quaternion);
+	v3 result = Mat4MultiplyVec3(quaternionMatrix, Vec3_Up, false);
+	return result;
+}
+v3 QuatGetForwardVec(quat quaternion)
+{
+	mat4 quaternionMatrix = Mat4Quaternion(quaternion);
+	v3 result = Mat4MultiplyVec3(quaternionMatrix, Vec3_Forward, false);
+	return result;
+}
+v3 QuatGetAxisVec(quat quaternion, Axis_t axis)
+{
+	mat4 quaternionMatrix = Mat4Quaternion(quaternion);
+	v3 result = Mat4MultiplyVec3(quaternionMatrix, ToVec3(axis), false);
+	return result;
 }
 
 #endif //  _GY_QUATERNIONS_H
