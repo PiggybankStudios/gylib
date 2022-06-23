@@ -2262,6 +2262,17 @@ boxi BoxiUninvert(boxi boundingBox)
 	result.depth = AbsI32(boundingBox.depth);
 	return result;
 }
+boxi BoxiExpandToVec3i(boxi boundingBox, v3i newPoint)
+{
+	boxi result;
+	result.x = MinI32(boundingBox.x, newPoint.x);
+	result.y = MinI32(boundingBox.y, newPoint.y);
+	result.z = MinI32(boundingBox.z, newPoint.z);
+	result.width  = MaxI32(boundingBox.x + boundingBox.width, newPoint.x) - result.x;
+	result.height = MaxI32(boundingBox.y + boundingBox.height, newPoint.y) - result.y;
+	result.depth  = MaxI32(boundingBox.z + boundingBox.depth, newPoint.z) - result.z;
+	return result;
+}
 //TODO: Add BoxiBoth and BoxiOverlap
 
 // +==============================+
@@ -2796,6 +2807,7 @@ boxi BoxiInvertX(boxi boundingBox)
 boxi BoxiInvertY(boxi boundingBox)
 boxi BoxiInvertZ(boxi boundingBox)
 boxi BoxiUninvert(boxi boundingBox)
+boxi BoxiExpandToVec3i(boxi boundingBox, v3i newPoint)
 obb2 Obb2DSquarify(obb2 rectangle, bool makeLarger = true)
 obb2 Obb2DInvert(obb2 rectangle)
 obb2 Obb2DInvertX(obb2 rectangle)
