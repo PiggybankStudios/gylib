@@ -165,8 +165,8 @@ v3 ToVec3(Dir3_t dir3)
 	v3 result = {};
 	if (IsFlagSet(dir3, Dir3_Right))    { result.x += 1.0f; }
 	if (IsFlagSet(dir3, Dir3_Left))     { result.x -= 1.0f; }
-	if (IsFlagSet(dir3, Dir3_Down))     { result.y += 1.0f; }
-	if (IsFlagSet(dir3, Dir3_Up))       { result.y -= 1.0f; }
+	if (IsFlagSet(dir3, Dir3_Down))     { result.y -= 1.0f; }
+	if (IsFlagSet(dir3, Dir3_Up))       { result.y += 1.0f; }
 	if (IsFlagSet(dir3, Dir3_Forward))  { result.z += 1.0f; }
 	if (IsFlagSet(dir3, Dir3_Backward)) { result.z -= 1.0f; }
 	return result;
@@ -176,8 +176,8 @@ v3i ToVec3i(Dir3_t dir3)
 	v3i result = {};
 	if (IsFlagSet(dir3, Dir3_Right))    { result.x += 1; }
 	if (IsFlagSet(dir3, Dir3_Left))     { result.x -= 1; }
-	if (IsFlagSet(dir3, Dir3_Down))     { result.y += 1; }
-	if (IsFlagSet(dir3, Dir3_Up))       { result.y -= 1; }
+	if (IsFlagSet(dir3, Dir3_Down))     { result.y -= 1; }
+	if (IsFlagSet(dir3, Dir3_Up))       { result.y += 1; }
 	if (IsFlagSet(dir3, Dir3_Forward))  { result.z += 1; }
 	if (IsFlagSet(dir3, Dir3_Backward)) { result.z -= 1; }
 	return result;

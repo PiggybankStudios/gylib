@@ -92,8 +92,107 @@ mat4 Mat4Diagonal(r32 r0c0, r32 r1c1, r32 r2c2, r32 r3c3, r32 other = 0.0f)
 #define Mat4_Identity Matrix4x4_Identity
 
 // +--------------------------------------------------------------+
-// |                 Simple Conversions and Casts                 |
+// |                    Transpose and Inverse                     |
 // +--------------------------------------------------------------+
+mat4 Mat4Transpose(mat4 matrix)
+{
+	mat4 result = {};
+	result.r0c0 = matrix.r0c0; result.r1c0 = matrix.r0c1; result.r2c0 = matrix.r0c2; result.r3c0 = matrix.r0c3;
+	result.r0c1 = matrix.r1c0; result.r1c1 = matrix.r1c1; result.r2c1 = matrix.r1c2; result.r3c1 = matrix.r1c3;
+	result.r0c2 = matrix.r2c0; result.r1c2 = matrix.r2c1; result.r2c2 = matrix.r2c2; result.r3c2 = matrix.r2c3;
+	result.r0c3 = matrix.r3c0; result.r1c3 = matrix.r3c1; result.r2c3 = matrix.r3c2; result.r3c3 = matrix.r3c3;
+	return result;
+}
+
+mat4 Mat4Inverse(mat4 matrix)
+{
+	//TODO: Understand this code more fully and put it in my own form
+	//      https://graphics.stanford.edu/~mdfisher/Code/Engine/Matrix4.cpp.html
+	
+	// Inversion by Cramer's rule. Code taken from an Intel publication
+	float temp[12]; //temp array for pairs
+	float source[16]; //array of transpose source matrix
+	
+	mat4 result = Mat4Transpose(matrix);
+	MyMemCopy(&source[0], &result.values[0][0], sizeof(r32) * 16);
+	
+	// Calculate pairs for first 8 elements (cofactors)
+	temp[0]  = source[10] * source[15];
+	temp[1]  = source[11] * source[14];
+	temp[2]  = source[9]  * source[15];
+	temp[3]  = source[11] * source[13];
+	temp[4]  = source[9]  * source[14];
+	temp[5]  = source[10] * source[13];
+	temp[6]  = source[8]  * source[15];
+	temp[7]  = source[11] * source[12];
+	temp[8]  = source[8]  * source[14];
+	temp[9]  = source[10] * source[12];
+	temp[10] = source[8]  * source[13];
+	temp[11] = source[9]  * source[12];
+	
+	// Calculate first 8 elements (cofactors)
+	result.r0c0  = (temp[0] * source[5])  +  (temp[3] * source[6])  +  (temp[4] * source[7]);
+	result.r0c0 -= (temp[1] * source[5])  +  (temp[2] * source[6])  +  (temp[5] * source[7]);
+	result.r0c1  = (temp[1] * source[4])  +  (temp[6] * source[6])  +  (temp[9] * source[7]);
+	result.r0c1 -= (temp[0] * source[4])  +  (temp[7] * source[6])  +  (temp[8] * source[7]);
+	result.r0c2  = (temp[2] * source[4])  +  (temp[7] * source[5])  +  (temp[10]* source[7]);
+	result.r0c2 -= (temp[3] * source[4])  +  (temp[6] * source[5])  +  (temp[11]* source[7]);
+	result.r0c3  = (temp[5] * source[4])  +  (temp[8] * source[5])  +  (temp[11]* source[6]);
+	result.r0c3 -= (temp[4] * source[4])  +  (temp[9] * source[5])  +  (temp[10]* source[6]);
+	result.r1c0  = (temp[1] * source[1])  +  (temp[2] * source[2])  +  (temp[5] * source[3]);
+	result.r1c0 -= (temp[0] * source[1])  +  (temp[3] * source[2])  +  (temp[4] * source[3]);
+	result.r1c1  = (temp[0] * source[0])  +  (temp[7] * source[2])  +  (temp[8] * source[3]);
+	result.r1c1 -= (temp[1] * source[0])  +  (temp[6] * source[2])  +  (temp[9] * source[3]);
+	result.r1c2  = (temp[3] * source[0])  +  (temp[6] * source[1])  +  (temp[11]* source[3]);
+	result.r1c2 -= (temp[2] * source[0])  +  (temp[7] * source[1])  +  (temp[10]* source[3]);
+	result.r1c3  = (temp[4] * source[0])  +  (temp[9] * source[1])  +  (temp[10]* source[2]);
+	result.r1c3 -= (temp[5] * source[0])  +  (temp[8] * source[1])  +  (temp[11]* source[2]);
+	
+	// Calculate pairs for second 8 elements (cofactors)
+	temp[0]  = source[2] * source[7];
+	temp[1]  = source[3] * source[6];
+	temp[2]  = source[1] * source[7];
+	temp[3]  = source[3] * source[5];
+	temp[4]  = source[1] * source[6];
+	temp[5]  = source[2] * source[5];
+	temp[6]  = source[0] * source[7];
+	temp[7]  = source[3] * source[4];
+	temp[8]  = source[0] * source[6];
+	temp[9]  = source[2] * source[4];
+	temp[10] = source[0] * source[5];
+	temp[11] = source[1] * source[4];
+	
+	// Calculate second 8 elements (cofactors)
+	result.r2c0  = (temp[0] * source[13])  +  (temp[3] * source[14])  +  (temp[4] * source[15]);
+	result.r2c0 -= (temp[1] * source[13])  +  (temp[2] * source[14])  +  (temp[5] * source[15]);
+	result.r2c1  = (temp[1] * source[12])  +  (temp[6] * source[14])  +  (temp[9] * source[15]);
+	result.r2c1 -= (temp[0] * source[12])  +  (temp[7] * source[14])  +  (temp[8] * source[15]);
+	result.r2c2  = (temp[2] * source[12])  +  (temp[7] * source[13])  +  (temp[10]* source[15]);
+	result.r2c2 -= (temp[3] * source[12])  +  (temp[6] * source[13])  +  (temp[11]* source[15]);
+	result.r2c3  = (temp[5] * source[12])  +  (temp[8] * source[13])  +  (temp[11]* source[14]);
+	result.r2c3 -= (temp[4] * source[12])  +  (temp[9] * source[13])  +  (temp[10]* source[14]);
+	result.r3c0  = (temp[2] * source[10])  +  (temp[5] * source[11])  +  (temp[1] * source[9]);
+	result.r3c0 -= (temp[4] * source[11])  +  (temp[0] * source[9])   +  (temp[3] * source[10]);
+	result.r3c1  = (temp[8] * source[11])  +  (temp[0] * source[8])   +  (temp[7] * source[10]);
+	result.r3c1 -= (temp[6] * source[10])  +  (temp[9] * source[11])  +  (temp[1] * source[8]);
+	result.r3c2  = (temp[6] * source[9])   +  (temp[11]* source[11])  +  (temp[3] * source[8]);
+	result.r3c2 -= (temp[10]* source[11])  +  (temp[2] * source[8])   +  (temp[7] * source[9]);
+	result.r3c3  = (temp[10]* source[10])  +  (temp[4] * source[8])   +  (temp[9] * source[9]);
+	result.r3c3 -= (temp[8] * source[9])   +  (temp[11]* source[10])  +  (temp[5] * source[8]);
+	
+	// Calculate determinant, invert it, and apply to all values in result
+	float determinantInverse = (source[0] * result.r0c0) + (source[1] * result.r0c1) + (source[2] * result.r0c2) + (source[3] * result.r0c3);
+	determinantInverse = 1.0f / determinantInverse;
+	for (u8 row = 0; row < 4; row++)
+	{
+		for (u8 col = 0; col < 4; col++)
+		{
+			result.values[col][row] = result.values[col][row] * determinantInverse;
+		}
+	}
+	
+	return result;
+}
 
 // +--------------------------------------------------------------+
 // |                Operator Overload Equivalents                 |
@@ -489,6 +588,8 @@ mat4
 mat4 NewMat4(r32 r0c0, r32 r0c1, r32 r0c2, r32 r0c3, r32 r1c0, r32 r1c1, r32 r1c2, r32 r1c3, r32 r2c0, r32 r2c1, r32 r2c2, r32 r2c3, r32 r3c0, r32 r3c1, r32 r3c2, r32 r3c3)
 mat4 Mat4Fill(r32 all)
 mat4 Mat4Diagonal(r32 r0c0, r32 r1c1, r32 r2c2, r32 r3c3, r32 other = 0.0f)
+mat4 Mat4Transpose(mat4 matrix)
+mat4 Mat4Inverse(mat4 matrix)
 mat4 Mat4Multiply(mat4 left, mat4 right)
 v2 Mat4MultiplyVec2(mat4 matrix, v2 vector, bool includeTranslation = true)
 v3 Mat4MultiplyVec3(mat4 matrix, v3 vector, bool includeTranslation = true, r32* wOut = nullptr)

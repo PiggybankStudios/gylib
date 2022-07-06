@@ -33,7 +33,7 @@ struct RayVsRectangle2DResult_t
 	Dir2_t enterSide;
 	Dir2_t exitSide;
 };
-bool RayVsRectangle2D(Ray2_t ray, rec rectangle, RayVsRectangle2DResult_t* result, bool giveNegativeEnterTimes = false)
+bool RayVsRectangle2D(Ray2_t ray, rec rectangle, RayVsRectangle2DResult_t* result, bool giveNegativeTimes = false)
 {
 	NotNull(result);
 	ClearPointer(result);
@@ -67,7 +67,7 @@ bool RayVsRectangle2D(Ray2_t ray, rec rectangle, RayVsRectangle2DResult_t* resul
 			
 			if (exitTime >= 0)
 			{
-				if (!giveNegativeEnterTimes) { enterTime = MaxR32(0, enterTime); }
+				if (!giveNegativeTimes) { enterTime = MaxR32(0, enterTime); }
 				result->intersects = true;
 				result->enterTime = enterTime;
 				result->exitTime = exitTime;
@@ -94,7 +94,7 @@ bool RayVsRectangle2D(Ray2_t ray, rec rectangle, RayVsRectangle2DResult_t* resul
 			
 			if (exitTime >= 0)
 			{
-				if (!giveNegativeEnterTimes) { enterTime = MaxR32(0, enterTime); }
+				if (!giveNegativeTimes) { enterTime = MaxR32(0, enterTime); }
 				result->intersects = true;
 				result->enterTime = enterTime;
 				result->exitTime = exitTime;
@@ -132,7 +132,7 @@ bool RayVsRectangle2D(Ray2_t ray, rec rectangle, RayVsRectangle2DResult_t* resul
 		{
 			if (horiEnterTime >= vertEnterTime) //we enter last on horizontal-axis
 			{
-				if (!giveNegativeEnterTimes) { horiEnterTime = MaxR32(0, horiEnterTime); }
+				if (!giveNegativeTimes) { horiEnterTime = MaxR32(0, horiEnterTime); }
 				result->intersects = true;
 				result->enterTime = horiEnterTime;
 				result->enterPos = ray.origin + (ray.direction * horiEnterTime);
@@ -140,7 +140,7 @@ bool RayVsRectangle2D(Ray2_t ray, rec rectangle, RayVsRectangle2DResult_t* resul
 			}
 			else //we enter last on vertical-axis
 			{
-				if (!giveNegativeEnterTimes) { vertEnterTime = MaxR32(0, vertEnterTime); }
+				if (!giveNegativeTimes) { vertEnterTime = MaxR32(0, vertEnterTime); }
 				result->intersects = true;
 				result->enterTime = vertEnterTime;
 				result->enterPos = ray.origin + (ray.direction * vertEnterTime);
@@ -177,7 +177,7 @@ struct RayVsObb2DResult_t
 	v2 enterSideNormal;
 	v2 exitSideNormal;
 };
-bool RayVsObb2D(Ray2_t ray, obb2 boundingBox, RayVsObb2DResult_t* result, bool giveNegativeEnterTimes = false)
+bool RayVsObb2D(Ray2_t ray, obb2 boundingBox, RayVsObb2DResult_t* result, bool giveNegativeTimes = false)
 {
 	NotNull(result);
 	ClearPointer(result);
@@ -188,7 +188,7 @@ bool RayVsObb2D(Ray2_t ray, obb2 boundingBox, RayVsObb2DResult_t* result, bool g
 	rec alignedRec = NewRecCentered(Vec2_Zero, boundingBox.size);
 	
 	RayVsRectangle2DResult_t recResult;
-	if (RayVsRectangle2D(alignedRay, alignedRec, &recResult, giveNegativeEnterTimes))
+	if (RayVsRectangle2D(alignedRay, alignedRec, &recResult, giveNegativeTimes))
 	{
 		result->intersects = recResult.intersects;
 		result->enterTime = recResult.enterTime;
@@ -207,6 +207,122 @@ bool RayVsObb2D(Ray2_t ray, obb2 boundingBox, RayVsObb2DResult_t* result, bool g
 	}
 }
 
+struct RayVsBoxResult_t
+{
+	bool intersects;
+	r32 enterTime;
+	r32 exitTime;
+	v3 enterPos;
+	v3 exitPos;
+	Dir3_t enterSide;
+	Dir3_t exitSide;
+};
+bool RayVsBox(Ray3_t ray, box boundingBox, RayVsBoxResult_t* result, bool giveNegativeTimes = false)
+{
+	NotNull(result);
+	ClearPointer(result);
+	result->intersects = false;
+	
+	const r32 dumbInfinite = 10000; //TODO: Get rid of the need for this
+	if (ray.direction == Vec3_Zero)
+	{
+		if (IsInsideBox(boundingBox, ray.origin))
+		{
+			result->intersects = true;
+			result->enterTime = 0;
+			result->exitTime = dumbInfinite;
+			result->enterPos = ray.origin;
+			result->exitPos = ray.origin;
+			result->enterSide = Dir3_None;
+			result->exitSide = Dir3_None;
+			return true;
+		}
+	}
+	
+	//don't start inside on an axis and not moving on that axis. Will never intersect
+	if (ray.direction.x == 0 && (ray.origin.x < boundingBox.x || ray.origin.x >= boundingBox.x + boundingBox.width))  { return false; }
+	if (ray.direction.y == 0 && (ray.origin.y < boundingBox.y || ray.origin.y >= boundingBox.y + boundingBox.height)) { return false; }
+	if (ray.direction.z == 0 && (ray.origin.z < boundingBox.z || ray.origin.z >= boundingBox.z + boundingBox.depth))  { return false; }
+	
+	v3 positiveRayDir = NewVec3(AbsR32(ray.direction.x), AbsR32(ray.direction.y), AbsR32(ray.direction.z));
+	r32 startX = (ray.direction.x >= 0) ? (boundingBox.x - ray.origin.x)                        : ((boundingBox.x + boundingBox.width) - ray.origin.x);
+	r32 endX   = (ray.direction.x >= 0) ? ((boundingBox.x + boundingBox.width) - ray.origin.x)  : (boundingBox.x - ray.origin.x);
+	r32 startY = (ray.direction.y >= 0) ? (boundingBox.y - ray.origin.y)                        : ((boundingBox.y + boundingBox.height) - ray.origin.y);
+	r32 endY   = (ray.direction.y >= 0) ? ((boundingBox.y + boundingBox.height) - ray.origin.y) : (boundingBox.y - ray.origin.y);
+	r32 startZ = (ray.direction.z >= 0) ? (boundingBox.z - ray.origin.z)                        : ((boundingBox.z + boundingBox.depth) - ray.origin.z);
+	r32 endZ   = (ray.direction.z >= 0) ? ((boundingBox.z + boundingBox.depth) - ray.origin.z)  : (boundingBox.z - ray.origin.z);
+	
+	r32 startTimeX = (ray.direction.x != 0) ? (startX / ray.direction.x) : dumbInfinite;
+	r32 endTimeX   = (ray.direction.x != 0) ? (endX   / ray.direction.x) : dumbInfinite;
+	r32 startTimeY = (ray.direction.y != 0) ? (startY / ray.direction.y) : dumbInfinite;
+	r32 endTimeY   = (ray.direction.y != 0) ? (endY   / ray.direction.y) : dumbInfinite;
+	r32 startTimeZ = (ray.direction.z != 0) ? (startZ / ray.direction.z) : dumbInfinite;
+	r32 endTimeZ   = (ray.direction.z != 0) ? (endZ   / ray.direction.z) : dumbInfinite;
+	
+	//our last start time is greater than our first end time. No intersection
+	if ((ray.direction.y != 0 && startTimeX >= endTimeY) && (ray.direction.z != 0 && startTimeX >= endTimeZ))
+	{
+		return false;
+	}
+	if ((ray.direction.x != 0 && startTimeY >= endTimeX) && (ray.direction.z != 0 && startTimeY >= endTimeZ))
+	{
+		return false;
+	}
+	if ((ray.direction.x != 0 && startTimeZ >= endTimeX) && (ray.direction.y != 0 && startTimeZ >= endTimeY))
+	{
+		return false;
+	}
+	
+	r32 startTime = 0.0f;
+	Dir3_t startSide = Dir3_None;
+	if (startTimeX != dumbInfinite && (startTimeY == dumbInfinite || startTimeX >= startTimeY) && (startTimeZ == dumbInfinite || startTimeX >= startTimeZ))
+	{
+		startTime = startTimeX;
+		startSide = (ray.direction.x > 0) ? Dir3_Left : Dir3_Right;
+	}
+	else if (startTimeY != dumbInfinite && (startTimeZ == dumbInfinite || startTimeY >= startTimeZ))
+	{
+		startTime = startTimeY;
+		startSide = (ray.direction.y > 0) ? Dir3_Down : Dir3_Up;
+	}
+	else if (startTimeZ != dumbInfinite)
+	{
+		startTime = startTimeZ;
+		startSide = (ray.direction.z > 0) ? Dir3_Backward : Dir3_Forward;
+	}
+	else { Assert(false); return false; }
+	if (!giveNegativeTimes && startTime < 0) { startTime = 0; }
+	
+	r32 endTime = 0.0f;
+	Dir3_t endSide = Dir3_None;
+	if (endTimeX != dumbInfinite && (endTimeY == dumbInfinite || endTimeX <= endTimeY) && (endTimeZ == dumbInfinite || endTimeX <= endTimeZ))
+	{
+		endTime = endTimeX;
+		endSide = (ray.direction.x > 0) ? Dir3_Right : Dir3_Left;
+	}
+	else if (endTimeY != dumbInfinite && (endTimeZ == dumbInfinite || endTimeY <= endTimeZ))
+	{
+		endTime = endTimeY;
+		endSide = (ray.direction.y > 0) ? Dir3_Up : Dir3_Down;
+	}
+	else if (endTimeZ != dumbInfinite)
+	{
+		endTime = endTimeZ;
+		endSide = (ray.direction.z > 0) ? Dir3_Forward : Dir3_Backward;
+	}
+	else { Assert(false); return false; }
+	if (endTime < 0) { return false; } //intersection happened in opposite direction (negative time)
+	
+	result->intersects = true;
+	result->enterTime = startTime;
+	result->exitTime = endTime;
+	result->enterPos = ray.origin + (ray.direction * startTime);
+	result->exitPos = ray.origin + (ray.direction * endTime);
+	result->enterSide = startSide;
+	result->exitSide = endSide;
+	return true;
+}
+
 #endif //  _GY_COLLISION_H
 
 // +--------------------------------------------------------------+
@@ -216,7 +332,11 @@ bool RayVsObb2D(Ray2_t ray, obb2 boundingBox, RayVsObb2DResult_t* result, bool g
 @Defines
 
 @Types
-
+RayVsRectangle2DResult_t
+RayVsObb2DResult_t
+RayVsBoxResult_t
 @Functions
-
+bool RayVsRectangle2D(Ray2_t ray, rec rectangle, RayVsRectangle2DResult_t* result, bool giveNegativeTimes = false)
+bool RayVsObb2D(Ray2_t ray, obb2 boundingBox, RayVsObb2DResult_t* result, bool giveNegativeTimes = false)
+bool RayVsBox(Ray3_t ray, box boundingBox, RayVsBoxResult_t* result, bool giveNegativeTimes = false)
 */

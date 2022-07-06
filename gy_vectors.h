@@ -316,6 +316,15 @@ v4 ToVec4(v4i vector)
 	result.w = (r32)vector.w;
 	return result;
 }
+v4 ToVec4(v3 vector, r32 w)
+{
+	v4 result;
+	result.x = vector.x;
+	result.y = vector.y;
+	result.z = vector.z;
+	result.w = w;
+	return result;
+}
 //ToVec4(Color_t) defined in gy_colors.h
 
 v2 Vec3_xy(v3 vector)
