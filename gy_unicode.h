@@ -397,13 +397,16 @@ u8 GetUcs2WordsForCode(u32 codepoint, u16* wordBufferOut, bool doAssertions = tr
 	}
 	else
 	{
-		AssertMsg(false, "Codepoint can't be converted to UCS-2. Outside supported range of characters");
+		AssertIfMsg(doAssertions, false, "Codepoint can't be converted to UCS-2. Outside supported range of characters");
 		return 0;
 	}
 }
 
 u8 GetCodepointForUcs2(u64 maxNumWords, const u16* strPntr, u32* codepointOut = nullptr) //untested
 {
+	UNUSED(maxNumWords);
+	UNUSED(strPntr);
+	UNUSED(codepointOut);
 	Unimplemented(); //TODO: Implement me!
 	return 0;
 }
