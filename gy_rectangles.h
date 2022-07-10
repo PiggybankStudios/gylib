@@ -2448,29 +2448,38 @@ bool IsInsideObb2D(obb2 rectangle, v2 point)
 void RecAlign(rec* rectangleOut, r32 alignmentScale = 1.0f)
 {
 	DebugAssert_(rectangleOut != nullptr);
-	//NOTE: We do something a little more special than just rounding in this scenario
-	//      We might round up the width/height even if on their own they would round down but
-	//      if the x/y coordinate contributes enough it can round to the closest value up
-	r32 resultX = RoundR32(rectangleOut->x * alignmentScale) / alignmentScale;
-	r32 resultY = RoundR32(rectangleOut->y * alignmentScale) / alignmentScale;
-	r32 resultWidth = RoundR32((rectangleOut->x + rectangleOut->width) * alignmentScale) / alignmentScale - resultX;
-	r32 resultHeight = RoundR32((rectangleOut->y + rectangleOut->height) * alignmentScale) / alignmentScale - resultY;
-	rectangleOut->x = resultX;
-	rectangleOut->y = resultY;
-	rectangleOut->width = resultWidth;
-	rectangleOut->height = resultHeight;
+	if (alignmentScale > 0)
+	{
+		//NOTE: We do something a little more special than just rounding in this scenario
+		//      We might round up the width/height even if on their own they would round down but
+		//      if the x/y coordinate contributes enough it can round to the closest value up
+		r32 resultX = RoundR32(rectangleOut->x * alignmentScale) / alignmentScale;
+		r32 resultY = RoundR32(rectangleOut->y * alignmentScale) / alignmentScale;
+		r32 resultWidth = RoundR32((rectangleOut->x + rectangleOut->width) * alignmentScale) / alignmentScale - resultX;
+		r32 resultHeight = RoundR32((rectangleOut->y + rectangleOut->height) * alignmentScale) / alignmentScale - resultY;
+		rectangleOut->x = resultX;
+		rectangleOut->y = resultY;
+		rectangleOut->width = resultWidth;
+		rectangleOut->height = resultHeight;
+	}
 }
 void RecAlignTopLeft(rec* rectangleOut, r32 alignmentScale = 1.0f)
 {
 	DebugAssert_(rectangleOut != nullptr);
-	rectangleOut->x = RoundR32(rectangleOut->x * alignmentScale) / alignmentScale;
-	rectangleOut->y = RoundR32(rectangleOut->y * alignmentScale) / alignmentScale;
+	if (alignmentScale > 0)
+	{
+		rectangleOut->x = RoundR32(rectangleOut->x * alignmentScale) / alignmentScale;
+		rectangleOut->y = RoundR32(rectangleOut->y * alignmentScale) / alignmentScale;
+	}
 }
 void RecAlignSize(rec* rectangleOut, r32 alignmentScale = 1.0f)
 {
 	DebugAssert_(rectangleOut != nullptr);
-	rectangleOut->width = RoundR32(rectangleOut->width * alignmentScale) / alignmentScale;
-	rectangleOut->height = RoundR32(rectangleOut->height * alignmentScale) / alignmentScale;
+	if (alignmentScale > 0)
+	{
+		rectangleOut->width = RoundR32(rectangleOut->width * alignmentScale) / alignmentScale;
+		rectangleOut->height = RoundR32(rectangleOut->height * alignmentScale) / alignmentScale;
+	}
 }
 
 //This assumes the width is already calculated
