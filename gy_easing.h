@@ -75,6 +75,8 @@ typedef enum
 	EasingStyle_BounceOut,
 	EasingStyle_BounceInOut,
 	EasingStyle_EarlyInOut,
+	EasingStyle_LogTwoOutCustom,
+	EasingStyle_LogTwoInCustom,
 	
 	EasingStyle_NumStyles,
 } EasingStyle_t;
@@ -116,6 +118,8 @@ const char* GetEasingStyleStr(EasingStyle_t style)
 		case EasingStyle_BounceOut:        return "BounceOut";
 		case EasingStyle_BounceInOut:      return "BounceInOut";
 		case EasingStyle_EarlyInOut:       return "EarlyInOut";
+		case EasingStyle_LogTwoOutCustom:  return "LogTwoOutCustom";
+		case EasingStyle_LogTwoInCustom:   return "LogTwoInCustom";
 		default:                           return "Unknown";
 	}
 }
@@ -462,6 +466,15 @@ r32 EaseEarlyInOut(r32 p)
 	// {
 	// 	return 4.62962963f * (p - 1) * (p - 1) * (p - 1) + 1.66666666f * (p - 1) * (p - 1) + 1;
 	// }
+}
+
+r32 EaseLogTwoOutCustom(r32 p)
+{
+	return (1 / 3.16987f) * Log2R32((8.0f * p) + 1.0f);
+}
+r32 EaseLogTwoInCustom(r32 p)
+{
+	return (PowR32(2, (3.16987f * p)) - 1.0f) / 8.0f;
 }
 
 r32 Ease(EasingStyle_t style, r32 p)

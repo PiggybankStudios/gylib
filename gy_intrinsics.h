@@ -620,6 +620,34 @@ inline r64 PowR64(r64 value, r64 power)
 }
 
 // +==============================+
+// |             Log              |
+// +==============================+
+inline r32 LnR32(r32 value)
+{
+	return logf(value);
+}
+inline r64 LnR64(r64 value)
+{
+	return log(value);
+}
+inline r32 Log2R32(r32 value)
+{
+	return log2f(value);
+}
+inline r64 Log2R64(r64 value)
+{
+	return log2(value);
+}
+inline r32 Log10R32(r32 value)
+{
+	return log10f(value);
+}
+inline r64 Log10R64(r64 value)
+{
+	return log10(value);
+}
+
+// +==============================+
 // |             Sqrt             |
 // +==============================+
 inline r32 SqrtR32(r32 value)
