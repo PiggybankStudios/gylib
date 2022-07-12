@@ -513,6 +513,8 @@ r32 Ease(EasingStyle_t style, r32 p)
 		case EasingStyle_BounceOut:        return EaseBounceOut(p);
 		case EasingStyle_BounceInOut:      return EaseBounceInOut(p);
 		case EasingStyle_EarlyInOut:       return EaseEarlyInOut(p);
+		case EasingStyle_LogTwoOutCustom:  return EaseLogTwoOutCustom(p);
+		case EasingStyle_LogTwoInCustom:   return EaseLogTwoInCustom(p);
 		default: Assert(false); return p;
 	};
 }
@@ -553,6 +555,8 @@ r32 InverseEase(EasingStyle_t style, r32 y)
 		// case EasingStyle_BounceOut:        return InverseEaseBounceOut(y);
 		// case EasingStyle_BounceInOut:      return InverseEaseBounceInOut(y);
 		// case EasingStyle_EarlyInOut:       return InverseEaseEarlyInOut(y);
+		case EasingStyle_LogTwoOutCustom:     return EaseLogTwoInCustom(y); //TODO: Should we make these separate functions called InverseEase? rather than just using the pair function to inverse?
+		case EasingStyle_LogTwoInCustom:      return EaseLogTwoOutCustom(y);
 		default: Assert(false); return y;
 	};
 }
