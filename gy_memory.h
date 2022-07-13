@@ -505,10 +505,124 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 		// +==============================+
 		// |    MemArenaType_PagedHeap    |
 		// +==============================+
-		// case MemArenaType_PagedHeap:
-		// {
-		// 	//TODO: Implement me!
-		// } break;
+		case MemArenaType_PagedHeap:
+		{
+			if (arena->headerPntr == nullptr && arena->numPages > 0)
+			{
+				AssertIfMsg(assertOnFailure, false, "headerPntr was empty but numPages > 0! Has this arena been initialized??");
+				return false;
+			}
+			if ((arena->sourceArena == nullptr) && (arena->allocFunc == nullptr || arena->freeFunc == nullptr))
+			{
+				AssertIfMsg(assertOnFailure, false, "PagedHeap doesn't have a allocFunc/freeFun nor a sourceArena to allocate new pages from");
+				return false;
+			}
+			if (arena->mainPntr != nullptr)
+			{
+				AssertIfMsg(assertOnFailure, false, "mainPntr was filled when it shouldn't be!");
+				return false;
+			}
+			if (arena->otherPntr != nullptr)
+			{
+				AssertIfMsg(assertOnFailure, false, "otherPntr was filled when it shouldn't be!");
+				return false;
+			}
+			if (arena->pageSize == 0)
+			{
+				AssertIfMsg(assertOnFailure, false, "pageSize was zero! That's invalid!");
+				return false;
+			}
+			if (arena->alignment > AllocAlignment_Max)
+			{
+				AssertIfMsg(assertOnFailure, false, "Invalid alignment value!");
+				return false;
+			}
+			
+			u64 numAllocations = 0;
+			u64 totalNumSections = 0;
+			
+			HeapPageHeader_t* pageHeader = (HeapPageHeader_t*)arena->headerPntr;
+			u64 pageIndex = 0;
+			while (pageHeader != nullptr)
+			{
+				if (pageHeader->size == 0)
+				{
+					AssertIfMsg(assertOnFailure, false, "Page had a size of 0!");
+					return false;
+				}
+				if (pageHeader->size < arena->pageSize)
+				{
+					AssertIfMsg(assertOnFailure, false, "Page size was less than arena->pageSize!");
+					return false;
+				}
+				if (pageIndex+1 < arena->numPages && pageHeader->next == nullptr)
+				{
+					AssertIfMsg(assertOnFailure, false, "Page next pntr was nullptr too soon! We expected more pages in the chain!");
+					return false;
+				}
+				if (pageHeader->used > pageHeader->size)
+				{
+					AssertIfMsg(assertOnFailure, false, "Page used is higher than size! That's not right!");
+					return false;
+				}
+				if (pageIndex >= arena->numPages)
+				{
+					AssertIfMsg(assertOnFailure, false, "The numPages in this paged heap is off. We have too many pages or the last pointer to a page was corrupt!");
+					return false;
+				}
+				
+				u8* pageBase = (u8*)(pageHeader + 1);
+				u64 allocOffset = 0;
+				u8* allocBytePntr = pageBase;
+				u64 sectionIndex = 0;
+				HeapAllocPrefix_t* prevPrefixPntr = nullptr;
+				while (allocOffset < pageHeader->size)
+				{
+					HeapAllocPrefix_t* prefixPntr = (HeapAllocPrefix_t*)allocBytePntr;
+					// u8* afterPrefixPntr = (allocBytePntr + sizeof(HeapAllocPrefix_t));
+					bool isSectionFilled = IsAllocPrefixFilled(prefixPntr->size);
+					u64 sectionSize = UnpackAllocPrefixSize(prefixPntr->size);
+					if (sectionSize < sizeof(HeapAllocPrefix_t))
+					{
+						AssertIfMsg(assertOnFailure, false, "Found an allocation header that claimed to be smaller than the header itself in Paged Heap");
+						return false;
+					}
+					u64 afterPrefixSize = sectionSize - sizeof(HeapAllocPrefix_t);
+					if (afterPrefixSize == 0)
+					{
+						AssertIfMsg(assertOnFailure, false, "Found an empty section that was only big enough to contain the allocation header");
+						return false;
+					}
+					if (allocOffset + sectionSize > pageHeader->size)
+					{
+						AssertIfMsg(assertOnFailure, false, "Found a corrupt allocation header size. It would step us past the end of a page!");
+						return false;
+					}
+					
+					if (isSectionFilled)
+					{
+						numAllocations++;
+					}
+					
+					prevPrefixPntr = prefixPntr;
+					allocOffset += sectionSize;
+					allocBytePntr += sectionSize;
+					totalNumSections++;
+					sectionIndex++;
+				}
+				
+				pageHeader = pageHeader->next;
+				pageIndex++;
+			}
+			
+			if (arena->telemetryEnabled && numAllocations != arena->numAllocations)
+			{
+				AssertIfMsg(assertOnFailure, false, "Actual allocation count in paged heap did not match tracked numAllocations");
+				return false;
+			}
+			
+			return true;
+		} break;
 		
 		// +==============================+
 		// |   MemArenaType_MarkedStack   |
