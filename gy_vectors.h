@@ -1019,6 +1019,10 @@ r32 Vec2Length(v2 vector)
 {
 	return SqrtR32(Square(vector.x) + Square(vector.y));
 }
+r32 Vec2LengthSquared(v2 vector)
+{
+	return Square(vector.x) + Square(vector.y);
+}
 v2 Vec2Normalize(v2 vector)
 {
 	return Vec2Shrink(vector, Vec2Length(vector));
@@ -1188,6 +1192,10 @@ v3 Vec3Cross(v3 left, v3 right)
 	result.y = left.z*right.x - left.x*right.z;
 	result.z = left.x*right.y - left.y*right.x;
 	return result;
+}
+r32 Vec3AngleBetween(v3 vecLeft, v3 vecRight)
+{
+	return AcosR32(Vec3Dot(vecLeft, vecRight) / (Vec3Length(vecLeft) * Vec3Length(vecRight)));
 }
 //This Assumes +y is up and is phrased in terms of a first person camera (facingDirection y rotation, and rotationUpDown is z rotation)
 v3 Vec3From2Angles(r32 facingDirection, r32 rotationUpDown, r32 radius = 1.0f)
@@ -1593,6 +1601,7 @@ v4i Vec4iMultiply(v4i left, v4i right)
 bool Vec4iEqual(v4i left, v4i right)
 r32 Vec2Dot(v2 left, v2 right)
 r32 Vec2Length(v2 vector)
+r32 Vec2LengthSquared(v2 vector)
 v2 Vec2Normalize(v2 vector)
 v2 Vec2PerpRight(v2 vector)
 v2 Vec2PerpLeft(v2 vector)
@@ -1618,6 +1627,7 @@ r32 Vec3Inner(v3 left, v3 right)
 v3 Vec3Clamp(v3 vector, v3 min, v3 max)
 v3 Vec3Lerp(v3 start, v3 end, r32 amount)
 v3 Vec3Cross(v3 left, v3 right)
+r32 Vec3AngleBetween(v3 vecLeft, v3 vecRight)
 v3 Vec3From2Angles(r32 facingDirection, r32 rotationUpDown, r32 radius = 1.0f)
 i32 Vec3iDot(v3i left, v3i right)
 r32 Vec3iLength(v3i vector)
