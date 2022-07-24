@@ -185,6 +185,54 @@ union Wedge_t
 	};
 };
 
+//      0,'. Tip       |
+//     ,' | `.         | Height
+//   ,'   |Rad`.       |
+//4,'     |ius  `.1    |
+// \             / +x  |
+//  \           /      |
+//   \         /       |
+//   3\_______/2       |
+//        +y (Base)
+#define PENTAGON_NUM_EDGES        5
+#define PENTAGON_NUM_VERTICES     5
+#define PENTAGON_ANGLE_STEP32     ToRadians32(72.0f)
+#define PENTAGON_ANGLE_STEP64     ToRadians64(72.0)
+#define PENTAGON_INTERNAL_ANGLE32 ToRadians32(108.0f)
+#define PENTAGON_INTERNAL_ANGLE64 ToRadians64(108.0)
+struct Pentagon_t
+{
+	v2 center;
+	r32 sideLength;
+	r32 rotation;
+};
+
+//          +y             Top is face 0
+//      _,--"^"--._        Faces adjacent to top are faces 1-5 (starting at front, going cw)
+//    ,'\   Top   /`.      Every other face but bottom are faces 6-10 (starting down right from front, going cw)
+//  ,'   \_______/   `.    Bottom is face 11
+// | [2] /       \ [5] |   Vertices go cw with top face starting at tip (5)
+// |    /         \    |   then all middle vertices cw starting with one adjacent to top tip (10)
+// |  _/   Front   \_  |   then bottom face going cw (ccw when looking at bottom) starting with it's tip (5)
+// \'' `-.  [1]  ,-' ``/ +x
+//  \     `-._,-'     /    Dodecahedron has 12 faces, 20 vertices, pentagons for faces, 3 faces per vertex
+//   \ [7]   |   [6] /
+//    `-.._  |  _,,-'
+//         ``"''
+#define DODECAHEDRON_NUM_FACES    12
+#define DODECAHEDRON_NUM_VERTICES 20
+#define DODECAHEDRON_NUM_EDGES    30
+// AcosR32(-SqrtR32(5) / 5.0f) or 116.56505117707798935157219372045329467120421429964522102798601631... degrees or (2.0344439357957027354455779231009658441271217539736731742984053848... radians)
+#define DODECAHEDRON_DIHEDRAL_ANGLE32 2.03444385528564453125f         //radians
+#define DODECAHEDRON_DIHEDRAL_ANGLE64 2.03444393579570270702561174403 //radians
+struct Dodecahedron_t
+{
+	v3 center;
+	r32 sideLength;
+	quat rotation;
+};
+typedef Dodecahedron_t Dodec_t;
+
 // +--------------------------------------------------------------+
 // |                        New Functions                         |
 // +--------------------------------------------------------------+
@@ -395,6 +443,163 @@ Wedge_t NewWedge(r32 x, r32 y, r32 z, r32 width, r32 height, r32 depth)
 	result.height = height;
 	result.depth = depth;
 	return result;
+}
+Pentagon_t NewPentagon(v2 center, r32 sideLength, r32 rotation = 0.0f)
+{
+	Pentagon_t result;
+	result.center = center;
+	result.sideLength = sideLength;
+	result.rotation = rotation;
+	return result;
+}
+Dodec_t NewDodec(v3 center, r32 sideLength, quat rotation)
+{
+	Dodecahedron_t result;
+	result.center = center;
+	result.sideLength = sideLength;
+	result.rotation = rotation;
+	return result;
+}
+
+// +--------------------------------------------------------------+
+// |               Dodecahedron and Hexagon Helpers               |
+// +--------------------------------------------------------------+
+// https://en.wikipedia.org/wiki/Pentagon
+r32 PentagonGetHeight(r32 sideLength)
+{
+	return sideLength * 0.5f * SqrtR32(5 + (2*SqrtR32(5))); // sideLength * 1.539
+}
+r32 PentagonGetHeight(Pentagon_t pentagon)
+{
+	return PentagonGetHeight(pentagon.sideLength);
+}
+r32 PentagonGetRadius(r32 sideLength)
+{
+	return sideLength * SqrtR32((5 + SqrtR32(5)) * 0.1f); //sideLength * 0.8507
+}
+r32 PentagonGetRadius(Pentagon_t pentagon)
+{
+	return PentagonGetRadius(pentagon.sideLength);
+}
+v2 PentagonGetVertex(Pentagon_t pentagon, u64 index)
+{
+	v2 result = Vec2_Zero;
+	r32 pentRadius = PentagonGetRadius(pentagon);
+	r32 vertexDirection = ToRadians32(-90 + 72*(r32)index);
+	result = Vec2FromAngle(vertexDirection, pentRadius);
+	result = Vec2Rotate(result, pentagon.rotation);
+	result += pentagon.center;
+	return result;
+}
+v2 PentagonGetEdgeCenter(Pentagon_t pentagon, u64 index)
+{
+	v2 result = Vec2_Zero;
+	r32 pentRadius = PentagonGetRadius(pentagon);
+	r32 vertexDirection1 = ToRadians32(-90 + 72*(r32)index);
+	r32 vertexDirection2 = ToRadians32(-90 + 72*(r32)(index+1));
+	v2 vert1 = Vec2FromAngle(vertexDirection1, pentRadius);
+	v2 vert2 = Vec2FromAngle(vertexDirection2, pentRadius);
+	result = ((vert1 + vert2) / 2.0f);
+	result = Vec2Rotate(result, pentagon.rotation);
+	result += pentagon.center;
+	return result;
+}
+v2 PentagonGetDrawCenter(Pentagon_t pentagon)
+{
+	return pentagon.center + NewVec2(0, -PentagonGetRadius(pentagon) + PentagonGetHeight(pentagon)/2);
+}
+
+// https://en.wikipedia.org/wiki/Regular_dodecahedron
+r32 DodecGetFaceRadius(Dodec_t dodec)
+{
+	return dodec.sideLength * 0.5f * SqrtR32(2.5f + (1.1f * SqrtR32(5))); //sideLength * 1.113516364
+}
+r32 DodecGetVertexRadius(Dodec_t dodec)
+{
+	return dodec.sideLength * (SqrtR32(3) / 4.0f) * (1 + SqrtR32(5)); //sideLength * 1.401258538
+}
+v3 DodecGetVertex(Dodec_t dodec, u64 index)
+{
+	v3 result = Vec3_Zero;
+	r32 faceRadius = DodecGetFaceRadius(dodec);
+	Pentagon_t pentagon = NewPentagon(Vec2_Zero, dodec.sideLength);
+	
+	index = (index % DODECAHEDRON_NUM_VERTICES);
+	switch (index)
+	{
+		case 0:
+		case 1:
+		case 2:
+		case 3:
+		case 4:
+		{
+			v2 pentVert = PentagonGetVertex(pentagon, index);
+			result = NewVec3(pentVert.x, faceRadius, -pentVert.y);
+		} break;
+		case 5:
+		case 7:
+		case 9:
+		case 11:
+		case 13:
+		{
+			v2 pentEdgeCenter = Vec2Normalize(PentagonGetEdgeCenter(pentagon, (index-5) / 2));
+			v3 verticalVec = Vec3_Up;
+			v3 horizontalVec = NewVec3(pentEdgeCenter.x, 0, -pentEdgeCenter.y);
+			v3 faceNormal = (CosR32(DODECAHEDRON_DIHEDRAL_ANGLE32 - HalfPi32) * horizontalVec) + (SinR32(DODECAHEDRON_DIHEDRAL_ANGLE32 - HalfPi32) * verticalVec);
+			v3 faceTangent = Vec3Cross(faceNormal, verticalVec);
+			v3 faceUp = Vec3Cross(faceNormal, faceTangent);
+			v2 pentVert = PentagonGetVertex(pentagon, 1);
+			result = (faceRadius * faceNormal) + (pentVert.x * faceTangent) + (-pentVert.y * faceUp);
+		} break;
+		case 6:
+		case 8:
+		case 10:
+		case 12:
+		case 14:
+		{
+			v2 pentEdgeCenter = Vec2Normalize(PentagonGetEdgeCenter(pentagon, (index-6) / 2));
+			v3 verticalVec = Vec3_Up;
+			v3 horizontalVec = NewVec3(pentEdgeCenter.x, 0, -pentEdgeCenter.y);
+			v3 faceNormal = (CosR32(DODECAHEDRON_DIHEDRAL_ANGLE32 - HalfPi32) * horizontalVec) + (SinR32(DODECAHEDRON_DIHEDRAL_ANGLE32 - HalfPi32) * verticalVec);
+			v3 faceTangent = Vec3Cross(faceNormal, verticalVec);
+			v3 faceUp = Vec3Cross(faceNormal, faceTangent);
+			v2 pentVert = PentagonGetVertex(pentagon, 0);
+			result = (faceRadius * faceNormal) + (pentVert.x * faceTangent) + (-pentVert.y * faceUp);
+		} break;
+		case 15:
+		case 16:
+		case 17:
+		case 18:
+		case 19:
+		{
+			v2 pentVert = PentagonGetVertex(pentagon, 20-index);
+			result = NewVec3(pentVert.x, -faceRadius, pentVert.y);
+		} break;
+		default: Assert(false); break;
+	}
+	
+	result = Mat4MultiplyVec3(Mat4Quaternion(dodec.rotation), result, false);
+	result += dodec.center;
+	return result;
+}
+u8 GetDiceValueForDodecFace(u64 faceIndex)
+{
+	switch (faceIndex % DODECAHEDRON_NUM_FACES)
+	{
+		case 0:  return 1;
+		case 1:  return 6;
+		case 2:  return 5;
+		case 3:  return 3;
+		case 4:  return 2;
+		case 5:  return 4;
+		case 6:  return 10;
+		case 7:  return 11;
+		case 8:  return 9;
+		case 9:  return 7;
+		case 10: return 8;
+		case 11: return 12;
+		default: Assert(false); return 0;
+	}
 }
 
 // +--------------------------------------------------------------+
@@ -661,6 +866,91 @@ PrimitiveIndexedVerts_t GenerateVertsForSphere(Sphere_t sphere, u64 numRings, u6
 			index1->normal = normal;
 			index2->normal = normal;
 		}
+	}
+	
+	return result;
+}
+
+//      1,|.5
+//     ,'/ \`.
+//   ,' / 7 \ `.  Triangulation of pentagon faces
+//0,'   |   |   `.
+// \    |   |    /3
+//  \   /   \   /
+//   \ |     | /
+//   2\|6___8|/4
+PrimitiveIndexedVerts_t GenerateVertsForDodecohedron(Dodec_t dodec, MemArena_t* memArena)
+{
+	PrimitiveIndexedVerts_t result = {};
+	result.numVertices = DODECAHEDRON_NUM_VERTICES;
+	result.numIndices = DODECAHEDRON_NUM_FACES * (3*3); //12 faces, 3 triangles per face, 3 vertices per triangle = 108
+	result.numFaces = 12;
+	if (memArena == nullptr) { return result; }
+	
+	result.allocArena = memArena;
+	result.vertices = AllocArray(memArena, PrimitiveVert3D_t, result.numVertices);
+	NotNull(result.vertices);
+	result.indices = AllocArray(memArena, PrimitiveIndex3D_t, result.numIndices);
+	NotNull(result.indices);
+	
+	for (u64 vIndex = 0; vIndex < DODECAHEDRON_NUM_VERTICES; vIndex++)
+	{
+		result.vertices[vIndex].position = DodecGetVertex(dodec, vIndex);
+	}
+	
+	//TODO: Actually calculate these numbers. Right now they are estimates from a raster image pentagon
+	r32 v0 = 0.39f;//0.41263940520446096654275092936803f;
+	r32 u0 = 0.21f;//0.19921875f;
+	r32 u1 = 0.79f;//0.80078125f;
+	v2 texCoords[5];
+	texCoords[0] = NewVec2(0.5f, 0.01f); //top
+	texCoords[1] = NewVec2(1.0f, v0); //right
+	texCoords[2] = NewVec2(u1, 1.0f); //bottom right
+	texCoords[3] = NewVec2(u0, 1.0f); //bottom left
+	texCoords[4] = NewVec2(0.0f, v0); //left
+	
+	for (u64 fIndex = 0; fIndex < DODECAHEDRON_NUM_FACES; fIndex++)
+	{
+		u64 faceIndices[5];
+		switch (fIndex)
+		{
+			case 0:  faceIndices[0] = 0;  faceIndices[1] = 1;  faceIndices[2] = 2;  faceIndices[3] = 3;  faceIndices[4] = 4;  break; //Top Face
+			
+			case 1:  faceIndices[0] = 3;  faceIndices[1] = 2;  faceIndices[2] = 9;  faceIndices[3] = 10; faceIndices[4] = 11; break; //Front Face
+			case 2:  faceIndices[0] = 4;  faceIndices[1] = 3;  faceIndices[2] = 11; faceIndices[3] = 12; faceIndices[4] = 13; break; //Left Face
+			case 3:  faceIndices[0] = 0;  faceIndices[1] = 4;  faceIndices[2] = 13; faceIndices[3] = 14; faceIndices[4] = 5;  break;
+			case 4:  faceIndices[0] = 1;  faceIndices[1] = 0;  faceIndices[2] = 5;  faceIndices[3] = 6;  faceIndices[4] = 7;  break;
+			case 5:  faceIndices[0] = 2;  faceIndices[1] = 1;  faceIndices[2] = 7;  faceIndices[3] = 8;  faceIndices[4] = 9;  break; //Right Face
+			
+			case 6:  faceIndices[0] = 19; faceIndices[1] = 15; faceIndices[2] = 10; faceIndices[3] = 9;  faceIndices[4] = 8;  break;
+			case 7:  faceIndices[0] = 15; faceIndices[1] = 16; faceIndices[2] = 12; faceIndices[3] = 11; faceIndices[4] = 10; break;
+			case 8:  faceIndices[0] = 16; faceIndices[1] = 17; faceIndices[2] = 14; faceIndices[3] = 13; faceIndices[4] = 12; break;
+			case 9:  faceIndices[0] = 17; faceIndices[1] = 18; faceIndices[2] = 6;  faceIndices[3] = 5;  faceIndices[4] = 14; break; //Back Face
+			case 10: faceIndices[0] = 18; faceIndices[1] = 19; faceIndices[2] = 8;  faceIndices[3] = 7;  faceIndices[4] = 6;  break;
+			
+			case 11: faceIndices[0] = 15; faceIndices[1] = 19; faceIndices[2] = 18; faceIndices[3] = 17; faceIndices[4] = 16; break; //Bottom Face
+			default: Assert(false); break;
+		}
+		
+		v3 faceNormal = Vec3Normalize(Vec3Cross(
+			result.vertices[faceIndices[1]].position - result.vertices[faceIndices[0]].position,
+			result.vertices[faceIndices[4]].position - result.vertices[faceIndices[0]].position
+		));
+		
+		//Left Triangle
+		result.indices[(fIndex*9) + 0] = NewPrimitiveIndex3D(faceIndices[4], fIndex, faceNormal, texCoords[4]); //left tri
+		result.indices[(fIndex*9) + 1] = NewPrimitiveIndex3D(faceIndices[0], fIndex, faceNormal, texCoords[0]);
+		result.indices[(fIndex*9) + 2] = NewPrimitiveIndex3D(faceIndices[3], fIndex, faceNormal, texCoords[3]);
+		
+		//Right Triangle
+		result.indices[(fIndex*9) + 3] = NewPrimitiveIndex3D(faceIndices[1], fIndex, faceNormal, texCoords[1]); //left tri
+		result.indices[(fIndex*9) + 4] = NewPrimitiveIndex3D(faceIndices[2], fIndex, faceNormal, texCoords[2]);
+		result.indices[(fIndex*9) + 5] = NewPrimitiveIndex3D(faceIndices[0], fIndex, faceNormal, texCoords[0]);
+		
+		//Middle Triangle
+		result.indices[(fIndex*9) + 6] = NewPrimitiveIndex3D(faceIndices[2], fIndex, faceNormal, texCoords[2]); //left tri
+		result.indices[(fIndex*9) + 7] = NewPrimitiveIndex3D(faceIndices[3], fIndex, faceNormal, texCoords[3]);
+		result.indices[(fIndex*9) + 8] = NewPrimitiveIndex3D(faceIndices[0], fIndex, faceNormal, texCoords[0]);
 	}
 	
 	return result;
