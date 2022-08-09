@@ -205,7 +205,7 @@ void QuickSort(void* arrayPntr, u64 numElements, u64 elementSize, void* workingS
 	if (numElements <= 1) { return; } //nothing to sort
 	u8* bytePntr = (u8*)arrayPntr;
 	
-	#if DEBUG
+	#if DEBUG_BUILD
 	//make sure the workingSpace is large enough by writing it to zero to make sure we don't have any memory access exceptions happen
 	MyMemSet(workingSpace, 0x00, elementSize*2);
 	#endif

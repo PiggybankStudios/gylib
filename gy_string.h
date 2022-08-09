@@ -13,6 +13,7 @@ Date:   09\24\2021
 #include "gy_assert.h"
 #include "gy_memory.h"
 #include "gy_unicode.h"
+#include "gy_hash.h"
 
 struct MyStr_t
 {
@@ -1338,6 +1339,15 @@ MyStr_t FormatBytes(u64 numBytes, MemArena_t* memArena)
 const char* FormatBytesNt(u64 numBytes, MemArena_t* memArena)
 {
 	return FormatBytes(numBytes, memArena).pntr;
+}
+
+u64 FnvHashStr(MyStr_t str)
+{
+	return FnvHashU64(str.pntr, str.length);
+}
+u64 FnvHashStr(const char* nullTermStr)
+{
+	return FnvHashU64(nullTermStr, MyStrLength64(nullTermStr));
 }
 
 // +--------------------------------------------------------------+
