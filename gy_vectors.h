@@ -610,6 +610,34 @@ v4i Vec4iMin(v4i left, v4i right)
 }
 
 // +==============================+
+// |             Abs              |
+// +==============================+
+v2i Vec2iAbs(v2i vector)
+{
+	return NewVec2i(AbsI32(vector.x), AbsI32(vector.y));
+}
+v2 Vec2Abs(v2 vector)
+{
+	return NewVec2(AbsR32(vector.x), AbsR32(vector.y));
+}
+v3i Vec3iAbs(v3i vector)
+{
+	return NewVec3i(AbsI32(vector.x), AbsI32(vector.y), AbsI32(vector.z));
+}
+v3 Vec3Abs(v3 vector)
+{
+	return NewVec3(AbsR32(vector.x), AbsR32(vector.y), AbsR32(vector.z));
+}
+v4i Vec4iAbs(v4i vector)
+{
+	return NewVec4i(AbsI32(vector.x), AbsI32(vector.y), AbsI32(vector.z), AbsI32(vector.w));
+}
+v4 Vec4Abs(v4 vector)
+{
+	return NewVec4(AbsR32(vector.x), AbsR32(vector.y), AbsR32(vector.z), AbsR32(vector.w));
+}
+
+// +==============================+
 // |             Fill             |
 // +==============================+
 v2 Vec2Fill(r32 value)
@@ -1553,6 +1581,12 @@ v3 Vec3Min(v3 left, v3 right)
 v3i Vec3iMin(v3i left, v3i right)
 v4 Vec4Min(v4 left, v4 right)
 v4i Vec4iMin(v4i left, v4i right)
+v2i Vec2iAbs(v2i vector)
+v2 Vec2Abs(v2 vector)
+v3i Vec3iAbs(v3i vector)
+v3 Vec3Abs(v3 vector)
+v4i Vec4iAbs(v4i vector)
+v4 Vec4Abs(v4 vector)
 v2 Vec2Fill(r32 value)
 v2i Vec2iFill(i32 value)
 v3 Vec3Fill(r32 value)
