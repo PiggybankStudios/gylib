@@ -352,6 +352,34 @@ mat4 Mat4Translate2(r32 x, r32 y)
 	);
 }
 
+mat4 Mat4TranslateX(r32 x)
+{
+	return NewMat4( 
+		1.0f, 0.0f, 0.0f, x,
+		0.0f, 1.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 1.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 1.0f
+	);
+}
+mat4 Mat4TranslateY(r32 y)
+{
+	return NewMat4( 
+		1.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 1.0f, 0.0f, y,
+		0.0f, 0.0f, 1.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 1.0f
+	);
+}
+mat4 Mat4TranslateZ(r32 z)
+{
+	return NewMat4( 
+		1.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 1.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 1.0f, z,
+		0.0f, 0.0f, 0.0f, 1.0f
+	);
+}
+
 mat4 Mat4ScaleX(r32 scale)
 {
 	return NewMat4(
@@ -599,6 +627,9 @@ v4 Mat4MultiplyVec4(mat4 matrix, v4 vector)
 #define Mat4Transform(matrix, transformation)
 mat4 Mat4Translate3(r32 x, r32 y, r32 z)
 mat4 Mat4Translate2(r32 x, r32 y)
+mat4 Mat4TranslateX(r32 x)
+mat4 Mat4TranslateY(r32 y)
+mat4 Mat4TranslateZ(r32 z)
 mat4 Mat4ScaleX(r32 scale)
 mat4 Mat4ScaleY(r32 scale)
 mat4 Mat4ScaleZ(r32 scale)

@@ -233,6 +233,30 @@ struct Dodecahedron_t
 };
 typedef Dodecahedron_t Dodec_t;
 
+//Hexagon radius and sideLength are equal
+//    4 +-----+ 5
+//     /       \
+//    /         \
+// 3 +     --R---+ 0
+//    \         /
+//     \   R   /
+//    2 +-----+ 1
+#define HEXAGON_NUM_VERTICES        6
+#define HEXAGON_NUM_EDGES           6
+#define HEXAGON_INNER_ANGLE_DEGREES 60 //degress
+#define HEXAGON_INNER_ANGLE32       ToRadians32(HEXAGON_INNER_ANGLE_DEGREES)
+#define HEXAGON_INNER_ANGLE64       ToRadians64(HEXAGON_INNER_ANGLE_DEGREES)
+struct Hexagon_t
+{
+	v2 center;
+	union
+	{
+		r32 radius;
+		r32 sideLength;
+	};
+	r32 rotation;
+};
+
 // +--------------------------------------------------------------+
 // |                        New Functions                         |
 // +--------------------------------------------------------------+
@@ -460,9 +484,17 @@ Dodec_t NewDodec(v3 center, r32 sideLength, quat rotation)
 	result.rotation = rotation;
 	return result;
 }
+Hexagon_t NewHexagon(v2 center, r32 radiusOrSideLength, r32 rotation = 0.0f)
+{
+	Hexagon_t result;
+	result.center = center;
+	result.radius = radiusOrSideLength;
+	result.rotation = rotation;
+	return result;
+}
 
 // +--------------------------------------------------------------+
-// |               Dodecahedron and Hexagon Helpers               |
+// |              Pentagon and Dodecahedron Helpers               |
 // +--------------------------------------------------------------+
 // https://en.wikipedia.org/wiki/Pentagon
 r32 PentagonGetHeight(r32 sideLength)
@@ -600,6 +632,18 @@ u8 GetDiceValueForDodecFace(u64 faceIndex)
 		case 11: return 12;
 		default: Assert(false); return 0;
 	}
+}
+
+// +--------------------------------------------------------------+
+// |                       Hexagon Helpers                        |
+// +--------------------------------------------------------------+
+v2 GetHexagonVertex(Hexagon_t hexagon, u64 index)
+{
+	v2 result = Vec2_Zero;
+	r32 vertexDirection = hexagon.rotation + ToRadians32(HEXAGON_INNER_ANGLE_DEGREES * (r32)(index % HEXAGON_NUM_VERTICES));
+	result = Vec2FromAngle(vertexDirection, hexagon.radius);
+	result += hexagon.center;
+	return result;
 }
 
 // +--------------------------------------------------------------+
@@ -963,6 +1007,22 @@ PrimitiveIndexedVerts_t GenerateVertsForDodecohedron(Dodec_t dodec, MemArena_t* 
 // +--------------------------------------------------------------+
 /*
 @Defines
+PENTAGON_NUM_EDGES
+PENTAGON_NUM_VERTICES
+PENTAGON_ANGLE_STEP32
+PENTAGON_ANGLE_STEP64
+PENTAGON_INTERNAL_ANGLE32
+PENTAGON_INTERNAL_ANGLE64
+DODECAHEDRON_NUM_FACES
+DODECAHEDRON_NUM_VERTICES
+DODECAHEDRON_NUM_EDGES
+DODECAHEDRON_DIHEDRAL_ANGLE32
+DODECAHEDRON_DIHEDRAL_ANGLE64
+HEXAGON_NUM_VERTICES
+HEXAGON_NUM_EDGES
+HEXAGON_INNER_ANGLE_DEGREES
+HEXAGON_INNER_ANGLE32
+HEXAGON_INNER_ANGLE64
 @Types
 PrimitiveVert3D_t
 PrimitiveIndex3D_t
@@ -991,6 +1051,21 @@ Cylinder_t NewCylinder(v3 base, r32 height, r32 radius)
 Cone_t NewCone(v3 base, r32 height, r32 radius)
 Pyramid_t NewPyramid(v3 base, r32 height, v2 baseSize)
 Wedge_t NewWedge(v3 bottomLeft, v3 size)
+Pentagon_t NewPentagon(v2 center, r32 sideLength, r32 rotation = 0.0f)
+Dodec_t NewDodec(v3 center, r32 sideLength, quat rotation)
+Hexagon_t NewHexagon(v2 center, r32 radiusOrSideLength, r32 rotation = 0.0f)
+r32 PentagonGetHeight(r32 sideLength)
+r32 PentagonGetHeight(Pentagon_t pentagon)
+r32 PentagonGetRadius(r32 sideLength)
+r32 PentagonGetRadius(Pentagon_t pentagon)
+v2 PentagonGetVertex(Pentagon_t pentagon, u64 index)
+v2 PentagonGetEdgeCenter(Pentagon_t pentagon, u64 index)
+v2 PentagonGetDrawCenter(Pentagon_t pentagon)
+r32 DodecGetFaceRadius(Dodec_t dodec)
+r32 DodecGetVertexRadius(Dodec_t dodec)
+v3 DodecGetVertex(Dodec_t dodec, u64 index)
+u8 GetDiceValueForDodecFace(u64 faceIndex)
+v2 GetHexagonVertex(Hexagon_t hexagon, u64 index)
 void FreePrimitiveIndexedVerts(PrimitiveIndexedVerts_t* indexedVerts)
 void InvertPrimitiveVerts(PrimitiveIndexedVerts_t* indexedVerts)
 PrimitiveIndexedVerts_t GenerateVertsForBox(Box_t box, MemArena_t* memArena)
