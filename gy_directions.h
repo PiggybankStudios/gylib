@@ -1033,6 +1033,20 @@ char GetDir2Char(Dir2_t dir2)
 	}
 }
 
+Dir2_t GetCardinalDir2sFromDir2Ex(Dir2Ex_t diagonalDir)
+{
+	u8 result = 0x00;
+	if (IsFlagSet(diagonalDir, Dir2Ex_Right))       { result |= Dir2_Right;           }
+	if (IsFlagSet(diagonalDir, Dir2Ex_Down))        { result |= Dir2_Down;            }
+	if (IsFlagSet(diagonalDir, Dir2Ex_Left))        { result |= Dir2_Left;            }
+	if (IsFlagSet(diagonalDir, Dir2Ex_Up))          { result |= Dir2_Up;              }
+	if (IsFlagSet(diagonalDir, Dir2Ex_TopRight))    { result |= Dir2_Up|Dir2_Right;   }
+	if (IsFlagSet(diagonalDir, Dir2Ex_TopLeft))     { result |= Dir2_Up|Dir2_Left;    }
+	if (IsFlagSet(diagonalDir, Dir2Ex_BottomRight)) { result |= Dir2_Down|Dir2_Right; }
+	if (IsFlagSet(diagonalDir, Dir2Ex_BottomLeft))  { result |= Dir2_Down|Dir2_Left;  }
+	return (Dir2_t)result;
+}
+
 v2 RotateVec2NumTurnsClockwise(v2 vector, u64 numQuarterTurns)
 {
 	switch (numQuarterTurns % Dir2_Count)
@@ -1175,6 +1189,7 @@ r64 GetDir2AngleR64(Dir2_t dir2)
 r32 GetDir2ExAngleR32(Dir2Ex_t dir2ex)
 r64 GetDir2ExAngleR64(Dir2Ex_t dir2ex)
 char GetDir2Char(Dir2_t dir2)
+Dir2_t GetCardinalDir2sFromDir2Ex(Dir2Ex_t diagonalDir)
 v2 RotateVec2NumTurnsClockwise(v2 vector, u64 numQuarterTurns)
 v2i RotateVec2iNumTurnsClockwise(v2i vector, u64 numQuarterTurns)
 */

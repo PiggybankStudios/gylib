@@ -85,6 +85,8 @@ MyStr_t NewStr(const char* nullTermStr)
 
 #define MyStr_Empty NewStr((u64)0, (char*)nullptr)
 
+//TODO: Is our idea of an empty string somewhat flawed because I could have a 0 length string that is still allocated?? Like when I go to deallocate a string should I check if it's pntr is nullptr or if it's length is 0??
+
 //A "Null Str" is one that has length but pntr is nullptr
 bool IsNullStr(MyStr_t target)
 {
@@ -1190,11 +1192,12 @@ MyStr_t StrReplace(MyStr_t str, const char* target, const char* replacement, Mem
 	return StrReplace(str, NewStr(target), NewStr(replacement), memArena);
 }
 
+//TODO: This should return true if target and substring are equal!
 bool FindSubstring(MyStr_t target, MyStr_t substring, u64* indexOut = nullptr, bool ignoreCase = false)
 {
 	NotNullStr(&target);
 	NotNullStr(&substring);
-	if (substring.length >= target.length) { return false; }
+	if (substring.length > target.length) { return false; }
 	
 	for (u64 cIndex = 0; cIndex + substring.length <= target.length; )
 	{
