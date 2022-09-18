@@ -394,16 +394,16 @@ bool TryParseBool(MyStr_t str, bool* valueOut, TryParseFailureReason_t* reasonOu
 	NotNullStr(&str);
 	TrimWhitespace(&str);
 	bool result = false;
-	if (StrCompareIgnoreCase(str, "true"))       { result = true;  }
-	else if (StrCompareIgnoreCase(str, "false")) { result = false; }
-	else if (StrCompareIgnoreCase(str, "t"))     { result = true;  }
-	else if (StrCompareIgnoreCase(str, "f"))     { result = false; }
-	else if (StrCompareIgnoreCase(str, "1"))     { result = true;  }
-	else if (StrCompareIgnoreCase(str, "0"))     { result = false; }
-	else if (StrCompareIgnoreCase(str, "yes"))   { result = true;  }
-	else if (StrCompareIgnoreCase(str, "no"))    { result = false; }
-	else if (StrCompareIgnoreCase(str, "y"))     { result = true;  }
-	else if (StrCompareIgnoreCase(str, "n"))     { result = false; }
+	if      (StrCompareIgnoreCase(str, "true")  == 0) { result = true;  }
+	else if (StrCompareIgnoreCase(str, "false") == 0) { result = false; }
+	else if (StrCompareIgnoreCase(str, "t")     == 0) { result = true;  }
+	else if (StrCompareIgnoreCase(str, "f")     == 0) { result = false; }
+	else if (StrCompareIgnoreCase(str, "1")     == 0) { result = true;  }
+	else if (StrCompareIgnoreCase(str, "0")     == 0) { result = false; }
+	else if (StrCompareIgnoreCase(str, "yes")   == 0) { result = true;  }
+	else if (StrCompareIgnoreCase(str, "no")    == 0) { result = false; }
+	else if (StrCompareIgnoreCase(str, "y")     == 0) { result = true;  }
+	else if (StrCompareIgnoreCase(str, "n")     == 0) { result = false; }
 	else
 	{
 		if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_UnknownString; }

@@ -116,6 +116,15 @@ bool IsStrNullTerminated(const MyStr_t* targetPntr)
 	if (targetPntr->pntr == nullptr) { return false; }
 	return (targetPntr->pntr[targetPntr->length] == '\0');
 }
+bool BufferIsNullTerminated(u64 bufferSize, const char* bufferPntr)
+{
+	AssertIf(bufferSize > 0, bufferPntr != nullptr);
+	for (u64 cIndex = 0; cIndex < bufferSize; cIndex++)
+	{
+		if (bufferPntr[cIndex] == '\0') { return true; }
+	}
+	return false;
+}
 
 // +--------------------------------------------------------------+
 // |                       Assertion Macros                       |
@@ -1617,6 +1626,7 @@ MyStr_t NewStr(u64 length, char* pntr)
 bool IsNullStr(MyStr_t target)
 bool IsEmptyStr(MyStr_t target)
 bool IsStrNullTerminated(MyStr_t target)
+bool BufferIsNullTerminated(u64 bufferSize, const char* bufferPntr)
 #define NotNullStr(strPntr)
 #define NotNullStr_(strPntr)
 #define NotEmptyStr(strPntr)

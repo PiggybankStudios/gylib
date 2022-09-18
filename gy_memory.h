@@ -345,6 +345,16 @@ void UpdateMemArenaFuncPntrs(MemArena_t* arena, AllocationFunction_f* allocFunc,
 // +--------------------------------------------------------------+
 // |                    Information Functions                     |
 // +--------------------------------------------------------------+
+bool DoesMemArenaSupportFreeing(MemArena_t* arena)
+{
+	NotNull(arena);
+	switch (arena->type)
+	{
+		case MemArenaType_MarkedStack: return false;
+		default: return true;
+	}
+}
+
 bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 {
 	NotNull(arena);
@@ -1706,6 +1716,7 @@ void InitMemArena_PagedHeapArena(MemArena_t* arena, u64 pageSize, MemArena_t* so
 void InitMemArena_MarkedStack(MemArena_t* arena, u64 size, void* memoryPntr, u64 maxNumMarks, AllocAlignment_t alignment = AllocAlignment_None)
 void InitMemArena_Buffer(MemArena_t* arena, u64 bufferSize, void* bufferPntr, bool singleAlloc = false, AllocAlignment_t alignment = AllocAlignment_None)
 #define CreateStackBufferArena(arenaName, bufferName, size)
+bool DoesMemArenaSupportFreeing(MemArena_t* arena)
 bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 u64 GetNumMemMarks(MemArena_t* arena)
 void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride = AllocAlignment_None)
