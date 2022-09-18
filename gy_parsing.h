@@ -394,16 +394,24 @@ bool TryParseBool(MyStr_t str, bool* valueOut, TryParseFailureReason_t* reasonOu
 	NotNullStr(&str);
 	TrimWhitespace(&str);
 	bool result = false;
-	if      (StrCompareIgnoreCase(str, "true")  == 0) { result = true;  }
-	else if (StrCompareIgnoreCase(str, "false") == 0) { result = false; }
-	else if (StrCompareIgnoreCase(str, "t")     == 0) { result = true;  }
-	else if (StrCompareIgnoreCase(str, "f")     == 0) { result = false; }
-	else if (StrCompareIgnoreCase(str, "1")     == 0) { result = true;  }
-	else if (StrCompareIgnoreCase(str, "0")     == 0) { result = false; }
-	else if (StrCompareIgnoreCase(str, "yes")   == 0) { result = true;  }
-	else if (StrCompareIgnoreCase(str, "no")    == 0) { result = false; }
-	else if (StrCompareIgnoreCase(str, "y")     == 0) { result = true;  }
-	else if (StrCompareIgnoreCase(str, "n")     == 0) { result = false; }
+	if      (StrCompareIgnoreCase(str, "true")     == 0) { result = true;  }
+	else if (StrCompareIgnoreCase(str, "false")    == 0) { result = false; }
+	else if (StrCompareIgnoreCase(str, "t")        == 0) { result = true;  }
+	else if (StrCompareIgnoreCase(str, "f")        == 0) { result = false; }
+	else if (StrCompareIgnoreCase(str, "1")        == 0) { result = true;  }
+	else if (StrCompareIgnoreCase(str, "0")        == 0) { result = false; }
+	else if (StrCompareIgnoreCase(str, "yes")      == 0) { result = true;  }
+	else if (StrCompareIgnoreCase(str, "no")       == 0) { result = false; }
+	else if (StrCompareIgnoreCase(str, "y")        == 0) { result = true;  }
+	else if (StrCompareIgnoreCase(str, "n")        == 0) { result = false; }
+	else if (StrCompareIgnoreCase(str, "on")       == 0) { result = true;  }
+	else if (StrCompareIgnoreCase(str, "off")      == 0) { result = false; }
+	else if (StrCompareIgnoreCase(str, "enable")   == 0) { result = true;  }
+	else if (StrCompareIgnoreCase(str, "disable")  == 0) { result = false; }
+	else if (StrCompareIgnoreCase(str, "enabled")  == 0) { result = true;  }
+	else if (StrCompareIgnoreCase(str, "disabled") == 0) { result = false; }
+	else if (StrCompareIgnoreCase(str, "high")     == 0) { result = true;  }
+	else if (StrCompareIgnoreCase(str, "low")      == 0) { result = false; }
 	else
 	{
 		if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_UnknownString; }
