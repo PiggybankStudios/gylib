@@ -971,7 +971,7 @@ u64 UnescapeQuotedStringInPlace(MyStr_t* target, bool removeQuotes = true, bool 
 			writeIndex++;
 		}
 	}
-	Assert(numBytesSmaller < target->length);
+	Assert(numBytesSmaller <= target->length);
 	Assert(numBytesSmaller == target->length - writeIndex);
 	target->length -= numBytesSmaller;
 	if (numBytesSmaller > 0) 
@@ -982,6 +982,7 @@ u64 UnescapeQuotedStringInPlace(MyStr_t* target, bool removeQuotes = true, bool 
 	}
 	return numBytesSmaller;
 }
+//TODO: This is not quite right because the result length won't match the allocated size and deallocating that string with FreeString might Assert
 MyStr_t UnescapeQuotedStringInArena(MemArena_t* memArena, MyStr_t target, bool removeQuotes = true, bool allowNewLineEscapes = true, bool allowOtherEscapeCodes = false)
 {
 	NotNull(memArena);
@@ -989,6 +990,122 @@ MyStr_t UnescapeQuotedStringInArena(MemArena_t* memArena, MyStr_t target, bool r
 	u64 numBytesSmaller = UnescapeQuotedStringInPlace(&result, removeQuotes, allowNewLineEscapes, allowOtherEscapeCodes);
 	UNUSED(numBytesSmaller);
 	return result;
+}
+
+//NOTE: Unlike the other split string functions, the string pieces are each allocated from the memArena rather than pointing at target (because we need to unescape them without modifying the original)
+MyStr_t* SplitStringBySpacesWithQuotesAndUnescape(MemArena_t* memArena, MyStr_t target, u64* numPiecesOut)
+{
+	NotNullStr(&target);
+	bool insideQuotes = false;
+	bool prevCharWasBackslash = false;
+	u64 pieceStart = 0;
+	
+	u64 numPieces = 0;
+	for (u64 bIndex = 0; bIndex <= target.length; )
+	{
+		u32 codepoint = 0;
+		u8 codepointSize = 0;
+		if (bIndex < target.length)
+		{
+			codepointSize = GetCodepointForUtf8Str(target, bIndex, &codepoint);
+			if (codepointSize == 0)
+			{
+				codepoint = CharToU32(target.pntr[bIndex]);
+				codepointSize = 1;
+			}
+		}
+		else
+		{
+			codepoint = '\0';
+			codepointSize = 1;
+		}
+		
+		bool thisCharIsUnescapedBackslash = false;
+		if (codepoint == '\"' && !prevCharWasBackslash)
+		{
+			insideQuotes = !insideQuotes;
+		}
+		else if (codepoint == '\\' && !prevCharWasBackslash)
+		{
+			thisCharIsUnescapedBackslash = insideQuotes;
+		}
+		else if ((codepoint == ' ' && !insideQuotes) || codepoint == '\0')
+		{
+			numPieces++;
+			pieceStart = bIndex + codepointSize;
+		}
+		
+		bIndex += codepointSize;
+		prevCharWasBackslash = thisCharIsUnescapedBackslash;
+	}
+	Assert(numPieces >= 1);
+	
+	if (numPiecesOut != nullptr) { *numPiecesOut = numPieces; }
+	if (memArena == nullptr) { return nullptr; }
+	MyStr_t* pieces = AllocArray(memArena, MyStr_t, numPieces);
+	NotNull(pieces);
+	
+	insideQuotes = false;
+	prevCharWasBackslash = false;
+	pieceStart = 0;
+	u64 pieceIndex = 0;
+	for (u64 bIndex = 0; bIndex <= target.length; )
+	{
+		u32 codepoint = 0;
+		u8 codepointSize = 0;
+		if (bIndex < target.length)
+		{
+			codepointSize = GetCodepointForUtf8Str(target, bIndex, &codepoint);
+			if (codepointSize == 0)
+			{
+				codepoint = CharToU32(target.pntr[bIndex]);
+				codepointSize = 1;
+			}
+		}
+		else
+		{
+			codepoint = '\0';
+			codepointSize = 1;
+		}
+		
+		bool thisCharIsUnescapedBackslash = false;
+		if (codepoint == '\"' && !prevCharWasBackslash)
+		{
+			insideQuotes = !insideQuotes;
+		}
+		else if (codepoint == '\\' && !prevCharWasBackslash)
+		{
+			thisCharIsUnescapedBackslash = insideQuotes;
+		}
+		else if ((codepoint == ' ' && !insideQuotes) || codepoint == '\0')
+		{
+			MyStr_t escapedPiece = StrSubstring(&target, pieceStart, bIndex);
+			
+			MyStr_t newPiece = MyStr_Empty;
+			if (StrStartsWith(escapedPiece, "\""))
+			{
+				newPiece = UnescapeQuotedStringInArena(memArena, escapedPiece, true, true, true);
+				NotNullStr(&newPiece);
+			}
+			else
+			{
+				newPiece = AllocString(memArena, &escapedPiece);
+				NotNullStr(&newPiece);
+			}
+			
+			Assert(pieceIndex < numPieces);
+			pieces[pieceIndex] = newPiece;
+			pieceIndex++;
+			
+			pieceStart = bIndex + codepointSize;
+		}
+		
+		bIndex += codepointSize;
+		prevCharWasBackslash = thisCharIsUnescapedBackslash;
+	}
+	Assert(pieceIndex == numPieces);
+	
+	return pieces;
 }
 
 // if extensionOut is not passed then the extension will be included in the fileNameOut
