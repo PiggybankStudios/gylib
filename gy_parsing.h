@@ -474,6 +474,83 @@ bool TryParseV2(MyStr_t str, v2* valueOut, TryParseFailureReason_t* reasonOut = 
 	return true;
 }
 
+bool TryParseV3i(MyStr_t str, v3i* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
+{
+	NotNullStr(&str);
+	if (StrStartsWith(str, "(")) { str = StrSubstring(&str, 1); }
+	if (StrEndsWith(str, ")")) { str = StrSubstring(&str, 0, str.length-1); }
+	u64 commaIndex1 = 0;
+	bool strContainsComma1 = FindSubstring(str, ",", &commaIndex1);
+	if (!strContainsComma1)
+	{
+		if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_NotEnoughCommas; }
+		return false;
+	}
+	u64 commaIndex2 = 0;
+	bool strContainsComma2 = FindSubstring(str, ",", &commaIndex2, false, commaIndex1+1);
+	if (!strContainsComma2)
+	{
+		if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_NotEnoughCommas; }
+		return false;
+	}
+	MyStr_t xStr = StrSubstring(&str, 0, commaIndex1);
+	MyStr_t yStr = StrSubstring(&str, commaIndex1+1, commaIndex2);
+	MyStr_t zStr = StrSubstring(&str, commaIndex2+1);
+	v3i vector = Vec3i_Zero;
+	if (!TryParseI32(xStr, &vector.x, reasonOut))
+	{
+		return false;
+	}
+	if (!TryParseI32(yStr, &vector.y, reasonOut))
+	{
+		return false;
+	}
+	if (!TryParseI32(zStr, &vector.z, reasonOut))
+	{
+		return false;
+	}
+	if (valueOut != nullptr) { *valueOut = vector; }
+	return true;
+}
+bool TryParseV3(MyStr_t str, v3* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
+{
+	NotNullStr(&str);
+	if (StrStartsWith(str, "(")) { str = StrSubstring(&str, 1); }
+	if (StrEndsWith(str, ")")) { str = StrSubstring(&str, 0, str.length-1); }
+	u64 commaIndex1 = 0;
+	bool strContainsComma1 = FindSubstring(str, ",", &commaIndex1);
+	if (!strContainsComma1)
+	{
+		if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_NotEnoughCommas; }
+		return false;
+	}
+	u64 commaIndex2 = 0;
+	bool strContainsComma2 = FindSubstring(str, ",", &commaIndex2, false, commaIndex1+1);
+	if (!strContainsComma2)
+	{
+		if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_NotEnoughCommas; }
+		return false;
+	}
+	MyStr_t xStr = StrSubstring(&str, 0, commaIndex1);
+	MyStr_t yStr = StrSubstring(&str, commaIndex1+1, commaIndex2);
+	MyStr_t zStr = StrSubstring(&str, commaIndex2+1);
+	v3 vector = Vec3_Zero;
+	if (!TryParseR32(xStr, &vector.x, reasonOut))
+	{
+		return false;
+	}
+	if (!TryParseR32(yStr, &vector.y, reasonOut))
+	{
+		return false;
+	}
+	if (!TryParseR32(zStr, &vector.z, reasonOut))
+	{
+		return false;
+	}
+	if (valueOut != nullptr) { *valueOut = vector; }
+	return true;
+}
+
 bool TryParseReci(MyStr_t str, reci* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
 {
 	NotNullStr(&str);

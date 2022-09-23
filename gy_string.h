@@ -1319,13 +1319,13 @@ MyStr_t StrReplace(MyStr_t str, const char* target, const char* replacement, Mem
 }
 
 //TODO: This should return true if target and substring are equal!
-bool FindSubstring(MyStr_t target, MyStr_t substring, u64* indexOut = nullptr, bool ignoreCase = false)
+bool FindSubstring(MyStr_t target, MyStr_t substring, u64* indexOut = nullptr, bool ignoreCase = false, u64 startIndex = 0)
 {
 	NotNullStr(&target);
 	NotNullStr(&substring);
 	if (substring.length > target.length) { return false; }
 	
-	for (u64 cIndex = 0; cIndex + substring.length <= target.length; )
+	for (u64 cIndex = startIndex; cIndex + substring.length <= target.length; )
 	{
 		bool allMatched = true;
 		u64 cSubIndex = 0;
@@ -1368,17 +1368,17 @@ bool FindSubstring(MyStr_t target, MyStr_t substring, u64* indexOut = nullptr, b
 	
 	return false;
 }
-bool FindSubstring(MyStr_t target, const char* nullTermSubstring, u64* indexOut= nullptr, bool ignoreCase = false)
+bool FindSubstring(MyStr_t target, const char* nullTermSubstring, u64* indexOut= nullptr, bool ignoreCase = false, u64 startIndex = 0)
 {
-	return FindSubstring(target, NewStr(nullTermSubstring), indexOut, ignoreCase);
+	return FindSubstring(target, NewStr(nullTermSubstring), indexOut, ignoreCase, startIndex);
 }
-bool FindSubstring(const char* nullTermTarget, MyStr_t substring, u64* indexOut= nullptr, bool ignoreCase = false)
+bool FindSubstring(const char* nullTermTarget, MyStr_t substring, u64* indexOut= nullptr, bool ignoreCase = false, u64 startIndex = 0)
 {
-	return FindSubstring(NewStr(nullTermTarget), substring, indexOut, ignoreCase);
+	return FindSubstring(NewStr(nullTermTarget), substring, indexOut, ignoreCase, startIndex);
 }
-bool FindSubstring(const char* nullTermTarget, const char* nullTermSubstring, u64* indexOut= nullptr, bool ignoreCase = false)
+bool FindSubstring(const char* nullTermTarget, const char* nullTermSubstring, u64* indexOut= nullptr, bool ignoreCase = false, u64 startIndex = 0)
 {
-	return FindSubstring(NewStr(nullTermTarget), NewStr(nullTermSubstring), indexOut, ignoreCase);
+	return FindSubstring(NewStr(nullTermTarget), NewStr(nullTermSubstring), indexOut, ignoreCase, startIndex);
 }
 
 MyStr_t FindStrParensPart(MyStr_t target, char openParensChar = '(', char closeParensChar = ')')
@@ -1777,7 +1777,7 @@ MyStr_t GetDirectoryPart(MyStr_t filePath)
 const char* GetFileNamePartNt(const char* filePath)
 u64 StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ignoreCase = false)
 MyStr_t StrReplace(MyStr_t str, MyStr_t target, MyStr_t replacement, MemArena_t* memArena)
-bool FindSubstring(MyStr_t target, MyStr_t substring, u64* indexOut = nullptr, bool ignoreCase = false)
+bool FindSubstring(MyStr_t target, MyStr_t substring, u64* indexOut = nullptr, bool ignoreCase = false, u64 startIndex = 0)
 MyStr_t FindStrParensPart(MyStr_t target, char openParensChar = '[', char closeParensChar = ']')
 MyStr_t StringRepeat(MemArena_t* memArena, MyStr_t str, u64 numRepetitions)
 u8 GetCodepointForUtf8Str(MyStr_t str, u64 index, u32* codepointOut)

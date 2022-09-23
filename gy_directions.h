@@ -553,6 +553,49 @@ const char* GetDir3String(Dir3_t dir3)
 	};
 }
 
+const char* GetDir3SideString(Dir3_t dir3)
+{
+	switch ((u8)dir3) //cast to satiate compiler warning
+	{
+		case Dir3_None:     return "None";
+		case Dir3_Right:    return "Right";
+		case Dir3_Left:     return "Left";
+		case Dir3_Up:       return "Top";
+		case Dir3_Down:     return "Bottom";
+		case Dir3_Forward:  return "Front";
+		case Dir3_Backward: return "Back";
+		case (Dir3_Left     | Dir3_Right):    return "HorizontalX";
+		case (Dir3_Up       | Dir3_Down):     return "Vertical";
+		case (Dir3_Forward  | Dir3_Backward): return "HorizontalZ";
+		case (Dir3_Up       | Dir3_Left ):    return "TopLeft";
+		case (Dir3_Up       | Dir3_Right):    return "TopRight";
+		case (Dir3_Up       | Dir3_Forward):  return "TopFront";
+		case (Dir3_Up       | Dir3_Backward): return "TopBack";
+		case (Dir3_Down     | Dir3_Left ):    return "BottomLeft";
+		case (Dir3_Down     | Dir3_Right):    return "BottomRight";
+		case (Dir3_Down     | Dir3_Forward):  return "BottomFront";
+		case (Dir3_Down     | Dir3_Backward): return "BottomBack";
+		case (Dir3_Forward  | Dir3_Left ):    return "FrontLeft";
+		case (Dir3_Forward  | Dir3_Right):    return "FrontRight";
+		case (Dir3_Backward | Dir3_Left):     return "BackLeft";
+		case (Dir3_Backward | Dir3_Right):    return "BackRight";
+		case (Dir3_Down | Dir3_Left  | Dir3_Backward): return "BottomLeftBack";
+		case (Dir3_Down | Dir3_Right | Dir3_Backward): return "BottomRightBack";
+		case (Dir3_Down | Dir3_Right | Dir3_Forward):  return "BottomRightFront";
+		case (Dir3_Down | Dir3_Left  | Dir3_Forward):  return "BottomLeftFront";
+		case (Dir3_Up   | Dir3_Left  | Dir3_Backward): return "TopLeftBack";
+		case (Dir3_Up   | Dir3_Right | Dir3_Backward): return "TopRightBack";
+		case (Dir3_Up   | Dir3_Right | Dir3_Forward):  return "TopRightFront";
+		case (Dir3_Up   | Dir3_Left  | Dir3_Forward):  return "TopLeftFront";
+		//NOTE: This is onle 31/64 possible values but all other 3 and more bit combinations
+		//      don't really have a good name and they have at least 1 pair of opposite directions
+		//TODO: We could add Not[Dir] variants
+		//TODO: We could add Not[Hori/Vert] variants
+		case Dir3_All: return "All";
+		default: return "Unknown";
+	};
+}
+
 const char* GetDir3ExString(Dir3Ex_t dir3ex)
 {
 	switch ((u16)dir3ex) //cast to satiate compiler warning
@@ -1070,6 +1113,18 @@ v2i RotateVec2iNumTurnsClockwise(v2i vector, u64 numQuarterTurns)
 	}
 }
 
+v2 Get2DCornerVecByIndex(u64 cornerIndex)
+{
+	switch (cornerIndex % 4)
+	{
+		case 0: return NewVec2(0, 0);
+		case 1: return NewVec2(1, 0);
+		case 2: return NewVec2(1, 1);
+		case 3: return NewVec2(0, 1);
+		default: Assert(false); return Vec2_Zero;
+	}
+}
+
 #endif //  _GY_DIRECTIONS_H
 
 // +--------------------------------------------------------------+
@@ -1160,6 +1215,7 @@ u8 Dir3ExBitwiseCount(Dir3Ex_t dir3ex)
 const char* GetDir2String(Dir2_t dir2)
 const char* GetDir2ExString(Dir2Ex_t dir2ex)
 const char* GetDir3String(Dir3_t dir3)
+const char* GetDir3SideString(Dir3_t dir3)
 const char* GetDir3ExString(Dir3Ex_t dir3ex)
 u8 GetDir2Index(Dir2_t dir2)
 u8 GetDir2ExIndex(Dir2Ex_t dir2ex)
@@ -1192,4 +1248,5 @@ char GetDir2Char(Dir2_t dir2)
 Dir2_t GetCardinalDir2sFromDir2Ex(Dir2Ex_t diagonalDir)
 v2 RotateVec2NumTurnsClockwise(v2 vector, u64 numQuarterTurns)
 v2i RotateVec2iNumTurnsClockwise(v2i vector, u64 numQuarterTurns)
+v2 Get2DCornerVecByIndex(u64 cornerIndex)
 */

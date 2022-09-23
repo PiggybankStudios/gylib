@@ -217,7 +217,7 @@ struct RayVsBoxResult_t
 	Dir3_t enterSide;
 	Dir3_t exitSide;
 };
-bool RayVsBox(Ray3_t ray, box boundingBox, RayVsBoxResult_t* result, bool giveNegativeTimes = false)
+bool RayVsBox(Ray3_t ray, box boundingBox, RayVsBoxResult_t* result, bool giveNegativeTimes = false, bool inclusive = true)
 {
 	NotNull(result);
 	ClearPointer(result);
@@ -240,9 +240,9 @@ bool RayVsBox(Ray3_t ray, box boundingBox, RayVsBoxResult_t* result, bool giveNe
 	}
 	
 	//don't start inside on an axis and not moving on that axis. Will never intersect
-	if (ray.direction.x == 0 && (ray.origin.x < boundingBox.x || ray.origin.x >= boundingBox.x + boundingBox.width))  { return false; }
-	if (ray.direction.y == 0 && (ray.origin.y < boundingBox.y || ray.origin.y >= boundingBox.y + boundingBox.height)) { return false; }
-	if (ray.direction.z == 0 && (ray.origin.z < boundingBox.z || ray.origin.z >= boundingBox.z + boundingBox.depth))  { return false; }
+	if (ray.direction.x == 0 && (ray.origin.x < boundingBox.x || ray.origin.x > boundingBox.x + boundingBox.width  || (!inclusive && ray.origin.x == boundingBox.x + boundingBox.width)))  { return false; }
+	if (ray.direction.y == 0 && (ray.origin.y < boundingBox.y || ray.origin.y > boundingBox.y + boundingBox.height || (!inclusive && ray.origin.y == boundingBox.y + boundingBox.height))) { return false; }
+	if (ray.direction.z == 0 && (ray.origin.z < boundingBox.z || ray.origin.z > boundingBox.z + boundingBox.depth  || (!inclusive && ray.origin.z == boundingBox.z + boundingBox.depth)))  { return false; }
 	
 	v3 positiveRayDir = NewVec3(AbsR32(ray.direction.x), AbsR32(ray.direction.y), AbsR32(ray.direction.z));
 	r32 startX = (ray.direction.x >= 0) ? (boundingBox.x - ray.origin.x)                        : ((boundingBox.x + boundingBox.width) - ray.origin.x);
