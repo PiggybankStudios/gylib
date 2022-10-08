@@ -1056,6 +1056,119 @@ i64 RoundUpToI64(i64 value, i64 chunkSize)
 	return (isNegative ? -1 : 1) * result;
 }
 
+// +==============================+
+// | Normalized Float Operations  |
+// +==============================+
+r32 SubAnimAmountR32(r32 animAmount, r32 subPieceStart, r32 subPieceEnd)
+{
+	return ClampR32((animAmount - subPieceStart) / (subPieceEnd - subPieceStart), 0.0f, 1.0f);
+}
+r64 SubAnimAmountR64(r64 animAmount, r64 subPieceStart, r64 subPieceEnd)
+{
+	return ClampR64((animAmount - subPieceStart) / (subPieceEnd - subPieceStart), 0.0, 1.0);
+}
+
+r32 SubAnimAmountTwoWayR32(r32 animAmount, r32 subPieceStart, r32 subPieceEnd)
+{
+	r32 subAnimAmount = ClampR32((animAmount - subPieceStart) / (subPieceEnd - subPieceStart), 0.0f, 1.0f);
+	if (subAnimAmount < 0.5f) { return subAnimAmount*2; }
+	else { return (1.0f-subAnimAmount)*2; }
+}
+r64 SubAnimAmountTwoWayR64(r64 animAmount, r64 subPieceStart, r64 subPieceEnd)
+{
+	r64 subAnimAmount = ClampR64((animAmount - subPieceStart) / (subPieceEnd - subPieceStart), 0.0, 1.0);
+	if (subAnimAmount < 0.5) { return subAnimAmount*2; }
+	else { return (1.0-subAnimAmount)*2; }
+}
+
+// +==============================+
+// |   Angle Related Functions    |
+// +==============================+
+r32 AngleFixR32(r32 angle)
+{
+	if (IsInfiniteR32(angle)) { return angle; }
+	r32 result = angle;
+	if (result >= TwoPi32) { result = ModR32(result, TwoPi32); }
+	if (result < 0) { result = TwoPi32 - ModR32(-result, TwoPi32); }
+	return result;
+}
+r64 AngleFixR64(r64 angle)
+{
+	if (IsInfiniteR64(angle)) { return angle; }
+	r64 result = angle;
+	if (result >= TwoPi64) { result = ModR64(result, TwoPi64); }
+	if (result < 0) { result = TwoPi64 - ModR64(-result, TwoPi64); }
+	return result;
+}
+
+r32 AngleDiffR32(r32 left, r32 right)
+{
+	r32 fixedLeft = AngleFixR32(left);
+	r32 fixedRight = AngleFixR32(right);
+	if (fixedLeft - fixedRight > Pi32) { fixedLeft -= TwoPi32; }
+	if (fixedLeft - fixedRight < -Pi32) { fixedLeft += TwoPi32; }
+	return left - right;
+}
+r64 AngleDiffR64(r64 left, r64 right)
+{
+	r64 fixedLeft = AngleFixR64(left);
+	r64 fixedRight = AngleFixR64(right);
+	if (fixedLeft - fixedRight > Pi32) { fixedLeft -= TwoPi32; }
+	if (fixedLeft - fixedRight < -Pi32) { fixedLeft += TwoPi32; }
+	return left - right;
+}
+
+r32 AngleOppositeR32(r32 angle)
+{
+	return AngleFixR32(angle + TwoPi32);
+}
+r64 AngleOppositeR64(r64 angle)
+{
+	return AngleFixR64(angle + TwoPi64);
+}
+
+r32 AngleFlipVerticalR32(r32 angle, bool normalize = true)
+{
+	r32 result = TwoPi32 - angle;
+	if (normalize) { result = AngleFixR32(result); }
+	return result;
+}
+r32 AngleFlipHorizontalR32(r32 angle, bool normalize = true)
+{
+	r32 result = Pi32 - angle;
+	if (normalize) { result = AngleFixR32(result); }
+	return result;
+}
+r64 AngleFlipVerticalR64(r64 angle, bool normalize = true)
+{
+	r64 result = TwoPi64 - angle;
+	if (normalize) { result = AngleFixR64(result); }
+	return result;
+}
+r64 AngleFlipHorizontalR64(r64 angle, bool normalize = true)
+{
+	r64 result = Pi64 - angle;
+	if (normalize) { result = AngleFixR64(result); }
+	return result;
+}
+
+r32 AngleLerpR32(r32 angleFrom, r32 angleTo, r32 amount)
+{
+	r32 from = AngleFixR32(angleFrom);
+	r32 to = AngleFixR32(angleTo);
+	if (to - from > Pi32) { to -= TwoPi32; }
+	if (to - from < -Pi32) { to += TwoPi32; }
+	return from + (to - from) * amount;
+}
+r64 AngleLerpR64(r64 angleFrom, r64 angleTo, r64 amount)
+{
+	r64 from = AngleFixR64(angleFrom);
+	r64 to = AngleFixR64(angleTo);
+	if (to - from > Pi32) { to -= TwoPi32; }
+	if (to - from < -Pi32) { to += TwoPi32; }
+	return from + (to - from) * amount;
+}
+
 // +--------------------------------------------------------------+
 // |                     Threading Intrinsics                     |
 // +--------------------------------------------------------------+
@@ -1204,6 +1317,22 @@ u32 RoundUpToU32(u32 value, u32 chunkSize)
 u64 RoundUpToU64(u64 value, u64 chunkSize)
 i32 RoundUpToI32(i32 value, i32 chunkSize)
 i64 RoundUpToI64(i64 value, i64 chunkSize)
+r32 SubAnimAmountR32(r32 animAmount, r32 subPieceStart, r32 subPieceEnd)
+r64 SubAnimAmountR64(r64 animAmount, r64 subPieceStart, r64 subPieceEnd)
+r32 SubAnimAmountTwoWayR32(r32 animAmount, r32 subPieceStart, r32 subPieceEnd)
+r64 SubAnimAmountTwoWayR64(r64 animAmount, r64 subPieceStart, r64 subPieceEnd)
+r32 AngleFixR32(r32 angle)
+r64 AngleFixR64(r64 angle)
+r32 AngleDiffR32(r32 left, r32 right)
+r64 AngleDiffR64(r64 left, r64 right)
+r32 AngleOppositeR32(r32 angle)
+r64 AngleOppositeR64(r64 angle)
+r32 AngleFlipVerticalR32(r32 angle, bool normalize = true)
+r32 AngleFlipHorizontalR32(r32 angle, bool normalize = true)
+r64 AngleFlipVerticalR64(r64 angle, bool normalize = true)
+r64 AngleFlipHorizontalR64(r64 angle, bool normalize = true)
+r32 AngleLerpR32(r32 angleFrom, r32 angleTo, r32 amount)
+r64 AngleLerpR64(r64 angleFrom, r64 angleTo, r64 amount)
 #define ThreadingWriteBarrier()
 #define ThreadingReadBarrier()
 #define ThreadSafeIncrement(variablePntr)

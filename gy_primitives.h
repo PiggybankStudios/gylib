@@ -690,7 +690,7 @@ void InvertPrimitiveVerts(PrimitiveIndexedVerts_t* indexedVerts)
 
 //NOTE: Passing nullptr for memArena in these functions will fill out the result struct with numVertices, numIndices, and numFaces but nothing else
 
-//Face Indices: top=0 right=1 front=2 left=3 back=4 bottom=5
+//Face Indices: top=0 right=1 front=2 left=3 back=4 bottom=5 (top face upward is forward, bottom face upward is backward, clockwise faces)
 PrimitiveIndexedVerts_t GenerateVertsForBox(Box_t boundingBox, MemArena_t* memArena)
 {
 	PrimitiveIndexedVerts_t result = {};
@@ -723,53 +723,53 @@ PrimitiveIndexedVerts_t GenerateVertsForBox(Box_t boundingBox, MemArena_t* memAr
 	result.vertices[trfIndex].position = NewVec3(boundingBox.x + boundingBox.width, boundingBox.y + boundingBox.height, boundingBox.z + boundingBox.depth);
 	
 	u64 iIndex = 0;
-	//top face (+y)
-	result.indices[iIndex++] = NewPrimitiveIndex3D(tlbIndex, 0, Vec3_Up,      NewVec2(0, 0));
-	result.indices[iIndex++] = NewPrimitiveIndex3D(trbIndex, 0, Vec3_Up,      NewVec2(1, 0));
-	result.indices[iIndex++] = NewPrimitiveIndex3D(tlfIndex, 0, Vec3_Up,      NewVec2(0, 1));
-	result.indices[iIndex++] = NewPrimitiveIndex3D(trfIndex, 0, Vec3_Up,      NewVec2(1, 1));
-	result.indices[iIndex++] = NewPrimitiveIndex3D(tlfIndex, 0, Vec3_Up,      NewVec2(0, 1));
-	result.indices[iIndex++] = NewPrimitiveIndex3D(trbIndex, 0, Vec3_Up,      NewVec2(1, 0));
+	//top face (+y) forward is up
+	result.indices[iIndex++] = NewPrimitiveIndex3D(tlfIndex, 0, Vec3_Up,      NewVec2(0, 0));
+	result.indices[iIndex++] = NewPrimitiveIndex3D(trfIndex, 0, Vec3_Up,      NewVec2(1, 0));
+	result.indices[iIndex++] = NewPrimitiveIndex3D(tlbIndex, 0, Vec3_Up,      NewVec2(0, 1));
+	result.indices[iIndex++] = NewPrimitiveIndex3D(trbIndex, 0, Vec3_Up,      NewVec2(1, 1));
+	result.indices[iIndex++] = NewPrimitiveIndex3D(tlbIndex, 0, Vec3_Up,      NewVec2(0, 1));
+	result.indices[iIndex++] = NewPrimitiveIndex3D(trfIndex, 0, Vec3_Up,      NewVec2(1, 0));
 	
-	//right face (+x)
-	result.indices[iIndex++] = NewPrimitiveIndex3D(trfIndex, 1, Vec3_Right,   NewVec2(0, 0));
-	result.indices[iIndex++] = NewPrimitiveIndex3D(trbIndex, 1, Vec3_Right,   NewVec2(1, 0));
-	result.indices[iIndex++] = NewPrimitiveIndex3D(brfIndex, 1, Vec3_Right,   NewVec2(0, 1));
-	result.indices[iIndex++] = NewPrimitiveIndex3D(brbIndex, 1, Vec3_Right,   NewVec2(1, 1));
-	result.indices[iIndex++] = NewPrimitiveIndex3D(brfIndex, 1, Vec3_Right,   NewVec2(0, 1));
-	result.indices[iIndex++] = NewPrimitiveIndex3D(trbIndex, 1, Vec3_Right,   NewVec2(1, 0));
+	//right face (+x) up is up
+	result.indices[iIndex++] = NewPrimitiveIndex3D(trbIndex, 1, Vec3_Right,   NewVec2(0, 0));
+	result.indices[iIndex++] = NewPrimitiveIndex3D(trfIndex, 1, Vec3_Right,   NewVec2(1, 0));
+	result.indices[iIndex++] = NewPrimitiveIndex3D(brbIndex, 1, Vec3_Right,   NewVec2(0, 1));
+	result.indices[iIndex++] = NewPrimitiveIndex3D(brfIndex, 1, Vec3_Right,   NewVec2(1, 1));
+	result.indices[iIndex++] = NewPrimitiveIndex3D(brbIndex, 1, Vec3_Right,   NewVec2(0, 1));
+	result.indices[iIndex++] = NewPrimitiveIndex3D(trfIndex, 1, Vec3_Right,   NewVec2(1, 0));
 	
-	//front face (+z)
-	result.indices[iIndex++] = NewPrimitiveIndex3D(tlfIndex, 2, Vec3_Forward, NewVec2(0, 0));
-	result.indices[iIndex++] = NewPrimitiveIndex3D(trfIndex, 2, Vec3_Forward, NewVec2(1, 0));
-	result.indices[iIndex++] = NewPrimitiveIndex3D(blfIndex, 2, Vec3_Forward, NewVec2(0, 1));
-	result.indices[iIndex++] = NewPrimitiveIndex3D(brfIndex, 2, Vec3_Forward, NewVec2(1, 1));
-	result.indices[iIndex++] = NewPrimitiveIndex3D(blfIndex, 2, Vec3_Forward, NewVec2(0, 1));
-	result.indices[iIndex++] = NewPrimitiveIndex3D(trfIndex, 2, Vec3_Forward, NewVec2(1, 0));
+	//front face (+z) up is up
+	result.indices[iIndex++] = NewPrimitiveIndex3D(trfIndex, 2, Vec3_Forward, NewVec2(0, 0));
+	result.indices[iIndex++] = NewPrimitiveIndex3D(tlfIndex, 2, Vec3_Forward, NewVec2(1, 0));
+	result.indices[iIndex++] = NewPrimitiveIndex3D(brfIndex, 2, Vec3_Forward, NewVec2(0, 1));
+	result.indices[iIndex++] = NewPrimitiveIndex3D(blfIndex, 2, Vec3_Forward, NewVec2(1, 1));
+	result.indices[iIndex++] = NewPrimitiveIndex3D(brfIndex, 2, Vec3_Forward, NewVec2(0, 1));
+	result.indices[iIndex++] = NewPrimitiveIndex3D(tlfIndex, 2, Vec3_Forward, NewVec2(1, 0));
 	
-	//left face (-x)
-	result.indices[iIndex++] = NewPrimitiveIndex3D(tlbIndex, 3, Vec3_Left,    NewVec2(0, 0));
-	result.indices[iIndex++] = NewPrimitiveIndex3D(tlfIndex, 3, Vec3_Left,    NewVec2(1, 0));
-	result.indices[iIndex++] = NewPrimitiveIndex3D(blbIndex, 3, Vec3_Left,    NewVec2(0, 1));
-	result.indices[iIndex++] = NewPrimitiveIndex3D(blfIndex, 3, Vec3_Left,    NewVec2(1, 1));
-	result.indices[iIndex++] = NewPrimitiveIndex3D(blbIndex, 3, Vec3_Left,    NewVec2(0, 1));
-	result.indices[iIndex++] = NewPrimitiveIndex3D(tlfIndex, 3, Vec3_Left,    NewVec2(1, 0));
+	//left face (-x) up is up
+	result.indices[iIndex++] = NewPrimitiveIndex3D(tlfIndex, 3, Vec3_Left,    NewVec2(0, 0));
+	result.indices[iIndex++] = NewPrimitiveIndex3D(tlbIndex, 3, Vec3_Left,    NewVec2(1, 0));
+	result.indices[iIndex++] = NewPrimitiveIndex3D(blfIndex, 3, Vec3_Left,    NewVec2(0, 1));
+	result.indices[iIndex++] = NewPrimitiveIndex3D(blbIndex, 3, Vec3_Left,    NewVec2(1, 1));
+	result.indices[iIndex++] = NewPrimitiveIndex3D(blfIndex, 3, Vec3_Left,    NewVec2(0, 1));
+	result.indices[iIndex++] = NewPrimitiveIndex3D(tlbIndex, 3, Vec3_Left,    NewVec2(1, 0));
 	
-	//back face (-z)
-	result.indices[iIndex++] = NewPrimitiveIndex3D(trbIndex, 4, Vec3_Back,    NewVec2(0, 0));
-	result.indices[iIndex++] = NewPrimitiveIndex3D(tlbIndex, 4, Vec3_Back,    NewVec2(1, 0));
-	result.indices[iIndex++] = NewPrimitiveIndex3D(brbIndex, 4, Vec3_Back,    NewVec2(0, 1));
-	result.indices[iIndex++] = NewPrimitiveIndex3D(blbIndex, 4, Vec3_Back,    NewVec2(1, 1));
-	result.indices[iIndex++] = NewPrimitiveIndex3D(brbIndex, 4, Vec3_Back,    NewVec2(0, 1));
-	result.indices[iIndex++] = NewPrimitiveIndex3D(tlbIndex, 4, Vec3_Back,    NewVec2(1, 0));
+	//back face (-z) up is up
+	result.indices[iIndex++] = NewPrimitiveIndex3D(tlbIndex, 4, Vec3_Back,    NewVec2(0, 0));
+	result.indices[iIndex++] = NewPrimitiveIndex3D(trbIndex, 4, Vec3_Back,    NewVec2(1, 0));
+	result.indices[iIndex++] = NewPrimitiveIndex3D(blbIndex, 4, Vec3_Back,    NewVec2(0, 1));
+	result.indices[iIndex++] = NewPrimitiveIndex3D(brbIndex, 4, Vec3_Back,    NewVec2(1, 1));
+	result.indices[iIndex++] = NewPrimitiveIndex3D(blbIndex, 4, Vec3_Back,    NewVec2(0, 1));
+	result.indices[iIndex++] = NewPrimitiveIndex3D(trbIndex, 4, Vec3_Back,    NewVec2(1, 0));
 	
-	//bottom face (-y)
-	result.indices[iIndex++] = NewPrimitiveIndex3D(brbIndex, 5, Vec3_Down,    NewVec2(0, 0));
-	result.indices[iIndex++] = NewPrimitiveIndex3D(blbIndex, 5, Vec3_Down,    NewVec2(1, 0));
-	result.indices[iIndex++] = NewPrimitiveIndex3D(brfIndex, 5, Vec3_Down,    NewVec2(0, 1));
-	result.indices[iIndex++] = NewPrimitiveIndex3D(blfIndex, 5, Vec3_Down,    NewVec2(1, 1));
-	result.indices[iIndex++] = NewPrimitiveIndex3D(brfIndex, 5, Vec3_Down,    NewVec2(0, 1));
-	result.indices[iIndex++] = NewPrimitiveIndex3D(blbIndex, 5, Vec3_Down,    NewVec2(1, 0));
+	//bottom face (-y) backward is up
+	result.indices[iIndex++] = NewPrimitiveIndex3D(blbIndex, 5, Vec3_Down,    NewVec2(0, 0));
+	result.indices[iIndex++] = NewPrimitiveIndex3D(brbIndex, 5, Vec3_Down,    NewVec2(1, 0));
+	result.indices[iIndex++] = NewPrimitiveIndex3D(blfIndex, 5, Vec3_Down,    NewVec2(0, 1));
+	result.indices[iIndex++] = NewPrimitiveIndex3D(brfIndex, 5, Vec3_Down,    NewVec2(1, 1));
+	result.indices[iIndex++] = NewPrimitiveIndex3D(blfIndex, 5, Vec3_Down,    NewVec2(0, 1));
+	result.indices[iIndex++] = NewPrimitiveIndex3D(brbIndex, 5, Vec3_Down,    NewVec2(1, 0));
 	
 	Assert(iIndex == result.numIndices);
 	return result;

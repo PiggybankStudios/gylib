@@ -26,7 +26,7 @@ union Quaternion_t
 	struct
 	{
 		v3 axis;
-		r32 angle;
+		r32 angle; //this is actually cos(angle)/2
 	};
 	struct
 	{
@@ -106,8 +106,8 @@ quat NewQuat(r32 x, r32 y, r32 z, r32 w, bool normalize = true)
 // +--------------------------------------------------------------+
 r32 QuatGetAngle(const quat& quaternion)
 {
-	//TODO: Implement me better!
-	return quaternion.angle;
+	//TODO: Implement me better?
+	return AcosR32(2*quaternion.angle);
 }
 v3 QuatGetAxis(const quat& quaternion)
 {
@@ -117,12 +117,31 @@ v3 QuatGetAxis(const quat& quaternion)
 	else { return result / resultLength; }
 }
 
+quat QuatEquivalent(const quat& quaternion)
+{
+	// return NewQuat(quaternion.axis, AngleFixR32(QuatGetAngle(quaternion) + Pi32));
+	return NewQuat(-quaternion.vec4);
+}
+
 quat QuatLerp(const quat& start, const quat& end, r32 amount, bool linearly = true, bool normalizeResult = true)
 {
+	if (amount >= 1.0f) { return end; }
+	if (amount <= 0.0f) { return start; }
 	quat result;
 	if (linearly)
 	{
-		result = NewQuat(Vec4Lerp(start.vec4, end.vec4, amount));
+		// The "intuitive" way I did it, is a little less efficient, but I'll keep it around for reference. Both work
+		// quat oppositeEnd = QuatEquivalent(end);
+		// if (Vec4Length(end.vec4 - start.vec4) <= Vec4Length(oppositeEnd.vec4 - start.vec4))
+		
+		if (Vec4Dot(start.vec4, end.vec4) >= 0)
+		{
+			result = NewQuat(Vec4Lerp(start.vec4, end.vec4, amount));
+		}
+		else
+		{
+			result = NewQuat(Vec4Lerp(start.vec4, QuatEquivalent(end).vec4, amount));
+		}
 	}
 	else
 	{
