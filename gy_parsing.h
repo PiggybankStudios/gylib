@@ -421,6 +421,75 @@ bool TryParseBool(MyStr_t str, bool* valueOut, TryParseFailureReason_t* reasonOu
 	return true;
 }
 
+bool TryParseDir2(MyStr_t str, Dir2_t* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
+{
+	NotNullStr(&str);
+	TrimWhitespace(&str);
+	Dir2_t result = Dir2_None;
+	if      (StrCompareIgnoreCase(str, "none")        == 0) { result = Dir2_None;     }
+	else if (StrCompareIgnoreCase(str, "r")           == 0) { result = Dir2_Right;    }
+	else if (StrCompareIgnoreCase(str, "right")       == 0) { result = Dir2_Right;    }
+	else if (StrCompareIgnoreCase(str, "+x")          == 0) { result = Dir2_Right;    }
+	else if (StrCompareIgnoreCase(str, "l")           == 0) { result = Dir2_Left;     }
+	else if (StrCompareIgnoreCase(str, "left")        == 0) { result = Dir2_Left;     }
+	else if (StrCompareIgnoreCase(str, "-x")          == 0) { result = Dir2_Left;     }
+	else if (StrCompareIgnoreCase(str, "u")           == 0) { result = Dir2_Up;       }
+	else if (StrCompareIgnoreCase(str, "up")          == 0) { result = Dir2_Up;       }
+	else if (StrCompareIgnoreCase(str, "t")           == 0) { result = Dir2_Up;       }
+	else if (StrCompareIgnoreCase(str, "top")         == 0) { result = Dir2_Up;       }
+	else if (StrCompareIgnoreCase(str, "+y")          == 0) { result = Dir2_Up;       }
+	else if (StrCompareIgnoreCase(str, "d")           == 0) { result = Dir2_Down;     }
+	else if (StrCompareIgnoreCase(str, "down")        == 0) { result = Dir2_Down;     }
+	else if (StrCompareIgnoreCase(str, "b")           == 0) { result = Dir2_Down;     } //NOTE: "b" is "bottom" is Dir2 land but is "backward" in Dir3 land!
+	else if (StrCompareIgnoreCase(str, "bottom")      == 0) { result = Dir2_Down;     }
+	else if (StrCompareIgnoreCase(str, "-y")          == 0) { result = Dir2_Down;     }
+	else
+	{
+		if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_UnknownString; }
+		return false;
+	}
+	if (valueOut != nullptr) { *valueOut = result; }
+	return true;
+}
+
+bool TryParseDir3(MyStr_t str, Dir3_t* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
+{
+	NotNullStr(&str);
+	TrimWhitespace(&str);
+	Dir3_t result = Dir3_None;
+	if      (StrCompareIgnoreCase(str, "none")        == 0) { result = Dir3_None;     }
+	else if (StrCompareIgnoreCase(str, "r")           == 0) { result = Dir3_Right;    }
+	else if (StrCompareIgnoreCase(str, "right")       == 0) { result = Dir3_Right;    }
+	else if (StrCompareIgnoreCase(str, "+x")          == 0) { result = Dir3_Right;    }
+	else if (StrCompareIgnoreCase(str, "l")           == 0) { result = Dir3_Left;     }
+	else if (StrCompareIgnoreCase(str, "left")        == 0) { result = Dir3_Left;     }
+	else if (StrCompareIgnoreCase(str, "-x")          == 0) { result = Dir3_Left;     }
+	else if (StrCompareIgnoreCase(str, "u")           == 0) { result = Dir3_Up;       }
+	else if (StrCompareIgnoreCase(str, "up")          == 0) { result = Dir3_Up;       }
+	else if (StrCompareIgnoreCase(str, "t")           == 0) { result = Dir3_Up;       }
+	else if (StrCompareIgnoreCase(str, "top")         == 0) { result = Dir3_Up;       }
+	else if (StrCompareIgnoreCase(str, "+y")          == 0) { result = Dir3_Up;       }
+	else if (StrCompareIgnoreCase(str, "d")           == 0) { result = Dir3_Down;     }
+	else if (StrCompareIgnoreCase(str, "down")        == 0) { result = Dir3_Down;     }
+	else if (StrCompareIgnoreCase(str, "bottom")      == 0) { result = Dir3_Down;     } //NOTE: "bottom" and "backward" share the first same letter, this might cause some confusion if someone uses these single letter directions
+	else if (StrCompareIgnoreCase(str, "-y")          == 0) { result = Dir3_Down;     }
+	else if (StrCompareIgnoreCase(str, "f")           == 0) { result = Dir3_Forward;  }
+	else if (StrCompareIgnoreCase(str, "forward")     == 0) { result = Dir3_Forward;  }
+	else if (StrCompareIgnoreCase(str, "front")       == 0) { result = Dir3_Forward;  }
+	else if (StrCompareIgnoreCase(str, "+z")          == 0) { result = Dir3_Forward;  }
+	else if (StrCompareIgnoreCase(str, "b")           == 0) { result = Dir3_Backward; }
+	else if (StrCompareIgnoreCase(str, "backward")    == 0) { result = Dir3_Backward; }
+	else if (StrCompareIgnoreCase(str, "back")        == 0) { result = Dir3_Backward; }
+	else if (StrCompareIgnoreCase(str, "-z")          == 0) { result = Dir3_Backward; }
+	else
+	{
+		if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_UnknownString; }
+		return false;
+	}
+	if (valueOut != nullptr) { *valueOut = result; }
+	return true;
+}
+
 bool TryParseV2i(MyStr_t str, v2i* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
 {
 	NotNullStr(&str);
@@ -873,6 +942,8 @@ bool TryParseI8(MyStr_t str, i8* valueOut, TryParseFailureReason_t* reasonOut = 
 bool TryParseR64(MyStr_t str, r64* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowInfinity = false)
 bool TryParseR32(MyStr_t str, r32* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowSuffix = true, bool allowInfinity = false)
 bool TryParseBool(MyStr_t str, bool* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
+bool TryParseDir2(MyStr_t str, Dir2_t* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
+bool TryParseDir3(MyStr_t str, Dir3_t* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
 bool TryParseV2i(MyStr_t str, v2i* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
 bool TryParseV2(MyStr_t str, v2* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
 bool TryParseReci(MyStr_t str, reci* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
