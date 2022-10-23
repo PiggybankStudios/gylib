@@ -2273,7 +2273,18 @@ boxi BoxiExpandToVec3i(boxi boundingBox, v3i newPoint)
 	result.depth  = MaxI32(boundingBox.z + boundingBox.depth, newPoint.z) - result.z;
 	return result;
 }
-//TODO: Add BoxiBoth and BoxiOverlap
+boxi BoxiBoth(boxi boundingBox1, boxi boundingBox2)
+{
+	boxi result;
+	result.x = MinI32(boundingBox1.x, boundingBox2.x);
+	result.y = MinI32(boundingBox1.y, boundingBox2.y);
+	result.z = MinI32(boundingBox1.z, boundingBox2.z);
+	result.width = MaxI32(boundingBox1.x + boundingBox1.width, boundingBox2.x + boundingBox2.width) - result.x;
+	result.height = MaxI32(boundingBox1.y + boundingBox1.height, boundingBox2.y + boundingBox2.height) - result.y;
+	result.depth = MaxI32(boundingBox1.z + boundingBox1.depth, boundingBox2.z + boundingBox2.depth) - result.z;
+	return result;
+}
+//TODO: Add BoxiOverlap
 
 // +==============================+
 // |            Obb2D             |
@@ -2713,6 +2724,7 @@ reci NewReci(v2i topLeft, v2i size)
 box NewBox(v3 bottomLeft, v3 size)
 box NewBoxCentered(v3 center, v3 size)
 boxi NewBoxi(v3i bottomLeft, v3i size)
+boxi NewBoxiBetween(v3i point1, v3i point2)
 obb2 NewObb2D(v2 center, v2 size, r32 rotation)
 rec ToRec(reci rectangle)
 obb2 ToObb2D(rec rectangle)
@@ -2846,6 +2858,7 @@ boxi BoxiInvertY(boxi boundingBox)
 boxi BoxiInvertZ(boxi boundingBox)
 boxi BoxiUninvert(boxi boundingBox)
 boxi BoxiExpandToVec3i(boxi boundingBox, v3i newPoint)
+boxi BoxiBoth(boxi boundingBox1, boxi boundingBox2)
 obb2 Obb2DSquarify(obb2 rectangle, bool makeLarger = true)
 obb2 Obb2DInvert(obb2 rectangle)
 obb2 Obb2DInvertX(obb2 rectangle)

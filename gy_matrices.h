@@ -24,10 +24,10 @@ union Matrix4x4_t
 	r32 values[4][4];
 	struct
 	{
-		r32 col0[4];
-		r32 col1[4];
-		r32 col2[4];
-		r32 col3[4];
+		v4 col0;
+		v4 col1;
+		v4 col2;
+		v4 col3;
 	};
 	struct
 	{
@@ -42,6 +42,13 @@ union Matrix4x4_t
 		r32 row0col1, row1col1, row2col1, row3col1;
 		r32 row0col2, row1col2, row2col2, row3col2;
 		r32 row0col3, row1col3, row2col3, row3col3;
+	};
+	struct
+	{
+		r32 a, e, i, m;
+		r32 b, f, j, n;
+		r32 c, g, k, o;
+		r32 d, h, l, p;
 	};
 };
 
@@ -94,6 +101,16 @@ mat4 Mat4Diagonal(r32 r0c0, r32 r1c1, r32 r2c2, r32 r3c3, r32 other = 0.0f)
 // +--------------------------------------------------------------+
 // |                    Transpose and Inverse                     |
 // +--------------------------------------------------------------+
+r32 Mat4Determinant(mat4 matrix)
+{
+	r32 result = 0;
+	result += matrix.r0c0 * ((matrix.r1c1*matrix.r2c2*matrix.r3c3) + (matrix.r1c2*matrix.r2c3*matrix.r3c1) + (matrix.r1c3*matrix.r2c1*matrix.r3c2) - (matrix.r1c3*matrix.r2c2*matrix.r3c1) - (matrix.r1c2*matrix.r2c1*matrix.r3c3) - (matrix.r1c1*matrix.r2c3*matrix.r3c2));
+	result -= matrix.r1c0 * ((matrix.r0c1*matrix.r2c2*matrix.r3c3) + (matrix.r0c2*matrix.r2c3*matrix.r3c1) + (matrix.r0c3*matrix.r2c1*matrix.r3c2) - (matrix.r0c3*matrix.r2c2*matrix.r3c1) - (matrix.r0c2*matrix.r2c1*matrix.r3c3) - (matrix.r0c1*matrix.r2c3*matrix.r3c2));
+	result += matrix.r2c0 * ((matrix.r0c1*matrix.r1c2*matrix.r3c3) + (matrix.r0c2*matrix.r1c3*matrix.r3c1) + (matrix.r0c3*matrix.r1c1*matrix.r3c2) - (matrix.r0c3*matrix.r1c2*matrix.r3c1) - (matrix.r0c2*matrix.r1c1*matrix.r3c3) - (matrix.r0c1*matrix.r1c3*matrix.r3c2));
+	result -= matrix.r3c0 * ((matrix.r0c1*matrix.r1c2*matrix.r2c3) + (matrix.r0c2*matrix.r1c3*matrix.r2c1) + (matrix.r0c3*matrix.r1c1*matrix.r2c2) - (matrix.r0c3*matrix.r1c2*matrix.r2c1) - (matrix.r0c2*matrix.r1c1*matrix.r2c3) - (matrix.r0c1*matrix.r1c3*matrix.r2c2));
+	return result;
+}
+
 mat4 Mat4Transpose(mat4 matrix)
 {
 	mat4 result = {};
@@ -104,93 +121,69 @@ mat4 Mat4Transpose(mat4 matrix)
 	return result;
 }
 
-mat4 Mat4Inverse(mat4 matrix)
+#define Mat3Determinant(a, b, c, d, e, f, g, h, i) (((a) * ((e)*(i) - (h)*(f))) - ((b) * ((d)*(i) - (g)*(f))) + ((c) * ((d)*(h) - (g)*(e))))
+
+mat4 Mat4Cofactor(mat4 matrix)
 {
-	//TODO: Understand this code more fully and put it in my own form
-	//      https://graphics.stanford.edu/~mdfisher/Code/Engine/Matrix4.cpp.html
+	mat4 result;
 	
-	// Inversion by Cramer's rule. Code taken from an Intel publication
-	float temp[12]; //temp array for pairs
-	float source[16]; //array of transpose source matrix
+	result.r0c0 = Mat3Determinant(matrix.r1c1, matrix.r1c2, matrix.r1c3, matrix.r2c1, matrix.r2c2, matrix.r2c3, matrix.r3c1, matrix.r3c2, matrix.r3c3);
+	result.r0c1 = -Mat3Determinant(matrix.r1c0, matrix.r1c2, matrix.r1c3, matrix.r2c0, matrix.r2c2, matrix.r2c3, matrix.r3c0, matrix.r3c2, matrix.r3c3);
+	result.r0c2 = Mat3Determinant(matrix.r1c0, matrix.r1c1, matrix.r1c3, matrix.r2c0, matrix.r2c1, matrix.r2c3, matrix.r3c0, matrix.r3c1, matrix.r3c3);
+	result.r0c3 = -Mat3Determinant(matrix.r1c0, matrix.r1c1, matrix.r1c2, matrix.r2c0, matrix.r2c1, matrix.r2c2, matrix.r3c0, matrix.r3c1, matrix.r3c2);
 	
-	mat4 result = Mat4Transpose(matrix);
-	MyMemCopy(&source[0], &result.values[0][0], sizeof(r32) * 16);
+	result.r1c0 = -Mat3Determinant(matrix.r0c1, matrix.r0c2, matrix.r0c3, matrix.r2c1, matrix.r2c2, matrix.r2c3, matrix.r3c1, matrix.r3c2, matrix.r3c3);
+	result.r1c1 = Mat3Determinant(matrix.r0c0, matrix.r0c2, matrix.r0c3, matrix.r2c0, matrix.r2c2, matrix.r2c3, matrix.r3c0, matrix.r3c2, matrix.r3c3);
+	result.r1c2 = -Mat3Determinant(matrix.r0c0, matrix.r0c1, matrix.r0c3, matrix.r2c0, matrix.r2c1, matrix.r2c3, matrix.r3c0, matrix.r3c1, matrix.r3c3);
+	result.r1c3 = Mat3Determinant(matrix.r0c0, matrix.r0c1, matrix.r0c2, matrix.r2c0, matrix.r2c1, matrix.r2c2, matrix.r3c0, matrix.r3c1, matrix.r3c2);
 	
-	// Calculate pairs for first 8 elements (cofactors)
-	temp[0]  = source[10] * source[15];
-	temp[1]  = source[11] * source[14];
-	temp[2]  = source[9]  * source[15];
-	temp[3]  = source[11] * source[13];
-	temp[4]  = source[9]  * source[14];
-	temp[5]  = source[10] * source[13];
-	temp[6]  = source[8]  * source[15];
-	temp[7]  = source[11] * source[12];
-	temp[8]  = source[8]  * source[14];
-	temp[9]  = source[10] * source[12];
-	temp[10] = source[8]  * source[13];
-	temp[11] = source[9]  * source[12];
+	result.r2c0 = Mat3Determinant(matrix.r0c1, matrix.r0c2, matrix.r0c3, matrix.r1c1, matrix.r1c2, matrix.r1c3, matrix.r3c1, matrix.r3c2, matrix.r3c3);
+	result.r2c1 = -Mat3Determinant(matrix.r0c0, matrix.r0c2, matrix.r0c3, matrix.r1c0, matrix.r1c2, matrix.r1c3, matrix.r3c0, matrix.r3c2, matrix.r3c3);
+	result.r2c2 = Mat3Determinant(matrix.r0c0, matrix.r0c1, matrix.r0c3, matrix.r1c0, matrix.r1c1, matrix.r1c3, matrix.r3c0, matrix.r3c1, matrix.r3c3);
+	result.r2c3 = -Mat3Determinant(matrix.r0c0, matrix.r0c1, matrix.r0c2, matrix.r1c0, matrix.r1c1, matrix.r1c2, matrix.r3c0, matrix.r3c1, matrix.r3c2);
 	
-	// Calculate first 8 elements (cofactors)
-	result.r0c0  = (temp[0] * source[5])  +  (temp[3] * source[6])  +  (temp[4] * source[7]);
-	result.r0c0 -= (temp[1] * source[5])  +  (temp[2] * source[6])  +  (temp[5] * source[7]);
-	result.r0c1  = (temp[1] * source[4])  +  (temp[6] * source[6])  +  (temp[9] * source[7]);
-	result.r0c1 -= (temp[0] * source[4])  +  (temp[7] * source[6])  +  (temp[8] * source[7]);
-	result.r0c2  = (temp[2] * source[4])  +  (temp[7] * source[5])  +  (temp[10]* source[7]);
-	result.r0c2 -= (temp[3] * source[4])  +  (temp[6] * source[5])  +  (temp[11]* source[7]);
-	result.r0c3  = (temp[5] * source[4])  +  (temp[8] * source[5])  +  (temp[11]* source[6]);
-	result.r0c3 -= (temp[4] * source[4])  +  (temp[9] * source[5])  +  (temp[10]* source[6]);
-	result.r1c0  = (temp[1] * source[1])  +  (temp[2] * source[2])  +  (temp[5] * source[3]);
-	result.r1c0 -= (temp[0] * source[1])  +  (temp[3] * source[2])  +  (temp[4] * source[3]);
-	result.r1c1  = (temp[0] * source[0])  +  (temp[7] * source[2])  +  (temp[8] * source[3]);
-	result.r1c1 -= (temp[1] * source[0])  +  (temp[6] * source[2])  +  (temp[9] * source[3]);
-	result.r1c2  = (temp[3] * source[0])  +  (temp[6] * source[1])  +  (temp[11]* source[3]);
-	result.r1c2 -= (temp[2] * source[0])  +  (temp[7] * source[1])  +  (temp[10]* source[3]);
-	result.r1c3  = (temp[4] * source[0])  +  (temp[9] * source[1])  +  (temp[10]* source[2]);
-	result.r1c3 -= (temp[5] * source[0])  +  (temp[8] * source[1])  +  (temp[11]* source[2]);
+	result.r3c0 = -Mat3Determinant(matrix.r0c1, matrix.r0c2, matrix.r0c3, matrix.r1c1, matrix.r1c2, matrix.r1c3, matrix.r2c1, matrix.r2c2, matrix.r2c3);
+	result.r3c1 = Mat3Determinant(matrix.r0c0, matrix.r0c2, matrix.r0c3, matrix.r1c0, matrix.r1c2, matrix.r1c3, matrix.r2c0, matrix.r2c2, matrix.r2c3);
+	result.r3c2 = -Mat3Determinant(matrix.r0c0, matrix.r0c1, matrix.r0c3, matrix.r1c0, matrix.r1c1, matrix.r1c3, matrix.r2c0, matrix.r2c1, matrix.r2c3);
+	result.r3c3 = Mat3Determinant(matrix.r0c0, matrix.r0c1, matrix.r0c2, matrix.r1c0, matrix.r1c1, matrix.r1c2, matrix.r2c0, matrix.r2c1, matrix.r2c2);
 	
-	// Calculate pairs for second 8 elements (cofactors)
-	temp[0]  = source[2] * source[7];
-	temp[1]  = source[3] * source[6];
-	temp[2]  = source[1] * source[7];
-	temp[3]  = source[3] * source[5];
-	temp[4]  = source[1] * source[6];
-	temp[5]  = source[2] * source[5];
-	temp[6]  = source[0] * source[7];
-	temp[7]  = source[3] * source[4];
-	temp[8]  = source[0] * source[6];
-	temp[9]  = source[2] * source[4];
-	temp[10] = source[0] * source[5];
-	temp[11] = source[1] * source[4];
-	
-	// Calculate second 8 elements (cofactors)
-	result.r2c0  = (temp[0] * source[13])  +  (temp[3] * source[14])  +  (temp[4] * source[15]);
-	result.r2c0 -= (temp[1] * source[13])  +  (temp[2] * source[14])  +  (temp[5] * source[15]);
-	result.r2c1  = (temp[1] * source[12])  +  (temp[6] * source[14])  +  (temp[9] * source[15]);
-	result.r2c1 -= (temp[0] * source[12])  +  (temp[7] * source[14])  +  (temp[8] * source[15]);
-	result.r2c2  = (temp[2] * source[12])  +  (temp[7] * source[13])  +  (temp[10]* source[15]);
-	result.r2c2 -= (temp[3] * source[12])  +  (temp[6] * source[13])  +  (temp[11]* source[15]);
-	result.r2c3  = (temp[5] * source[12])  +  (temp[8] * source[13])  +  (temp[11]* source[14]);
-	result.r2c3 -= (temp[4] * source[12])  +  (temp[9] * source[13])  +  (temp[10]* source[14]);
-	result.r3c0  = (temp[2] * source[10])  +  (temp[5] * source[11])  +  (temp[1] * source[9]);
-	result.r3c0 -= (temp[4] * source[11])  +  (temp[0] * source[9])   +  (temp[3] * source[10]);
-	result.r3c1  = (temp[8] * source[11])  +  (temp[0] * source[8])   +  (temp[7] * source[10]);
-	result.r3c1 -= (temp[6] * source[10])  +  (temp[9] * source[11])  +  (temp[1] * source[8]);
-	result.r3c2  = (temp[6] * source[9])   +  (temp[11]* source[11])  +  (temp[3] * source[8]);
-	result.r3c2 -= (temp[10]* source[11])  +  (temp[2] * source[8])   +  (temp[7] * source[9]);
-	result.r3c3  = (temp[10]* source[10])  +  (temp[4] * source[8])   +  (temp[9] * source[9]);
-	result.r3c3 -= (temp[8] * source[9])   +  (temp[11]* source[10])  +  (temp[5] * source[8]);
-	
-	// Calculate determinant, invert it, and apply to all values in result
-	float determinantInverse = (source[0] * result.r0c0) + (source[1] * result.r0c1) + (source[2] * result.r0c2) + (source[3] * result.r0c3);
-	determinantInverse = 1.0f / determinantInverse;
-	for (u8 row = 0; row < 4; row++)
+	return result;
+}
+
+mat4 Mat4Adjoint(mat4 matrix)
+{
+	mat4 result = Mat4Cofactor(matrix);
+	result = Mat4Transpose(result);
+	return result;
+}
+
+mat4 Mat4Inverse(mat4 matrix, bool* successOut = nullptr)
+{
+	r32 determinant = Mat4Determinant(matrix);
+	if (determinant == 0)
 	{
-		for (u8 col = 0; col < 4; col++)
-		{
-			result.values[col][row] = result.values[col][row] * determinantInverse;
-		}
+		if (successOut != nullptr) { *successOut = false; }
+		return Mat4_Identity;
 	}
 	
+	mat4 result = Mat4Adjoint(matrix);
+	result.r0c0 = result.r0c0 / determinant;
+	result.r0c1 = result.r0c1 / determinant;
+	result.r0c2 = result.r0c2 / determinant;
+	result.r0c3 = result.r0c3 / determinant;
+	result.r1c0 = result.r1c0 / determinant;
+	result.r1c1 = result.r1c1 / determinant;
+	result.r1c2 = result.r1c2 / determinant;
+	result.r1c3 = result.r1c3 / determinant;
+	result.r2c0 = result.r2c0 / determinant;
+	result.r2c1 = result.r2c1 / determinant;
+	result.r2c2 = result.r2c2 / determinant;
+	result.r2c3 = result.r2c3 / determinant;
+	result.r3c0 = result.r3c0 / determinant;
+	result.r3c1 = result.r3c1 / determinant;
+	result.r3c2 = result.r3c2 / determinant;
+	result.r3c3 = result.r3c3 / determinant;
+	if (successOut != nullptr) { *successOut = true; }
 	return result;
 }
 
@@ -270,7 +263,7 @@ v3 Mat4MultiplyRightVec3(v3 vector, mat4 matrix, r32* wOut = nullptr)
 	
 	return  result;
 }
-v4 Mat4MultiplyVec4(mat4 matrix, v4 vector) //TODO: Check this function?
+v4 Mat4MultiplyVec4(mat4 matrix, v4 vector, bool divideByW = true)
 {
 	v4 result = NewVec4(
 		matrix.r0c0*vector.x + matrix.r0c1*vector.y + matrix.r0c2*vector.z + matrix.r0c3*vector.w,
@@ -278,9 +271,7 @@ v4 Mat4MultiplyVec4(mat4 matrix, v4 vector) //TODO: Check this function?
 		matrix.r2c0*vector.x + matrix.r2c1*vector.y + matrix.r2c2*vector.z + matrix.r2c3*vector.w,
 		matrix.r3c0*vector.x + matrix.r3c1*vector.y + matrix.r3c2*vector.z + matrix.r3c3*vector.w
 	);
-	//TODO: Do we need to do this for a Vec4?
-	// result = (1.0f / w) * result;
-	
+	if (divideByW) { result = (1.0f / result.w) * result; }
 	return  result;
 }
 
@@ -616,8 +607,12 @@ mat4
 mat4 NewMat4(r32 r0c0, r32 r0c1, r32 r0c2, r32 r0c3, r32 r1c0, r32 r1c1, r32 r1c2, r32 r1c3, r32 r2c0, r32 r2c1, r32 r2c2, r32 r2c3, r32 r3c0, r32 r3c1, r32 r3c2, r32 r3c3)
 mat4 Mat4Fill(r32 all)
 mat4 Mat4Diagonal(r32 r0c0, r32 r1c1, r32 r2c2, r32 r3c3, r32 other = 0.0f)
+r32 Mat4Determinant(mat4 matrix)
 mat4 Mat4Transpose(mat4 matrix)
-mat4 Mat4Inverse(mat4 matrix)
+#define Mat3Determinant(a, b, c, d, e, f, g, h, i)
+mat4 Mat4Cofactor(mat4 matrix)
+mat4 Mat4Adjoint(mat4 matrix)
+mat4 Mat4Inverse(mat4 matrix, bool* successOut = nullptr)
 mat4 Mat4Multiply(mat4 left, mat4 right)
 v2 Mat4MultiplyVec2(mat4 matrix, v2 vector, bool includeTranslation = true)
 v3 Mat4MultiplyVec3(mat4 matrix, v3 vector, bool includeTranslation = true, r32* wOut = nullptr)

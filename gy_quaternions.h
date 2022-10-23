@@ -96,6 +96,70 @@ quat NewQuat(r32 x, r32 y, r32 z, r32 w, bool normalize = true)
 	return result;
 }
 
+quat ToQuat(mat4 matrix, bool assertOnFailure = true)
+{
+	quat result;
+	
+	// The determinant of a purely rotation matrix should be 1
+	r32 determinant = Mat4Determinant(matrix);
+	if (!BasicallyEqualR32(determinant, 1.0f))
+	{
+		AssertIfMsg(assertOnFailure, false, "Determinant of matrix was not 1.0 when doing matrix to quaternion conversion!");
+		return NewQuat(0, 0, 0, 1, false); //identity
+	}
+	
+	r32 trace = matrix.r0c0 + matrix.r1c1 + matrix.r2c2;
+	if (trace > 0)
+	{
+		r32 S = SqrtR32(trace + 1.0f) * 2; // S=4*result.w 
+		result.w = 0.25f * S;
+		result.x = (matrix.r2c1 - matrix.r1c2) / S;
+		result.y = (matrix.r0c2 - matrix.r2c0) / S; 
+		result.z = (matrix.r1c0 - matrix.r0c1) / S; 
+	}
+	else if ((matrix.r0c0 > matrix.r1c1) && (matrix.r0c0 > matrix.r2c2))
+	{
+		r32 S = SqrtR32(1.0f + matrix.r0c0 - matrix.r1c1 - matrix.r2c2) * 2; // S=4*result.x 
+		result.w = (matrix.r2c1 - matrix.r1c2) / S;
+		result.x = 0.25f * S;
+		result.y = (matrix.r0c1 + matrix.r1c0) / S; 
+		result.z = (matrix.r0c2 + matrix.r2c0) / S; 
+	}
+	else if (matrix.r1c1 > matrix.r2c2)
+	{
+		r32 S = SqrtR32(1.0f + matrix.r1c1 - matrix.r0c0 - matrix.r2c2) * 2; // S=4*result.y
+		result.w = (matrix.r0c2 - matrix.r2c0) / S;
+		result.x = (matrix.r0c1 + matrix.r1c0) / S; 
+		result.y = 0.25f * S;
+		result.z = (matrix.r1c2 + matrix.r2c1) / S; 
+	}
+	else
+	{
+		r32 S = SqrtR32(1.0f + matrix.r2c2 - matrix.r0c0 - matrix.r1c1) * 2; // S=4*result.z
+		result.w = (matrix.r1c0 - matrix.r0c1) / S;
+		result.x = (matrix.r0c2 + matrix.r2c0) / S;
+		result.y = (matrix.r1c2 + matrix.r2c1) / S;
+		result.z = 0.25f * S;
+	}
+	
+	return result;
+}
+quat ToQuat(Basis_t basis, bool assertOnFailure = true)
+{
+	if (!IsBasisLinearIndependent(basis))
+	{
+		AssertIfMsg(assertOnFailure, false, "Basis vectors were not linearly independent when converting basis to quaternion!");
+		return NewQuat(0, 0, 0, 1, false); //identity
+	}
+	mat4 basisMat = NewMat4(
+		basis.right.x, basis.up.x, basis.forward.x, 0,
+		basis.right.y, basis.up.y, basis.forward.y, 0,
+		basis.right.z, basis.up.z, basis.forward.z, 0,
+		            0,          0,               0, 1
+	);
+	return ToQuat(basisMat, assertOnFailure);
+}
+
 // +--------------------------------------------------------------+
 // |                   Simple Value Definitions                   |
 // +--------------------------------------------------------------+
@@ -119,8 +183,19 @@ v3 QuatGetAxis(const quat& quaternion)
 
 quat QuatEquivalent(const quat& quaternion)
 {
-	// return NewQuat(quaternion.axis, AngleFixR32(QuatGetAngle(quaternion) + Pi32));
 	return NewQuat(-quaternion.vec4);
+}
+
+quat QuatOpposite(const quat& quaternion)
+{
+	r32 squareAll = Square(quaternion.x) + Square(quaternion.y) + Square(quaternion.z) + Square(quaternion.w);
+	quat result;
+	result.x = -quaternion.x / squareAll;
+	result.y = -quaternion.y / squareAll;
+	result.z = -quaternion.z / squareAll;
+	result.w = quaternion.w / squareAll;
+	result = QuatNormalize(result);
+	return result;
 }
 
 quat QuatLerp(const quat& start, const quat& end, r32 amount, bool linearly = true, bool normalizeResult = true)
@@ -167,10 +242,10 @@ quat QuatMult(const quat& left, const quat& right, bool normalize = true)
 mat4 Mat4Quaternion(quat q)
 {
 	return NewMat4(
-		1 - 2*q.y*q.y - 2*q.z*q.z,   2*q.x*q.y - 2*q.z*q.w,     2*q.x*q.z + 2*q.y*q.w,   0,
-		  2*q.x*q.y + 2*q.z*q.w,   1 - 2*q.x*q.x - 2*q.z*q.z,   2*q.y*q.z - 2*q.x*q.w,   0,
-		  2*q.x*q.z - 2*q.y*q.w,     2*q.y*q.z + 2*q.x*q.w,   1 - 2*q.x*q.x - 2*q.y*q.y, 0,
-		            0,                         0,                         0,             1
+		1 - 2*q.y*q.y - 2*q.z*q.z,     2*q.x*q.y - 2*q.z*q.w,     2*q.x*q.z + 2*q.y*q.w, 0,
+		    2*q.x*q.y + 2*q.z*q.w, 1 - 2*q.x*q.x - 2*q.z*q.z,     2*q.y*q.z - 2*q.x*q.w, 0,
+		    2*q.x*q.z - 2*q.y*q.w,     2*q.y*q.z + 2*q.x*q.w, 1 - 2*q.x*q.x - 2*q.y*q.y, 0,
+		                        0,                         0,                         0, 1
 	);
 }
 
@@ -247,6 +322,10 @@ v3 QuatGetAxisVec(quat quaternion, Axis_t axis)
 	v3 result = Mat4MultiplyVec3(quaternionMatrix, ToVec3(axis), false);
 	return result;
 }
+Basis_t QuatGetBasis(quat quaternion)
+{
+	return NewBasis(QuatGetRightVec(quaternion), QuatGetUpVec(quaternion), QuatGetForwardVec(quaternion), false);
+}
 
 #endif //  _GY_QUATERNIONS_H
 
@@ -262,11 +341,21 @@ quat
 @Functions
 quat QuatNormalize(const quat& quaternion)
 quat NewQuat(r32 x, r32 y, r32 z, r32 w, bool normalize = true)
-r32 QuatGetAngle(const quat& q)
-v3 QuatGetAxis(const quat& q)
+quat ToQuat(mat4 matrix, bool assertOnFailure = true)
+quat NewQuatFromBasis(Basis_t basis)
+r32 QuatGetAngle(const quat& quaternion)
+v3 QuatGetAxis(const quat& quaternion)
+quat QuatEquivalent(const quat& quaternion)
+quat QuatOpposite(const quat& quaternion)
 quat QuatLerp(const quat& start, const quat& end, r32 amount, bool linearly = true, bool normalizeResult = true)
 quat QuatMult(const quat& left, const quat& right, bool normalize = true)
 mat4 Mat4Quaternion(quat q)
 quat QuatLocalRot(quat q, v3 axis, r32 angle)
 quat QuatGlobalRot(quat q, v3 axis, r32 angle)
+quat NewQuatFromEuler(v3 eulerAngles, EulerOrder_t order = EulerOrder_XYZ)
+v3 QuatGetRightVec(quat quaternion)
+v3 QuatGetUpVec(quat quaternion)
+v3 QuatGetForwardVec(quat quaternion)
+v3 QuatGetAxisVec(quat quaternion, Axis_t axis)
+Basis_t QuatGetBasis(quat quaternion)
 */

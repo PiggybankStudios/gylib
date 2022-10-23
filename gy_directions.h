@@ -272,6 +272,25 @@ Dir3_t ToDir3(v3i vector)
 		else { return Dir3_Forward; }
 	}
 }
+bool IsToDir3Ambiguous(v3i vector)
+{
+	if (vector == Vec3i_Zero) { return true; }
+	i32 absX = AbsI32(vector.x);
+	i32 absY = AbsI32(vector.y);
+	i32 absZ = AbsI32(vector.z);
+	if (absX >= absY && absX >= absZ)
+	{
+		return (absX == absY || absX == absZ);
+	}
+	else if (absY >= absZ)
+	{
+		return (absY == absX || absY == absZ);
+	}
+	else
+	{
+		return (absZ == absX || absZ == absY);
+	}
+}
 
 Axis_t GetDir2Axis(Dir2_t dir2)
 {
@@ -1125,6 +1144,20 @@ v2 Get2DCornerVecByIndex(u64 cornerIndex)
 	}
 }
 
+i32 Vec3iAmountInDir(v3i vector, Dir3_t direction)
+{
+	switch (direction)
+	{
+		case Dir3_Right:    return vector.x;
+		case Dir3_Up:       return vector.y;
+		case Dir3_Forward:  return vector.z;
+		case Dir3_Left:     return -vector.x;
+		case Dir3_Down:     return -vector.y;
+		case Dir3_Backward: return -vector.z;
+		default: DebugAssert(false); return 0;
+	}
+}
+
 #endif //  _GY_DIRECTIONS_H
 
 // +--------------------------------------------------------------+
@@ -1198,6 +1231,7 @@ Axis_t
 @Functions
 Dir2_t ToDir2(v2 vector)
 Dir3_t ToDir3(v3 vector)
+bool IsToDir3Ambiguous(v3i vector)
 Axis_t GetDir2Axis(Dir2_t dir2)
 Axis_t GetDir3Axis(Dir3_t dir3)
 bool IsSingleDir2(Dir2_t dir2, bool allowNone = false)
@@ -1249,4 +1283,5 @@ Dir2_t GetCardinalDir2sFromDir2Ex(Dir2Ex_t diagonalDir)
 v2 RotateVec2NumTurnsClockwise(v2 vector, u64 numQuarterTurns)
 v2i RotateVec2iNumTurnsClockwise(v2i vector, u64 numQuarterTurns)
 v2 Get2DCornerVecByIndex(u64 cornerIndex)
+i32 Vec3iAmountInDir(v3i vector, Dir3_t direction)
 */

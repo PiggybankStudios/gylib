@@ -494,6 +494,11 @@ inline u32 CeilDivU32(u32 dividend, u32 divisor)
 	if ((dividend % divisor) == 0) { return dividend / divisor; }
 	else { return (dividend / divisor) + 1; }
 }
+inline u64 CeilDivU64(u64 dividend, u64 divisor)
+{
+	if ((dividend % divisor) == 0) { return dividend / divisor; }
+	else { return (dividend / divisor) + 1; }
+}
 
 // +==============================+
 // |             Sin              |
@@ -1235,6 +1240,7 @@ inline i32 CeilToI32(i32 value, i32 chunkSize)
 inline u32 CeilToU32(u32 value, u32 chunkSize)
 inline i32 CeilDivI32(i32 dividend, i32 divisor)
 inline u32 CeilDivU32(u32 dividend, u32 divisor)
+inline u64 CeilDivU64(u64 dividend, u64 divisor)
 inline r32 SinR32(r32 angle)
 inline r64 SinR64(r64 angle)
 inline r32 CosR32(r32 angle)

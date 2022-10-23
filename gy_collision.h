@@ -252,23 +252,23 @@ bool RayVsBox(Ray3_t ray, box boundingBox, RayVsBoxResult_t* result, bool giveNe
 	r32 startZ = (ray.direction.z >= 0) ? (boundingBox.z - ray.origin.z)                        : ((boundingBox.z + boundingBox.depth) - ray.origin.z);
 	r32 endZ   = (ray.direction.z >= 0) ? ((boundingBox.z + boundingBox.depth) - ray.origin.z)  : (boundingBox.z - ray.origin.z);
 	
-	r32 startTimeX = (ray.direction.x != 0) ? (startX / ray.direction.x) : dumbInfinite;
-	r32 endTimeX   = (ray.direction.x != 0) ? (endX   / ray.direction.x) : dumbInfinite;
-	r32 startTimeY = (ray.direction.y != 0) ? (startY / ray.direction.y) : dumbInfinite;
-	r32 endTimeY   = (ray.direction.y != 0) ? (endY   / ray.direction.y) : dumbInfinite;
-	r32 startTimeZ = (ray.direction.z != 0) ? (startZ / ray.direction.z) : dumbInfinite;
-	r32 endTimeZ   = (ray.direction.z != 0) ? (endZ   / ray.direction.z) : dumbInfinite;
+	r32 startTimeX = (ray.direction.x != 0) ? (startX / ray.direction.x) : -dumbInfinite;
+	r32 endTimeX   = (ray.direction.x != 0) ? (endX   / ray.direction.x) :  dumbInfinite;
+	r32 startTimeY = (ray.direction.y != 0) ? (startY / ray.direction.y) : -dumbInfinite;
+	r32 endTimeY   = (ray.direction.y != 0) ? (endY   / ray.direction.y) :  dumbInfinite;
+	r32 startTimeZ = (ray.direction.z != 0) ? (startZ / ray.direction.z) : -dumbInfinite;
+	r32 endTimeZ   = (ray.direction.z != 0) ? (endZ   / ray.direction.z) :  dumbInfinite;
 	
 	//our last start time is greater than our first end time. No intersection
-	if ((ray.direction.y != 0 && startTimeX >= endTimeY) && (ray.direction.z != 0 && startTimeX >= endTimeZ))
+	if (ray.direction.x != 0 && ((ray.direction.y != 0 && endTimeX <= startTimeY) || (ray.direction.z != 0 && endTimeX <= startTimeZ)))
 	{
 		return false;
 	}
-	if ((ray.direction.x != 0 && startTimeY >= endTimeX) && (ray.direction.z != 0 && startTimeY >= endTimeZ))
+	if (ray.direction.y != 0 && ((ray.direction.x != 0 && endTimeY <= startTimeX) || (ray.direction.z != 0 && endTimeY <= startTimeZ)))
 	{
 		return false;
 	}
-	if ((ray.direction.x != 0 && startTimeZ >= endTimeX) && (ray.direction.y != 0 && startTimeZ >= endTimeY))
+	if (ray.direction.z != 0 && ((ray.direction.x != 0 && endTimeZ <= startTimeX) || (ray.direction.y != 0 && endTimeZ <= startTimeY)))
 	{
 		return false;
 	}

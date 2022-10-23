@@ -30,6 +30,7 @@ Description:
 #include "gylib/gy_string.h"
 #include "gylib/gy_vectors.h"
 #include "gylib/gy_directions.h"
+#include "gylib/gy_basis_vectors.h"
 #include "gylib/gy_quaternions.h"
 #include "gylib/gy_rectangles.h"
 #include "gylib/gy_cyclic_functions.h"
