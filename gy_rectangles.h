@@ -2463,6 +2463,35 @@ bool IsInsideBoxi(boxi boundingBox, v3i point, bool includePositiveEdges = false
 	return true;
 }
 
+bool BoxisIntersect(boxi boundingBox1, boxi boundingBox2, bool inclusive = true)
+{
+	if (inclusive)
+	{
+		if (boundingBox1.x <= boundingBox2.x + boundingBox2.width &&
+			boundingBox1.x + boundingBox1.width >= boundingBox2.x &&
+			boundingBox1.y <= boundingBox2.y + boundingBox2.height &&
+			boundingBox1.y + boundingBox1.height >= boundingBox2.y &&
+			boundingBox1.z <= boundingBox2.z + boundingBox2.depth &&
+			boundingBox1.z + boundingBox1.depth >= boundingBox2.z)
+		{
+			return true;
+		}
+	}
+	else
+	{
+		if (boundingBox1.x < boundingBox2.x + boundingBox2.width &&
+			boundingBox1.x + boundingBox1.width > boundingBox2.x &&
+			boundingBox1.y < boundingBox2.y + boundingBox2.height &&
+			boundingBox1.y + boundingBox1.height > boundingBox2.y &&
+			boundingBox1.z < boundingBox2.z + boundingBox2.depth &&
+			boundingBox1.z + boundingBox1.depth > boundingBox2.z)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 // +==============================+
 // |            Obb2D             |
 // +==============================+
@@ -2871,6 +2900,7 @@ bool IsInsideReci(reci rectangle, v2i point, bool includePositiveEdges = false)
 bool IsInsideBox(box boundingBox, v3 point)
 bool BoxesIntersect(box boundingBox1, box boundingBox2, bool inclusive = true)
 bool IsInsideBoxi(boxi boundingBox, v3i point, bool includePositiveEdges = false)
+bool BoxisIntersect(boxi boundingBox1, boxi boundingBox2, bool inclusive = true)
 bool IsInsideObb2D(obb2 rectangle, v2 point)
 void RecAlign(rec* rectangleOut, r32 alignmentScale = 1.0f)
 void RecAlignTopLeft(rec* rectangleOut, r32 alignmentScale = 1.0f)
