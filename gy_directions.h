@@ -98,7 +98,13 @@ enum Dir3_t
 	Dir3_Down     = 0x08, //-y ( 0, -1,  0)
 	Dir3_Forward  = 0x10, //+z ( 0,  0,  1)
 	Dir3_Backward = 0x20, //-z ( 0,  0, -1)
-	Dir3_All      = 0x3F,
+	Dir3_NotRight    = 0x3E,
+	Dir3_NotLeft     = 0x3D,
+	Dir3_NotUp       = 0x3B,
+	Dir3_NotDown     = 0x37,
+	Dir3_NotForward  = 0x2F,
+	Dir3_NotBackward = 0x1F,
+	Dir3_All = 0x3F,
 	Dir3_Count = 6,
 };
 
