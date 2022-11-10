@@ -662,7 +662,7 @@ void FreePrimitiveIndexedVerts(PrimitiveIndexedVerts_t* indexedVerts)
 	{
 		NotNull(indexedVerts->allocArena);
 		Assert(indexedVerts->numIndices > 0);
-		FreeMem(indexedVerts->allocArena, indexedVerts->indices, sizeof(u64) * indexedVerts->numIndices);
+		FreeMem(indexedVerts->allocArena, indexedVerts->indices, sizeof(PrimitiveIndex3D_t) * indexedVerts->numIndices);
 	}
 	ClearPointer(indexedVerts);
 }
