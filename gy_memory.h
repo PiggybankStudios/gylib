@@ -1562,6 +1562,118 @@ void* ReallocMem(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 
 #define SoftReallocMem(arena, allocPntr, newSize) ReallocMem((arena), (allocPntr), (newSize), 0, AllocAlignment_None, true)
 
 // +--------------------------------------------------------------+
+// |                     Free Arena Functions                     |
+// +--------------------------------------------------------------+
+void FreeMemArena(MemArena_t* arena)
+{
+	NotNull(arena);
+	switch (arena->type)
+	{
+		// +==============================+
+		// |      MemArenaType_Alias      |
+		// +==============================+
+		case MemArenaType_Alias:
+		{
+			FreeMemArena(arena->sourceArena);
+		} break;
+		
+		// +==============================+
+		// |    MemArenaType_PagedHeap    |
+		// +==============================+
+		case MemArenaType_PagedHeap:
+		{
+			HeapPageHeader_t* pageHeader = (HeapPageHeader_t*)arena->headerPntr;
+			u64 pageIndex = 0;
+			while (pageHeader != nullptr)
+			{
+				HeapPageHeader_t* nextPageHeader = pageHeader->next;
+				if (arena->sourceArena != nullptr)
+				{
+					FreeMem(arena->sourceArena, pageHeader, sizeof(HeapPageHeader_t) + pageHeader->size);
+				}
+				else if (arena->freeFunc != nullptr)
+				{
+					arena->freeFunc(pageHeader);
+				}
+				else
+				{
+					AssertMsg(false, "This PageHeap cannot be freed because it doesn't have a sourceArena of freeFunc pointer!");
+				}
+				pageHeader = nextPageHeader;
+				pageIndex++;
+			}
+		} break;
+		
+		default: AssertMsg(false, "Tried to FreeMemArena on arena that doesn't know where it got it's memory from"); break;
+	}
+	
+	ClearPointer(arena);
+}
+
+void ClearMemArena(MemArena_t* arena)
+{
+	NotNull(arena);
+	switch (arena->type)
+	{
+		// +==============================+
+		// |      MemArenaType_Alias      |
+		// +==============================+
+		case MemArenaType_Alias:
+		{
+			ClearMemArena(arena->sourceArena);
+		} break;
+		
+		// +==============================+
+		// |    MemArenaType_PagedHeap    |
+		// +==============================+
+		case MemArenaType_PagedHeap:
+		{
+			HeapPageHeader_t* pageHeader = (HeapPageHeader_t*)arena->headerPntr;
+			u64 pageIndex = 0;
+			while (pageHeader != nullptr)
+			{
+				HeapPageHeader_t* nextPageHeader = pageHeader->next;
+				if (IsFlagSet(arena->flags, MemArenaFlag_AutoFreePages))
+				{
+					if (arena->sourceArena != nullptr)
+					{
+						FreeMem(arena->sourceArena, pageHeader, sizeof(HeapPageHeader_t) + pageHeader->size);
+					}
+					else if (arena->freeFunc != nullptr)
+					{
+						arena->freeFunc(pageHeader);
+					}
+					else
+					{
+						AssertMsg(false, "This PageHeap cannot be freed because it doesn't have a sourceArena of freeFunc pointer!");
+					}
+				}
+				else
+				{
+					HeapAllocPrefix_t* allocPntr = (HeapAllocPrefix_t*)(pageHeader + 1);
+					allocPntr->size = PackAllocPrefixSize(false, pageHeader->size);
+				}
+				pageHeader = nextPageHeader;
+				pageIndex++;
+			}
+			
+			arena->used = arena->numPages * sizeof(HeapAllocPrefix_t); //one empty header for each page
+			arena->numAllocations = 0;
+			if (IsFlagSet(arena->flags, MemArenaFlag_AutoFreePages))
+			{
+				arena->numPages = 0;
+				arena->size = 0;
+				arena->headerPntr = nullptr;
+			}
+		} break;
+		
+		//TODO: Implement other arena types here!
+		
+		default: AssertMsg(false, "Tried to ClearMemArena on arena that doesn't know how to clear itself"); break;
+	}
+}
+
+// +--------------------------------------------------------------+
 // |                 Push And Pop Mark Functions                  |
 // +--------------------------------------------------------------+
 void PushMemMark(MemArena_t* arena)
@@ -1745,6 +1857,8 @@ const char* GetMemArenaTypeStr(MemArenaType_t arenaType)
 bool IsAlignedTo(const void* memoryPntr, AllocAlignment_t alignment)
 u8 OffsetToAlign(const void* memoryPntr, AllocAlignment_t alignment)
 bool IsPntrInsideRange(const void* testPntr, const void* rangeBase, u64 rangeSize)
+void FreeMemArena(MemArena_t* arena)
+void ClearMemArena(MemArena_t* arena)
 void InitMemArena_Redirect(MemArena_t* arena, AllocationFunction_f* allocFunc, FreeFunction_f* freeFunc)
 void InitMemArena_Alias(MemArena_t* arena, MemArena_t* sourceArena)
 void InitMemArena_StdHeap(MemArena_t* arena)
