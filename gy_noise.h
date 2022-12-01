@@ -142,3 +142,19 @@ r32 SimplexNoise2DIter(r32 x, r32 y, u64 numIterations, r32 scale = 1.0f)
 }
 
 #endif //  _GY_NOISE_H
+
+// +--------------------------------------------------------------+
+// |                   Autocomplete Dictionary                    |
+// +--------------------------------------------------------------+
+/*
+@Defines
+@Types
+@Functions
+u8 SimplexHash(i32 input)
+r32 SimplexGradient1D(i32 hash, r32 x)
+r32 SimplexGradient2D(i32 hash, r32 x, r32 y)
+r32 SimplexGradient3D(i32 hash, r32 x, r32 y, r32 z)
+r32 SimplexNoise1D(r32 x)
+r32 SimplexNoise2D(r32 x, r32 y)
+r32 SimplexNoise2DIter(r32 x, r32 y, u64 numIterations, r32 scale = 1.0f)
+*/
