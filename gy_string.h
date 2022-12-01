@@ -719,7 +719,6 @@ bool StrEndsWith(const char* nullTermStr, const char* nullTermSuffix, bool ignor
 {
 	return StrEndsWith(NewStr(nullTermStr), NewStr(nullTermSuffix), ignoreCase);
 }
-//TODO: Add StrEndsWith
 
 MyStr_t* SplitString(MemArena_t* memArena, MyStr_t target, MyStr_t delineator, u64* numPiecesOut = nullptr, bool ignoreCase = false)
 {
@@ -733,8 +732,8 @@ MyStr_t* SplitString(MemArena_t* memArena, MyStr_t target, MyStr_t delineator, u
 	{
 		bool match = false;
 		if (cIndex + delineator.length > target.length) { match = true; }
-		else if (ignoreCase && StrEqualsIgnoreCase(&target.pntr[cIndex], delineator)) { match = true; }
-		else if (!ignoreCase && StrEquals(&target.pntr[cIndex], delineator)) { match = true; }
+		else if (ignoreCase && StrEqualsIgnoreCase(StrSubstringLength(&target, cIndex, delineator.length), delineator)) { match = true; }
+		else if (!ignoreCase && StrEquals(StrSubstringLength(&target, cIndex, delineator.length), delineator)) { match = true; }
 		if (match)
 		{
 			numPieces++;
@@ -758,8 +757,8 @@ MyStr_t* SplitString(MemArena_t* memArena, MyStr_t target, MyStr_t delineator, u
 	{
 		bool match = false;
 		if (cIndex + delineator.length > target.length) { match = true; }
-		else if (ignoreCase && StrEqualsIgnoreCase(&target.pntr[cIndex], delineator)) { match = true; }
-		else if (!ignoreCase && StrEquals(&target.pntr[cIndex], delineator)) { match = true; }
+		else if (ignoreCase && StrEqualsIgnoreCase(StrSubstringLength(&target, cIndex, delineator.length), delineator)) { match = true; }
+		else if (!ignoreCase && StrEquals(StrSubstringLength(&target, cIndex, delineator.length), delineator)) { match = true; }
 		if (match)
 		{
 			Assert(pIndex < numPieces);
@@ -1224,8 +1223,8 @@ u64 StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ign
 	u64 result = 0;
 	for (u64 cIndex = 0; cIndex + target.length <= str.length; cIndex++)
 	{
-		if ((ignoreCase && StrEqualsIgnoreCase(&str.pntr[cIndex], target)) ||
-			(!ignoreCase && StrEquals(&str.pntr[cIndex], target)))
+		if ((ignoreCase && StrEqualsIgnoreCase(StrSubstringLength(&str, cIndex, target.length), target)) ||
+			(!ignoreCase && StrEquals(StrSubstringLength(&str, cIndex, target.length), target)))
 		{
 			for (u64 cIndex2 = 0; cIndex2 < target.length; cIndex2++)
 			{
