@@ -587,10 +587,10 @@ i32 StrCompareIgnoreCase(MyStr_t str1, MyStr_t str2, u64 compareLength)
 }
 i32 StrCompareIgnoreCase(MyStr_t str1, MyStr_t str2)
 {
-	i32 compareResult = StrCompareIgnoreCase(left, right. MinU64(left.length, right.length));
+	i32 compareResult = StrCompareIgnoreCase(str1, str2, MinU64(str1.length, str2.length));
 	if (compareResult != 0) { return compareResult; }
-	if (left.length > right.length) { return 1; }
-	if (left.length < right.length) { return -1; }
+	if (str1.length > str2.length) { return 1; }
+	if (str1.length < str2.length) { return -1; }
 	return 0;
 }
 i32 StrCompareIgnoreCase(MyStr_t str1, const char* nullTermStr, u64 compareLength)
