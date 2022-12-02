@@ -639,6 +639,27 @@ i32 StrCompareIgnoreCase(const char* str1, const char* str2, u64 compareLength)
 	return 0;
 }
 
+bool StrEqualsIgnoreCase(MyStr_t target, MyStr_t comparison)
+{
+	return (StrCompareIgnoreCase(target, comparison) == 0);
+}
+bool StrEqualsIgnoreCase(MyStr_t target, const char* comparisonNt)
+{
+	return (StrCompareIgnoreCase(target, comparisonNt) == 0);
+}
+bool StrEqualsIgnoreCase(MyStr_t target, u64 comparisonLength, const char* comparisonPntr)
+{
+	return (StrCompareIgnoreCase(target, comparisonPntr, comparisonLength) == 0);
+}
+bool StrEqualsIgnoreCase(const char* comparisonNt, MyStr_t target)
+{
+	return (StrCompareIgnoreCase(target, comparisonNt) == 0);
+}
+bool StrEqualsIgnoreCase(u64 comparisonLength, const char* comparisonPntr, MyStr_t target)
+{
+	return (StrCompareIgnoreCase(target, comparisonPntr, comparisonLength) == 0);
+}
+
 bool StrStartsWith(MyStr_t str, MyStr_t prefix, bool ignoreCase = false)
 {
 	NotNullStr_(&str);
@@ -647,11 +668,11 @@ bool StrStartsWith(MyStr_t str, MyStr_t prefix, bool ignoreCase = false)
 	if (str.length < prefix.length) { return false; }
 	if (ignoreCase)
 	{
-		if (StrCompareIgnoreCase(str, prefix, prefix.length) == 0) { return true; }
+		if (StrEqualsIgnoreCase(NewStr(prefix.length, str.pntr), prefix)) { return true; }
 	}
 	else
 	{
-		if (MyStrCompare(str.pntr, prefix.pntr, prefix.length) == 0) { return true; }
+		if (StrEquals(NewStr(prefix.length, str.pntr), prefix)) { return true; }
 	}
 	return false;
 }
@@ -680,11 +701,11 @@ bool StrEndsWith(MyStr_t str, MyStr_t suffix, bool ignoreCase = false)
 	if (str.length < suffix.length) { return false; }
 	if (ignoreCase)
 	{
-		if (StrCompareIgnoreCase(StrSubstring(&str, str.length - suffix.length), suffix, suffix.length) == 0) { return true; }
+		if (StrEqualsIgnoreCase(StrSubstring(&str, str.length - suffix.length), suffix)) { return true; }
 	}
 	else
 	{
-		if (MyStrCompare(&str.pntr[str.length - suffix.length], suffix.pntr, suffix.length) == 0) { return true; }
+		if (StrEquals(StrSubstring(&str, str.length - suffix.length), suffix)) { return true; }
 	}
 	return false;
 }
@@ -700,7 +721,6 @@ bool StrEndsWith(const char* nullTermStr, const char* nullTermSuffix, bool ignor
 {
 	return StrEndsWith(NewStr(nullTermStr), NewStr(nullTermSuffix), ignoreCase);
 }
-//TODO: Add StrEndsWith
 
 MyStr_t* SplitString(MemArena_t* memArena, MyStr_t target, MyStr_t delineator, u64* numPiecesOut = nullptr, bool ignoreCase = false)
 {
@@ -714,8 +734,8 @@ MyStr_t* SplitString(MemArena_t* memArena, MyStr_t target, MyStr_t delineator, u
 	{
 		bool match = false;
 		if (cIndex + delineator.length > target.length) { match = true; }
-		else if (ignoreCase && StrCompareIgnoreCase(&target.pntr[cIndex], delineator.pntr, delineator.length) == 0) { match = true; }
-		else if (!ignoreCase && MyStrCompare(&target.pntr[cIndex], delineator.pntr, delineator.length) == 0) { match = true; }
+		else if (ignoreCase && StrEqualsIgnoreCase(StrSubstringLength(&target, cIndex, delineator.length), delineator)) { match = true; }
+		else if (!ignoreCase && StrEquals(StrSubstringLength(&target, cIndex, delineator.length), delineator)) { match = true; }
 		if (match)
 		{
 			numPieces++;
@@ -739,8 +759,8 @@ MyStr_t* SplitString(MemArena_t* memArena, MyStr_t target, MyStr_t delineator, u
 	{
 		bool match = false;
 		if (cIndex + delineator.length > target.length) { match = true; }
-		else if (ignoreCase && StrCompareIgnoreCase(&target.pntr[cIndex], delineator.pntr, delineator.length) == 0) { match = true; }
-		else if (!ignoreCase && MyStrCompare(&target.pntr[cIndex], delineator.pntr, delineator.length) == 0) { match = true; }
+		else if (ignoreCase && StrEqualsIgnoreCase(StrSubstringLength(&target, cIndex, delineator.length), delineator)) { match = true; }
+		else if (!ignoreCase && StrEquals(StrSubstringLength(&target, cIndex, delineator.length), delineator)) { match = true; }
 		if (match)
 		{
 			Assert(pIndex < numPieces);
@@ -1205,8 +1225,8 @@ u64 StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ign
 	u64 result = 0;
 	for (u64 cIndex = 0; cIndex + target.length <= str.length; cIndex++)
 	{
-		if ((ignoreCase && StrCompareIgnoreCase(&str.pntr[cIndex], target.pntr, target.length) == 0) ||
-			(!ignoreCase && MyStrCompare(&str.pntr[cIndex], target.pntr, target.length) == 0))
+		if ((ignoreCase && StrEqualsIgnoreCase(StrSubstringLength(&str, cIndex, target.length), target)) ||
+			(!ignoreCase && StrEquals(StrSubstringLength(&str, cIndex, target.length), target)))
 		{
 			for (u64 cIndex2 = 0; cIndex2 < target.length; cIndex2++)
 			{
@@ -1768,6 +1788,7 @@ MyStr_t StrSubstringLength(MyStr_t* target, u64 startIndex, u64 length)
 MyStr_t CombineStrs(MemArena_t* memArena, MyStr_t str1, MyStr_t str2)
 bool StrEquals(MyStr_t target, MyStr_t comparison)
 i32 StrCompareIgnoreCase(MyStr_t str1, MyStr_t str2)
+bool StrEqualsIgnoreCase(MyStr_t target, MyStr_t comparison);
 bool StrStartsWith(MyStr_t str, MyStr_t prefix, bool ignoreCase = false)
 bool StrEndsWith(MyStr_t str, MyStr_t suffix, bool ignoreCase = false)
 MyStr_t* SplitString(MemArena_t* memArena, MyStr_t target, MyStr_t delineator, u64* numPiecesOut = nullptr, bool ignoreCase = false)

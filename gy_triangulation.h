@@ -405,3 +405,20 @@ bool Triangulate2DMultiPolygonWithHoles(MemArena_t* memArena, MemArena_t* tempAr
 #endif
 
 #endif //  _GY_TRIANGULATION_H
+
+// +--------------------------------------------------------------+
+// |                   Autocomplete Dictionary                    |
+// +--------------------------------------------------------------+
+/*
+@Defines
+@Types
+TriangulateResult_t
+TriangulatePart_t
+TriangulateVert_t
+@Functions
+bool IsPolygonClockwise(u64 numVertices, v2* vertices)
+u64 RemoveColinearAndDuplicateVertices(u64 numVertices, v2* vertices)
+TriangulateVert_t* GetPrevTriangulateVert(TriangulateVert_t* vertices, u64 totalNumVertices, u64 startIndex)
+TriangulateVert_t* GetNextTriangulateVert(TriangulateVert_t* vertices, u64 totalNumVertices, u64 startIndex)
+u64* Triangulate2DEarClip(MemArena_t* memArena, MemArena_t* tempArena, u64 numVertices, const v2* vertices, u64* numIndicesOut = nullptr, bool debugDontDeallocate = false)
+*/

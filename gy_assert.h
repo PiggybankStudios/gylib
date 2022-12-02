@@ -152,7 +152,6 @@ extern void GyLibAssertFailure(const char* filePath, int lineNumber, const char*
 GYLIB_ASSERTIONS_ENABLED
 GYLIB_USE_ASSERT_FAILURE_FUNC
 @Types
-
 @Functions
 #define MyBreak()
 #define MyDebugBreak()

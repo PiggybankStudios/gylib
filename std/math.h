@@ -117,6 +117,13 @@ inline double sqrt(double value)                 { return __builtin_sqrt(value);
 inline float  cbrtf(float value)                 { return __builtin_cbrtf(value);          }
 inline double cbrt(double value)                 { return __builtin_cbrt(value);           }
 
+inline float  logf(float value)                  { return __builtin_logf(value);           }
+inline double log(double value)                  { return __builtin_log(value);            }
+inline float  log2f(float value)                 { return __builtin_log2f(value);          }
+inline double log2(double value)                 { return __builtin_log2(value);           }
+inline float  log10f(float value)                { return __builtin_log10f(value);         }
+inline double log10(double value)                { return __builtin_log10(value);          }
+
 //Scales x by FLT_RADIX raised to the power of n
 inline float       scalbnf(float value, int power)       { return __builtin_scalbnf(value, power); }
 inline double      scalbn(double value, int power)       { return __builtin_scalbn(value, power);  }
@@ -285,20 +292,14 @@ long long   llround(double);
 long long   llroundf(float);
 long long   llroundl(long double);
 
-double      log(double);
-float       logf(float);
 long double logl(long double);
 
-double      log10(double);
-float       log10f(float);
 long double log10l(long double);
 
 double      log1p(double);
 float       log1pf(float);
 long double log1pl(long double);
 
-double      log2(double);
-float       log2f(float);
 long double log2l(long double);
 
 double      logb(double);

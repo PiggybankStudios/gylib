@@ -317,3 +317,37 @@ void* StrHashDictGet_(StrHashDict_t* dict, const char* nullTermStr, u64 itemSize
 #define StrHashDictContainsEmpty(dict, key)  (StrHashDictGet_((dict), (key), 0, false) != nullptr)
 
 #endif //  _GY_STR_HASH_DICTIONARY_H
+
+// +--------------------------------------------------------------+
+// |                   Autocomplete Dictionary                    |
+// +--------------------------------------------------------------+
+/*
+@Defines
+@Types
+StrHashDictItem_t
+StrHashDict_t
+StrHashDictIter_t
+@Functions
+void FreeStrHashDict(StrHashDict_t* dict)
+void CreateStrHashDict(StrHashDict_t* dict, MemArena_t* memArena, u64 itemSize, u64 initialRequiredCapacity = 0)
+bool StrHashExpand(StrHashDict_t* dict, u64 numItemsRequired)
+#define StrHashDictGetIter(dict, type)
+#define StrHashDictIter(iter, type, itemPntrOut)
+#define StrHashDictAddHard(dict, key, type)
+#define StrHashDictAddSoft(dict, key, type)
+#define StrHashDictAdd(dict, key, type)
+#define StrHashDictAddEmptyHard(dict, key)
+#define StrHashDictAddEmptySoft(dict, key)
+#define StrHashDictAddEmpty(dict, key)
+#define StrHashDictRemoveHard(dict, key, type)
+#define StrHashDictRemoveSoft(dict, key, type)
+#define StrHashDictRemove(dict, key, type)
+#define StrHashDictRemoveEmptyHard(dict, key)
+#define StrHashDictRemoveEmptySoft(dict, key)
+#define StrHashDictRemoveEmpty(dict, key)
+#define StrHashDictGetHard(dict, key, type)
+#define StrHashDictGetSoft(dict, key, type)
+#define StrHashDictGet(dict, key, type)
+#define StrHashDictContains(dict, key, type)
+#define StrHashDictContainsEmpty(dict, key)
+*/

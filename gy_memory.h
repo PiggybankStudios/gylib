@@ -20,14 +20,14 @@ Description:
 	Alignment is not supported.
 	
 	@MemArenaType_FixedHeap An arena that manages a space of fixed size and provides
-	general purpose allocation/deallocation functionality. (TODO: Unfinished)
+	general purpose allocation/deallocation functionality.
 	
 	@MemArenaType_PagedHeap An arena that manages pages of memory and can allocate more pages from a base
 	arena (or through allocFunc and freeFunc) when it runs out. On the outside this provides the same
-	general purpose allocation/deallocation functionality as FixedHeap. (TODO: Unfinished)
+	general purpose allocation/deallocation functionality as FixedHeap.
 	
 	@MemArenaType_MarkedStack An arena that acts like a "stack" where direct deallocation is not allowed
-	but "marks" can be pushed and then later popped (freeing any memory allocated since the push) (TODO: Unfinished)
+	but "marks" can be pushed and then later popped (freeing any memory allocated since the push)
 	You can check for push/pop mismatches by checking the mark count when you expect it to be 0.
 	The numAllocations count only increases since we don't keep track of how many allocations get freed in a pop
 	
@@ -111,20 +111,27 @@ struct MarkedStackArenaHeader_t
 	u64 highMarkCount;
 };
 
+enum MemArenaFlag_t
+{
+	MemArenaFlag_TelemetryEnabled = 0x0001,
+	MemArenaFlag_SingleAlloc      = 0x0002,
+	MemArenaFlag_AutoFreePages    = 0x0004,
+	// MemArenaFlag_Unused           = 0x0008,
+	MemArenaFlag_BreakOnAlloc     = 0x0010,
+	MemArenaFlag_BreakOnFree      = 0x0020,
+	MemArenaFlag_BreakOnRealloc   = 0x0040,
+	MemArenaFlag_NumFlags         = 6,
+};
+
 struct MemArena_t
 {
 	MemArenaType_t type;
+	u16 flags;
 	AllocAlignment_t alignment;
 	u64 pageSize;
 	u64 maxSize;
 	u64 maxNumPages;
-	bool telemetryEnabled;
-	bool singleAlloc;
-	#if DEBUG_BUILD
-	bool breakOnAlloc;
-	bool breakOnFree;
-	bool breakOnRealloc;
-	#endif
+	u64 debugBreakThreshold;
 	
 	u64 size;
 	u64 used;
@@ -178,13 +185,12 @@ void InitMemArena_Redirect(MemArena_t* arena, AllocationFunction_f* allocFunc, F
 	NotNull(allocFunc);
 	ClearPointer(arena);
 	arena->type = MemArenaType_Redirect;
-	arena->singleAlloc = false;
 	arena->allocFunc = allocFunc;
 	arena->freeFunc = freeFunc;
 	arena->used = 0; //NOTE: This only tracks allocations, not deallocations, so it only goes up
 	arena->numAllocations = 0;
 	
-	arena->telemetryEnabled = true;
+	FlagSet(arena->flags, MemArenaFlag_TelemetryEnabled);
 	arena->highAllocMark = arena->numAllocations;
 }
 void InitMemArena_Alias(MemArena_t* arena, MemArena_t* sourceArena)
@@ -194,11 +200,10 @@ void InitMemArena_Alias(MemArena_t* arena, MemArena_t* sourceArena)
 	ClearPointer(arena);
 	arena->type = MemArenaType_Alias;
 	arena->sourceArena = sourceArena;
-	arena->singleAlloc = false;
 	arena->used = 0; //NOTE: This MAY not track deallocations, it depends on if the sourceArena supports returning the size on FreeMem
 	arena->numAllocations = 0;
 	
-	arena->telemetryEnabled = true;
+	FlagSet(arena->flags, MemArenaFlag_TelemetryEnabled);
 	arena->highUsedMark = arena->used;
 	arena->highAllocMark = arena->numAllocations;
 }
@@ -208,11 +213,10 @@ void InitMemArena_StdHeap(MemArena_t* arena)
 	NotNull(arena);
 	ClearPointer(arena);
 	arena->type = MemArenaType_StdHeap;
-	arena->singleAlloc = false;
 	arena->used = 0; //NOTE: This only tracks allocations, not deallocations, so it only goes up
 	arena->numAllocations = 0;
 	
-	arena->telemetryEnabled = true;
+	FlagSet(arena->flags, MemArenaFlag_TelemetryEnabled);
 	arena->highAllocMark = arena->numAllocations;
 	#else
 	AssertMsg_(false, "StdHeap type memory arena is not supported without the standard library being present!");
@@ -228,7 +232,6 @@ void InitMemArena_FixedHeap(MemArena_t* arena, u64 size, void* memoryPntr, Alloc
 	ClearPointer(arena);
 	arena->type = MemArenaType_FixedHeap;
 	arena->alignment = alignment;
-	arena->singleAlloc = false;
 	arena->mainPntr = memoryPntr;
 	arena->size = size;
 	HeapAllocPrefix_t* firstAlloc = (HeapAllocPrefix_t*)arena->mainPntr;
@@ -237,7 +240,7 @@ void InitMemArena_FixedHeap(MemArena_t* arena, u64 size, void* memoryPntr, Alloc
 	arena->used = prefixSize;
 	arena->numAllocations = 0;
 	
-	arena->telemetryEnabled = true;
+	FlagSet(arena->flags, MemArenaFlag_TelemetryEnabled);
 	arena->highUsedMark = arena->used;
 	arena->highAllocMark = arena->numAllocations;
 }
@@ -248,9 +251,9 @@ void InitMemArena_PagedHeapFuncs(MemArena_t* arena, u64 pageSize, AllocationFunc
 	arena->alignment = alignment;
 	arena->pageSize = pageSize;
 	arena->maxNumPages = maxNumPages;
-	arena->singleAlloc = false;
 	arena->allocFunc = allocFunc;
 	arena->freeFunc = freeFunc;
+	FlagSet(arena->flags, MemArenaFlag_AutoFreePages);
 	arena->size = 0;
 	arena->used = 0;
 	arena->numPages = 0;
@@ -258,7 +261,7 @@ void InitMemArena_PagedHeapFuncs(MemArena_t* arena, u64 pageSize, AllocationFunc
 	arena->headerPntr = nullptr;
 	arena->mainPntr = nullptr;
 	arena->otherPntr = nullptr;
-	arena->telemetryEnabled = true;
+	FlagSet(arena->flags, MemArenaFlag_TelemetryEnabled);
 	arena->highUsedMark = 0;
 	arena->highAllocMark = 0;
 }
@@ -274,7 +277,6 @@ void InitMemArena_PagedHeapArena(MemArena_t* arena, u64 pageSize, MemArena_t* so
 	arena->alignment = alignment;
 	arena->pageSize = pageSize;
 	arena->maxNumPages = maxNumPages;
-	arena->singleAlloc = false;
 	arena->sourceArena = sourceArena;
 	arena->size = 0;
 	arena->used = 0;
@@ -283,7 +285,7 @@ void InitMemArena_PagedHeapArena(MemArena_t* arena, u64 pageSize, MemArena_t* so
 	arena->headerPntr = nullptr;
 	arena->mainPntr = nullptr;
 	arena->otherPntr = nullptr;
-	arena->telemetryEnabled = true;
+	FlagSet(arena->flags, MemArenaFlag_TelemetryEnabled);
 	arena->highUsedMark = 0;
 	arena->highAllocMark = 0;
 }
@@ -298,7 +300,6 @@ void InitMemArena_MarkedStack(MemArena_t* arena, u64 size, void* memoryPntr, u64
 	ClearPointer(arena);
 	arena->type = MemArenaType_MarkedStack;
 	arena->alignment = alignment;
-	arena->singleAlloc = false;
 	arena->headerPntr = (((u8*)memoryPntr) + 0);
 	arena->otherPntr  = (((u8*)memoryPntr) + sizeof(MarkedStackArenaHeader_t));
 	arena->mainPntr   = (((u8*)memoryPntr) + sizeof(MarkedStackArenaHeader_t) + (maxNumMarks * sizeof(u64)));
@@ -311,7 +312,7 @@ void InitMemArena_MarkedStack(MemArena_t* arena, u64 size, void* memoryPntr, u64
 	stackHeader->maxNumMarks = maxNumMarks;
 	stackHeader->numMarks = 0;
 	
-	arena->telemetryEnabled = true;
+	FlagSet(arena->flags, MemArenaFlag_TelemetryEnabled);
 	arena->highUsedMark = 0;
 	stackHeader->highMarkCount = 0;
 }
@@ -322,13 +323,13 @@ void InitMemArena_Buffer(MemArena_t* arena, u64 bufferSize, void* bufferPntr, bo
 	ClearPointer(arena);
 	arena->type = MemArenaType_Buffer;
 	arena->alignment = alignment;
-	arena->singleAlloc = singleAlloc;
+	FlagSetTo(arena->flags, MemArenaFlag_SingleAlloc, singleAlloc);
 	arena->mainPntr = bufferPntr;
 	arena->size = bufferSize;
 	arena->used = 0;
 	arena->numAllocations = 0;
 	
-	arena->telemetryEnabled = true;
+	FlagSet(arena->flags, MemArenaFlag_TelemetryEnabled);
 	arena->highUsedMark = arena->used;
 	arena->highAllocMark = arena->numAllocations;
 }
@@ -405,12 +406,12 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 				AssertIfMsg(assertOnFailure, false, "FixedHeap used is larger than size");
 				return false;
 			}
-			if (arena->telemetryEnabled && arena->used > arena->highUsedMark)
+			if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled) && arena->used > arena->highUsedMark)
 			{
 				AssertIfMsg(assertOnFailure, false, "FixedHeap used is higher than high used mark");
 				return false;
 			}
-			if (arena->telemetryEnabled && arena->numAllocations > arena->highAllocMark)
+			if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled) && arena->numAllocations > arena->highAllocMark)
 			{
 				AssertIfMsg(assertOnFailure, false, "FixedHeap allocation count is higher than high allocation mark");
 				return false;
@@ -420,7 +421,7 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 				AssertIfMsg(assertOnFailure, false, "FixedHeap main memory not aligned to alignment setting");
 				return false;
 			}
-			if (arena->singleAlloc && arena->numAllocations > 1)
+			if (IsFlagSet(arena->flags, MemArenaFlag_SingleAlloc) && arena->numAllocations > 1)
 			{
 				AssertIfMsg(assertOnFailure, false, "FixedHeap single alloc doesn't match allocation count");
 				return false;
@@ -625,7 +626,7 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 				pageIndex++;
 			}
 			
-			if (arena->telemetryEnabled && numAllocations != arena->numAllocations)
+			if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled) && numAllocations != arena->numAllocations)
 			{
 				AssertIfMsg(assertOnFailure, false, "Actual allocation count in paged heap did not match tracked numAllocations");
 				return false;
@@ -682,12 +683,13 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride =
 	NotNull(arena);
 	AssertMsg(arena->type != MemArenaType_None, "Tried to allocate from uninitialized arena");
 	
-	#if DEBUG_BUILD
-	if (arena->breakOnAlloc) { MyDebugBreak(); }
-	#endif
+	if (IsFlagSet(arena->flags, MemArenaFlag_BreakOnAlloc) && (arena->debugBreakThreshold == 0 || numBytes >= arena->debugBreakThreshold))
+	{
+		MyDebugBreak();
+	}
 	
 	if (numBytes == 0) { return nullptr; }
-	if (arena->singleAlloc && arena->numAllocations > 0)
+	if (IsFlagSet(arena->flags, MemArenaFlag_SingleAlloc) && arena->numAllocations > 0)
 	{
 		GyLibPrintLine_W("Attempted second allocation of %llu out of single alloc arena (type: %s, size: %llu, used: %llu)", numBytes, GetMemArenaTypeStr(arena->type), arena->size, arena->used);
 		return nullptr;
@@ -708,7 +710,7 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride =
 			if (result == nullptr) { break; }
 			IncrementU64(arena->numAllocations);
 			arena->used += numBytes;
-			if (arena->telemetryEnabled)
+			if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
 			{
 				if (arena->highAllocMark < arena->numAllocations) { arena->highAllocMark = arena->numAllocations; }
 			}
@@ -725,7 +727,7 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride =
 			IncrementU64(arena->numAllocations);
 			arena->size = arena->sourceArena->size;
 			arena->used = arena->sourceArena->used;
-			if (arena->telemetryEnabled)
+			if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
 			{
 				if (arena->highUsedMark < arena->used) { arena->highUsedMark = arena->used; }
 				if (arena->highAllocMark < arena->numAllocations) { arena->highAllocMark = arena->numAllocations; }
@@ -743,7 +745,7 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride =
 			if (result == nullptr) { break; }
 			IncrementU64(arena->numAllocations);
 			arena->used += numBytes;
-			if (arena->telemetryEnabled)
+			if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
 			{
 				if (arena->highAllocMark < arena->numAllocations) { arena->highAllocMark = arena->numAllocations; }
 			}
@@ -794,7 +796,7 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride =
 							Assert(arena->used <= arena->size);
 						}
 						arena->numAllocations++;
-						if (arena->telemetryEnabled)
+						if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
 						{
 							if (arena->highUsedMark < arena->used) { arena->highUsedMark = arena->used; }
 							if (arena->highAllocMark < arena->numAllocations) { arena->highAllocMark = arena->numAllocations; }
@@ -867,7 +869,7 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride =
 								Assert(arena->used <= arena->size);
 							}
 							arena->numAllocations++;
-							if (arena->telemetryEnabled)
+							if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
 							{
 								if (arena->highUsedMark < arena->used) { arena->highUsedMark = arena->used; }
 								if (arena->highAllocMark < arena->numAllocations) { arena->highAllocMark = arena->numAllocations; }
@@ -886,11 +888,17 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride =
 				pageIndex++;
 			}
 			
+			// +==============================+
+			// |      Allocate New Page       |
+			// +==============================+
 			if (result == nullptr)
 			{
 				u64 maxNeededSize = sizeof(HeapAllocPrefix_t) + numBytes + AllocAlignment_Max;
 				u64 newPageSize = arena->pageSize;
-				if (newPageSize < maxNeededSize) { newPageSize = maxNeededSize; }
+				if (newPageSize < maxNeededSize)
+				{
+					newPageSize = maxNeededSize;
+				}
 				
 				HeapPageHeader_t* newPageHeader = nullptr;
 				if (arena->sourceArena != nullptr)
@@ -914,7 +922,7 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride =
 				ClearPointer(newPageHeader);
 				newPageHeader->next = nullptr;
 				newPageHeader->size = newPageSize;
-				newPageHeader->used = 0;
+				newPageHeader->used = sizeof(HeapAllocPrefix_t);
 				
 				u8* pageBase = (u8*)(newPageHeader + 1);
 				HeapAllocPrefix_t* allocPntr = (HeapAllocPrefix_t*)pageBase;
@@ -964,7 +972,7 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride =
 				}
 				arena->numPages++;
 				
-				if (arena->telemetryEnabled)
+				if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
 				{
 					if (arena->highUsedMark < arena->used) { arena->highUsedMark = arena->used; }
 					if (arena->highAllocMark < arena->numAllocations) { arena->highAllocMark = arena->numAllocations; }
@@ -985,7 +993,7 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride =
 			result = ((u8*)arena->mainPntr) + arena->used + alignOffset;
 			arena->used += alignOffset + numBytes;
 			arena->numAllocations++;
-			if (arena->telemetryEnabled)
+			if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
 			{
 				if (arena->highUsedMark < arena->used) { arena->highUsedMark = arena->used; }
 			}
@@ -1005,7 +1013,7 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride =
 			result += alignOffset;
 			IncrementU64(arena->numAllocations);
 			arena->used += neededSize;
-			if (arena->telemetryEnabled)
+			if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
 			{
 				if (arena->highUsedMark < arena->used) { arena->highUsedMark = arena->used; }
 				if (arena->highAllocMark < arena->numAllocations) { arena->highAllocMark = arena->numAllocations; }
@@ -1076,9 +1084,10 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreN
 	Assert(ignoreNullptr || allocPntr != nullptr);
 	if (allocPntr == nullptr) { return 0; }
 	
-	#if DEBUG_BUILD
-	if (arena->breakOnFree) { MyDebugBreak(); }
-	#endif
+	if (IsFlagSet(arena->flags, MemArenaFlag_BreakOnFree) && (arena->debugBreakThreshold == 0 || allocSize >= arena->debugBreakThreshold))
+	{
+		MyDebugBreak();
+	}
 	
 	bool result = false;
 	switch (arena->type)
@@ -1202,6 +1211,7 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreN
 		// +==============================+
 		case MemArenaType_PagedHeap:
 		{
+			HeapPageHeader_t* prevPageHeader = nullptr;
 			HeapPageHeader_t* pageHeader = (HeapPageHeader_t*)arena->headerPntr;
 			u64 pageIndex = 0;
 			while (pageHeader != nullptr)
@@ -1241,6 +1251,9 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreN
 							result = true;
 							foundAlloc = true;
 							
+							// +==============================+
+							// |   Free Paged Heap Section    |
+							// +==============================+
 							prefixPntr->size = PackAllocPrefixSize(false, sectionSize);
 							AssertMsg(pageHeader->used >= afterPrefixSize, "Paged Heap used tracker was corrupted. Reached 0 too soon!");
 							AssertMsg(arena->used >= afterPrefixSize, "Paged Heap used tracker was corrupted. Reached 0 too soon!");
@@ -1249,6 +1262,9 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreN
 							AssertMsg(arena->numAllocations > 0, "Paged Heap numAllocations was corrupted. Reached 0 too soon!");
 							arena->numAllocations--;
 							
+							// +==============================+
+							// | Merge Sections After Freeing |
+							// +==============================+
 							if (allocOffset + sectionSize < pageHeader->size)
 							{
 								Assert(allocOffset + sectionSize + sizeof(HeapAllocPrefix_t) <= pageHeader->size);
@@ -1274,6 +1290,25 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreN
 								arena->used -= sizeof(HeapAllocPrefix_t);
 							}
 							
+							// +==============================+
+							// |       Free Empty Page        |
+							// +==============================+
+							if (pageHeader->used <= sizeof(HeapAllocPrefix_t) && IsFlagSet(arena->flags, MemArenaFlag_AutoFreePages) && pageIndex > 0)
+							{
+								prevPageHeader->next = pageHeader->next;
+								arena->size -= pageHeader->size;
+								arena->used -= sizeof(HeapAllocPrefix_t);
+								if (arena->freeFunc != nullptr)
+								{
+									arena->freeFunc(pageHeader);
+								}
+								else if (arena->sourceArena != nullptr)
+								{
+									FreeMem(arena->sourceArena, pageHeader, sizeof(HeapPageHeader_t) + pageHeader->size);
+								}
+								arena->numPages--;
+							}
+							
 							break;
 						}
 						
@@ -1283,8 +1318,10 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreN
 						sectionIndex++;
 					}
 					AssertMsg(foundAlloc, "We have a bug in our freeing walk. Couldn't find section that contained the pntr in this page!");
+					break;
 				}
 				
+				prevPageHeader = pageHeader;
 				pageHeader = pageHeader->next;
 				pageIndex++;
 			}
@@ -1344,9 +1381,10 @@ void* ReallocMem(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 
 	AssertMsg(arena->type != MemArenaType_None, "Tried to realloc from uninitialized arena");
 	Assert(ignoreNullptr || allocPntr != nullptr);
 	
-	#if DEBUG_BUILD
-	if (arena->breakOnRealloc) { MyDebugBreak(); }
-	#endif
+	if (IsFlagSet(arena->flags, MemArenaFlag_BreakOnRealloc) && (arena->debugBreakThreshold == 0 || newSize >= arena->debugBreakThreshold || oldSize >= arena->debugBreakThreshold))
+	{
+		MyDebugBreak();
+	}
 	
 	AllocAlignment_t alignment = (alignOverride != AllocAlignment_None) ? alignOverride : arena->alignment;
 	if (newSize == oldSize && (allocPntr != nullptr || oldSize != 0) && IsAlignedTo(allocPntr, alignment)) //not resizing, just keep the memory where it's at
@@ -1445,7 +1483,7 @@ void* ReallocMem(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 
 			}
 			arena->size = arena->sourceArena->size;
 			arena->used = arena->sourceArena->used;
-			if (arena->telemetryEnabled)
+			if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
 			{
 				if (arena->highUsedMark < arena->used) { arena->highUsedMark = arena->used; }
 				if (arena->highAllocMark < arena->numAllocations) { arena->highAllocMark = arena->numAllocations; }
@@ -1468,7 +1506,7 @@ void* ReallocMem(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 
 			}
 			if (increasingSize) { arena->used += sizeChangeAmount; }
 			else if (decreasingSize) { DecrementBy(arena->used, sizeChangeAmount); }
-			if (arena->telemetryEnabled)
+			if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
 			{
 				if (increasingSize && arena->highUsedMark < arena->used) { arena->highUsedMark = arena->used; }
 			}
@@ -1524,6 +1562,118 @@ void* ReallocMem(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 
 #define SoftReallocMem(arena, allocPntr, newSize) ReallocMem((arena), (allocPntr), (newSize), 0, AllocAlignment_None, true)
 
 // +--------------------------------------------------------------+
+// |                     Free Arena Functions                     |
+// +--------------------------------------------------------------+
+void FreeMemArena(MemArena_t* arena)
+{
+	NotNull(arena);
+	switch (arena->type)
+	{
+		// +==============================+
+		// |      MemArenaType_Alias      |
+		// +==============================+
+		case MemArenaType_Alias:
+		{
+			FreeMemArena(arena->sourceArena);
+		} break;
+		
+		// +==============================+
+		// |    MemArenaType_PagedHeap    |
+		// +==============================+
+		case MemArenaType_PagedHeap:
+		{
+			HeapPageHeader_t* pageHeader = (HeapPageHeader_t*)arena->headerPntr;
+			u64 pageIndex = 0;
+			while (pageHeader != nullptr)
+			{
+				HeapPageHeader_t* nextPageHeader = pageHeader->next;
+				if (arena->sourceArena != nullptr)
+				{
+					FreeMem(arena->sourceArena, pageHeader, sizeof(HeapPageHeader_t) + pageHeader->size);
+				}
+				else if (arena->freeFunc != nullptr)
+				{
+					arena->freeFunc(pageHeader);
+				}
+				else
+				{
+					AssertMsg(false, "This PageHeap cannot be freed because it doesn't have a sourceArena of freeFunc pointer!");
+				}
+				pageHeader = nextPageHeader;
+				pageIndex++;
+			}
+		} break;
+		
+		default: AssertMsg(false, "Tried to FreeMemArena on arena that doesn't know where it got it's memory from"); break;
+	}
+	
+	ClearPointer(arena);
+}
+
+void ClearMemArena(MemArena_t* arena)
+{
+	NotNull(arena);
+	switch (arena->type)
+	{
+		// +==============================+
+		// |      MemArenaType_Alias      |
+		// +==============================+
+		case MemArenaType_Alias:
+		{
+			ClearMemArena(arena->sourceArena);
+		} break;
+		
+		// +==============================+
+		// |    MemArenaType_PagedHeap    |
+		// +==============================+
+		case MemArenaType_PagedHeap:
+		{
+			HeapPageHeader_t* pageHeader = (HeapPageHeader_t*)arena->headerPntr;
+			u64 pageIndex = 0;
+			while (pageHeader != nullptr)
+			{
+				HeapPageHeader_t* nextPageHeader = pageHeader->next;
+				if (IsFlagSet(arena->flags, MemArenaFlag_AutoFreePages))
+				{
+					if (arena->sourceArena != nullptr)
+					{
+						FreeMem(arena->sourceArena, pageHeader, sizeof(HeapPageHeader_t) + pageHeader->size);
+					}
+					else if (arena->freeFunc != nullptr)
+					{
+						arena->freeFunc(pageHeader);
+					}
+					else
+					{
+						AssertMsg(false, "This PageHeap cannot be freed because it doesn't have a sourceArena of freeFunc pointer!");
+					}
+				}
+				else
+				{
+					HeapAllocPrefix_t* allocPntr = (HeapAllocPrefix_t*)(pageHeader + 1);
+					allocPntr->size = PackAllocPrefixSize(false, pageHeader->size);
+				}
+				pageHeader = nextPageHeader;
+				pageIndex++;
+			}
+			
+			arena->used = arena->numPages * sizeof(HeapAllocPrefix_t); //one empty header for each page
+			arena->numAllocations = 0;
+			if (IsFlagSet(arena->flags, MemArenaFlag_AutoFreePages))
+			{
+				arena->numPages = 0;
+				arena->size = 0;
+				arena->headerPntr = nullptr;
+			}
+		} break;
+		
+		//TODO: Implement other arena types here!
+		
+		default: AssertMsg(false, "Tried to ClearMemArena on arena that doesn't know how to clear itself"); break;
+	}
+}
+
+// +--------------------------------------------------------------+
 // |                 Push And Pop Mark Functions                  |
 // +--------------------------------------------------------------+
 void PushMemMark(MemArena_t* arena)
@@ -1547,7 +1697,7 @@ void PushMemMark(MemArena_t* arena)
 	marksPntr[stackHeader->numMarks] = arena->used;
 	stackHeader->numMarks++;
 	
-	if (arena->telemetryEnabled)
+	if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
 	{
 		if (stackHeader->highMarkCount < stackHeader->numMarks) { stackHeader->highMarkCount = stackHeader->numMarks; }
 	}
@@ -1707,6 +1857,8 @@ const char* GetMemArenaTypeStr(MemArenaType_t arenaType)
 bool IsAlignedTo(const void* memoryPntr, AllocAlignment_t alignment)
 u8 OffsetToAlign(const void* memoryPntr, AllocAlignment_t alignment)
 bool IsPntrInsideRange(const void* testPntr, const void* rangeBase, u64 rangeSize)
+void FreeMemArena(MemArena_t* arena)
+void ClearMemArena(MemArena_t* arena)
 void InitMemArena_Redirect(MemArena_t* arena, AllocationFunction_f* allocFunc, FreeFunction_f* freeFunc)
 void InitMemArena_Alias(MemArena_t* arena, MemArena_t* sourceArena)
 void InitMemArena_StdHeap(MemArena_t* arena)

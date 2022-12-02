@@ -269,7 +269,7 @@ quat NewQuatFromEuler(v3 eulerAngles, EulerOrder_t order = EulerOrder_XYZ)
 {
 	quat result = Quat_Identity;
 	Axis_t axisOrder[3] = {};
-	switch(order)
+	switch (order)
 	{
 		case EulerOrder_XYZ: axisOrder[0] = Axis_X; axisOrder[1] = Axis_Y; axisOrder[2] = Axis_Z; break;
 		case EulerOrder_ZYX: axisOrder[0] = Axis_Z; axisOrder[1] = Axis_Y; axisOrder[2] = Axis_X; break;
@@ -277,6 +277,7 @@ quat NewQuatFromEuler(v3 eulerAngles, EulerOrder_t order = EulerOrder_XYZ)
 		case EulerOrder_ZXY: axisOrder[0] = Axis_Z; axisOrder[1] = Axis_X; axisOrder[2] = Axis_Y; break;
 		case EulerOrder_YXZ: axisOrder[0] = Axis_Y; axisOrder[1] = Axis_X; axisOrder[2] = Axis_Z; break;
 		case EulerOrder_YZX: axisOrder[0] = Axis_Y; axisOrder[1] = Axis_Z; axisOrder[2] = Axis_X; break;
+		default: break;
 	}
 	for (u8 aIndex = 0; aIndex < 3; aIndex++)
 	{
@@ -286,6 +287,7 @@ quat NewQuatFromEuler(v3 eulerAngles, EulerOrder_t order = EulerOrder_XYZ)
 			case Axis_X: result = QuatGlobalRot(result, Vec3_Right,   eulerAngles.x/2); break;
 			case Axis_Y: result = QuatGlobalRot(result, Vec3_Up,      eulerAngles.y/2); break;
 			case Axis_Z: result = QuatGlobalRot(result, Vec3_Forward, eulerAngles.z/2); break;
+			default: break;
 		}
 	}
 	return result;

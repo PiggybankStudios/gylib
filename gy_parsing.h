@@ -394,24 +394,24 @@ bool TryParseBool(MyStr_t str, bool* valueOut, TryParseFailureReason_t* reasonOu
 	NotNullStr(&str);
 	TrimWhitespace(&str);
 	bool result = false;
-	if      (StrCompareIgnoreCase(str, "true")     == 0) { result = true;  }
-	else if (StrCompareIgnoreCase(str, "false")    == 0) { result = false; }
-	else if (StrCompareIgnoreCase(str, "t")        == 0) { result = true;  }
-	else if (StrCompareIgnoreCase(str, "f")        == 0) { result = false; }
-	else if (StrCompareIgnoreCase(str, "1")        == 0) { result = true;  }
-	else if (StrCompareIgnoreCase(str, "0")        == 0) { result = false; }
-	else if (StrCompareIgnoreCase(str, "yes")      == 0) { result = true;  }
-	else if (StrCompareIgnoreCase(str, "no")       == 0) { result = false; }
-	else if (StrCompareIgnoreCase(str, "y")        == 0) { result = true;  }
-	else if (StrCompareIgnoreCase(str, "n")        == 0) { result = false; }
-	else if (StrCompareIgnoreCase(str, "on")       == 0) { result = true;  }
-	else if (StrCompareIgnoreCase(str, "off")      == 0) { result = false; }
-	else if (StrCompareIgnoreCase(str, "enable")   == 0) { result = true;  }
-	else if (StrCompareIgnoreCase(str, "disable")  == 0) { result = false; }
-	else if (StrCompareIgnoreCase(str, "enabled")  == 0) { result = true;  }
-	else if (StrCompareIgnoreCase(str, "disabled") == 0) { result = false; }
-	else if (StrCompareIgnoreCase(str, "high")     == 0) { result = true;  }
-	else if (StrCompareIgnoreCase(str, "low")      == 0) { result = false; }
+	if      (StrEqualsIgnoreCase(str, "true"))     { result = true;  }
+	else if (StrEqualsIgnoreCase(str, "false"))    { result = false; }
+	else if (StrEqualsIgnoreCase(str, "t"))        { result = true;  }
+	else if (StrEqualsIgnoreCase(str, "f"))        { result = false; }
+	else if (StrEqualsIgnoreCase(str, "1"))        { result = true;  }
+	else if (StrEqualsIgnoreCase(str, "0"))        { result = false; }
+	else if (StrEqualsIgnoreCase(str, "yes"))      { result = true;  }
+	else if (StrEqualsIgnoreCase(str, "no"))       { result = false; }
+	else if (StrEqualsIgnoreCase(str, "y"))        { result = true;  }
+	else if (StrEqualsIgnoreCase(str, "n"))        { result = false; }
+	else if (StrEqualsIgnoreCase(str, "on"))       { result = true;  }
+	else if (StrEqualsIgnoreCase(str, "off"))      { result = false; }
+	else if (StrEqualsIgnoreCase(str, "enable"))   { result = true;  }
+	else if (StrEqualsIgnoreCase(str, "disable"))  { result = false; }
+	else if (StrEqualsIgnoreCase(str, "enabled"))  { result = true;  }
+	else if (StrEqualsIgnoreCase(str, "disabled")) { result = false; }
+	else if (StrEqualsIgnoreCase(str, "high"))     { result = true;  }
+	else if (StrEqualsIgnoreCase(str, "low"))      { result = false; }
 	else
 	{
 		if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_UnknownString; }
@@ -426,23 +426,23 @@ bool TryParseDir2(MyStr_t str, Dir2_t* valueOut, TryParseFailureReason_t* reason
 	NotNullStr(&str);
 	TrimWhitespace(&str);
 	Dir2_t result = Dir2_None;
-	if      (StrCompareIgnoreCase(str, "none")        == 0) { result = Dir2_None;     }
-	else if (StrCompareIgnoreCase(str, "r")           == 0) { result = Dir2_Right;    }
-	else if (StrCompareIgnoreCase(str, "right")       == 0) { result = Dir2_Right;    }
-	else if (StrCompareIgnoreCase(str, "+x")          == 0) { result = Dir2_Right;    }
-	else if (StrCompareIgnoreCase(str, "l")           == 0) { result = Dir2_Left;     }
-	else if (StrCompareIgnoreCase(str, "left")        == 0) { result = Dir2_Left;     }
-	else if (StrCompareIgnoreCase(str, "-x")          == 0) { result = Dir2_Left;     }
-	else if (StrCompareIgnoreCase(str, "u")           == 0) { result = Dir2_Up;       }
-	else if (StrCompareIgnoreCase(str, "up")          == 0) { result = Dir2_Up;       }
-	else if (StrCompareIgnoreCase(str, "t")           == 0) { result = Dir2_Up;       }
-	else if (StrCompareIgnoreCase(str, "top")         == 0) { result = Dir2_Up;       }
-	else if (StrCompareIgnoreCase(str, "+y")          == 0) { result = Dir2_Up;       }
-	else if (StrCompareIgnoreCase(str, "d")           == 0) { result = Dir2_Down;     }
-	else if (StrCompareIgnoreCase(str, "down")        == 0) { result = Dir2_Down;     }
-	else if (StrCompareIgnoreCase(str, "b")           == 0) { result = Dir2_Down;     } //NOTE: "b" is "bottom" is Dir2 land but is "backward" in Dir3 land!
-	else if (StrCompareIgnoreCase(str, "bottom")      == 0) { result = Dir2_Down;     }
-	else if (StrCompareIgnoreCase(str, "-y")          == 0) { result = Dir2_Down;     }
+	if      (StrEqualsIgnoreCase(str, "none"))   { result = Dir2_None;     }
+	else if (StrEqualsIgnoreCase(str, "r"))      { result = Dir2_Right;    }
+	else if (StrEqualsIgnoreCase(str, "right"))  { result = Dir2_Right;    }
+	else if (StrEqualsIgnoreCase(str, "+x"))     { result = Dir2_Right;    }
+	else if (StrEqualsIgnoreCase(str, "l"))      { result = Dir2_Left;     }
+	else if (StrEqualsIgnoreCase(str, "left"))   { result = Dir2_Left;     }
+	else if (StrEqualsIgnoreCase(str, "-x"))     { result = Dir2_Left;     }
+	else if (StrEqualsIgnoreCase(str, "u"))      { result = Dir2_Up;       }
+	else if (StrEqualsIgnoreCase(str, "up"))     { result = Dir2_Up;       }
+	else if (StrEqualsIgnoreCase(str, "t"))      { result = Dir2_Up;       }
+	else if (StrEqualsIgnoreCase(str, "top"))    { result = Dir2_Up;       }
+	else if (StrEqualsIgnoreCase(str, "+y"))     { result = Dir2_Up;       }
+	else if (StrEqualsIgnoreCase(str, "d"))      { result = Dir2_Down;     }
+	else if (StrEqualsIgnoreCase(str, "down"))   { result = Dir2_Down;     }
+	else if (StrEqualsIgnoreCase(str, "b"))      { result = Dir2_Down;     } //NOTE: "b" is "bottom" is Dir2 land but is "backward" in Dir3 land!
+	else if (StrEqualsIgnoreCase(str, "bottom")) { result = Dir2_Down;     }
+	else if (StrEqualsIgnoreCase(str, "-y"))     { result = Dir2_Down;     }
 	else
 	{
 		if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_UnknownString; }
@@ -457,30 +457,30 @@ bool TryParseDir3(MyStr_t str, Dir3_t* valueOut, TryParseFailureReason_t* reason
 	NotNullStr(&str);
 	TrimWhitespace(&str);
 	Dir3_t result = Dir3_None;
-	if      (StrCompareIgnoreCase(str, "none")        == 0) { result = Dir3_None;     }
-	else if (StrCompareIgnoreCase(str, "r")           == 0) { result = Dir3_Right;    }
-	else if (StrCompareIgnoreCase(str, "right")       == 0) { result = Dir3_Right;    }
-	else if (StrCompareIgnoreCase(str, "+x")          == 0) { result = Dir3_Right;    }
-	else if (StrCompareIgnoreCase(str, "l")           == 0) { result = Dir3_Left;     }
-	else if (StrCompareIgnoreCase(str, "left")        == 0) { result = Dir3_Left;     }
-	else if (StrCompareIgnoreCase(str, "-x")          == 0) { result = Dir3_Left;     }
-	else if (StrCompareIgnoreCase(str, "u")           == 0) { result = Dir3_Up;       }
-	else if (StrCompareIgnoreCase(str, "up")          == 0) { result = Dir3_Up;       }
-	else if (StrCompareIgnoreCase(str, "t")           == 0) { result = Dir3_Up;       }
-	else if (StrCompareIgnoreCase(str, "top")         == 0) { result = Dir3_Up;       }
-	else if (StrCompareIgnoreCase(str, "+y")          == 0) { result = Dir3_Up;       }
-	else if (StrCompareIgnoreCase(str, "d")           == 0) { result = Dir3_Down;     }
-	else if (StrCompareIgnoreCase(str, "down")        == 0) { result = Dir3_Down;     }
-	else if (StrCompareIgnoreCase(str, "bottom")      == 0) { result = Dir3_Down;     } //NOTE: "bottom" and "backward" share the first same letter, this might cause some confusion if someone uses these single letter directions
-	else if (StrCompareIgnoreCase(str, "-y")          == 0) { result = Dir3_Down;     }
-	else if (StrCompareIgnoreCase(str, "f")           == 0) { result = Dir3_Forward;  }
-	else if (StrCompareIgnoreCase(str, "forward")     == 0) { result = Dir3_Forward;  }
-	else if (StrCompareIgnoreCase(str, "front")       == 0) { result = Dir3_Forward;  }
-	else if (StrCompareIgnoreCase(str, "+z")          == 0) { result = Dir3_Forward;  }
-	else if (StrCompareIgnoreCase(str, "b")           == 0) { result = Dir3_Backward; }
-	else if (StrCompareIgnoreCase(str, "backward")    == 0) { result = Dir3_Backward; }
-	else if (StrCompareIgnoreCase(str, "back")        == 0) { result = Dir3_Backward; }
-	else if (StrCompareIgnoreCase(str, "-z")          == 0) { result = Dir3_Backward; }
+	if      (StrEqualsIgnoreCase(str, "none"))     { result = Dir3_None;     }
+	else if (StrEqualsIgnoreCase(str, "r"))        { result = Dir3_Right;    }
+	else if (StrEqualsIgnoreCase(str, "right"))    { result = Dir3_Right;    }
+	else if (StrEqualsIgnoreCase(str, "+x"))       { result = Dir3_Right;    }
+	else if (StrEqualsIgnoreCase(str, "l"))        { result = Dir3_Left;     }
+	else if (StrEqualsIgnoreCase(str, "left"))     { result = Dir3_Left;     }
+	else if (StrEqualsIgnoreCase(str, "-x"))       { result = Dir3_Left;     }
+	else if (StrEqualsIgnoreCase(str, "u"))        { result = Dir3_Up;       }
+	else if (StrEqualsIgnoreCase(str, "up"))       { result = Dir3_Up;       }
+	else if (StrEqualsIgnoreCase(str, "t"))        { result = Dir3_Up;       }
+	else if (StrEqualsIgnoreCase(str, "top"))      { result = Dir3_Up;       }
+	else if (StrEqualsIgnoreCase(str, "+y"))       { result = Dir3_Up;       }
+	else if (StrEqualsIgnoreCase(str, "d"))        { result = Dir3_Down;     }
+	else if (StrEqualsIgnoreCase(str, "down"))     { result = Dir3_Down;     }
+	else if (StrEqualsIgnoreCase(str, "bottom"))   { result = Dir3_Down;     } //NOTE: "bottom" and "backward" share the first same letter, this might cause some confusion if someone uses these single letter directions
+	else if (StrEqualsIgnoreCase(str, "-y"))       { result = Dir3_Down;     }
+	else if (StrEqualsIgnoreCase(str, "f"))        { result = Dir3_Forward;  }
+	else if (StrEqualsIgnoreCase(str, "forward"))  { result = Dir3_Forward;  }
+	else if (StrEqualsIgnoreCase(str, "front"))    { result = Dir3_Forward;  }
+	else if (StrEqualsIgnoreCase(str, "+z"))       { result = Dir3_Forward;  }
+	else if (StrEqualsIgnoreCase(str, "b"))        { result = Dir3_Backward; }
+	else if (StrEqualsIgnoreCase(str, "backward")) { result = Dir3_Backward; }
+	else if (StrEqualsIgnoreCase(str, "back"))     { result = Dir3_Backward; }
+	else if (StrEqualsIgnoreCase(str, "-z"))       { result = Dir3_Backward; }
 	else
 	{
 		if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_UnknownString; }
