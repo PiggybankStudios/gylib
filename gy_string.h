@@ -722,6 +722,7 @@ bool StrEndsWith(const char* nullTermStr, const char* nullTermSuffix, bool ignor
 	return StrEndsWith(NewStr(nullTermStr), NewStr(nullTermSuffix), ignoreCase);
 }
 
+//TODO: This has some kind of bug when the delineator is 2 or more characters long it chops off the last character (or more?) of the target!
 MyStr_t* SplitString(MemArena_t* memArena, MyStr_t target, MyStr_t delineator, u64* numPiecesOut = nullptr, bool ignoreCase = false)
 {
 	NotNull(memArena);
