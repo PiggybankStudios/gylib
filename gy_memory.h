@@ -1025,7 +1025,7 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride =
 		// +==============================+
 		default:
 		{
-			GyLibPrintLine_E("Unsuported arena type in AllocMem: %u (size: %llu, used: %llu)", arena->type, arena->size, arena->used);
+			GyLibPrintLine_E("Unsupported arena type in AllocMem: %u (size: %llu, used: %llu)", arena->type, arena->size, arena->used);
 			AssertMsg(false, "Unsupported arena type in AllocMem. Maybe the arena is corrupted?");
 		} break;
 	}
@@ -1250,6 +1250,7 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreN
 							
 							result = true;
 							foundAlloc = true;
+							if (oldSizeOut != nullptr) { *oldSizeOut = afterPrefixSize; }
 							
 							// +==============================+
 							// |   Free Paged Heap Section    |
@@ -1360,7 +1361,7 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreN
 		// +==============================+
 		default:
 		{
-			GyLibPrintLine_E("Unsuported arena type in FreeMem: %u (size: %llu, used: %llu)", arena->type, arena->size, arena->used);
+			GyLibPrintLine_E("Unsupported arena type in FreeMem: %u (size: %llu, used: %llu)", arena->type, arena->size, arena->used);
 			AssertMsg(false, "Unsupported arena type in FreeMem. Maybe the arena is corrupted?");
 		} break;
 	}
@@ -1550,7 +1551,7 @@ void* ReallocMem(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 
 		// +==============================+
 		default:
 		{
-			GyLibPrintLine_E("Unsuported arena type in ReallocMem: %u (size: %llu, used: %llu)", arena->type, arena->size, arena->used);
+			GyLibPrintLine_E("Unsupported arena type in ReallocMem: %u (size: %llu, used: %llu)", arena->type, arena->size, arena->used);
 			AssertMsg(false, "Unsupported arena type in ReallocMem. Maybe the arena is corrupted?");
 		} break;
 	}
