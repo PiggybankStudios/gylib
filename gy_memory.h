@@ -1426,6 +1426,14 @@ void* ReallocMem(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 
 					bool freeSuccess = FreeMem(arena, allocPntr, oldSize, ignoreNullptr, &reportedOldSize);
 					AssertMsg(freeSuccess, "Failed to FreeMem after a failed AllocMem in ReallocMem! Something is probably wrong with this arena");
 					Assert(oldSize == 0 || oldSize == reportedOldSize);
+					if (oldSize != 0)
+					{
+						//TODO: Handle scenarios where the alignment offset or bad-fit scenarios caused the section to be slightly larger than the requested allocation size
+						//NOTE: Right now we allow for slop in both the alignment offset and scenarios where the section that was used was only slighly larger than needed
+						//      and a second section couldn't be created because there wasn't even enough room for a HeapAllocPrefix_t
+						u64 allowedSlop = OffsetToAlign(allocPntr, AllocAlignment_Max) + sizeof(HeapAllocPrefix_t);
+						AssertMsg(AbsDiffU64(oldSize, reportedOldSize) <= allowedSlop, "Given size did not match actual allocation size in Fixed Heap during ReallocMem. This is a memory management bug");
+					}
 					oldSize = reportedOldSize;
 					increasingSize = (newSize > oldSize);
 					decreasingSize = (newSize < oldSize);
@@ -1444,7 +1452,14 @@ void* ReallocMem(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 
 				u64 reportedOldSize = oldSize;
 				bool freeSuccess = FreeMem(arena, allocPntr, oldSize, ignoreNullptr, &reportedOldSize);
 				AssertMsg(freeSuccess, "Failed to FreeMem in ReallocMem! Does this arena type support freeing memory?");
-				Assert(oldSize == 0 || oldSize == reportedOldSize);
+				if (oldSize != 0)
+				{
+					//TODO: Handle scenarios where the alignment offset or bad-fit scenarios caused the section to be slightly larger than the requested allocation size
+					//NOTE: Right now we allow for slop in both the alignment offset and scenarios where the section that was used was only slighly larger than needed
+					//      and a second section couldn't be created because there wasn't even enough room for a HeapAllocPrefix_t
+					u64 allowedSlop = OffsetToAlign(allocPntr, AllocAlignment_Max) + sizeof(HeapAllocPrefix_t);
+					AssertMsg(AbsDiffU64(oldSize, reportedOldSize) <= allowedSlop, "Given size did not match actual allocation size in Fixed Heap during ReallocMem. This is a memory management bug");
+				}
 				oldSize = reportedOldSize;
 				increasingSize = (newSize > oldSize);
 				decreasingSize = (newSize < oldSize);
