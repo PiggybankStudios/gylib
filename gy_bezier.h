@@ -87,7 +87,7 @@ struct BezierPath_t
 // +--------------------------------------------------------------+
 // |                     Curve Math Functions                     |
 // +--------------------------------------------------------------+
-v2 ParemetricLine(v2 start, v2 end, r32 time)
+v2 ParametricLine(v2 start, v2 end, r32 time)
 {
 	return start + ((end - start) * time);
 }
@@ -165,7 +165,7 @@ v2 EllipseArcCurveStartEnd(v2 start, v2 radius, r32 axisAngle, u8 arcFlags, v2 e
 	}
 	else
 	{
-		return ParemetricLine(start, end, time);
+		return ParametricLine(start, end, time);
 	}
 }
 
@@ -583,7 +583,7 @@ BezierPathPartArcFlag_t
 BezierPathPart_t
 BezierPath_t
 @Functions
-v2 ParemetricLine(v2 start, v2 end, r32 time)
+v2 ParametricLine(v2 start, v2 end, r32 time)
 v2 BezierCurve3(v2 start, v2 control, v2 end, r32 time)
 v2 BezierCurve4(v2 start, v2 control1, v2 control2, v2 end, r32 time)
 v2 EllipseArcCurve(v2 center, v2 radius, r32 axisAngle, r32 startAngle, r32 angleDelta, r32 time)

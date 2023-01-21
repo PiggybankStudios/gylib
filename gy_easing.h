@@ -6,30 +6,26 @@ Description:
 	** Holds functions that allow you to easily perform easing (aka tweening or interpolation)
 */
 
-/*
-//TODO: Make sure I have these names the correct way around
-In Functions: (slow start, fast end)
-f(t)
-^           ^
-|           |
-|           /
-|          |
-|        _/
-|   __--/
-|_--
-+------------> t
-
-Out Functions: (fast start, slow end)
-f(t)
-^       ___-->      
-|    _--         
-|   /          
-|  |          
-| |           
-||            
-||            
-+------------> t
-*/
+// In Functions: (slow start, fast end)
+// f(t)
+// ^           ^
+// |           |
+// |           /
+// |          |
+// |        _/
+// |   __--/
+// |_--
+// +------------> t
+// Out Functions: (fast start, slow end)
+// f(t)
+// ^       ___-->      
+// |    _--         
+// |   /          
+// |  |          
+// | |           
+// ||            
+// ||            
+// +------------> t
 
 #ifndef _GY_EASING_H
 #define _GY_EASING_H
@@ -124,6 +120,9 @@ const char* GetEasingStyleStr(EasingStyle_t style)
 	}
 }
 
+// +==============================+
+// |            Linear            |
+// +==============================+
 // Modeled after the line y = x
 r32 EaseLinear(r32 p)
 {
@@ -134,6 +133,9 @@ r32 InverseEaseLinear(r32 y)
 	return y;
 }
 
+// +==============================+
+// |          Quadratic           |
+// +==============================+
 // Modeled after the parabola y = x^2
 r32 EaseQuadraticIn(r32 p)
 {
@@ -180,6 +182,9 @@ r32 InverseEaseQuadraticInOut(r32 y)
 	}
 }
 
+// +==============================+
+// |            Cubic             |
+// +==============================+
 // Modeled after the cubic y = x^3
 r32 EaseCubicIn(r32 p)
 {
@@ -198,7 +203,7 @@ r32 EaseCubicOut(r32 p)
 // y = (1/2)((2x-2)^3 + 2) ; [0.5, 1]
 r32 EaseCubicInOut(r32 p)
 {
-	if(p < 0.5)
+	if (p < 0.5)
 	{
 		return 4 * p * p * p;
 	}
@@ -209,6 +214,9 @@ r32 EaseCubicInOut(r32 p)
 	}
 }
 
+// +==============================+
+// |           Quartic            |
+// +==============================+
 // Modeled after the quartic x^4
 r32 EaseQuarticIn(r32 p)
 {
@@ -227,7 +235,7 @@ r32 EaseQuarticOut(r32 p)
 // y = -(1/2)((2x-2)^4 - 2) ; [0.5, 1]
 r32 EaseQuarticInOut(r32 p) 
 {
-	if(p < 0.5)
+	if (p < 0.5)
 	{
 		return 8 * p * p * p * p;
 	}
@@ -238,6 +246,9 @@ r32 EaseQuarticInOut(r32 p)
 	}
 }
 
+// +==============================+
+// |           Quintic            |
+// +==============================+
 // Modeled after the quintic y = x^5
 r32 EaseQuinticIn(r32 p) 
 {
@@ -256,7 +267,7 @@ r32 EaseQuinticOut(r32 p)
 // y = (1/2)((2x-2)^5 + 2) ; [0.5, 1]
 r32 EaseQuinticInOut(r32 p) 
 {
-	if(p < 0.5)
+	if (p < 0.5)
 	{
 		return 16 * p * p * p * p * p;
 	}
@@ -267,6 +278,9 @@ r32 EaseQuinticInOut(r32 p)
 	}
 }
 
+// +==============================+
+// |             Sine             |
+// +==============================+
 // Modeled after quarter-cycle of sine wave
 r32 EaseSineIn(r32 p)
 {
@@ -285,6 +299,9 @@ r32 EaseSineInOut(r32 p)
 	return 0.5f * (1 - (r32)cos(p * Pi32));
 }
 
+// +==============================+
+// |           Circular           |
+// +==============================+
 // Modeled after shifted quadrant IV of unit circle
 r32 EaseCircularIn(r32 p)
 {
@@ -312,6 +329,9 @@ r32 EaseCircularInOut(r32 p)
 	}
 }
 
+// +==============================+
+// |         Exponential          |
+// +==============================+
 // Modeled after the exponential function y = 2^(10(x - 1))
 r32 EaseExponentialIn(r32 p)
 {
@@ -329,9 +349,9 @@ r32 EaseExponentialOut(r32 p)
 // y = -(1/2)*2^(-10(2x - 1))) + 1 ; [0.5,1]
 r32 EaseExponentialInOut(r32 p)
 {
-	if(p == 0.0f || p == 1.0f) return p;
+	if (p == 0.0f || p == 1.0f) { return p; }
 	
-	if(p < 0.5f)
+	if (p < 0.5f)
 	{
 		return 0.5f * (r32)pow(2, (20 * p) - 10);
 	}
@@ -341,6 +361,9 @@ r32 EaseExponentialInOut(r32 p)
 	}
 }
 
+// +==============================+
+// |           Elastic            |
+// +==============================+
 // Modeled after the damped sine wave y = (r32)sin(13pi/2*x)*(r32)pow(2, 10 * (x - 1))
 r32 EaseElasticIn(r32 p)
 {
@@ -358,7 +381,7 @@ r32 EaseElasticOut(r32 p)
 // y = (1/2)*((r32)sin(-13pi/2*((2x-1)+1))*(r32)pow(2,-10(2*x-1)) + 2) ; [0.5, 1]
 r32 EaseElasticInOut(r32 p)
 {
-	if(p < 0.5f)
+	if (p < 0.5f)
 	{
 		return 0.5f * (r32)sin(13 * (Pi32*2) * (2 * p)) * (r32)pow(2, 10 * ((2 * p) - 1));
 	}
@@ -368,6 +391,9 @@ r32 EaseElasticInOut(r32 p)
 	}
 }
 
+// +==============================+
+// |             Back             |
+// +==============================+
 // Modeled after the overshooting cubic y = x^3-x*(r32)sin(x*pi)
 r32 EaseBackIn(r32 p)
 {
@@ -386,7 +412,7 @@ r32 EaseBackOut(r32 p)
 // y = (1/2)*(1-((1-x)^3-(1-x)*(r32)sin((1-x)*pi))+1) ; [0.5, 1]
 r32 EaseBackInOut(r32 p)
 {
-	if(p < 0.5)
+	if (p < 0.5)
 	{
 		r32 f = 2 * p;
 		return 0.5f * (f * f * f - f * (r32)sin(f * Pi32));
@@ -398,17 +424,20 @@ r32 EaseBackInOut(r32 p)
 	}
 }
 
+// +==============================+
+// |            Bounce            |
+// +==============================+
 r32 EaseBounceOut(r32 p)
 {
-	if(p < 4/11.0)
+	if (p < 4/11.0)
 	{
 		return (121 * p * p)/16.0f;
 	}
-	else if(p < 8/11.0f)
+	else if (p < 8/11.0f)
 	{
 		return (363/40.0f * p * p) - (99/10.0f * p) + 17/5.0f;
 	}
-	else if(p < 9/10.0)
+	else if (p < 9/10.0)
 	{
 		return (4356/361.0f * p * p) - (35442/1805.0f * p) + 16061/1805.0f;
 	}
@@ -425,7 +454,7 @@ r32 EaseBounceIn(r32 p)
 
 r32 EaseBounceInOut(r32 p)
 {
-	if(p < 0.5)
+	if (p < 0.5)
 	{
 		return 0.5f * EaseBounceIn(p*2);
 	}
@@ -435,6 +464,9 @@ r32 EaseBounceInOut(r32 p)
 	}
 }
 
+// +==============================+
+// |            Early             |
+// +==============================+
 r32 EaseEarlyInOut(r32 p)
 {
 	r32 p2 = (1.2f * p);
@@ -468,6 +500,9 @@ r32 EaseEarlyInOut(r32 p)
 	// }
 }
 
+// +==============================+
+// |         LogTwoCustom         |
+// +==============================+
 r32 EaseLogTwoOutCustom(r32 p)
 {
 	return (1 / 3.16987f) * Log2R32((8.0f * p) + 1.0f);
@@ -477,6 +512,9 @@ r32 EaseLogTwoInCustom(r32 p)
 	return (PowR32(2, (3.16987f * p)) - 1.0f) / 8.0f;
 }
 
+// +==============================+
+// |           Generic            |
+// +==============================+
 r32 Ease(EasingStyle_t style, r32 p)
 {
 	switch (style)

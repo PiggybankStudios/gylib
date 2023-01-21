@@ -923,7 +923,7 @@ box BoxScale3(box boundingBox, r32 scaleX, r32 scaleY, r32 scaleZ)
 	result.depth = boundingBox.depth * scaleZ;
 	return result;
 }
-box BoxScale2(box boundingBox, v3 scale)
+box BoxScale3(box boundingBox, v3 scale)
 {
 	box result;
 	result.x = boundingBox.x * scale.x;
@@ -988,7 +988,7 @@ boxi BoxiScale3(boxi boundingBox, i32 scaleX, i32 scaleY, i32 scaleZ)
 	result.depth = boundingBox.depth * scaleZ;
 	return result;
 }
-boxi BoxiScale2(boxi boundingBox, v3i scale)
+boxi BoxiScale3(boxi boundingBox, v3i scale)
 {
 	boxi result;
 	result.x = boundingBox.x * scale.x;
@@ -1050,6 +1050,11 @@ bool Obb2DBasicallyEqual(obb2 left, obb2 right, r32 tolerance = 0.001f)
 	if (!BasicallyEqualR32(left.rotation, right.rotation, tolerance)) { return false; }
 	return true;
 }
+
+// +==============================+
+// |            Obb3D             |
+// +==============================+
+//TODO: Implement these functions
 
 // +--------------------------------------------------------------+
 // |                Expand Retract Inflate Deflate                |
@@ -2190,7 +2195,7 @@ box BoxUninvert(box boundingBox)
 	result.depth = AbsR32(boundingBox.depth);
 	return result;
 }
-//TODO: Add BoxBoth and BoxOverlap
+//TODO: Add BoxBoth BoxOverlap, and BoxExpandToVec3
 
 // +==============================+
 // |             Boxi             |
@@ -2330,7 +2335,7 @@ obb2 Obb2DUninvert(obb2 rectangle)
 	result.height = AbsR32(rectangle.height);
 	return result;
 }
-rec GetObb2DAlignedBounds(obb2 boundingBox)
+rec GetObb2DAlignedBounds(obb2 boundingBox) //TODO: Remove "Aligned" from the name to make it shorter?
 {
 	rec result = NewRec(GetObb2DTopLeft(boundingBox), Vec2_Zero);
 	result = RecExpandToVec2(result, GetObb2DTopRight(boundingBox));
@@ -2347,7 +2352,7 @@ rec GetObb2DAlignedBounds(obb2 boundingBox)
 // +==============================+
 // |             Rec              |
 // +==============================+
-bool IsInsideRec(rec rectangle, v2 point)
+bool IsInsideRec(rec rectangle, v2 point) //TODO: Add includeNeg and includePos options!
 {
 	if (point.x < rectangle.x) { return false; }
 	if (point.y < rectangle.y) { return false; }
@@ -2388,7 +2393,7 @@ bool RecsIntersect(rec rectangle1, rec rectangle2, bool inclusive = true)
 // +==============================+
 // |             Reci             |
 // +==============================+
-bool IsInsideReci(reci rectangle, v2i point, bool includePositiveEdges = false)
+bool IsInsideReci(reci rectangle, v2i point, bool includePositiveEdges = false) //TODO: Add includeNeg and rename includePos option
 {
 	if (point.x < rectangle.x) { return false; }
 	if (point.y < rectangle.y) { return false; }
@@ -2398,6 +2403,8 @@ bool IsInsideReci(reci rectangle, v2i point, bool includePositiveEdges = false)
 	if (!includePositiveEdges && point.y == rectangle.y + rectangle.height) { return false; }
 	return true;
 }
+
+// TODO: Add RecisIntersect
 
 // +==============================+
 // |             Box              |
@@ -2508,6 +2515,8 @@ bool IsInsideObb2D(obb2 rectangle, v2 point)
 	if (dotY < -rectangle.height/2) { return false; }
 	return true;
 }
+
+// TODO: Add Obb2sIntersect
 
 //TODO: Add Obb3D functions
 

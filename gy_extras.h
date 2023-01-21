@@ -11,6 +11,16 @@ Description:
 #ifndef _GY_EXTRAS_H
 #define _GY_EXTRAS_H
 
+//TODO: This probably needs some #includes
+#include "gy_defines_check.h"
+#include "gy_std.h"
+#include "gy_types.h"
+#include "gy_assert.h"
+#include "gy_intrinsics.h"
+#include "gy_vectors.h"
+#include "gy_rectangles.h"
+#include "gy_random.h"
+
 v2 GetBlueNoisePosInRec(u64 seed, rec bounds, u64 numOfPositions, u64 index)
 {
 	Assert(numOfPositions > 0);

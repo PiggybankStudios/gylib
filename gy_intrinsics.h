@@ -836,17 +836,18 @@ inline r64 LerpClampR64(r64 val1, r64 val2, r64 amount)
 	return ClampR64(val1 + (val2 - val1) * amount, MinR64(val1, val2), MaxR64(val1, val2));
 }
 
+//TODO: Rename to FractionalPart
 // +==============================+
 // |         DecimalPart          |
 // +==============================+
 inline r32 DecimalPartR32(r32 value)
 {
-	r32 floor = (r32)FloorR32(value);
+	r32 floor = FloorR32(value);
 	return AbsR32(value - floor);
 }
 inline r64 DecimalPartR64(r64 value)
 {
-	r64 floor = (r64)FloorR64(value);
+	r64 floor = FloorR64(value);
 	return AbsR64(value - floor);
 }
 
@@ -862,6 +863,7 @@ inline r64 ModR64(r64 numerator, r64 denominator)
 	return fmod(numerator, denominator);
 }
 
+//TODO: Rename these "ClampCast"
 // +================================+
 // | Primitive Conversion Functions |
 // +================================+
@@ -912,6 +914,7 @@ inline i16 ClampR32toI16(r32 value)
 	else { return (i16)roundedValue; }
 }
 
+// TODO: Use ClampCast in these conversions!
 // +==============================+
 // |      ConvertSampleXToY       |
 // +==============================+
@@ -1028,6 +1031,7 @@ inline bool IsInfiniteR64(r64 value)
 // +==============================+
 // |          RoundUpTo           |
 // +==============================+
+//TODO: These are basically CeilTo functions! Do we need both for some reason?
 u32 RoundUpToU32(u32 value, u32 chunkSize)
 {
 	if (chunkSize <= 1) { return value; } //eat degenerate and invalid
@@ -1061,6 +1065,7 @@ i64 RoundUpToI64(i64 value, i64 chunkSize)
 	return (isNegative ? -1 : 1) * result;
 }
 
+//TODO: Rename these LinearStep and LinearSpike
 // +==============================+
 // | Normalized Float Operations  |
 // +==============================+
@@ -1123,6 +1128,7 @@ r64 AngleDiffR64(r64 left, r64 right)
 	return left - right;
 }
 
+//TODO: Is this actually right??? Should be Pi32 not TwoPi32 right?
 r32 AngleOppositeR32(r32 angle)
 {
 	return AngleFixR32(angle + TwoPi32);
@@ -1157,6 +1163,7 @@ r64 AngleFlipHorizontalR64(r64 angle, bool normalize = true)
 	return result;
 }
 
+//TODO: Should we do a final AngleFix on the result of this?
 r32 AngleLerpR32(r32 angleFrom, r32 angleTo, r32 amount)
 {
 	r32 from = AngleFixR32(angleFrom);

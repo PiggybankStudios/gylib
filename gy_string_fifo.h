@@ -24,6 +24,7 @@ Description:
 #include "gy_types.h"
 #include "gy_intrinsics.h"
 #include "gy_memory.h"
+#include "gy_string.h"
 
 struct StringFifoLine_t
 {

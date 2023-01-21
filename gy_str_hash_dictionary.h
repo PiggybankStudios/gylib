@@ -11,6 +11,15 @@ Description:
 
 #define GY_STR_HASH_DICTIONARY_DEFEAULT_INITIAL_SIZE    32
 
+#include "gy_defines_check.h"
+#include "gy_std.h"
+#include "gy_basic_macros.h"
+#include "gy_types.h"
+#include "gy_assert.h"
+#include "gy_memory.h"
+#include "gy_hash.h"
+#include "gy_string.h"
+
 // +--------------------------------------------------------------+
 // |                          Structure                           |
 // +--------------------------------------------------------------+

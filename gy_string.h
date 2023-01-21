@@ -11,6 +11,7 @@ Date:   09\24\2021
 #include "gy_std.h"
 #include "gy_types.h"
 #include "gy_assert.h"
+#include "gy_intrinsics.h"
 #include "gy_memory.h"
 #include "gy_unicode.h"
 #include "gy_hash.h"

@@ -10,6 +10,10 @@ Description:
 #ifndef _GY_NOISE_H
 #define _GY_NOISE_H
 
+#include "gy_defines_check.h"
+#include "gy_std.h"
+#include "gy_types.h"
+
 //TODO: Regenerate random numbers for this array
 static const uint8_t SimplexPerm[256] = {
     151, 160, 137,  91,  90,  15, 131,  13, 201,  95,  96,  53, 194, 233,   7, 225,

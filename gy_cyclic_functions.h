@@ -15,6 +15,10 @@ Description:
 #ifndef _GY_CYCLIC_FUNCTIONS_H
 #define _GY_CYCLIC_FUNCTIONS_H
 
+#include "gy_defines_check.h"
+#include "gy_std.h"
+#include "gy_types.h"
+
 // +--------------------------------------------------------------+
 // |                      Enum and Structure                      |
 // +--------------------------------------------------------------+

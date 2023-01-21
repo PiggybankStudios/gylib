@@ -161,6 +161,7 @@ bool IsAlignedTo(const void* memoryPntr, AllocAlignment_t alignment)
 	u64 address = (u64)(memoryPntr);
 	return ((address % (u64)alignment) == 0);
 }
+
 u8 OffsetToAlign(const void* memoryPntr, AllocAlignment_t alignment)
 {
 	if (alignment == AllocAlignment_None) { return 0; }
@@ -338,7 +339,7 @@ void InitMemArena_Buffer(MemArena_t* arena, u64 bufferSize, void* bufferPntr, bo
 
 void UpdateMemArenaFuncPntrs(MemArena_t* arena, AllocationFunction_f* allocFunc, FreeFunction_f* freeFunc)
 {
-	Assert(arena->type == MemArenaType_Redirect || MemArenaType_PagedHeap);
+	Assert(arena->type == MemArenaType_Redirect || arena->type == MemArenaType_PagedHeap);
 	arena->allocFunc = allocFunc;
 	arena->freeFunc = freeFunc;
 }
@@ -1082,7 +1083,7 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreN
 	NotNull(arena);
 	AssertMsg(arena->type != MemArenaType_None, "Tried to free from uninitialized arena");
 	Assert(ignoreNullptr || allocPntr != nullptr);
-	if (allocPntr == nullptr) { return 0; }
+	if (allocPntr == nullptr) { return false; }
 	
 	if (IsFlagSet(arena->flags, MemArenaFlag_BreakOnFree) && (arena->debugBreakThreshold == 0 || allocSize >= arena->debugBreakThreshold))
 	{
@@ -1126,6 +1127,7 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreN
 			free(allocPntr);
 			Decrement(arena->numAllocations);
 			DecrementBy(arena->used, allocSize);
+			result = true;
 		} break;
 		#endif //GY_CUSTOM_STD_LIB
 		
@@ -1394,7 +1396,7 @@ void* ReallocMem(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 
 	}
 	if (newSize == 0) //Resizing to 0 is basically freeing
 	{
-		bool freeSuccess = FreeMem(arena, allocPntr, oldSize, ignoreNullptr);
+		bool freeSuccess = FreeMem(arena, allocPntr, oldSize, ignoreNullptr, oldSizeOut);
 		AssertMsg(freeSuccess, "Failed attempt to free memory in arena when Realloc'd to 0 bytes");
 		return nullptr;
 	}

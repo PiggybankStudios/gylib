@@ -852,6 +852,7 @@ Axis_t AxisFromIndex(u64 index)
 // +--------------------------------------------------------------+
 // |                 Relative Direction Functions                 |
 // +--------------------------------------------------------------+
+//TODO: Make the Opposite functions handle multiple bits being set in the direction
 // +==============================+
 // |           Opposite           |
 // +==============================+
@@ -933,6 +934,9 @@ Dir2_t Dir2CounterClockwise(Dir2_t dir2, u64 numQuarterTurns = 1)
 	Assert(IsSingleDir2(dir2));
 	return Dir2FromCcwIndexStartingWith(dir2, numQuarterTurns);
 }
+
+//TODO: Add Dir2ExClockwise and Dir2ExCounterClockwise
+
 
 // +==============================+
 // |      GetTurnsBetweenDir      |
@@ -1115,6 +1119,7 @@ Dir2_t GetCardinalDir2sFromDir2Ex(Dir2Ex_t diagonalDir)
 	return (Dir2_t)result;
 }
 
+//TODO: Rename these Vec2Clockwise90 and add VecCounterClockwise90
 v2 RotateVec2NumTurnsClockwise(v2 vector, u64 numQuarterTurns)
 {
 	switch (numQuarterTurns % Dir2_Count)
@@ -1138,6 +1143,7 @@ v2i RotateVec2iNumTurnsClockwise(v2i vector, u64 numQuarterTurns)
 	}
 }
 
+//TODO: Rename to Vec2UnitRecCornerFromIndex and add Vec2UnitCubeCornerFromIndex
 v2 Get2DCornerVecByIndex(u64 cornerIndex)
 {
 	switch (cornerIndex % 4)
@@ -1150,6 +1156,7 @@ v2 Get2DCornerVecByIndex(u64 cornerIndex)
 	}
 }
 
+//TODO: Rename this Vec3iDotDir3 and add Vec3DotDir3, Vec2DotDir2, and Vec2iDotDir2
 i32 Vec3iAmountInDir(v3i vector, Dir3_t direction)
 {
 	switch (direction)

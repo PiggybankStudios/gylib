@@ -39,6 +39,12 @@ Description:
 #endif
 
 // +--------------------------------------------------------------+
+// |                Compile-Time Assertion Macros                 |
+// +--------------------------------------------------------------+
+#define CompileAssertMsg(condition, message) static_assert(condition, message)
+#define CompileAssert(condition)             static_assert(condition)
+
+// +--------------------------------------------------------------+
 // |                   MyBreak and MyDebugBreak                   |
 // +--------------------------------------------------------------+
 #if WINDOWS_COMPILATION
@@ -153,6 +159,8 @@ GYLIB_ASSERTIONS_ENABLED
 GYLIB_USE_ASSERT_FAILURE_FUNC
 @Types
 @Functions
+#define CompileAssertMsg(condition, message)
+#define CompileAssert(condition)
 #define MyBreak()
 #define MyDebugBreak()
 void GyLibAssertFailure(const char* filePath, int lineNumber, const char* funcName, const char* expressionStr, const char* messageStr)

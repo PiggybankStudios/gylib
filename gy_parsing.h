@@ -17,6 +17,7 @@ Description:
 #include "gylib/gy_unicode.h"
 #include "gylib/gy_string.h"
 #include "gylib/gy_vectors.h"
+#include "gylib/gy_rectangles.h"
 
 #define GY_MAX_FLOAT_PARSE_LENGTH 64 //characters
 

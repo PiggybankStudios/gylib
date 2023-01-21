@@ -9,6 +9,10 @@ Description:
 #ifndef _GY_HASH_H
 #define _GY_HASH_H
 
+#include "gy_defines_check.h"
+#include "gy_std.h"
+#include "gy_types.h"
+
 #define FNV_HASH_BASE_U64   0xcbf29ce484222325ULL
 #define FNV_HASH_PRIME_U64  0x100000001b3ULL
 

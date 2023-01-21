@@ -17,6 +17,7 @@ Description:
 #include "gy_types.h"
 #include "gy_intrinsics.h"
 #include "gy_memory.h"
+#include "gy_string.h"
 #include "gy_variable_array.h"
 
 #define WORD_TREE_CHILD_COUNT 26

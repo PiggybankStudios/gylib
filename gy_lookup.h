@@ -10,6 +10,7 @@ Description:
 #define _GY_LOOKUP_H
 
 #include "gy_defines_check.h"
+#include "gy_std.h"
 #include "gy_types.h"
 
 // +--------------------------------------------------------------+

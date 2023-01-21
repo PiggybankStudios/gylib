@@ -272,19 +272,23 @@ Vector4i_t NewVec4i(i32 x, i32 y, i32 z, i32 w)
 #define Vec4_Up        NewVec4( 0.0f,  1.0f,  0.0f, 0.0f)
 #define Vec4_Backward  NewVec4( 0.0f,  0.0f, -1.0f, 0.0f)
 #define Vec4_Forward   NewVec4( 0.0f,  0.0f,  1.0f, 0.0f)
+#define Vec4_Prevward  NewVec4( 0.0f,  0.0f,  0.0f,-1.0f)
+#define Vec4_Nextward  NewVec4( 0.0f,  0.0f,  0.0f, 1.0f)
 
-#define Vec4i_Zero     NewVec4( 0,  0,  0, 0)
-#define Vec4i_One      NewVec4( 1,  1,  1, 0)
-#define Vec4i_Left     NewVec4(-1,  0,  0, 0)
-#define Vec4i_Right    NewVec4( 1,  0,  0, 0)
-#define Vec4i_Bottom   NewVec4( 0, -1,  0, 0)
-#define Vec4i_Top      NewVec4( 0,  1,  0, 0)
-#define Vec4i_Back     NewVec4( 0,  0, -1, 0)
-#define Vec4i_Front    NewVec4( 0,  0,  1, 0)
-#define Vec4i_Down     NewVec4( 0, -1,  0, 0)
-#define Vec4i_Up       NewVec4( 0,  1,  0, 0)
-#define Vec4i_Backward NewVec4( 0,  0, -1, 0)
-#define Vec4i_Forward  NewVec4( 0,  0,  1, 0)
+#define Vec4i_Zero      NewVec4i( 0,  0,  0, 0)
+#define Vec4i_One       NewVec4i( 1,  1,  1, 0)
+#define Vec4i_Left      NewVec4i(-1,  0,  0, 0)
+#define Vec4i_Right     NewVec4i( 1,  0,  0, 0)
+#define Vec4i_Bottom    NewVec4i( 0, -1,  0, 0)
+#define Vec4i_Top       NewVec4i( 0,  1,  0, 0)
+#define Vec4i_Back      NewVec4i( 0,  0, -1, 0)
+#define Vec4i_Front     NewVec4i( 0,  0,  1, 0)
+#define Vec4i_Down      NewVec4i( 0, -1,  0, 0)
+#define Vec4i_Up        NewVec4i( 0,  1,  0, 0)
+#define Vec4i_Backward  NewVec4i( 0,  0, -1, 0)
+#define Vec4i_Forward   NewVec4i( 0,  0,  1, 0)
+#define Vec4i_Prevward  NewVec4i( 0,  0,  0,-1)
+#define Vec4i_Nextward  NewVec4i( 0,  0,  0, 1)
 
 // +--------------------------------------------------------------+
 // |                 Simple Conversions and Casts                 |
@@ -1516,6 +1520,8 @@ Vec4_Down
 Vec4_Up
 Vec4_Backward
 Vec4_Forward
+Vec4_Prevward
+Vec4_Nextward
 Vec4i_Zero
 Vec4i_One
 Vec4i_Left
@@ -1528,6 +1534,8 @@ Vec4i_Down
 Vec4i_Up
 Vec4i_Backward
 Vec4i_Forward
+Vec4i_Prevward
+Vec4i_Nextward
 @Types
 Vector2_t
 Vector3_t

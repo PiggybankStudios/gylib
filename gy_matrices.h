@@ -127,25 +127,25 @@ mat4 Mat4Cofactor(mat4 matrix)
 {
 	mat4 result;
 	
-	result.r0c0 = Mat3Determinant(matrix.r1c1, matrix.r1c2, matrix.r1c3, matrix.r2c1, matrix.r2c2, matrix.r2c3, matrix.r3c1, matrix.r3c2, matrix.r3c3);
+	result.r0c0 =  Mat3Determinant(matrix.r1c1, matrix.r1c2, matrix.r1c3, matrix.r2c1, matrix.r2c2, matrix.r2c3, matrix.r3c1, matrix.r3c2, matrix.r3c3);
 	result.r0c1 = -Mat3Determinant(matrix.r1c0, matrix.r1c2, matrix.r1c3, matrix.r2c0, matrix.r2c2, matrix.r2c3, matrix.r3c0, matrix.r3c2, matrix.r3c3);
-	result.r0c2 = Mat3Determinant(matrix.r1c0, matrix.r1c1, matrix.r1c3, matrix.r2c0, matrix.r2c1, matrix.r2c3, matrix.r3c0, matrix.r3c1, matrix.r3c3);
+	result.r0c2 =  Mat3Determinant(matrix.r1c0, matrix.r1c1, matrix.r1c3, matrix.r2c0, matrix.r2c1, matrix.r2c3, matrix.r3c0, matrix.r3c1, matrix.r3c3);
 	result.r0c3 = -Mat3Determinant(matrix.r1c0, matrix.r1c1, matrix.r1c2, matrix.r2c0, matrix.r2c1, matrix.r2c2, matrix.r3c0, matrix.r3c1, matrix.r3c2);
 	
 	result.r1c0 = -Mat3Determinant(matrix.r0c1, matrix.r0c2, matrix.r0c3, matrix.r2c1, matrix.r2c2, matrix.r2c3, matrix.r3c1, matrix.r3c2, matrix.r3c3);
-	result.r1c1 = Mat3Determinant(matrix.r0c0, matrix.r0c2, matrix.r0c3, matrix.r2c0, matrix.r2c2, matrix.r2c3, matrix.r3c0, matrix.r3c2, matrix.r3c3);
+	result.r1c1 =  Mat3Determinant(matrix.r0c0, matrix.r0c2, matrix.r0c3, matrix.r2c0, matrix.r2c2, matrix.r2c3, matrix.r3c0, matrix.r3c2, matrix.r3c3);
 	result.r1c2 = -Mat3Determinant(matrix.r0c0, matrix.r0c1, matrix.r0c3, matrix.r2c0, matrix.r2c1, matrix.r2c3, matrix.r3c0, matrix.r3c1, matrix.r3c3);
-	result.r1c3 = Mat3Determinant(matrix.r0c0, matrix.r0c1, matrix.r0c2, matrix.r2c0, matrix.r2c1, matrix.r2c2, matrix.r3c0, matrix.r3c1, matrix.r3c2);
+	result.r1c3 =  Mat3Determinant(matrix.r0c0, matrix.r0c1, matrix.r0c2, matrix.r2c0, matrix.r2c1, matrix.r2c2, matrix.r3c0, matrix.r3c1, matrix.r3c2);
 	
-	result.r2c0 = Mat3Determinant(matrix.r0c1, matrix.r0c2, matrix.r0c3, matrix.r1c1, matrix.r1c2, matrix.r1c3, matrix.r3c1, matrix.r3c2, matrix.r3c3);
+	result.r2c0 =  Mat3Determinant(matrix.r0c1, matrix.r0c2, matrix.r0c3, matrix.r1c1, matrix.r1c2, matrix.r1c3, matrix.r3c1, matrix.r3c2, matrix.r3c3);
 	result.r2c1 = -Mat3Determinant(matrix.r0c0, matrix.r0c2, matrix.r0c3, matrix.r1c0, matrix.r1c2, matrix.r1c3, matrix.r3c0, matrix.r3c2, matrix.r3c3);
-	result.r2c2 = Mat3Determinant(matrix.r0c0, matrix.r0c1, matrix.r0c3, matrix.r1c0, matrix.r1c1, matrix.r1c3, matrix.r3c0, matrix.r3c1, matrix.r3c3);
+	result.r2c2 =  Mat3Determinant(matrix.r0c0, matrix.r0c1, matrix.r0c3, matrix.r1c0, matrix.r1c1, matrix.r1c3, matrix.r3c0, matrix.r3c1, matrix.r3c3);
 	result.r2c3 = -Mat3Determinant(matrix.r0c0, matrix.r0c1, matrix.r0c2, matrix.r1c0, matrix.r1c1, matrix.r1c2, matrix.r3c0, matrix.r3c1, matrix.r3c2);
 	
 	result.r3c0 = -Mat3Determinant(matrix.r0c1, matrix.r0c2, matrix.r0c3, matrix.r1c1, matrix.r1c2, matrix.r1c3, matrix.r2c1, matrix.r2c2, matrix.r2c3);
-	result.r3c1 = Mat3Determinant(matrix.r0c0, matrix.r0c2, matrix.r0c3, matrix.r1c0, matrix.r1c2, matrix.r1c3, matrix.r2c0, matrix.r2c2, matrix.r2c3);
+	result.r3c1 =  Mat3Determinant(matrix.r0c0, matrix.r0c2, matrix.r0c3, matrix.r1c0, matrix.r1c2, matrix.r1c3, matrix.r2c0, matrix.r2c2, matrix.r2c3);
 	result.r3c2 = -Mat3Determinant(matrix.r0c0, matrix.r0c1, matrix.r0c3, matrix.r1c0, matrix.r1c1, matrix.r1c3, matrix.r2c0, matrix.r2c1, matrix.r2c3);
-	result.r3c3 = Mat3Determinant(matrix.r0c0, matrix.r0c1, matrix.r0c2, matrix.r1c0, matrix.r1c1, matrix.r1c2, matrix.r2c0, matrix.r2c1, matrix.r2c2);
+	result.r3c3 =  Mat3Determinant(matrix.r0c0, matrix.r0c1, matrix.r0c2, matrix.r1c0, matrix.r1c1, matrix.r1c2, matrix.r2c0, matrix.r2c1, matrix.r2c2);
 	
 	return result;
 }

@@ -118,6 +118,26 @@ inline ColorHSV_t NewColorHsv(r32 hue, r32 saturation, r32 value, r32 alpha)
 }
 
 // +--------------------------------------------------------------+
+// |                    Color Channel Helpers                     |
+// +--------------------------------------------------------------+
+u8 ColorChannelToU8(r32 valueR32)
+{
+	return ClampI32toU8(RoundR32i(valueR32 * 255.0f));
+}
+r32 ColorChannelToR32(u8 valueU8)
+{
+	return (r32)valueU8 / 255.0f;
+}
+u8 MultiplyColorChannelU8(u8 left, u8 right)
+{
+	return ColorChannelToU8(ColorChannelToR32(left) * ColorChannelToR32(right));
+}
+u8 MultiplyColorChannelR32(u8 left, r32 rightR32)
+{
+	return ColorChannelToU8(ColorChannelToR32(left) * rightR32);
+}
+
+// +--------------------------------------------------------------+
 // |               Casting and Conversion Functions               |
 // +--------------------------------------------------------------+
 Color_t ToColor(Colorf_t colorf)
@@ -149,11 +169,11 @@ Color_t ToColor(v4 vector4)
 }
 inline Color_t ColorTransparent(r32 alpha)
 {
-	return NewColor(255, 255, 255, ClampI32toU8(RoundR32i(255 * alpha)));
+	return NewColor(255, 255, 255, ColorChannelToU8(alpha));
 }
 inline Color_t ColorTransparent(Color_t color, r32 alpha)
 {
-	return NewColor(color.r, color.g, color.b, ClampI32toU8(RoundR32i(255 * alpha)));
+	return NewColor(color.r, color.g, color.b, ColorChannelToU8(alpha));
 }
 
 inline Colorf_t ToColorf(Color_t color)
@@ -237,26 +257,6 @@ v4 ToVec4(Colorf_t color)
 	result.b = color.b;
 	result.a = color.a;
 	return result;
-}
-
-// +--------------------------------------------------------------+
-// |                    Color Channel Helpers                     |
-// +--------------------------------------------------------------+
-u8 ColorChannelToU8(r32 valueR32)
-{
-	return ClampI32toU8(RoundR32i(valueR32 * 255.0f));
-}
-r32 ColorChannelToR32(u8 valueU8)
-{
-	return (r32)valueU8 / 255.0f;
-}
-u8 MultiplyColorChannelU8(u8 left, u8 right)
-{
-	return ColorChannelToU8(ColorChannelToR32(left) * ColorChannelToR32(right));
-}
-u8 MultiplyColorChannelR32(u8 left, r32 rightR32)
-{
-	return ColorChannelToU8(ColorChannelToR32(left) * rightR32);
 }
 
 // +--------------------------------------------------------------+
