@@ -18,6 +18,7 @@ Description:
 #include "gylib/gy_string.h"
 #include "gylib/gy_vectors.h"
 #include "gylib/gy_rectangles.h"
+#include "gylib/gy_uuid.h"
 
 #define GY_MAX_FLOAT_PARSE_LENGTH 64 //characters
 
@@ -39,6 +40,8 @@ enum TryParseFailureReason_t
 	TryParseFailureReason_NotEnoughCommas,
 	TryParseFailureReason_TooManyCommas,
 	TryParseFailureReason_WrongNumCharacters,
+	TryParseFailureReason_TooShort,
+	TryParseFailureReason_TooLong,
 	TryParseFailureReason_NumReasons,
 };
 
@@ -59,6 +62,8 @@ const char* GetTryParseFailureReasonStr(TryParseFailureReason_t reason)
 		case TryParseFailureReason_NotEnoughCommas:    return "NotEnoughCommas";
 		case TryParseFailureReason_TooManyCommas:      return "TooManyCommas";
 		case TryParseFailureReason_WrongNumCharacters: return "WrongNumCharacters";
+		case TryParseFailureReason_TooShort:           return "TooShort";
+		case TryParseFailureReason_TooLong:            return "TooLong";
 		default: return "Unknown";
 	}
 }
@@ -721,6 +726,54 @@ bool TryParseColor(MyStr_t str, Color_t* valueOut, TryParseFailureReason_t* reas
 	}
 }
 
+bool TryParseUuid(MyStr_t str, Uuid_t* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
+{
+	NotNullStr(&str);
+	if (str.length < UUID_STR_LENGTH_NO_HYPHENS) { if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_TooShort; } return false; }
+	if (str.length > UUID_STR_LENGTH) { if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_TooLong; } return false; }
+	u8 byteIndex = 0;
+	Uuid_t result = {};
+	for (u64 cIndex = 0; cIndex < str.length; )
+	{
+		if (str.chars[cIndex] == '-') { cIndex++; continue; }
+		if (!IsCharHexadecimal(str.chars[cIndex+0])) { if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_InvalidCharacter; } return false; }
+		if (!IsCharHexadecimal(str.chars[cIndex+1])) { if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_InvalidCharacter; } return false; }
+		if (cIndex+2 > str.length) { if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_WrongNumCharacters; } return false; }
+		if (byteIndex >= UUID_BYTE_LENGTH) { if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_TooLong; } return false; }
+		u8 insertByteIndex = 0;
+		if (byteIndex < 4) { insertByteIndex = (3 - byteIndex); }
+		else if (byteIndex < 4+2) { insertByteIndex = 4 + (1 - (byteIndex - 4)); }
+		else if (byteIndex < 4+2+2) { insertByteIndex = 6 + (1 - (byteIndex - 6)); }
+		else if (byteIndex < 4+2+2+2) { insertByteIndex = 8 + (1 - (byteIndex - 8)); }
+		else if (byteIndex < 4+2+2+2+2) { insertByteIndex = 10 + (1 - (byteIndex - 10)); }
+		else { insertByteIndex = 12 + (3 - (byteIndex - 12)); }
+		result.bytes[insertByteIndex] = ((GetHexCharValue(str.chars[cIndex + 0]) << 4) | (GetHexCharValue(str.chars[cIndex + 1]) << 0)); 
+		byteIndex++;
+		cIndex += 2;
+	}
+	if (valueOut != nullptr) { *valueOut = result; }
+	char uuidStrBuffer[UUID_STR_LENGTH+1];
+	UuidToStr(valueOut, &uuidStrBuffer[0]);
+	GyLibPrintLine_D("Parsing UUID \"%.*s\" resulted in %s", str.length, str.pntr, &uuidStrBuffer[0]);
+	return true;
+}
+Uuid_t ParseUuid(MyStr_t str)
+{
+	Uuid_t result;
+	TryParseFailureReason_t failureReason;
+	bool parseSuccess = TryParseUuid(str, &result, &failureReason);
+	Assert(parseSuccess);
+	return result;
+}
+Uuid_t ParseUuid(const char* nullTermStr)
+{
+	Uuid_t result;
+	TryParseFailureReason_t failureReason;
+	bool parseSuccess = TryParseUuid(NewStr(nullTermStr), &result, &failureReason);
+	Assert(parseSuccess);
+	return result;
+}
+
 #endif //  _GY_PARSING_H
 
 // +--------------------------------------------------------------+
@@ -948,4 +1001,7 @@ bool TryParseDir3(MyStr_t str, Dir3_t* valueOut, TryParseFailureReason_t* reason
 bool TryParseV2i(MyStr_t str, v2i* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
 bool TryParseV2(MyStr_t str, v2* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
 bool TryParseReci(MyStr_t str, reci* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
+bool TryParseColor(MyStr_t str, Color_t* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool alphaAtBeginning = true)
+bool TryParseUuid(MyStr_t str, Uuid_t* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
+Uuid_t ParseUuid(MyStr_t str)
 */

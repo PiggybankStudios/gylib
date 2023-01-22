@@ -330,7 +330,6 @@ bool RayVsBox(Ray3_t ray, box boundingBox, RayVsBoxResult_t* result, bool giveNe
 // +--------------------------------------------------------------+
 /*
 @Defines
-
 @Types
 RayVsRectangle2DResult_t
 RayVsObb2DResult_t
