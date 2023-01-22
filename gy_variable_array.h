@@ -59,28 +59,35 @@ void CreateVarArray(VarArray_t* array, MemArena_t* memArena, u64 itemSize, u64 i
 	NotNull(memArena);
 	Assert(itemSize > 0);
 	Assert(allocChunkSize > 0);
-	ClearPointer(array);
-	array->itemSize = itemSize;
+	// ClearPointer(array); //NOTE: This was somewhat slow. So instead we just make sure all variables inside the struct are set below!
 	array->allocArena = memArena;
+	array->itemSize = itemSize;
 	array->allocChunkSize = allocChunkSize;
 	array->exponentialChunkSize = exponentialChunkSize;
+	array->name = MyStr_Empty;
 	array->length = 0;
+	array->wasExpanded = false;
+	array->numExpansions = 0;
 	
 	if (exponentialChunkSize)
 	{
-		array->allocLength = allocChunkSize;
+		array->allocLength = (initialRequiredCapacity > 0) ? allocChunkSize : 0;
+		#if DEBUG_BUILD
 		u64 sanityCounter = 0;
+		#endif
 		while (array->allocLength < initialRequiredCapacity)
 		{
-			Assert(array->allocLength <= UINT64_MAX/2);
+			DebugAssert(array->allocLength <= UINT64_MAX/2);
 			array->allocLength *= 2;
+			#if DEBUG_BUILD
 			sanityCounter++;
 			Assert(sanityCounter <= initialRequiredCapacity); //Infinite loop sanity check
+			#endif
 		}
 	}
 	else
 	{
-		array->allocLength = RoundUpToU64(initialRequiredCapacity, allocChunkSize);
+		array->allocLength = (initialRequiredCapacity > 0) ? RoundUpToU64(initialRequiredCapacity, allocChunkSize) : 0;
 	}
 	if (array->allocLength > 0)
 	{
@@ -92,6 +99,7 @@ void CreateVarArray(VarArray_t* array, MemArena_t* memArena, u64 itemSize, u64 i
 			return;
 		}
 	}
+	else { array->items = nullptr; }
 }
 
 void VarArrayName(VarArray_t* array, MyStr_t newName)
@@ -119,15 +127,19 @@ bool VarArrayExpand(VarArray_t* array, u64 capacityRequired)
 	u64 newLength = 0;
 	if (array->exponentialChunkSize)
 	{
-		Assert(array->allocLength > 0);
 		newLength = array->allocLength;
+		if (newLength == 0) { newLength = array->allocChunkSize; }
+		#if DEBUG_BUILD
 		u64 sanityCounter = 0;
+		#endif
 		while (newLength < capacityRequired)
 		{
-			Assert(newLength <= UINT64_MAX/2);
+			DebugAssert(newLength <= UINT64_MAX/2);
 			newLength *= 2;
+			#if DEBUG_BUILD
 			sanityCounter++;
 			Assert(sanityCounter <= capacityRequired); //Infinite loop sanity check
+			#endif
 		}
 	}
 	else

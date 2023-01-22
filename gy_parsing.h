@@ -42,6 +42,8 @@ enum TryParseFailureReason_t
 	TryParseFailureReason_WrongNumCharacters,
 	TryParseFailureReason_TooShort,
 	TryParseFailureReason_TooLong,
+	TryParseFailureReason_Nullptr,
+	TryParseFailureReason_InvalidType,
 	TryParseFailureReason_NumReasons,
 };
 
@@ -64,6 +66,8 @@ const char* GetTryParseFailureReasonStr(TryParseFailureReason_t reason)
 		case TryParseFailureReason_WrongNumCharacters: return "WrongNumCharacters";
 		case TryParseFailureReason_TooShort:           return "TooShort";
 		case TryParseFailureReason_TooLong:            return "TooLong";
+		case TryParseFailureReason_Nullptr:            return "Nullptr";
+		case TryParseFailureReason_InvalidType:        return "InvalidType";
 		default: return "Unknown";
 	}
 }
@@ -391,6 +395,23 @@ bool TryParseR32(MyStr_t str, r32* valueOut, TryParseFailureReason_t* reasonOut 
 	if (valueOut != nullptr) { *valueOut = (r32)resultR64; }
 	return true;
 }
+
+// +--------------------------------------------------------------+
+// |                         Parse Enums                          |
+// +--------------------------------------------------------------+
+//Let it be known: this is the first template function we've added to the code-base. I'll never be the same again. RIP compile times
+template <class enum_t>
+bool TryParseEnum(MyStr_t str, enum_t* valueOut, enum_t enumCount, const char* (*getEnumStrFunc)(enum_t), TryParseFailureReason_t* reasonOut = nullptr)
+{
+	for (u64 eIndex = 0; eIndex < enumCount; eIndex++)
+	{
+		enum_t enumValue = (enum_t)eIndex;
+		if (StrEqualsIgnoreCase(str, getEnumStrFunc(enumValue))) { if (valueOut != nullptr) { *valueOut = enumValue; } return true; }
+	}
+	if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_UnknownString; }
+	return false;
+}
+
 
 // +--------------------------------------------------------------+
 // |                      Parse Other Types                       |
@@ -754,7 +775,6 @@ bool TryParseUuid(MyStr_t str, Uuid_t* valueOut, TryParseFailureReason_t* reason
 	if (valueOut != nullptr) { *valueOut = result; }
 	char uuidStrBuffer[UUID_STR_LENGTH+1];
 	UuidToStr(valueOut, &uuidStrBuffer[0]);
-	GyLibPrintLine_D("Parsing UUID \"%.*s\" resulted in %s", str.length, str.pntr, &uuidStrBuffer[0]);
 	return true;
 }
 Uuid_t ParseUuid(MyStr_t str)
@@ -995,6 +1015,7 @@ bool TryParseI16(MyStr_t str, i16* valueOut, TryParseFailureReason_t* reasonOut 
 bool TryParseI8(MyStr_t str, i8* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true)
 bool TryParseR64(MyStr_t str, r64* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowInfinity = false)
 bool TryParseR32(MyStr_t str, r32* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowSuffix = true, bool allowInfinity = false)
+bool TryParseEnum(MyStr_t str, enum_t* valueOut, enum_t enumCount, GetEnumStr_f* getEnumStrFunc, TryParseFailureReason_t* reasonOut = nullptr)
 bool TryParseBool(MyStr_t str, bool* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
 bool TryParseDir2(MyStr_t str, Dir2_t* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
 bool TryParseDir3(MyStr_t str, Dir3_t* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
