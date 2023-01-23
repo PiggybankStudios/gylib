@@ -1206,11 +1206,12 @@ MyStr_t GetDirectoryPart(MyStr_t filePath)
 	return result;
 }
 
+//NOTE: Because this is expecting a null-terminated output, we can provide the option for includeExtension=false
 const char* GetFileNamePartNt(const char* filePath)
 {
 	NotNull(filePath);
 	MyStr_t result;
-	SplitFilePath(NewStr(filePath), nullptr, &result);
+	SplitFilePath(NewStr(filePath), nullptr, &result, nullptr);
 	NotNullStr(&result);
 	return result.pntr;
 }

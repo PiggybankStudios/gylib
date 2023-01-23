@@ -318,6 +318,14 @@ void* StrHashDictGet_(StrHashDict_t* dict, const char* nullTermStr, u64 itemSize
 {
 	return StrHashDictGet_(dict, NewStr(nullTermStr), itemSize, assertOnFailure);
 }
+const void* StrHashDictGet_(const StrHashDict_t* dict, MyStr_t key, u64 itemSize, bool assertOnFailure) //const variant
+{
+	return (const void*)StrHashDictGet_((StrHashDict_t*)dict, key, itemSize, assertOnFailure);
+}
+const void* StrHashDictGet_(const StrHashDict_t* dict, const char* nullTermStr, u64 itemSize, bool assertOnFailure) //const variant
+{
+	return (const void*)StrHashDictGet_((StrHashDict_t*)dict, nullTermStr, itemSize, assertOnFailure);
+}
 
 #define StrHashDictGetHard(dict, key, type)  (type*)StrHashDictGet_((dict), (key), sizeof(type), true)
 #define StrHashDictGetSoft(dict, key, type)  (type*)StrHashDictGet_((dict), (key), sizeof(type), false)
