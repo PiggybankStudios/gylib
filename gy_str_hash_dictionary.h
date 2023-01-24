@@ -138,9 +138,12 @@ bool StrHashExpand(StrHashDict_t* dict, u64 numItemsRequired)
 StrHashDictIter_t StrHashDictGetIter_(const StrHashDict_t* dict, u64 itemSize)
 {
 	NotNull(dict);
-	Assert(dict->itemSize == itemSize);
-	StrHashDictIter_t result = {};
+	AssertIf(dict->itemSize > 0 || dict->base != nullptr, dict->itemSize == itemSize);
+	StrHashDictIter_t result;
 	result.dict = (StrHashDict_t*)dict;
+	result.slotIndex = 0;
+	result.index = 0;
+	result.foundIndex = 0;
 	result.itemAndHeaderSize = sizeof(StrHashDictItem_t) + dict->itemSize;
 	result.pntr = nullptr;
 	return result;
@@ -153,6 +156,7 @@ bool StrHashDictIter_(StrHashDictIter_t* iter, u64 itemSize, void** itemPntrOut)
 	NotNull(iter);
 	NotNull(iter->dict);
 	NotNull(itemPntrOut);
+	if (iter->dict->itemSize == 0) { return false; }
 	Assert(iter->dict->itemSize == itemSize);
 	
 	iter->index = iter->foundIndex;
