@@ -63,6 +63,8 @@ Description:
 #define IsPntrWithin(regionStart, regionSize, pntr) (((u8*)(pntr)) >= ((u8*)(regionStart)) && ((u8*)(pntr)) <= (((u8*)(regionStart)) + (regionSize)))
 #define IsSizedPntrWithin(regionStart, regionSize, pntr, size) (((u8*)(pntr)) >= ((u8*)(regionStart)) && (((u8*)(pntr)) + (size)) <= (((u8*)(regionStart)) + (regionSize)))
 
+#define SetOptionalOutPntr(outputPntr, value) if ((outputPntr) != nullptr) { *(outputPntr) = (value); }
+
 // +--------------------------------------------------------------+
 // |                  Platform Dependant Macros                   |
 // +--------------------------------------------------------------+
@@ -143,6 +145,7 @@ EXTERN_C_END
 #define ToDegrees64(radians)
 #define IsPntrWithin(regionStart, regionSize, pntr)
 #define IsSizedPntrWithin(regionStart, regionSize, pntr, size)
+#define SetOptionalOutPntr(outputPntr, value)
 #define UNUSED(varName)
 #define UNREFERENCED(varName)
 #define PACKED(class_to_pack)
