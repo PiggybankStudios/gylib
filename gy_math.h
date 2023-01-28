@@ -45,12 +45,45 @@ bool IsInsideTriangle(v2 p0, v2 p1, v2 p2, v2 test)
 // +--------------------------------------------------------------+
 // |                   Miscellaneous Functions                    |
 // +--------------------------------------------------------------+
+bool MinNoInfinitiesR32(r32 value1, r32 value2, r32* outValue, u8* whichIsMaxOut = nullptr)
+{
+	if (IsInfiniteR32(value1) && IsInfiniteR32(value2)) { return false; }
+	
+	if (!IsInfiniteR32(value1) && (IsInfiniteR32(value2) || value1 <= value2))
+	{
+		*outValue = value1;
+		if (whichIsMaxOut != nullptr) *whichIsMaxOut = 0;
+		return true;
+	}
+	else if (!IsInfiniteR32(value2) && (IsInfiniteR32(value1) || value2 <= value1))
+	{
+		*outValue = value2;
+		if (whichIsMaxOut != nullptr) *whichIsMaxOut = 1;
+		return true;
+	}
+	else { Assert(false); return false; }
+}
+bool MinNoInfinitiesR64(r64 value1, r64 value2, r64* outValue, u8* whichIsMaxOut = nullptr)
+{
+	if (IsInfiniteR64(value1) && IsInfiniteR64(value2)) { return false; }
+	
+	if (!IsInfiniteR64(value1) && (IsInfiniteR64(value2) || value1 <= value2))
+	{
+		*outValue = value1;
+		if (whichIsMaxOut != nullptr) *whichIsMaxOut = 0;
+		return true;
+	}
+	else if (!IsInfiniteR64(value2) && (IsInfiniteR64(value1) || value2 <= value1))
+	{
+		*outValue = value2;
+		if (whichIsMaxOut != nullptr) *whichIsMaxOut = 1;
+		return true;
+	}
+	else { Assert(false); return false; }
+}
 bool MinNoInfinitiesR32(r32 value1, r32 value2, r32 value3, r32* outValue, u8* whichIsMaxOut = nullptr)
 {
-	if (IsInfiniteR32(value1) && IsInfiniteR32(value2) && IsInfiniteR32(value3))
-	{
-		return false;
-	}
+	if (IsInfiniteR32(value1) && IsInfiniteR32(value2) && IsInfiniteR32(value3)) { return false; }
 	
 	if (!IsInfiniteR32(value1) && (IsInfiniteR32(value2) || value1 <= value2) && (IsInfiniteR32(value3) || value1 <= value3))
 	{
@@ -70,18 +103,11 @@ bool MinNoInfinitiesR32(r32 value1, r32 value2, r32 value3, r32* outValue, u8* w
 		if (whichIsMaxOut != nullptr) *whichIsMaxOut = 2;
 		return true;
 	}
-	else
-	{
-		Assert(false);
-		return false;
-	}
+	else { Assert(false); return false; }
 }
 bool MinNoInfinitiesR64(r64 value1, r64 value2, r64 value3, r64* outValue, u8* whichIsMaxOut = nullptr)
 {
-	if (IsInfiniteR64(value1) && IsInfiniteR64(value2) && IsInfiniteR64(value3))
-	{
-		return false;
-	}
+	if (IsInfiniteR64(value1) && IsInfiniteR64(value2) && IsInfiniteR64(value3)) { return false; }
 	
 	if (!IsInfiniteR64(value1) && (IsInfiniteR64(value2) || value1 <= value2) && (IsInfiniteR64(value3) || value1 <= value3))
 	{
@@ -101,11 +127,92 @@ bool MinNoInfinitiesR64(r64 value1, r64 value2, r64 value3, r64* outValue, u8* w
 		if (whichIsMaxOut != nullptr) *whichIsMaxOut = 2;
 		return true;
 	}
-	else
+	else { Assert(false); return false; }
+}
+
+bool MaxNoInfinitiesR32(r32 value1, r32 value2, r32* outValue, u8* whichIsMaxOut = nullptr)
+{
+	if (IsInfiniteR32(value1) && IsInfiniteR32(value2)) { return false; }
+	
+	if (!IsInfiniteR32(value1) && (IsInfiniteR32(value2) || value1 >= value2))
 	{
-		Assert(false);
-		return false;
+		*outValue = value1;
+		if (whichIsMaxOut != nullptr) *whichIsMaxOut = 0;
+		return true;
 	}
+	else if (!IsInfiniteR32(value2) && (IsInfiniteR32(value1) || value2 >= value1))
+	{
+		*outValue = value2;
+		if (whichIsMaxOut != nullptr) *whichIsMaxOut = 1;
+		return true;
+	}
+	else { Assert(false); return false; }
+}
+bool MaxNoInfinitiesR64(r64 value1, r64 value2, r64* outValue, u8* whichIsMaxOut = nullptr)
+{
+	if (IsInfiniteR64(value1) && IsInfiniteR64(value2)) { return false; }
+	
+	if (!IsInfiniteR64(value1) && (IsInfiniteR64(value2) || value1 >= value2))
+	{
+		*outValue = value1;
+		if (whichIsMaxOut != nullptr) *whichIsMaxOut = 0;
+		return true;
+	}
+	else if (!IsInfiniteR64(value2) && (IsInfiniteR64(value1) || value2 >= value1))
+	{
+		*outValue = value2;
+		if (whichIsMaxOut != nullptr) *whichIsMaxOut = 1;
+		return true;
+	}
+	else { Assert(false); return false; }
+}
+bool MaxNoInfinitiesR32(r32 value1, r32 value2, r32 value3, r32* outValue, u8* whichIsMaxOut = nullptr)
+{
+	if (IsInfiniteR32(value1) && IsInfiniteR32(value2) && IsInfiniteR32(value3)) { return false; }
+	
+	if (!IsInfiniteR32(value1) && (IsInfiniteR32(value2) || value1 >= value2) && (IsInfiniteR32(value3) || value1 >= value3))
+	{
+		*outValue = value1;
+		if (whichIsMaxOut != nullptr) *whichIsMaxOut = 0;
+		return true;
+	}
+	else if (!IsInfiniteR32(value2) && (IsInfiniteR32(value1) || value2 >= value1) && (IsInfiniteR32(value3) || value2 >= value3))
+	{
+		*outValue = value2;
+		if (whichIsMaxOut != nullptr) *whichIsMaxOut = 1;
+		return true;
+	}
+	else if (!IsInfiniteR32(value3) && (IsInfiniteR32(value1) || value3 >= value1) && (IsInfiniteR32(value2) || value3 >= value2))
+	{
+		*outValue = value3;
+		if (whichIsMaxOut != nullptr) *whichIsMaxOut = 2;
+		return true;
+	}
+	else { Assert(false); return false; }
+}
+bool MaxNoInfinitiesR64(r64 value1, r64 value2, r64 value3, r64* outValue, u8* whichIsMaxOut = nullptr)
+{
+	if (IsInfiniteR64(value1) && IsInfiniteR64(value2) && IsInfiniteR64(value3)) { return false; }
+	
+	if (!IsInfiniteR64(value1) && (IsInfiniteR64(value2) || value1 >= value2) && (IsInfiniteR64(value3) || value1 >= value3))
+	{
+		*outValue = value1;
+		if (whichIsMaxOut != nullptr) *whichIsMaxOut = 0;
+		return true;
+	}
+	else if (!IsInfiniteR64(value2) && (IsInfiniteR64(value1) || value2 >= value1) && (IsInfiniteR64(value3) || value2 >= value3))
+	{
+		*outValue = value2;
+		if (whichIsMaxOut != nullptr) *whichIsMaxOut = 1;
+		return true;
+	}
+	else if (!IsInfiniteR64(value3) && (IsInfiniteR64(value1) || value3 >= value1) && (IsInfiniteR64(value2) || value3 >= value2))
+	{
+		*outValue = value3;
+		if (whichIsMaxOut != nullptr) *whichIsMaxOut = 2;
+		return true;
+	}
+	else { Assert(false); return false; }
 }
 
 u8 NumDecimalDigitsU32(u32 number)
@@ -291,8 +398,10 @@ r32 AngleFromVec2(r32 x, r32 y)
 @Functions
 bool IsTriangleClockwise(v2 p0, v2 p1, v2 p2)
 bool IsInsideTriangle(v2 p0, v2 p1, v2 p2, v2 test)
-bool MinNoInfinitiesR32(r32 value1, r32 value2, r32 value3, r32* outValue, u8* whichIsMaxOut = nullptr)
-bool MinNoInfinitiesR64(r64 value1, r64 value2, r64 value3, r64* outValue, u8* whichIsMaxOut = nullptr)
+bool MinNoInfinitiesR32(r32 value1, r32 value2, r32 value3 = 0, r32* outValue, u8* whichIsMaxOut = nullptr)
+bool MinNoInfinitiesR64(r64 value1, r64 value2, r64 value3 = 0, r64* outValue, u8* whichIsMaxOut = nullptr)
+bool MaxNoInfinitiesR32(r32 value1, r32 value2, r32 value3 = 0, r32* outValue, u8* whichIsMaxOut = nullptr)
+bool MaxNoInfinitiesR64(r64 value1, r64 value2, r64 value3 = 0, r64* outValue, u8* whichIsMaxOut = nullptr)
 u8 NumDecimalDigitsU32(u32 number)
 u8 NumDecimalDigitsU64(u64 number)
 void ReduceRatioU32(u32* num1, u32* num2)
