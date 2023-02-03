@@ -24,6 +24,7 @@ Description:
 #include "gylib/gy_easing.h"
 #include "gylib/gy_hash.h"
 #include "gylib/gy_memory.h"
+#include "gylib/gy_fifo.h"
 #include "gylib/gy_unicode.h"
 #include "gylib/gy_time.h"
 #include "gylib/gy_audio.h"

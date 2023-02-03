@@ -530,6 +530,7 @@ void VarArraySort(VarArray_t* array, CompareFunc_f* compareFunc, void* contextPn
 	NotNull(array);
 	NotNull(compareFunc);
 	Assert(array->itemSize > 0);
+	if (array->length == 0) { return; } // no sorting to do on an empty array
 	void* workingSpace = alloca(array->itemSize*2);
 	NotNull(workingSpace);
 	QuickSort(array->items, array->length, array->itemSize, workingSpace, compareFunc, contextPntr);
