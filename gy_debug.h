@@ -26,7 +26,7 @@ enum DbgLevel_t
 	DbgLevel_Error,
 	DbgLevel_NumLevels,
 };
-const char* GetGyDbgLevelStr(DbgLevel_t enumValue)
+const char* GetDbgLevelStr(DbgLevel_t enumValue)
 {
 	switch (enumValue)
 	{
@@ -117,16 +117,21 @@ static GyLibDebugPrint_f*  GyLibDebugPrintFunc  = GyLibDebugPrintHandler_Stub;
 // +--------------------------------------------------------------+
 /*
 @Defines
+DbgLevel_None
 DbgLevel_Debug
+DbgLevel_Regular
 DbgLevel_Info
+DbgLevel_Notify
+DbgLevel_Other
 DbgLevel_Warning
 DbgLevel_Error
+DbgLevel_NumLevels
 @Types
 DbgLevel_t
 GyLibDebugOutput_f
 GyLibDebugPrint_f
 @Functions
-const char* GetGyDbgLevelStr(DbgLevel_t gyDbgLevel)
+const char* GetDbgLevelStr(DbgLevel_t gyDbgLevel)
 #define GYLIB_DEBUG_OUTPUT_HANDLER_DEF(functionName)
 #define GYLIB_DEBUG_PRINT_HANDLER_DEF(functionName)
 #define GyLibWriteAt(level, message)

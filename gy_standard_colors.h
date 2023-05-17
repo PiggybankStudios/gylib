@@ -547,7 +547,7 @@ Description:
 // |                       Other Functions                        |
 // +--------------------------------------------------------------+
 #ifdef _GY_DEBUG_H
-Color_t GetGyDbgLevelTextColor(DbgLevel_t dbgLevel)
+Color_t GetDbgLevelTextColor(DbgLevel_t dbgLevel)
 {
 	switch (dbgLevel)
 	{
@@ -834,4 +834,5 @@ u64 GetPureColorIndex(Color_t color)
 u64 GetGreyscaleColorIndex(Color_t color)
 Color_t GetPredefPalColorByIndex(u64 index)
 u64 GetPredefPalColorIndex(Color_t color)
+Color_t GetDbgLevelTextColor(DbgLevel_t dbgLevel)
 */
