@@ -30,6 +30,7 @@ Description:
 #include "gylib/gy_audio.h"
 #include "gylib/gy_string.h"
 #include "gylib/gy_string_buffer.h"
+#include "gylib/gy_simple_parsers.h"
 #include "gylib/gy_uuid.h"
 #include "gylib/gy_vectors.h"
 #include "gylib/gy_directions.h"
@@ -53,6 +54,7 @@ Description:
 #include "gylib/gy_bezier.h"
 #include "gylib/gy_bucket_array.h"
 #include "gylib/gy_string_fifo.h"
+#include "gylib/gy_process_log.h"
 #include "gylib/gy_collision.h"
 #include "gylib/gy_extras.h"
 

@@ -543,6 +543,26 @@ Description:
 	
 // +--------------------------------------------------------------+
 
+// +--------------------------------------------------------------+
+// |                       Other Functions                        |
+// +--------------------------------------------------------------+
+#ifdef _GY_DEBUG_H
+Color_t GetGyDbgLevelTextColor(DbgLevel_t dbgLevel)
+{
+	switch (dbgLevel)
+	{
+		case DbgLevel_Debug:   return MonokaiGray1;     break;
+		case DbgLevel_Regular: return MonokaiWhite;     break;
+		case DbgLevel_Info:    return MonokaiGreen;     break;
+		case DbgLevel_Notify:  return MonokaiPurple;    break;
+		case DbgLevel_Other:   return MonokaiLightBlue; break;
+		case DbgLevel_Warning: return MonokaiOrange;    break;
+		case DbgLevel_Error:   return MonokaiMagenta;   break;
+		default: return MonokaiWhite; break;
+	}
+}
+#endif //_GY_DEBUG_H
+
 #endif //  _GY_STANDARD_COLORS_H
 
 // +--------------------------------------------------------------+

@@ -148,6 +148,13 @@ struct MemArena_t
 	MemArena_t* sourceArena;
 };
 
+struct GrowMemToken_t
+{
+	MemArena_t* memArena;
+	void* nextSectionPntr;
+	u64 nextSectionSize;
+};
+
 // +--------------------------------------------------------------+
 // |                       Helper Functions                       |
 // +--------------------------------------------------------------+
@@ -170,10 +177,11 @@ u8 OffsetToAlign(const void* memoryPntr, AllocAlignment_t alignment)
 	else { return (u8)alignment - (u8)(address % (u64)alignment); }
 }
 
-bool IsPntrInsideRange(const void* testPntr, const void* rangeBase, u64 rangeSize)
+bool IsPntrInsideRange(const void* testPntr, const void* rangeBase, u64 rangeSize, bool inclusive = false)
 {
 	if (((const u8*)testPntr) < ((const u8*)rangeBase)) { return false; }
-	if (((const u8*)testPntr) >= ((const u8*)rangeBase) + rangeSize) { return false; }
+	if (((const u8*)testPntr) > ((const u8*)rangeBase) + rangeSize) { return false; }
+	if (((const u8*)testPntr) == ((const u8*)rangeBase) + rangeSize && !inclusive) { return false; }
 	return true;
 }
 
@@ -639,10 +647,95 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 		// +==============================+
 		// |   MemArenaType_MarkedStack   |
 		// +==============================+
-		// case MemArenaType_MarkedStack:
-		// {
-		// 	//TODO: Implement me!
-		// } break;
+		case MemArenaType_MarkedStack:
+		{
+			if (arena->size == 0)
+			{
+				AssertIfMsg(assertOnFailure, false, "arena size is 0");
+				return false;
+			}
+			if (arena->used > arena->size)
+			{
+				AssertIfMsg(assertOnFailure, false, "arena used is greater than size");
+				return false;
+			}
+			if (arena->headerPntr == nullptr)
+			{
+				AssertIfMsg(assertOnFailure, false, "headerPntr is nullptr in MarkedStack");
+				return false;
+			}
+			if (arena->otherPntr == nullptr)
+			{
+				AssertIfMsg(assertOnFailure, false, "otherPntr is nullptr in MarkedStack");
+				return false;
+			}
+			if (arena->mainPntr == nullptr)
+			{
+				AssertIfMsg(assertOnFailure, false, "mainPntr is nullptr in MarkedStack");
+				return false;
+			}
+			MarkedStackArenaHeader_t* stackHeader = (MarkedStackArenaHeader_t*)arena->headerPntr;
+			if (stackHeader->maxNumMarks * sizeof(u64) >= arena->size)
+			{
+				AssertIfMsg(assertOnFailure, false, "stackHeader for MarkedStack has invalid value for maxNumMarks (based on size of arena)");
+				return false;
+			}
+			if (stackHeader->numMarks > stackHeader->maxNumMarks)
+			{
+				AssertIfMsg(assertOnFailure, false, "numMarks is greater than maxNumMarks in MarkedStack header");
+				return false;
+			}
+			if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
+			{
+				if (arena->highUsedMark > arena->size)
+				{
+					AssertIfMsg(assertOnFailure, false, "highUsedMark is greater than arena size");
+					return false;
+				}
+				if (arena->highUsedMark < arena->used)
+				{
+					AssertIfMsg(assertOnFailure, false, "used is greater than current highUsedMark");
+					return false;
+				}
+				if (stackHeader->highMarkCount > stackHeader->maxNumMarks)
+				{
+					AssertIfMsg(assertOnFailure, false, "highMarkCount is greater than maxNumMarks in MarkedStack header");
+					return false;
+				}
+				if (stackHeader->highMarkCount < stackHeader->numMarks)
+				{
+					AssertIfMsg(assertOnFailure, false, "highMarkCount is less than numMarks in MarkedStack header");
+					return false;
+				}
+			}
+			u8* expectedOtherPntr = ((u8*)arena->headerPntr) + sizeof(MarkedStackArenaHeader_t);
+			if (arena->otherPntr != expectedOtherPntr)
+			{
+				AssertIfMsg(assertOnFailure, false, "otherPntr is not where it's supposed to be compared to headerPntr");
+				return false;
+			}
+			u8* expectedMainPntr = expectedOtherPntr + stackHeader->maxNumMarks * sizeof(u64);
+			if (arena->mainPntr != expectedMainPntr)
+			{
+				AssertIfMsg(assertOnFailure, false, "mainPntr is not where it's supposed to be compared to headerPntr/otherPntr");
+				return false;
+			}
+			
+			u64* marksPntr = (u64*)arena->otherPntr;
+			for (u64 mIndex = 0; mIndex < stackHeader->numMarks; mIndex++)
+			{
+				if (marksPntr[mIndex] > arena->size)
+				{
+					AssertIfMsg(assertOnFailure, false, "One of the marks has and invalid value (too big, given the arena->size)");
+					return false;
+				}
+				if (marksPntr[mIndex] > arena->used)
+				{
+					AssertIfMsg(assertOnFailure, false, "One of the marks is above the current used amount!");
+					return false;
+				}
+			}
+		} break;
 		
 		// +==============================+
 		// |     MemArenaType_Buffer      |
@@ -1580,6 +1673,460 @@ void* ReallocMem(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 
 #define SoftReallocMem(arena, allocPntr, newSize) ReallocMem((arena), (allocPntr), (newSize), 0, AllocAlignment_None, true)
 
 // +--------------------------------------------------------------+
+// |                        Grow Function                         |
+// +--------------------------------------------------------------+
+//NOTE: We need to store some info somewhere in order for some arenas
+// (like FixedHeap and PagedHeap) to work properly when the calling code starts
+// writing into the space immediately following an allocation. So if you plan to
+// start using this space and then telling the arena about the usage AFTER you've
+// changed the bytes, please take the tokenOut NOW so you can feed it to
+// GrowMem later.
+//TODO: Enforce that allocLength matches the original allocation if it's not 0
+u64 GrowMemQuery(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, GrowMemToken_t* tokenOut = nullptr)
+{
+	NotNull(arena);
+	NotNull(prevAllocPntr);
+	Assert(prevAllocSize > 0);
+	u64 result = 0;
+	
+	switch (arena->type)
+	{
+		case MemArenaType_StdHeap: break; //no support
+		case MemArenaType_Redirect: break; //no support
+		
+		// +==============================+
+		// |      MemArenaType_Alias      |
+		// +==============================+
+		case MemArenaType_Alias:
+		{
+			NotNull(arena->sourceArena);
+			result = GrowMemQuery(arena->sourceArena, prevAllocPntr, prevAllocSize, tokenOut);
+		} break;
+		
+		// +==============================+
+		// |    MemArenaType_FixedHeap    |
+		// +==============================+
+		case MemArenaType_FixedHeap:
+		{
+			NotNull(arena->mainPntr);
+			
+			u64 allocOffset = 0;
+			u8* allocBytePntr = (u8*)arena->mainPntr;
+			u64 sectionIndex = 0;
+			while (allocOffset < arena->size)
+			{
+				HeapAllocPrefix_t* allocPntr = (HeapAllocPrefix_t*)allocBytePntr;
+				u8* allocAfterPrefixPntr = (allocBytePntr + sizeof(HeapAllocPrefix_t));
+				bool isAllocFilled = IsAllocPrefixFilled(allocPntr->size);
+				u64 allocSize = UnpackAllocPrefixSize(allocPntr->size);
+				AssertMsg(allocSize >= sizeof(HeapAllocPrefix_t), "Found an allocation header that claimed to be smaller than the header itself in Fixed Heap");
+				AssertMsg(allocOffset + allocSize <= arena->size, "Found an allocation header with invalid size. Would extend past the end of the arena!");
+				u64 allocAfterPrefixSize = allocSize - sizeof(HeapAllocPrefix_t);
+				if (allocAfterPrefixPntr == prevAllocPntr)
+				{
+					Assert(isAllocFilled);
+					AssertMsg(allocAfterPrefixSize >= prevAllocSize, "prevAllocSize passed to GrowMemQuery was too large");
+					AssertMsg(allocAfterPrefixSize <= prevAllocSize + AllocAlignment_Max, "prevAllocSize passed to GrowMemQuery was too small (even given some slop for alignment)");
+					u64 extraBytesInThisAlloc = allocAfterPrefixSize - prevAllocSize;
+					result += extraBytesInThisAlloc;
+					if (allocOffset + allocSize < arena->size)
+					{
+						HeapAllocPrefix_t* nextAllocPntr = (HeapAllocPrefix_t*)(allocBytePntr + allocSize);
+						u64 nextAllocSize = UnpackAllocPrefixSize(nextAllocPntr->size);
+						if (!IsAllocPrefixFilled(nextAllocPntr->size))
+						{
+							if (tokenOut != nullptr)
+							{
+								tokenOut->memArena = arena;
+								tokenOut->nextSectionPntr = nextAllocPntr;
+								tokenOut->nextSectionSize = nextAllocSize;
+							}
+							result += nextAllocSize;
+						}
+					}
+					break;
+				}
+				allocOffset += allocSize;
+				allocBytePntr += allocSize;
+				sectionIndex++;
+			}
+			UNUSED(sectionIndex); //used for debug purposes
+		} break;
+		
+		// +==============================+
+		// |    MemArenaType_PagedHeap    |
+		// +==============================+
+		case MemArenaType_PagedHeap:
+		{
+			HeapPageHeader_t* pageHeader = (HeapPageHeader_t*)arena->headerPntr;
+			u64 pageIndex = 0;
+			while (pageHeader != nullptr)
+			{
+				u8* allocBytePntr = (u8*)(pageHeader + 1);
+				if (!IsPntrInsideRange(prevAllocPntr, allocBytePntr, pageHeader->size))
+				{
+					pageHeader = pageHeader->next;
+					pageIndex++;
+					continue;
+				}
+				
+				u64 allocOffset = 0;
+				u64 sectionIndex = 0;
+				bool foundPrevAlloc = false;
+				while (allocOffset < pageHeader->size)
+				{
+					HeapAllocPrefix_t* allocPntr = (HeapAllocPrefix_t*)allocBytePntr;
+					u8* allocAfterPrefixPntr = (allocBytePntr + sizeof(HeapAllocPrefix_t));
+					bool isAllocFilled = IsAllocPrefixFilled(allocPntr->size);
+					u64 allocSize = UnpackAllocPrefixSize(allocPntr->size);
+					AssertMsg(allocSize >= sizeof(HeapAllocPrefix_t), "Found an allocation header that claimed to be smaller than the header itself in Fixed Heap");
+					AssertMsg(allocOffset + allocSize <= pageHeader->size, "Found an allocation header with invalid size. Would extend past the end of a page!");
+					u64 allocAfterPrefixSize = allocSize - sizeof(HeapAllocPrefix_t);
+					if (allocAfterPrefixPntr == prevAllocPntr)
+					{
+						Assert(isAllocFilled);
+						AssertMsg(allocAfterPrefixSize >= prevAllocSize, "prevAllocSize passed to GrowMemQuery was too large");
+						AssertMsg(allocAfterPrefixSize <= prevAllocSize + AllocAlignment_Max, "prevAllocSize passed to GrowMemQuery was too small (even given some slop for alignment)");
+						u64 extraBytesInThisAlloc = allocAfterPrefixSize - prevAllocSize;
+						result += extraBytesInThisAlloc;
+						if (allocOffset + allocSize < pageHeader->size)
+						{
+							HeapAllocPrefix_t* nextAllocPntr = (HeapAllocPrefix_t*)(allocBytePntr + allocSize);
+							u64 nextAllocSize = UnpackAllocPrefixSize(nextAllocPntr->size);
+							if (!IsAllocPrefixFilled(nextAllocPntr->size))
+							{
+								if (tokenOut != nullptr)
+								{
+									tokenOut->memArena = arena;
+									tokenOut->nextSectionPntr = nextAllocPntr;
+									tokenOut->nextSectionSize = nextAllocSize;
+								}
+								result += nextAllocSize;
+							}
+						}
+						foundPrevAlloc = true;
+						break;
+					}
+					allocOffset += allocSize;
+					allocBytePntr += allocSize;
+					sectionIndex++;
+				}
+				UNUSED(sectionIndex); //used for debug purposes
+				
+				if (foundPrevAlloc) { break; }
+			}
+			UNUSED(pageIndex); //used for debug purposes
+		} break;
+		
+		// +==============================+
+		// |   MemArenaType_MarkedStack   |
+		// +==============================+
+		case MemArenaType_MarkedStack:
+		{
+			AssertMsg(IsPntrInsideRange(prevAllocPntr, arena->mainPntr, arena->size), "prevAllocPntr passed to GrowMemQuery is not in this MarkedStack arena!");
+			AssertMsg(IsPntrInsideRange(prevAllocPntr, arena->mainPntr, arena->used), "prevAllocPntr passed to GrowMemQuery is not in this MarkedStack arena's used space");
+			AssertMsg(IsPntrInsideRange(((u8*)prevAllocPntr) + prevAllocSize, arena->mainPntr, arena->size, true), "prevAllocPntr+prevAllocSize passed to GrowMemQuery is not in this MarkedStack arena!");
+			AssertMsg(IsPntrInsideRange(((u8*)prevAllocPntr) + prevAllocSize, arena->mainPntr, arena->used, true), "prevAllocPntr+prevAllocSize passed to GrowMemQuery is not in this MarkedStack arena's used space");
+			u8* usedEndPntr = ((u8*)arena->mainPntr) + arena->used;
+			u8* prevAllocEndPntr = ((u8*)prevAllocPntr) + prevAllocSize;
+			if (prevAllocEndPntr == usedEndPntr)
+			{
+				Assert(arena->size >= arena->used);
+				if (tokenOut != nullptr)
+				{
+					tokenOut->memArena = arena;
+					tokenOut->nextSectionPntr = usedEndPntr;
+					tokenOut->nextSectionSize = arena->size - arena->used;
+				}
+				result = arena->size - arena->used;
+			}
+		} break;
+		
+		// +==============================+
+		// |     MemArenaType_Buffer      |
+		// +==============================+
+		case MemArenaType_Buffer:
+		{
+			Unimplemented(); //TODO: Implement me!
+		} break;
+		
+		// +==============================+
+		// |    Unsupported Arena Type    |
+		// +==============================+
+		default:
+		{
+			GyLibPrintLine_E("Unsupported arena type in GrowMemQuery: %u (size: %llu, used: %llu)", arena->type, arena->size, arena->used);
+			AssertMsg(false, "Unsupported arena type in GrowMemQuery. Maybe the arena is corrupted?");
+		} break;
+	}
+	
+	return result;
+}
+
+void GrowMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, u64 newAllocSize, const GrowMemToken_t* token)
+{
+	NotNull(arena);
+	NotNull(token);
+	NotNull(prevAllocPntr);
+	Assert(prevAllocSize > 0);
+	Assert(newAllocSize >= prevAllocSize);
+	if (newAllocSize == prevAllocSize) { return; } //no work to do
+	
+	switch (arena->type)
+	{
+		case MemArenaType_StdHeap: break; //no support
+		case MemArenaType_Redirect: break; //no support
+		
+		// +==============================+
+		// |      MemArenaType_Alias      |
+		// +==============================+
+		case MemArenaType_Alias:
+		{
+			NotNull(arena->sourceArena);
+			GrowMem(arena->sourceArena, prevAllocPntr, prevAllocSize, newAllocSize, token);
+		} break;
+		
+		// +==============================+
+		// |    MemArenaType_FixedHeap    |
+		// +==============================+
+		case MemArenaType_FixedHeap:
+		{
+			NotNull(arena->mainPntr);
+			
+			Assert(token->memArena == arena);
+			NotNull(token->nextSectionPntr);
+			Assert(token->nextSectionSize > 0);
+			
+			u64 allocOffset = 0;
+			u8* allocBytePntr = (u8*)arena->mainPntr;
+			u64 sectionIndex = 0;
+			while (allocOffset < arena->size)
+			{
+				HeapAllocPrefix_t* allocPntr = (HeapAllocPrefix_t*)allocBytePntr;
+				u8* allocAfterPrefixPntr = (allocBytePntr + sizeof(HeapAllocPrefix_t));
+				bool isAllocFilled = IsAllocPrefixFilled(allocPntr->size);
+				u64 allocSize = UnpackAllocPrefixSize(allocPntr->size);
+				AssertMsg(allocSize >= sizeof(HeapAllocPrefix_t), "Found an allocation header that claimed to be smaller than the header itself in Fixed Heap");
+				AssertMsg(allocOffset + allocSize <= arena->size, "Found an allocation header with invalid size. Would extend past the end of the arena!");
+				u64 allocAfterPrefixSize = allocSize - sizeof(HeapAllocPrefix_t);
+				if (allocAfterPrefixPntr == prevAllocPntr)
+				{
+					Assert(isAllocFilled);
+					AssertMsg(allocAfterPrefixSize >= prevAllocSize, "prevAllocSize passed to GrowMemQuery was too large");
+					AssertMsg(allocAfterPrefixSize <= prevAllocSize + AllocAlignment_Max, "prevAllocSize passed to GrowMemQuery was too small (even given some slop for alignment)");
+					
+					if (allocAfterPrefixSize >= newAllocSize)
+					{
+						//the calling code grew into it's already available extra space. No fixup work is needed
+						break;
+					}
+					u64 extraBytesInThisAlloc = allocAfterPrefixSize - prevAllocSize;
+					u64 numNewBytesUsed = (newAllocSize - prevAllocSize) - extraBytesInThisAlloc;
+					Assert(numNewBytesUsed <= token->nextSectionSize);
+					AssertMsg(allocBytePntr + prevAllocSize >= ((u8*)token->nextSectionPntr) - AllocAlignment_Max, "GrowMemQuery token had invalid nextSectionPntr based on info passed to GrowMem. Are you re-using a token to grow? Or is the token corrupt?");
+					AssertMsg(allocBytePntr + prevAllocSize <= ((u8*)token->nextSectionPntr) + AllocAlignment_Max, "GrowMemQuery token had invalid nextSectionPntr based on info passed to GrowMem. Are you re-using a token to grow? Or is the token corrupt?");
+					
+					allocSize = sizeof(HeapAllocPrefix_t) + newAllocSize;
+					allocPntr->size = PackAllocPrefixSize(isAllocFilled, allocSize);
+					arena->used += numNewBytesUsed;
+					
+					if (token->nextSectionSize - numNewBytesUsed > sizeof(HeapAllocPrefix_t))
+					{
+						//shrink the next section
+						HeapAllocPrefix_t* nextAllocPntr = (HeapAllocPrefix_t*)(allocBytePntr + allocSize);
+						u64 nextAllocSize = token->nextSectionSize - numNewBytesUsed;
+						nextAllocPntr->size = PackAllocPrefixSize(false, nextAllocSize);
+						#if ASSERTIONS_ENABLED
+						//Let's try and check the integrity of our linked list of sections to make sure we didn't make any mistakes (and make sure the calling code didn't write out of bounds)
+						if (allocOffset + allocSize + nextAllocSize < arena->size)
+						{
+							HeapAllocPrefix_t* nextNextAllocPntr = (HeapAllocPrefix_t*)(allocBytePntr + allocSize + nextAllocSize);
+							Assert(IsAllocPrefixFilled(nextNextAllocPntr->size)); //we shouldn't have any consecutive unfilled sections
+							Assert(allocOffset + allocSize + nextAllocSize + UnpackAllocPrefixSize(nextNextAllocPntr->size) <= arena->size);
+						}
+						#endif
+					}
+					else
+					{
+						//next section got too small or was entirely used up
+						u64 numBytesLeftover = token->nextSectionSize - numNewBytesUsed;
+						if (numBytesLeftover > 0)
+						{
+							allocSize += numBytesLeftover;
+							allocPntr->size = PackAllocPrefixSize(isAllocFilled, allocSize);
+						}
+						
+						arena->used += numBytesLeftover;
+						arena->used -= sizeof(HeapAllocPrefix_t); //a section went away, so it's usage needs to be subtracted
+						
+						#if ASSERTIONS_ENABLED
+						//Let's try and check the integrity of our linked list of sections to make sure we didn't make any mistakes (and make sure the calling code didn't write out of bounds)
+						if (allocOffset + allocSize < arena->size)
+						{
+							HeapAllocPrefix_t* nextAllocPntr = (HeapAllocPrefix_t*)(allocBytePntr + allocSize);
+							Assert(IsAllocPrefixFilled(nextAllocPntr->size)); //we shouldn't have any consecutive unfilled sections
+							Assert(allocOffset + allocSize + UnpackAllocPrefixSize(nextAllocPntr->size) <= arena->size);
+						}
+						#endif
+					}
+					
+					if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
+					{
+						if (arena->highUsedMark < arena->used) { arena->highUsedMark = arena->used; }
+						if (arena->highAllocMark < arena->numAllocations) { arena->highAllocMark = arena->numAllocations; }
+					}
+					
+					break;
+				}
+				allocOffset += allocSize;
+				allocBytePntr += allocSize;
+				sectionIndex++;
+			}
+			UNUSED(sectionIndex); //used for debug purposes
+		} break;
+		
+		// +==============================+
+		// |    MemArenaType_PagedHeap    |
+		// +==============================+
+		case MemArenaType_PagedHeap:
+		{
+			HeapPageHeader_t* pageHeader = (HeapPageHeader_t*)arena->headerPntr;
+			u64 pageIndex = 0;
+			while (pageHeader != nullptr)
+			{
+				u8* allocBytePntr = (u8*)(pageHeader + 1);
+				if (!IsPntrInsideRange(prevAllocPntr, allocBytePntr, pageHeader->size))
+				{
+					pageHeader = pageHeader->next;
+					pageIndex++;
+					continue;
+				}
+				
+				u64 allocOffset = 0;
+				u64 sectionIndex = 0;
+				bool foundPrevAlloc = false;
+				while (allocOffset < pageHeader->size)
+				{
+					HeapAllocPrefix_t* allocPntr = (HeapAllocPrefix_t*)allocBytePntr;
+					u8* allocAfterPrefixPntr = (allocBytePntr + sizeof(HeapAllocPrefix_t));
+					bool isAllocFilled = IsAllocPrefixFilled(allocPntr->size);
+					u64 allocSize = UnpackAllocPrefixSize(allocPntr->size);
+					AssertMsg(allocSize >= sizeof(HeapAllocPrefix_t), "Found an allocation header that claimed to be smaller than the header itself in Fixed Heap");
+					AssertMsg(allocOffset + allocSize <= pageHeader->size, "Found an allocation header with invalid size. Would extend past the end of a page!");
+					if (allocAfterPrefixPntr == prevAllocPntr)
+					{
+						Assert(isAllocFilled);
+						AssertMsg(allocSize >= prevAllocSize, "prevAllocSize passed to GrowMemQuery was too large");
+						AssertMsg(allocSize <= prevAllocSize + AllocAlignment_Max, "prevAllocSize passed to GrowMemQuery was too small (even given some slop for alignment)");
+						
+						if (allocSize >= newAllocSize)
+						{
+							//the calling code grew into it's already available extra space. No fixup work is needed
+							break;
+						}
+						u64 extraBytesInThisAlloc = allocSize - prevAllocSize;
+						u64 numNewBytesUsed = (newAllocSize - prevAllocSize) - extraBytesInThisAlloc;
+						Assert(numNewBytesUsed <= token->nextSectionSize);
+						AssertMsg(allocBytePntr + prevAllocSize >= ((u8*)token->nextSectionPntr) - AllocAlignment_Max, "GrowMemQuery token had invalid nextSectionPntr based on info passed to GrowMem. Are you re-using a token to grow? Or is the token corrupt?");
+						AssertMsg(allocBytePntr + prevAllocSize <= ((u8*)token->nextSectionPntr) + AllocAlignment_Max, "GrowMemQuery token had invalid nextSectionPntr based on info passed to GrowMem. Are you re-using a token to grow? Or is the token corrupt?");
+						
+						allocSize = newAllocSize;
+						allocPntr->size = PackAllocPrefixSize(isAllocFilled, allocSize);
+						arena->used += numNewBytesUsed;
+						
+						if (token->nextSectionSize - numNewBytesUsed > sizeof(HeapAllocPrefix_t))
+						{
+							//shrink the next section
+							HeapAllocPrefix_t* nextAllocPntr = (HeapAllocPrefix_t*)(allocBytePntr + allocSize);
+							u64 nextAllocSize = token->nextSectionSize - numNewBytesUsed;
+							nextAllocPntr->size = PackAllocPrefixSize(false, nextAllocSize);
+							#if ASSERTIONS_ENABLED
+							//Let's try and check the integrity of our linked list of sections to make sure we didn't make any mistakes (and make sure the calling code didn't write out of bounds)
+							if (allocOffset + allocSize + nextAllocSize < pageHeader->size)
+							{
+								HeapAllocPrefix_t* nextNextAllocPntr = (HeapAllocPrefix_t*)(allocBytePntr + allocSize + nextAllocSize);
+								Assert(IsAllocPrefixFilled(nextNextAllocPntr->size)); //we shouldn't have any consecutive unfilled sections
+								Assert(allocOffset + allocSize + nextAllocSize + UnpackAllocPrefixSize(nextNextAllocPntr->size) <= pageHeader->size);
+							}
+							#endif
+						}
+						else
+						{
+							//next section got too small or was entirely used up
+							u64 numBytesLeftover = token->nextSectionSize - numNewBytesUsed;
+							if (numBytesLeftover > 0)
+							{
+								allocSize += numBytesLeftover;
+								allocPntr->size = PackAllocPrefixSize(isAllocFilled, allocSize);
+								arena->used += numBytesLeftover;
+								arena->used -= sizeof(HeapAllocPrefix_t); //a section went away, so it's usage needs to be subtracted
+							}
+							#if ASSERTIONS_ENABLED
+							//Let's try and check the integrity of our linked list of sections to make sure we didn't make any mistakes (and make sure the calling code didn't write out of bounds)
+							if (allocOffset + allocSize < pageHeader->size)
+							{
+								HeapAllocPrefix_t* nextAllocPntr = (HeapAllocPrefix_t*)(allocBytePntr + allocSize);
+								Assert(IsAllocPrefixFilled(nextAllocPntr->size)); //we shouldn't have any consecutive unfilled sections
+								Assert(allocOffset + allocSize + UnpackAllocPrefixSize(nextAllocPntr->size) <= pageHeader->size);
+							}
+							#endif
+						}
+						
+						if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
+						{
+							if (arena->highUsedMark < arena->used) { arena->highUsedMark = arena->used; }
+							if (arena->highAllocMark < arena->numAllocations) { arena->highAllocMark = arena->numAllocations; }
+						}
+						
+						break;
+					}
+					allocOffset += allocSize;
+					allocBytePntr += allocSize;
+					sectionIndex++;
+				}
+				UNUSED(sectionIndex); //used for debug purposes
+				
+				if (foundPrevAlloc) { break; }
+			}
+			UNUSED(pageIndex); //used for debug purposes
+		} break;
+		
+		// +==============================+
+		// |   MemArenaType_MarkedStack   |
+		// +==============================+
+		case MemArenaType_MarkedStack:
+		{
+			AssertMsg(IsPntrInsideRange(prevAllocPntr, arena->mainPntr, arena->size), "prevAllocPntr passed to GrowMemQuery is not in this MarkedStack arena!");
+			AssertMsg(IsPntrInsideRange(prevAllocPntr, arena->mainPntr, arena->used), "prevAllocPntr passed to GrowMemQuery is not in this MarkedStack arena's used space");
+			AssertMsg((((u8*)prevAllocPntr) + prevAllocSize) == (((u8*)arena->mainPntr) + arena->used), "Something went wrong between GrowMemQuery and GrowMem in MarkedStack. The grown section isn't at the end of the stack!");
+			arena->used += newAllocSize - prevAllocSize;
+			if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
+			{
+				if (arena->highUsedMark < arena->used) { arena->highUsedMark = arena->used; }
+			}
+			Assert(arena->used <= arena->size);
+		} break;
+		
+		// +==============================+
+		// |     MemArenaType_Buffer      |
+		// +==============================+
+		case MemArenaType_Buffer:
+		{
+			Unimplemented(); //TODO: Implement me!
+		} break;
+		
+		// +==============================+
+		// |    Unsupported Arena Type    |
+		// +==============================+
+		default:
+		{
+			GyLibPrintLine_E("Unsupported arena type in GrowMemQuery: %u (size: %llu, used: %llu)", arena->type, arena->size, arena->used);
+			AssertMsg(false, "Unsupported arena type in GrowMemQuery. Maybe the arena is corrupted?");
+		} break;
+	}
+}
+
+// +--------------------------------------------------------------+
 // |                     Free Arena Functions                     |
 // +--------------------------------------------------------------+
 void FreeMemArena(MemArena_t* arena)
@@ -1874,7 +2421,7 @@ const char* GetMemArenaTypeStr(MemArenaType_t arenaType)
 #define UnpackAllocPrefixSize(packedSize)
 bool IsAlignedTo(const void* memoryPntr, AllocAlignment_t alignment)
 u8 OffsetToAlign(const void* memoryPntr, AllocAlignment_t alignment)
-bool IsPntrInsideRange(const void* testPntr, const void* rangeBase, u64 rangeSize)
+bool IsPntrInsideRange(const void* testPntr, const void* rangeBase, u64 rangeSize, bool inclusive = false)
 void FreeMemArena(MemArena_t* arena)
 void ClearMemArena(MemArena_t* arena)
 void InitMemArena_Redirect(MemArena_t* arena, AllocationFunction_f* allocFunc, FreeFunction_f* freeFunc)

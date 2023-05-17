@@ -102,6 +102,12 @@ void CreateVarArray(VarArray_t* array, MemArena_t* memArena, u64 itemSize, u64 i
 	else { array->items = nullptr; }
 }
 
+bool VarArrayIsCreated(VarArray_t* array)
+{
+	NotNull(array);
+	return (array->allocArena != nullptr);
+}
+
 void VarArrayName(VarArray_t* array, MyStr_t newName)
 {
 	NotNull(array->allocArena);

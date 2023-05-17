@@ -1504,6 +1504,11 @@ u64 FnvHashStr(const char* nullTermStr)
 	return FnvHashU64(nullTermStr, MyStrLength64(nullTermStr));
 }
 
+bool IsStringValidIdentifier(MyStr_t str, bool allowUnderscores = true, bool allowNumbers = true, bool allowLeadingNumbers = false, bool allowEmpty = false, bool allowSpaces = false)
+{
+	return IsStringValidIdentifier(str.length, str.chars, allowUnderscores, allowNumbers, allowLeadingNumbers, allowEmpty, allowSpaces);
+}
+
 // +--------------------------------------------------------------+
 // |                   Word Break Calculations                    |
 // +--------------------------------------------------------------+
@@ -1812,6 +1817,8 @@ MyStr_t ConvertUcs2StrToUtf8Nt(MemArena_t* memArena, const wchar_t* nullTermWide
 MyWideStr_t ConvertUtf8StrToUcs2(MemArena_t* memArena, MyStr_t utf8Str)
 MyStr_t FormatBytes(u64 numBytes, MemArena_t* memArena)
 const char* FormatBytesNt(u64 numBytes, MemArena_t* memArena)
+u64 FnvHashStr(MyStr_t str)
+bool IsStringValidIdentifier(MyStr_t str, bool allowUnderscores = true, bool allowNumbers = true, bool allowLeadingNumbers = false, bool allowEmpty = false, bool allowSpaces = false)
 WordBreakCharClass_t GetWordBreakCharClass(u32 codepoint)
 bool IsCharPairWordBreak(u32 prevCodepoint, u32 nextCodepoint, bool forward, bool subwords)
 u64 FindNextWordBreakInString(MyStr_t str, u64 startIndex, bool forward, bool subwords, bool includeBreakAtStartIndex = false)

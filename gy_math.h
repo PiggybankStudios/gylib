@@ -387,6 +387,20 @@ r32 AngleFromVec2(r32 x, r32 y)
 	return AngleFixR32(AtanR32(y, x));
 }
 
+u64 PowerOfTwoGreaterThanOrEqualTo(u64 value, u8* powerOut = nullptr)
+{
+	if (value > 0x8000000000000000) { return 0xFFFFFFFFFFFFFFFF; }
+	u8 power = 0;
+	u64 result = 1;
+	while (result < value)
+	{
+		result *= 2;
+		power++;
+	}
+	SetOptionalOutPntr(powerOut, power);
+	return result;
+}
+
 #endif //  _GY_MATH_H
 
 // +--------------------------------------------------------------+
@@ -409,4 +423,5 @@ void ReduceRatioU64(u64* num1, u64* num2)
 v2 ClosestPointOnLine(v2 lineStart, v2 lineEnd, v2 point)
 r32 AngleFromVec2(v2 vector)
 r32 AngleFromVec2(r32 x, r32 y)
+u64 PowerOfTwoGreaterThanOrEqualTo(u64 value, u8* powerOut = nullptr)
 */
