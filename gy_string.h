@@ -1216,6 +1216,62 @@ const char* GetFileNamePartNt(const char* filePath)
 	return result.pntr;
 }
 
+void StrSpliceInPlace(MyStr_t target, u64 startIndex, MyStr_t replacement)
+{
+	NotNullStr(&target);
+	NotNullStr(&replacement);
+	Assert(startIndex <= target.length);
+	Assert(startIndex + replacement.length <= target.length);
+	if (replacement.length == 0) { return; }
+	MyMemCopy(&target.chars[startIndex], &replacement.chars[0], replacement.length);
+}
+void StrSpliceInPlace(MyStr_t target, u64 startIndex, const char* replacementNullTerm)
+{
+	StrSpliceInPlace(target, startIndex, NewStr(replacementNullTerm));
+}
+void StrSpliceInPlace(char* targetNullTermStr, u64 startIndex, MyStr_t replacement)
+{
+	StrSpliceInPlace(NewStr(targetNullTermStr), startIndex, replacement);
+}
+void StrSpliceInPlace(char* targetNullTermStr, u64 startIndex, const char* replacementNullTerm)
+{
+	StrSpliceInPlace(NewStr(targetNullTermStr), startIndex, NewStr(replacementNullTerm));
+}
+
+MyStr_t StrSplice(MyStr_t target, u64 startIndex, u64 endIndex, MyStr_t replacement, MemArena_t* memArena)
+{
+	NotNull(memArena);
+	NotNullStr(&target);
+	NotNullStr(&replacement);
+	Assert(startIndex <= target.length);
+	Assert(endIndex <= target.length);
+	Assert(endIndex >= startIndex);
+	
+	MyStr_t result;
+	result.length = startIndex + replacement.length + (target.length - endIndex);
+	result.chars = AllocArray(memArena, char, result.length+1);
+	NotNull(result.chars);
+	
+	if (startIndex > 0) { MyMemCopy(&result.chars[0], &target.chars[0], startIndex); }
+	if (replacement.length > 0) { MyMemCopy(&result.chars[startIndex], &replacement.chars[0], replacement.length); }
+	if (endIndex < target.length) { MyMemCopy(&result.chars[startIndex + replacement.length], &target.chars[endIndex], target.length - endIndex); }
+	result.chars[result.length] = '\0';
+	
+	return result;
+}
+MyStr_t StrSplice(MyStr_t target, u64 startIndex, u64 endIndex, const char* replacementNullTerm, MemArena_t* memArena)
+{
+	return StrSplice(target, startIndex, endIndex, NewStr(replacementNullTerm), memArena);
+}
+MyStr_t StrSplice(char* targetNullTermStr, u64 startIndex, u64 endIndex, MyStr_t replacement, MemArena_t* memArena)
+{
+	return StrSplice(NewStr(targetNullTermStr), startIndex, endIndex, replacement, memArena);
+}
+MyStr_t StrSplice(char* targetNullTermStr, u64 startIndex, u64 endIndex, const char* replacement, MemArena_t* memArena)
+{
+	return StrSplice(NewStr(targetNullTermStr), startIndex, endIndex, NewStr(replacement), memArena);
+}
+
 //Returns the number of instances replaced
 u64 StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ignoreCase = false)
 {
@@ -1806,6 +1862,8 @@ void SplitFilePath(MyStr_t fullPath, MyStr_t* directoryOut, MyStr_t* fileNameOut
 MyStr_t GetFileNamePart(MyStr_t filePath, bool includeExtension = true)
 MyStr_t GetDirectoryPart(MyStr_t filePath)
 const char* GetFileNamePartNt(const char* filePath)
+void StrSpliceInPlace(MyStr_t target, u64 startIndex, MyStr_t replacement)
+MyStr_t StrSplice(MyStr_t target, u64 startIndex, u64 endIndex, MyStr_t replacement, MemArena_t* memArena)
 u64 StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ignoreCase = false)
 MyStr_t StrReplace(MyStr_t str, MyStr_t target, MyStr_t replacement, MemArena_t* memArena)
 bool FindSubstring(MyStr_t target, MyStr_t substring, u64* indexOut = nullptr, bool ignoreCase = false, u64 startIndex = 0)

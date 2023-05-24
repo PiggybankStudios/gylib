@@ -20,7 +20,8 @@ XmlParser Description:
 struct LineParser_t
 {
 	u64 byteIndex;
-	u64 lineIndex;
+	u64 lineBeginByteIndex;
+	u64 lineIndex; //This is not zero based! It's more like a line number you'd see in the gutter of a text editor!
 	MyStr_t fileContents;
 };
 
@@ -115,6 +116,7 @@ bool LineParserGetLine(LineParser_t* parser, MyStr_t* lineOut)
 	NotNullStr(&parser->fileContents);
 	if (parser->byteIndex >= parser->fileContents.length) { return false; }
 	parser->lineIndex++;
+	parser->lineBeginByteIndex = parser->byteIndex;
 	
 	u64 endOfLineByteSize = 0;
 	u64 startIndex = parser->byteIndex;
