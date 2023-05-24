@@ -7,6 +7,8 @@ Description:
 	** without knowing how long the string is going to be beforehand. Often this
 	** is serialization code that wants to use printf style formatting a bunch
 	** of times in a row and end up with a large string holding the serialized data.
+	** Unlike StringBuffer_t, the backing memory is allocated from a MemArena_t
+	** and expands dynamically as more and more characters are added to the builder.
 */
 
 #ifndef _GY_STRING_BUILDER_H
@@ -32,7 +34,7 @@ void FreeStringBuilder(StringBuilder_t* builder)
 	if (builder->chars != nullptr)
 	{
 		NotNull(builder->allocArena);
-		FreeMem(builder->allocArena, builder->chars, builder->allocLength);
+		if (DoesMemArenaSupportFreeing(builder->allocArena)) { FreeMem(builder->allocArena, builder->chars, builder->allocLength); }
 	}
 	ClearPointer(builder);
 }
@@ -52,23 +54,135 @@ void NewStringBuilder(StringBuilder_t* builder, MemArena_t* memArena, u64 initia
 	}
 }
 
+// +--------------------------------------------------------------+
+// |                  Get Information Functions                   |
+// +--------------------------------------------------------------+
+MyStr_t ToMyStr(const StringBuilder_t* builder)
+{
+	NotNull(builder);
+	if (builder->length == 0) { return MyStr_Empty; }
+	NotNull(builder->chars);
+	return NewStr(builder->length, builder->chars);
+}
+char* ToStr(StringBuilder_t* builder)
+{
+	NotNull(builder);
+	if (builder->length == 0) { return ""; }
+	NotNull(builder->chars);
+	DebugAssert(builder->chars[builder->length] == '\0');
+	return builder->chars;
+}
+
 //returns the number of bytes at the end of the allocation that are currently unused (with the option to query the memory arena for space that is following our allocation that is also unallocated)
-u64 StringBuilderGetNumUnusedBytes(StringBuilder_t* builder, bool includeMemArenaSpace = false, MemArenaSpaceAfterFixupInfo_t* fixupInfoOut = nullptr)
+u64 StringBuilderGetNumUnusedBytes(StringBuilder_t* builder, bool includeMemArenaSpace = false, GrowMemToken_t* growTokenOut = nullptr)
 {
 	NotNull2(builder, builder->allocArena);
-	u64 memArenaSpace = 0;
+	u64 growableSpace = 0;
 	if (includeMemArenaSpace && builder->chars != nullptr)
 	{
-		NotNull(fixupInfoOut);
-		memArenaSpace = GrowMemQuery(builder->allocArena, builder->chars, builder->allocLength, fixupInfoOut);
+		NotNull(growTokenOut);
+		growableSpace = GrowMemQuery(builder->allocArena, builder->chars, builder->allocLength, growTokenOut);
 	}
-	return (builder->allocLength-1 - builder->length) + memArenaSpace;
+	u64 result = growableSpace;
+	if (builder->allocLength > 0) { result += (builder->allocLength - builder->length); }
+	if (result > 0) { result--; } //subtract 1 for null-term char
+	return result;
+}
+
+// +--------------------------------------------------------------+
+// |                            Shrink                            |
+// +--------------------------------------------------------------+
+void StringBuilderShrink(StringBuilder_t* builder, bool deallocateIfNoChars = true)
+{
+	NotNull(builder);
+	NotNull(builder->allocArena);
+	
+	if (builder->length == 0 && deallocateIfNoChars)
+	{
+		if (builder->allocLength > 0)
+		{
+			NotNull(builder->chars);
+			if (DoesMemArenaSupportFreeing(builder->allocArena)) { FreeMem(builder->allocArena, builder->chars, builder->allocLength); }
+			builder->chars = nullptr;
+		}
+		return;
+	}
+	
+	if (builder->allocLength > builder->length+1)
+	{
+		ShrinkMem(builder->allocArena, builder->chars, builder->allocLength, builder->length+1);
+		builder->allocLength = builder->length+1;
+	}
+}
+
+// Calling this function implies that the allocation is going to be freed by the calling code, rather than FreeStringBuilder. So we do StringBuilderShrink, reallocate in requested arena if needed, clear our own reference to the allocation, and return the MyStr_t
+MyStr_t TakeString(StringBuilder_t* builder, MemArena_t* memArena = nullptr)
+{
+	NotNull(builder);
+	NotNull(builder->allocArena);
+	
+	MyStr_t result = ((builder->length > 0) ? NewStr(builder->length, builder->chars) : MyStr_Empty);
+	StringBuilderShrink(builder);
+	
+	if (memArena != nullptr && memArena != builder->allocArena)
+	{
+		MyStr_t newResult = AllocString(memArena, &result);
+		if (DoesMemArenaSupportFreeing(builder->allocArena)) { FreeString(builder->allocArena, &result); }
+		result = newResult;
+	}
+	
+	return result;
+}
+
+// +--------------------------------------------------------------+
+// |                            Append                            |
+// +--------------------------------------------------------------+
+//spaceRequired should include +1 for null-term char
+void StringBuilderAllocMoreMem(StringBuilder_t* builder, u64 spaceRequired)
+{
+	NotNull(builder);
+	NotNull(builder->allocArena);
+	u64 newAllocLength = PowerOfTwoGreaterThanOrEqualTo(spaceRequired);
+	//TODO: This should probably be a ReallocMem, but I don't remember if that functionality is working yet in gylib
+	char* newChars = AllocArray(builder->allocArena, char, newAllocLength);
+	NotNull(newChars);
+	if (builder->allocLength > 0)
+	{
+		MyMemCopy(newChars, builder->chars, builder->allocLength);
+		if (DoesMemArenaSupportFreeing(builder->allocArena)) { FreeMem(builder->allocArena, builder->chars); }
+	}
+	builder->chars = newChars;
+	builder->allocLength = newAllocLength;
+}
+
+void StringBuilderClear(StringBuilder_t* builder, bool deallocate = false)
+{
+	NotNull(builder);
+	builder->length = 0;
+	if (deallocate)
+	{
+		if (builder->allocLength > 0)
+		{
+			NotNull2(builder->allocArena, builder->chars);
+			if (DoesMemArenaSupportFreeing(builder->allocArena)) { FreeMem(builder->allocArena, builder->chars, builder->allocLength); }
+			builder->allocLength = 0;
+			builder->chars = nullptr;
+		}
+	}
+	else if (builder->allocLength > 0)
+	{
+		NotNull(builder->chars);
+		builder->chars[0] = '\0';
+	}
 }
 
 void StringBuilderAppend(StringBuilder_t* builder, MyStr_t str)
 {
-	u64 spaceAvailable = StringBuilderGetNumUnusedBytes(builder, false);
-	if (spaceAvailable >= str.length)
+	NotNull(builder);
+	if (str.length == 0) { return; } //no work to do
+	
+	u64 normalSpaceAvailable = StringBuilderGetNumUnusedBytes(builder, false);
+	if (normalSpaceAvailable >= str.length)
 	{
 		MyMemCopy(&builder->chars[builder->length], str.chars, str.length);
 		builder->length += str.length;
@@ -76,36 +190,128 @@ void StringBuilderAppend(StringBuilder_t* builder, MyStr_t str)
 	}
 	else
 	{
-		MemArenaSpaceAfterFixupInfo_t arenaFixupInfo = {};
-		u64 allocatedSpaceAvailable = spaceAvailable;
-		spaceAvailable = StringBuilderGetNumUnusedBytes(builder, true, &arenaFixupInfo);
-		if (spaceAvailable >= str.length)
+		GrowMemToken_t growToken = {};
+		u64 growableSpaceAvailable = StringBuilderGetNumUnusedBytes(builder, true, &growToken);
+		if (growableSpaceAvailable >= str.length)
 		{
-			u64 numNewBytesUsed = (str.length - allocatedSpaceAvailable);
+			u64 numNewBytesUsed = (str.length+1 - normalSpaceAvailable);
 			MyMemCopy(&builder->chars[builder->length], str.chars, str.length);
 			builder->length += str.length;
 			builder->chars[builder->length] = '\0';
-			GrowMem(builder->allocArena, builder->chars, builder->allocLength, builder->allocLength + numNewBytesUsed, &arenaFixupInfo);
+			GrowMem(builder->allocArena, builder->chars, builder->allocLength, builder->allocLength + numNewBytesUsed, &growToken);
 			builder->allocLength += numNewBytesUsed;
 		}
 		else
 		{
-			u64 newAllocLength = PowerOfTwoGreaterThanOrEqualTo(builder->length + str.length + 1);
-			char* newChars = AllocArray(builder->allocArena, char, newAllocLength);
-			NotNull(newChars);
-			if (builder->allocLength > 0)
-			{
-				MyMemCopy(newChars, builder->chars, builder->allocLength);
-				FreeMem(builder->allocArena, builder->chars);
-			}
-			builder->chars = newChars;
-			builder->allocLength = newAllocLength;
-			
+			StringBuilderAllocMoreMem(builder, builder->length + str.length + 1);
 			MyMemCopy(&builder->chars[builder->length], str.chars, str.length);
 			builder->length += str.length;
 			builder->chars[builder->length] = '\0';
 		}
 	}
 }
+void StringBuilderAppend(StringBuilder_t* builder, const char* nullTermStr)
+{
+	StringBuilderAppend(builder, NewStr(nullTermStr));
+}
+
+void StringBuilderSet(StringBuilder_t* builder, MyStr_t str)
+{
+	StringBuilderClear(builder);
+	StringBuilderAppend(builder, str);
+}
+void StringBuilderSet(StringBuilder_t* builder, const char* nullTermStr)
+{
+	StringBuilderSet(builder, NewStr(nullTermStr));
+}
+
+void StringBuilderAppendPrintVa(StringBuilder_t* builder, const char* formatString, va_list args1, va_list args2)
+{
+	NotNull(builder);
+	
+	u64 normalSpaceAvailable = StringBuilderGetNumUnusedBytes(builder, false);
+	GrowMemToken_t growToken = {};
+	u64 growableSpaceAvailable = StringBuilderGetNumUnusedBytes(builder, true, &growToken);
+	
+	if (growableSpaceAvailable > 0)
+	{
+		int printResult = MyVaListPrintf(&builder->chars[builder->length], growableSpaceAvailable+1, formatString, args1);
+		Assert(printResult >= 0); //TODO: Can we handle this condition rather than assert? What has happened to the buffer we gave it? Should we call GrowMem??
+		
+		bool increasedLength = false;
+		if (printResult > normalSpaceAvailable && growableSpaceAvailable > normalSpaceAvailable)
+		{
+			u64 newAllocLength = builder->length + MinU64((u64)printResult, growableSpaceAvailable) + 1;
+			GrowMem(builder->allocArena, builder->chars, builder->allocLength, newAllocLength, &growToken);
+			builder->allocLength = newAllocLength;
+			builder->length = builder->allocLength-1;
+			increasedLength = true;
+		}
+		
+		if (printResult > growableSpaceAvailable)
+		{
+			//We need more memory, allocate some more and then try the print again
+			StringBuilderAllocMoreMem(builder, builder->length + (u64)printResult + 1);
+			
+			normalSpaceAvailable = StringBuilderGetNumUnusedBytes(builder, false);
+			Assert(normalSpaceAvailable > (u64)printResult);
+			int secondPrintResult = MyVaListPrintf(&builder->chars[builder->length], normalSpaceAvailable+1, formatString, args2);
+			Assert(secondPrintResult == printResult);
+			
+			builder->length += (u64)secondPrintResult;
+			increasedLength = true;
+		}
+		else
+		{
+			if (!increasedLength) { builder->length += (u64)printResult; }
+		}
+		
+		Assert(builder->length < builder->allocLength);
+		builder->chars[builder->length] = '\0';
+	}
+	else
+	{
+		int printResult = MyVaListPrintf(nullptr, 0, formatString, args1);
+		Assert(printResult >= 0); //TODO: Can we handle this condition rather than assert? What has happened to the buffer we gave it? Should we call GrowMem??
+		
+		//We need more memory, allocate some more and then try the print again
+		StringBuilderAllocMoreMem(builder, builder->length + (u64)printResult + 1);
+		
+		normalSpaceAvailable = StringBuilderGetNumUnusedBytes(builder, false);
+		Assert(normalSpaceAvailable > (u64)printResult);
+		int secondPrintResult = MyVaListPrintf(&builder->chars[builder->length], normalSpaceAvailable+1, formatString, args2);
+		Assert(secondPrintResult == printResult);
+		
+		builder->length += (u64)secondPrintResult;
+		
+		Assert(builder->length < builder->allocLength);
+		builder->chars[builder->length] = '\0';
+	}
+}
+
+void StringBuilderAppendPrint(StringBuilder_t* builder, const char* formatString, ...)
+{
+	va_list args1;
+	va_list args2;
+	va_start(args1, formatString);
+	va_start(args2, formatString);
+	StringBuilderAppendPrintVa(builder, formatString, args1, args2);
+	va_end(args1);
+	va_end(args2);
+}
+
+void StringBuilderPrint(StringBuilder_t* builder, const char* formatString, ...)
+{
+	StringBuilderClear(builder);
+	va_list args1;
+	va_list args2;
+	va_start(args1, formatString);
+	va_start(args2, formatString);
+	StringBuilderAppendPrintVa(builder, formatString, args1, args2);
+	va_end(args1);
+	va_end(args2);
+}
+
+//TODO: void StringBuilderReplace(StringBuilder_t* builder, MyStr_t target, MyStr_t replacement, bool ignoreCase = true)
 
 #endif //  _GY_STRING_BUILDER_H

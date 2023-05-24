@@ -1796,7 +1796,7 @@ MyStr_t StrSubstringLength(MyStr_t* target, u64 startIndex, u64 length)
 MyStr_t CombineStrs(MemArena_t* memArena, MyStr_t str1, MyStr_t str2)
 bool StrEquals(MyStr_t target, MyStr_t comparison)
 i32 StrCompareIgnoreCase(MyStr_t str1, MyStr_t str2)
-bool StrEqualsIgnoreCase(MyStr_t target, MyStr_t comparison);
+bool StrEqualsIgnoreCase(MyStr_t target, MyStr_t comparison)
 bool StrStartsWith(MyStr_t str, MyStr_t prefix, bool ignoreCase = false)
 bool StrEndsWith(MyStr_t str, MyStr_t suffix, bool ignoreCase = false)
 MyStr_t* SplitString(MemArena_t* memArena, MyStr_t target, MyStr_t delineator, u64* numPiecesOut = nullptr, bool ignoreCase = false)

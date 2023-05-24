@@ -44,6 +44,7 @@ Description:
 #include "gylib/gy_primitives.h"
 #include "gylib/gy_colors.h"
 #include "gylib/gy_standard_colors.h"
+#include "gylib/gy_string_builder.h"
 #include "gylib/gy_parsing.h"
 #include "gylib/gy_triangulation.h"
 #include "gylib/gy_sorting.h"

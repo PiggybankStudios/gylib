@@ -1874,8 +1874,8 @@ void GrowMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, u6
 	
 	switch (arena->type)
 	{
-		case MemArenaType_StdHeap: break; //no support
-		case MemArenaType_Redirect: break; //no support
+		case MemArenaType_StdHeap: Unimplemented(); break; //no support
+		case MemArenaType_Redirect: Unimplemented(); break; //no support
 		
 		// +==============================+
 		// |      MemArenaType_Alias      |
@@ -1897,6 +1897,7 @@ void GrowMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, u6
 			NotNull(token->nextSectionPntr);
 			Assert(token->nextSectionSize > 0);
 			
+			bool foundAllocation = false;
 			u64 allocOffset = 0;
 			u8* allocBytePntr = (u8*)arena->mainPntr;
 			u64 sectionIndex = 0;
@@ -1914,6 +1915,7 @@ void GrowMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, u6
 					Assert(isAllocFilled);
 					AssertMsg(allocAfterPrefixSize >= prevAllocSize, "prevAllocSize passed to GrowMemQuery was too large");
 					AssertMsg(allocAfterPrefixSize <= prevAllocSize + AllocAlignment_Max, "prevAllocSize passed to GrowMemQuery was too small (even given some slop for alignment)");
+					foundAllocation = true;
 					
 					if (allocAfterPrefixSize >= newAllocSize)
 					{
@@ -1983,6 +1985,7 @@ void GrowMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, u6
 				sectionIndex++;
 			}
 			UNUSED(sectionIndex); //used for debug purposes
+			AssertMsg(foundAllocation, "Tried to grow an allocation from the incorrect arena. Or the prevAllocPntr was misaligned. Maybe the arena is corrupt or the memory pntr was mishandled?");
 		} break;
 		
 		// +==============================+
@@ -1990,6 +1993,7 @@ void GrowMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, u6
 		// +==============================+
 		case MemArenaType_PagedHeap:
 		{
+			bool foundAllocation = false;
 			HeapPageHeader_t* pageHeader = (HeapPageHeader_t*)arena->headerPntr;
 			u64 pageIndex = 0;
 			while (pageHeader != nullptr)
@@ -2004,7 +2008,6 @@ void GrowMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, u6
 				
 				u64 allocOffset = 0;
 				u64 sectionIndex = 0;
-				bool foundPrevAlloc = false;
 				while (allocOffset < pageHeader->size)
 				{
 					HeapAllocPrefix_t* allocPntr = (HeapAllocPrefix_t*)allocBytePntr;
@@ -2013,24 +2016,26 @@ void GrowMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, u6
 					u64 allocSize = UnpackAllocPrefixSize(allocPntr->size);
 					AssertMsg(allocSize >= sizeof(HeapAllocPrefix_t), "Found an allocation header that claimed to be smaller than the header itself in Fixed Heap");
 					AssertMsg(allocOffset + allocSize <= pageHeader->size, "Found an allocation header with invalid size. Would extend past the end of a page!");
+					u64 allocAfterPrefixSize = allocSize - sizeof(HeapAllocPrefix_t);
 					if (allocAfterPrefixPntr == prevAllocPntr)
 					{
 						Assert(isAllocFilled);
 						AssertMsg(allocSize >= prevAllocSize, "prevAllocSize passed to GrowMemQuery was too large");
 						AssertMsg(allocSize <= prevAllocSize + AllocAlignment_Max, "prevAllocSize passed to GrowMemQuery was too small (even given some slop for alignment)");
+						foundAllocation = true;
 						
-						if (allocSize >= newAllocSize)
+						if (allocAfterPrefixSize >= newAllocSize)
 						{
 							//the calling code grew into it's already available extra space. No fixup work is needed
 							break;
 						}
-						u64 extraBytesInThisAlloc = allocSize - prevAllocSize;
+						u64 extraBytesInThisAlloc = allocAfterPrefixSize - prevAllocSize;
 						u64 numNewBytesUsed = (newAllocSize - prevAllocSize) - extraBytesInThisAlloc;
 						Assert(numNewBytesUsed <= token->nextSectionSize);
 						AssertMsg(allocBytePntr + prevAllocSize >= ((u8*)token->nextSectionPntr) - AllocAlignment_Max, "GrowMemQuery token had invalid nextSectionPntr based on info passed to GrowMem. Are you re-using a token to grow? Or is the token corrupt?");
 						AssertMsg(allocBytePntr + prevAllocSize <= ((u8*)token->nextSectionPntr) + AllocAlignment_Max, "GrowMemQuery token had invalid nextSectionPntr based on info passed to GrowMem. Are you re-using a token to grow? Or is the token corrupt?");
 						
-						allocSize = newAllocSize;
+						allocSize = newAllocSize + sizeof(HeapAllocPrefix_t);
 						allocPntr->size = PackAllocPrefixSize(isAllocFilled, allocSize);
 						arena->used += numNewBytesUsed;
 						
@@ -2086,9 +2091,10 @@ void GrowMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, u6
 				}
 				UNUSED(sectionIndex); //used for debug purposes
 				
-				if (foundPrevAlloc) { break; }
+				if (foundAllocation) { break; }
 			}
 			UNUSED(pageIndex); //used for debug purposes
+			AssertMsg(foundAllocation, "Tried to grow an allocation from the incorrect arena. Or the prevAllocPntr was misaligned. Maybe the arena is corrupt or the memory pntr was mishandled?");
 		} break;
 		
 		// +==============================+
@@ -2122,6 +2128,182 @@ void GrowMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, u6
 		{
 			GyLibPrintLine_E("Unsupported arena type in GrowMemQuery: %u (size: %llu, used: %llu)", arena->type, arena->size, arena->used);
 			AssertMsg(false, "Unsupported arena type in GrowMemQuery. Maybe the arena is corrupted?");
+		} break;
+	}
+}
+
+// +--------------------------------------------------------------+
+// |                       Shrink Function                        |
+// +--------------------------------------------------------------+
+void ShrinkMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, u64 newAllocSize)
+{
+	NotNull(arena);
+	NotNull(prevAllocPntr);
+	Assert(newAllocSize <= prevAllocSize);
+	Assert(newAllocSize > 0);
+	if (prevAllocSize == newAllocSize) { return; }
+	
+	switch (arena->type)
+	{
+		case MemArenaType_Redirect: Unimplemented(); break; //No support
+		
+		// +==============================+
+		// |     MemArenaType_StdHeap     |
+		// +==============================+
+		case MemArenaType_StdHeap:
+		case MemArenaType_MarkedStack:
+		{
+			//We don't really need to do anything for these arenas because they are fine if you pass the incorrect size to FreeMem
+		} break;
+		
+		// +==============================+
+		// |      MemArenaType_Alias      |
+		// +==============================+
+		case MemArenaType_Alias:
+		{
+			ShrinkMem(arena->sourceArena, prevAllocPntr, prevAllocSize, newAllocSize);
+		} break;
+		
+		// +==============================+
+		// |    MemArenaType_FixedHeap    |
+		// +==============================+
+		case MemArenaType_FixedHeap:
+		{
+			NotNull(arena->mainPntr);
+			
+			bool foundAllocation = false;
+			u64 allocOffset = 0;
+			u8* allocBytePntr = (u8*)arena->mainPntr;
+			u64 sectionIndex = 0;
+			while (allocOffset < arena->size)
+			{
+				HeapAllocPrefix_t* allocPntr = (HeapAllocPrefix_t*)allocBytePntr;
+				u8* allocAfterPrefixPntr = (allocBytePntr + sizeof(HeapAllocPrefix_t));
+				bool isAllocFilled = IsAllocPrefixFilled(allocPntr->size);
+				u64 allocSize = UnpackAllocPrefixSize(allocPntr->size);
+				AssertMsg(allocSize >= sizeof(HeapAllocPrefix_t), "Found an allocation header that claimed to be smaller than the header itself in Fixed Heap");
+				AssertMsg(allocOffset + allocSize <= arena->size, "Found an allocation header with invalid size. Would extend past the end of the arena!");
+				u64 allocAfterPrefixSize = allocSize - sizeof(HeapAllocPrefix_t);
+				if (allocAfterPrefixPntr == prevAllocPntr)
+				{
+					Assert(isAllocFilled);
+					AssertMsg(allocAfterPrefixSize >= prevAllocSize, "prevAllocSize passed to ShrinkMem was too large");
+					AssertMsg(allocAfterPrefixSize <= prevAllocSize + AllocAlignment_Max, "prevAllocSize passed to ShrinkMem was too small (even given some slop for alignment)");
+					foundAllocation = true;
+					
+					u64 extraBytesInThisAlloc = allocAfterPrefixSize - prevAllocSize;
+					u64 shrinkAmount = (prevAllocSize - newAllocSize) + extraBytesInThisAlloc;
+					bool nextAllocExists = (allocOffset + allocSize < arena->size);
+					HeapAllocPrefix_t* nextAllocPntr = (nextAllocExists ? (HeapAllocPrefix_t*)(allocBytePntr + allocSize) : nullptr);
+					bool isNextAllocFilled = (nextAllocExists ? IsAllocPrefixFilled(nextAllocPntr->size) : true);
+					u64 nextAllocSize = (nextAllocExists ? UnpackAllocPrefixSize(nextAllocPntr->size) : 0);
+					if (!isNextAllocFilled || shrinkAmount > sizeof(HeapAllocPrefix_t))
+					{
+						allocSize -= shrinkAmount;
+						allocPntr->size = PackAllocPrefixSize(isAllocFilled, allocSize);
+						HeapAllocPrefix_t* newEmptyAlloc = (HeapAllocPrefix_t*)(allocBytePntr + allocSize);
+						newEmptyAlloc->size = PackAllocPrefixSize(isNextAllocFilled, (isNextAllocFilled ? nextAllocSize : 0) + shrinkAmount);
+						arena->used -= shrinkAmount - (isNextAllocFilled ? 0 : sizeof(HeapAllocPrefix_t));
+					}
+					else
+					{
+						//If we aren't shrinking enough to make a new section and the next section is filled, we should be safe to silently keep the allocation the same size
+					}
+					
+					break;
+				}
+				allocOffset += allocSize;
+				allocBytePntr += allocSize;
+				sectionIndex++;
+			}
+			UNUSED(sectionIndex); //used for debug purposes
+			AssertMsg(foundAllocation, "Tried to shrink an allocation from the incorrect arena. Or the prevAllocPntr was misaligned. Maybe the arena is corrupt or the memory pntr was mishandled?");
+		} break;
+		
+		// +==============================+
+		// |    MemArenaType_PagedHeap    |
+		// +==============================+
+		case MemArenaType_PagedHeap:
+		{
+			bool foundAllocation = false;
+			HeapPageHeader_t* pageHeader = (HeapPageHeader_t*)arena->headerPntr;
+			u64 pageIndex = 0;
+			while (pageHeader != nullptr)
+			{
+				u8* allocBytePntr = (u8*)(pageHeader + 1);
+				if (!IsPntrInsideRange(prevAllocPntr, allocBytePntr, pageHeader->size))
+				{
+					pageHeader = pageHeader->next;
+					pageIndex++;
+					continue;
+				}
+				
+				u64 allocOffset = 0;
+				u64 sectionIndex = 0;
+				while (allocOffset < pageHeader->size)
+				{
+					HeapAllocPrefix_t* allocPntr = (HeapAllocPrefix_t*)allocBytePntr;
+					u8* allocAfterPrefixPntr = (allocBytePntr + sizeof(HeapAllocPrefix_t));
+					bool isAllocFilled = IsAllocPrefixFilled(allocPntr->size);
+					u64 allocSize = UnpackAllocPrefixSize(allocPntr->size);
+					AssertMsg(allocSize >= sizeof(HeapAllocPrefix_t), "Found an allocation header that claimed to be smaller than the header itself in Fixed Heap");
+					AssertMsg(allocOffset + allocSize <= pageHeader->size, "Found an allocation header with invalid size. Would extend past the end of a page!");
+					u64 allocAfterPrefixSize = allocSize - sizeof(HeapAllocPrefix_t);
+					if (allocAfterPrefixPntr == prevAllocPntr)
+					{
+						Assert(isAllocFilled);
+						AssertMsg(allocSize >= prevAllocSize, "prevAllocSize passed to ShrinkMem was too large");
+						AssertMsg(allocSize <= prevAllocSize + AllocAlignment_Max, "prevAllocSize passed to ShrinkMem was too small (even given some slop for alignment)");
+						foundAllocation = true;
+						
+						u64 extraBytesInThisAlloc = allocAfterPrefixSize - prevAllocSize;
+						u64 shrinkAmount = (prevAllocSize - newAllocSize) + extraBytesInThisAlloc;
+						bool nextAllocExists = (allocOffset + allocSize < pageHeader->size);
+						HeapAllocPrefix_t* nextAllocPntr = (nextAllocExists ? (HeapAllocPrefix_t*)(allocBytePntr + allocSize) : nullptr);
+						bool isNextAllocFilled = (nextAllocExists ? IsAllocPrefixFilled(nextAllocPntr->size) : true);
+						u64 nextAllocSize = (nextAllocExists ? UnpackAllocPrefixSize(nextAllocPntr->size) : 0);
+						if (!isNextAllocFilled || shrinkAmount > sizeof(HeapAllocPrefix_t))
+						{
+							allocSize -= shrinkAmount;
+							allocPntr->size = PackAllocPrefixSize(isAllocFilled, allocSize);
+							HeapAllocPrefix_t* newEmptyAlloc = (HeapAllocPrefix_t*)(allocBytePntr + allocSize);
+							newEmptyAlloc->size = PackAllocPrefixSize(isNextAllocFilled, (isNextAllocFilled ? nextAllocSize : 0) + shrinkAmount);
+							arena->used -= shrinkAmount - (isNextAllocFilled ? 0 : sizeof(HeapAllocPrefix_t));
+						}
+						else
+						{
+							//If we aren't shrinking enough to make a new section and the next section is filled, we should be safe to silently keep the allocation the same size
+						}
+						
+						break;
+					}
+					allocOffset += allocSize;
+					allocBytePntr += allocSize;
+					sectionIndex++;
+				}
+				UNUSED(sectionIndex); //used for debug purposes
+				
+				if (foundAllocation) { break; }
+			}
+			UNUSED(pageIndex); //used for debug purposes
+			AssertMsg(foundAllocation, "Tried to shrink an allocation from the incorrect arena. Or the prevAllocPntr was misaligned. Maybe the arena is corrupt or the memory pntr was mishandled?");
+		} break;
+		
+		// +==============================+
+		// |     MemArenaType_Buffer      |
+		// +==============================+
+		case MemArenaType_Buffer:
+		{
+			Unimplemented(); //TODO: Implement me!
+		} break;
+		
+		// +==============================+
+		// |    Unsupported Arena Type    |
+		// +==============================+
+		default:
+		{
+			GyLibPrintLine_E("Unsupported arena type in ShrinkMem: %u (size: %llu, used: %llu)", arena->type, arena->size, arena->used);
+			AssertMsg(false, "Unsupported arena type in ShrinkMem. Maybe the arena is corrupted?");
 		} break;
 	}
 }
@@ -2444,6 +2626,9 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride =
 MemArena_t AllocBufferArena(MemArena_t* sourceArena, u64 numBytes, AllocAlignment_t alignOverride = AllocAlignment_None)
 char* AllocCharsAndFill(MemArena_t* arena, u64 numChars, const char* dataForFill, bool addNullTerm = true)
 char* AllocCharsAndFillNt(MemArena_t* arena, const char* nullTermStr, bool addNullTerm = true)
+u64 GrowMemQuery(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, GrowMemToken_t* tokenOut = nullptr)
+void GrowMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, u64 newAllocSize, const GrowMemToken_t* token)
+void ShrinkMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, u64 newAllocSize)
 bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreNullptr = false, u64* oldSizeOut = nullptr)
 #define HardFreeMem(arena, allocPntr)
 #define SoftFreeMem(arena, allocPntr)
