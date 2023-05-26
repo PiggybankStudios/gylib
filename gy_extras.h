@@ -78,9 +78,6 @@ v2 GetBlueNoisePosInRec(u64 seed, rec bounds, u64 numOfPositions, u64 index)
 	return bounds.topLeft + offset;
 }
 
-// +--------------------------------------------------------------+
-// |                        Two Pass Print                        |
-// +--------------------------------------------------------------+
 void TwoPassPrint(char* resultPntr, u64 resultLength, u64* currentByteIndex, const char* formatString, ...)
 {
 	Assert_(resultPntr == nullptr || resultLength > 0);
@@ -133,4 +130,5 @@ void TwoPassPrint(char* resultPntr, u64 resultLength, u64* currentByteIndex, con
 @Types
 @Functions
 v2 GetBlueNoisePosInRec(u64 seed, rec bounds, u64 numOfPositions, u64 index)
+void TwoPassPrint(char* resultPntr, u64 resultLength, u64* currentByteIndex, const char* formatString, ...)
 */
