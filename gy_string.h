@@ -723,6 +723,26 @@ bool StrEndsWith(const char* nullTermStr, const char* nullTermSuffix, bool ignor
 	return StrEndsWith(NewStr(nullTermStr), NewStr(nullTermSuffix), ignoreCase);
 }
 
+bool StrStartsWithSlash(MyStr_t str)
+{
+	NotNullStr(&str);
+	return (str.length > 0 && (str.chars[0] == '/' || str.chars[0] == '\\'));
+}
+bool StrStartsWithSlash(const char* nullTermStr)
+{
+	return StrStartsWithSlash(NewStr(nullTermStr));
+}
+
+bool StrEndsWithSlash(MyStr_t str)
+{
+	NotNullStr(&str);
+	return (str.length > 0 && (str.chars[str.length-1] == '/' || str.chars[str.length-1] == '\\'));
+}
+bool StrEndsWithSlash(const char* nullTermStr)
+{
+	return StrEndsWithSlash(NewStr(nullTermStr));
+}
+
 //TODO: This has some kind of bug when the delineator is 2 or more characters long it chops off the last character (or more?) of the target!
 MyStr_t* SplitString(MemArena_t* memArena, MyStr_t target, MyStr_t delineator, u64* numPiecesOut = nullptr, bool ignoreCase = false)
 {
@@ -1565,6 +1585,17 @@ bool IsStringValidIdentifier(MyStr_t str, bool allowUnderscores = true, bool all
 	return IsStringValidIdentifier(str.length, str.chars, allowUnderscores, allowNumbers, allowLeadingNumbers, allowEmpty, allowSpaces);
 }
 
+void StrReallocAppend(MyStr_t* baseStr, MyStr_t appendStr, MemArena_t* memArena)
+{
+	MyStr_t result = StrSplice(*baseStr, baseStr->length, baseStr->length, appendStr, memArena);
+	FreeString(memArena, baseStr);
+	*baseStr = result;
+}
+void StrReallocAppend(MyStr_t* baseStr, const char* appendNullTermStr, MemArena_t* memArena)
+{
+	StrReallocAppend(baseStr, NewStr(appendNullTermStr), memArena);
+}
+
 // +--------------------------------------------------------------+
 // |                   Word Break Calculations                    |
 // +--------------------------------------------------------------+
@@ -1855,6 +1886,8 @@ i32 StrCompareIgnoreCase(MyStr_t str1, MyStr_t str2)
 bool StrEqualsIgnoreCase(MyStr_t target, MyStr_t comparison)
 bool StrStartsWith(MyStr_t str, MyStr_t prefix, bool ignoreCase = false)
 bool StrEndsWith(MyStr_t str, MyStr_t suffix, bool ignoreCase = false)
+bool StrStartsWithSlash(MyStr_t str)
+bool StrEndsWithSlash(MyStr_t str)
 MyStr_t* SplitString(MemArena_t* memArena, MyStr_t target, MyStr_t delineator, u64* numPiecesOut = nullptr, bool ignoreCase = false)
 u64 UnescapeQuotedStringInPlace(MyStr_t* target, bool removeQuotes = true, bool allowNewLineEscapes = true, bool allowOtherEscapeCodes = false)
 MyStr_t UnescapeQuotedStringInArena(MemArena_t* memArena, MyStr_t target, bool removeQuotes = true, bool allowNewLineEscapes = true, bool allowOtherEscapeCodes = false)
@@ -1877,6 +1910,7 @@ MyStr_t FormatBytes(u64 numBytes, MemArena_t* memArena)
 const char* FormatBytesNt(u64 numBytes, MemArena_t* memArena)
 u64 FnvHashStr(MyStr_t str)
 bool IsStringValidIdentifier(MyStr_t str, bool allowUnderscores = true, bool allowNumbers = true, bool allowLeadingNumbers = false, bool allowEmpty = false, bool allowSpaces = false)
+void StrReallocAppend(MyStr_t* baseStr, MyStr_t appendStr, MemArena_t* memArena)
 WordBreakCharClass_t GetWordBreakCharClass(u32 codepoint)
 bool IsCharPairWordBreak(u32 prevCodepoint, u32 nextCodepoint, bool forward, bool subwords)
 u64 FindNextWordBreakInString(MyStr_t str, u64 startIndex, bool forward, bool subwords, bool includeBreakAtStartIndex = false)
