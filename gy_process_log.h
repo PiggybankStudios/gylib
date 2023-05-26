@@ -34,7 +34,7 @@ struct ProcessLog_t
 	bool debugBreakOnWarningsAndErrors;
 	u32 errorCode;
 	TryParseFailureReason_t parseFailureReason;
-	XmlParsingError_t xmlParsingError;
+	enum XmlParsingError_t xmlParsingError;
 	
 	MemArena_t* allocArena;
 	MemArena_t* tempArena;
@@ -58,7 +58,7 @@ struct LogGlobals_t
 };
 
 //The global variable "logGlobals" is how ProcessLogs (and any other log who wants to)
-// can get implicit information to shove into the metadata of every logged line
+//can get implicit information to shove into the metadata of every logged line
 LogGlobals_t* logGlobals = nullptr;
 
 // +--------------------------------------------------------------+
@@ -326,3 +326,95 @@ void LogExit_(ProcessLog_t* log, bool success, u32 errorCode, const char* filePa
 #define LogExitFailure(log, errorCode) LogExit_((log), false, (errorCode), __FILE__, __LINE__, __func__)
 
 #endif //  _GY_PROCESS_LOG_H
+
+// +--------------------------------------------------------------+
+// |                   Autocomplete Dictionary                    |
+// +--------------------------------------------------------------+
+/*
+@Defines
+DEFAULT_PROCESS_LOG_FIFO_SIZE
+DBG_FILEPATH_AND_FUNCNAME_SEP_CHAR
+@Types
+ProcessLogLine_t
+ProcessLog_t
+GetPreciseProgramTime_f
+GetThreadNumber_f
+LogGlobals_t
+@Globals
+logGlobals
+@Functions
+void FreeProcessLog(ProcessLog_t* log)
+void CreateProcessLog(ProcessLog_t* logOut, u64 fifoSize, MemArena_t* fifoArena, MemArena_t* logArena, MemArena_t* tempArena)
+void CreateProcessLogStub(ProcessLog_t* logOut)
+void SetProcessLogFilePath(ProcessLog_t* log, MyStr_t filePath)
+void SetProcessLogName(ProcessLog_t* log, MyStr_t processName)
+void LogOutput_(ProcessLog_t* log, u8 flags, const char* filePath, u32 lineNumber, const char* funcName, DbgLevel_t dbgLevel, bool addNewLine, const char* message)
+void LogPrint_(ProcessLog_t* log, u8 flags, const char* filePath, u32 lineNumber, const char* funcName, DbgLevel_t dbgLevel, bool addNewLine, const char* formatString, ...)
+void LogExit_(ProcessLog_t* log, bool success, u32 errorCode, const char* filePath, u32 lineNumber, const char* funcName)
+#define LogWriteAt(log, level, message)
+#define LogWriteLineAt(log, level, message)
+#define LogPrintAt(log, level, formatString, ...)
+#define LogPrintLineAt(log, level, formatString, ...)
+#define LogWriteAtx(log, level, flags, message)
+#define LogWriteLineAtx(log, level, flags, message)
+#define LogPrintAtx(log, level, flags, formatString, ...)
+#define LogPrintLineAtx(log, level, flags, formatString, ...)
+#define LogWrite_D(log, message)
+#define LogWriteLine_D(log, message)
+#define LogPrint_D(log, formatString, ...)
+#define LogPrintLine_D(log, formatString, ...)
+#define LogWrite_Dx(log, flags, message)
+#define LogWriteLine_Dx(log, flags, message)
+#define LogPrint_Dx(log, flags, formatString, ...)
+#define LogPrintLine_Dx(log, flags, formatString, ...)
+#define LogWrite_R(log, message)
+#define LogWriteLine_R(log, message)
+#define LogPrint_R(log, formatString, ...)
+#define LogPrintLine_R(log, formatString, ...)
+#define LogWrite_Rx(log, flags, message)
+#define LogWriteLine_Rx(log, flags, message)
+#define LogPrint_Rx(log, flags, formatString, ...)
+#define LogPrintLine_Rx(log, flags, formatString, ...)
+#define LogWrite_I(log, message)
+#define LogWriteLine_I(log, message)
+#define LogPrint_I(log, formatString, ...)
+#define LogPrintLine_I(log, formatString, ...)
+#define LogWrite_Ix(log, flags, message)
+#define LogWriteLine_Ix(log, flags, message)
+#define LogPrint_Ix(log, flags, formatString, ...)
+#define LogPrintLine_Ix(log, flags, formatString, ...)
+#define LogWrite_N(log, message)
+#define LogWriteLine_N(log, message)
+#define LogPrint_N(log, formatString, ...)
+#define LogPrintLine_N(log, formatString, ...)
+#define LogWrite_Nx(log, flags, message)
+#define LogWriteLine_Nx(log, flags, message)
+#define LogPrint_Nx(log, flags, formatString, ...)
+#define LogPrintLine_Nx(log, flags, formatString, ...)
+#define LogWrite_O(log, message)
+#define LogWriteLine_O(log, message)
+#define LogPrint_O(log, formatString, ...)
+#define LogPrintLine_O(log, formatString, ...)
+#define LogWrite_Ox(log, flags, message)
+#define LogWriteLine_Ox(log, flags, message)
+#define LogPrint_Ox(log, flags, formatString, ...)
+#define LogPrintLine_Ox(log, flags, formatString, ...)
+#define LogWrite_W(log, message)
+#define LogWriteLine_W(log, message)
+#define LogPrint_W(log, formatString, ...)
+#define LogPrintLine_W(log, formatString, ...)
+#define LogWrite_Wx(log, flags, message)
+#define LogWriteLine_Wx(log, flags, message)
+#define LogPrint_Wx(log, flags, formatString, ...)
+#define LogPrintLine_Wx(log, flags, formatString, ...)
+#define LogWrite_E(log, message)
+#define LogWriteLine_E(log, message)
+#define LogPrint_E(log, formatString, ...)
+#define LogPrintLine_E(log, formatString, ...)
+#define LogWrite_Ex(log, flags, message)
+#define LogWriteLine_Ex(log, flags, message)
+#define LogPrint_Ex(log, flags, formatString, ...)
+#define LogPrintLine_Ex(log, flags, formatString, ...)
+#define LogExitSuccess(log)
+#define LogExitFailure(log, errorCode)
+*/

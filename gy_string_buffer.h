@@ -9,6 +9,8 @@ Description:
 StringBuffer_t is always guaranteed to be null-terminated so you can easily do ToStr on a pointer to a string buffer
 */
 
+//TODO: We could probably do a similar thing without using templates. All we need to do is make a macro for creation that declares a stack array and also a structure that points to that array and knows it's size
+
 #ifndef _GY_STRING_BUFFER_H
 #define _GY_STRING_BUFFER_H
 
@@ -364,3 +366,36 @@ u64 StringBufferReplace(StringBufferGeneric_t* stringBuffer, const char* targetN
 //TODO: Add StringBufferPathAppend
 
 #endif //  _GY_STRING_BUFFER_H
+
+// +--------------------------------------------------------------+
+// |                   Autocomplete Dictionary                    |
+// +--------------------------------------------------------------+
+/*
+@Defines
+TEMP_STRING_LENGTH
+@Types
+StringBufferGeneric_t
+StringBuffer_t
+TempString_t
+@Functions
+void InitStringBuffer(StringBuffer_t* stringBufferPntr, MyStr_t initialValue = "")
+bool IsInitialized(StringBufferGeneric_t* stringBuffer)
+bool IsNullTerminated(StringBufferGeneric_t* stringBuffer)
+void StringBufferSet(StringBufferGeneric_t* stringBuffer, MyStr_t str)
+bool StringBufferTrySet(StringBufferGeneric_t* stringBuffer, MyStr_t str, bool appendWhatYouCan = true)
+void StringBufferClear(StringBufferGeneric_t* stringBuffer, bool zeroMemory = false)
+StringBufferGeneric_t* ToGeneric(StringBuffer_t* stringBuffer)
+StringBuffer_t* ToStringBuffer(StringBufferGeneric_t* stringBuffer)
+TempString_t* ToTempString(StringBufferGeneric_t* stringBuffer)
+MyStr_t ToMyStr(StringBufferGeneric_t* stringBuffer)
+char* ToStr(StringBufferGeneric_t* stringBuffer)
+MyStr_t StringBufferSubstring(StringBufferGeneric_t* stringBuffer, u64 startIndex, u64 endIndex = optional)
+MyStr_t StringBufferSubstringFromEnd(StringBufferGeneric_t* stringBuffer, u64 startIndexFromEnd)
+void StringBufferPrint(StringBufferGeneric_t* stringBuffer, const char* formatString, ...)
+bool StringBufferTryPrint(StringBufferGeneric_t* stringBuffer, const char* formatString, ...)
+void StringBufferAppendPrint(StringBufferGeneric_t* stringBuffer, const char* formatString, ...)
+bool StringBufferTryAppendPrint(StringBufferGeneric_t* stringBuffer, const char* formatString, ...)
+void StringBufferAppend(StringBufferGeneric_t* stringBuffer, MyStr_t str)
+bool StringBufferTryAppend(StringBufferGeneric_t* stringBuffer, MyStr_t str, bool appendWhatYouCan = true)
+u64 StringBufferReplace(StringBufferGeneric_t* stringBuffer, MyStr_t targetStr, MyStr_t replacementStr, bool ignoreCase = false)
+*/

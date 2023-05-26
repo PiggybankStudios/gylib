@@ -2,6 +2,10 @@
 File:   gy_uuid.h
 Author: Taylor Robbins
 Date:   01\21\2023
+Description:
+	** A Uuid_t (Universally Unique Identifier) is a 128 bit (16 byte) identifier with 5 "blocks". In hex-string form: "12345678-1234-1234-1234-123456789012"
+	** Bit sizes: 32-16-16-16-48 Byte sizes: 4-2-2-2-6 Char sizes: 8-4-4-4-12
+	** https://en.wikipedia.org/wiki/Universally_unique_identifier
 */
 
 #ifndef _GY_UUID_H
@@ -17,8 +21,8 @@ Date:   01\21\2023
 #include "gylib/gy_string.h"
 
 #define UUID_BYTE_LENGTH            16
-#define UUID_STR_LENGTH             ((UUID_BYTE_LENGTH * 2) + 4) //16 bytes, 2 hex chars per byte, and 4 hyphens
-#define UUID_STR_LENGTH_NO_HYPHENS  (UUID_BYTE_LENGTH * 2) //16 bytes, 2 hex chars per byte, and 4 hyphens
+#define UUID_STR_LENGTH             ((UUID_BYTE_LENGTH * 2) + 4) //16 bytes, 2 hex chars per byte, and 4 hyphens = 36 chars
+#define UUID_STR_LENGTH_NO_HYPHENS  (UUID_BYTE_LENGTH * 2) //16 bytes, 2 hex chars per byte = 32 chars
 
 // +--------------------------------------------------------------+
 // |                             Type                             |
