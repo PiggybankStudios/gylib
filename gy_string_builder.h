@@ -20,6 +20,7 @@ Description:
 struct StringBuilder_t
 {
 	MemArena_t* allocArena;
+	const char* newLineStyle;
 	u64 length; //doesn't include null-term char so should always be strictly less than allocLength
 	u64 allocLength;
 	char* chars;
@@ -215,6 +216,22 @@ void StringBuilderAppend(StringBuilder_t* builder, const char* nullTermStr)
 	StringBuilderAppend(builder, NewStr(nullTermStr));
 }
 
+void StringBuilderAppendLine(StringBuilder_t* builder)
+{
+	NotNull(builder);
+	StringBuilderAppend(builder, (builder->newLineStyle != nullptr) ? builder->newLineStyle : "\n");
+}
+void StringBuilderAppendLine(StringBuilder_t* builder, MyStr_t str)
+{
+	StringBuilderAppend(builder, str);
+	StringBuilderAppendLine(builder);
+}
+void StringBuilderAppendLine(StringBuilder_t* builder, const char* nullTermStr)
+{
+	StringBuilderAppend(builder, nullTermStr);
+	StringBuilderAppendLine(builder);
+}
+
 void StringBuilderSet(StringBuilder_t* builder, MyStr_t str)
 {
 	StringBuilderClear(builder);
@@ -254,7 +271,7 @@ void StringBuilderAppendPrintVa(StringBuilder_t* builder, const char* formatStri
 			StringBuilderAllocMoreMem(builder, builder->length + (u64)printResult + 1);
 			
 			normalSpaceAvailable = StringBuilderGetNumUnusedBytes(builder, false);
-			Assert(normalSpaceAvailable > (u64)printResult);
+			Assert(normalSpaceAvailable >= (u64)printResult);
 			int secondPrintResult = MyVaListPrintf(&builder->chars[builder->length], normalSpaceAvailable+1, formatString, args2);
 			Assert(secondPrintResult == printResult);
 			
@@ -278,7 +295,7 @@ void StringBuilderAppendPrintVa(StringBuilder_t* builder, const char* formatStri
 		StringBuilderAllocMoreMem(builder, builder->length + (u64)printResult + 1);
 		
 		normalSpaceAvailable = StringBuilderGetNumUnusedBytes(builder, false);
-		Assert(normalSpaceAvailable > (u64)printResult);
+		Assert(normalSpaceAvailable >= (u64)printResult);
 		int secondPrintResult = MyVaListPrintf(&builder->chars[builder->length], normalSpaceAvailable+1, formatString, args2);
 		Assert(secondPrintResult == printResult);
 		
@@ -298,6 +315,17 @@ void StringBuilderAppendPrint(StringBuilder_t* builder, const char* formatString
 	StringBuilderAppendPrintVa(builder, formatString, args1, args2);
 	va_end(args1);
 	va_end(args2);
+}
+void StringBuilderAppendPrintLine(StringBuilder_t* builder, const char* formatString, ...)
+{
+	va_list args1;
+	va_list args2;
+	va_start(args1, formatString);
+	va_start(args2, formatString);
+	StringBuilderAppendPrintVa(builder, formatString, args1, args2);
+	va_end(args1);
+	va_end(args2);
+	StringBuilderAppendLine(builder);
 }
 
 void StringBuilderPrint(StringBuilder_t* builder, const char* formatString, ...)
@@ -334,8 +362,10 @@ MyStr_t TakeString(StringBuilder_t* builder, MemArena_t* memArena = nullptr)
 void StringBuilderAllocMoreMem(StringBuilder_t* builder, u64 spaceRequired)
 void StringBuilderClear(StringBuilder_t* builder, bool deallocate = false)
 void StringBuilderAppend(StringBuilder_t* builder, MyStr_t str)
+void StringBuilderAppendLine(StringBuilder_t* builder, const char* nullTermStr = "")
 void StringBuilderSet(StringBuilder_t* builder, MyStr_t str)
 void StringBuilderAppendPrintVa(StringBuilder_t* builder, const char* formatString, va_list args1, va_list args2)
 void StringBuilderAppendPrint(StringBuilder_t* builder, const char* formatString, ...)
+void StringBuilderAppendPrintLine(StringBuilder_t* builder, const char* formatString, ...)
 void StringBuilderPrint(StringBuilder_t* builder, const char* formatString, ...)
 */

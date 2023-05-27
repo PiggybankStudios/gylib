@@ -2202,7 +2202,7 @@ void ShrinkMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, 
 						allocSize -= shrinkAmount;
 						allocPntr->size = PackAllocPrefixSize(isAllocFilled, allocSize);
 						HeapAllocPrefix_t* newEmptyAlloc = (HeapAllocPrefix_t*)(allocBytePntr + allocSize);
-						newEmptyAlloc->size = PackAllocPrefixSize(isNextAllocFilled, (isNextAllocFilled ? nextAllocSize : 0) + shrinkAmount);
+						newEmptyAlloc->size = PackAllocPrefixSize(isNextAllocFilled, (isNextAllocFilled ? 0 : nextAllocSize) + shrinkAmount);
 						arena->used -= shrinkAmount - (isNextAllocFilled ? 0 : sizeof(HeapAllocPrefix_t));
 					}
 					else
@@ -2267,7 +2267,7 @@ void ShrinkMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, 
 							allocSize -= shrinkAmount;
 							allocPntr->size = PackAllocPrefixSize(isAllocFilled, allocSize);
 							HeapAllocPrefix_t* newEmptyAlloc = (HeapAllocPrefix_t*)(allocBytePntr + allocSize);
-							newEmptyAlloc->size = PackAllocPrefixSize(isNextAllocFilled, (isNextAllocFilled ? nextAllocSize : 0) + shrinkAmount);
+							newEmptyAlloc->size = PackAllocPrefixSize(isNextAllocFilled, (isNextAllocFilled ? 0 : nextAllocSize) + shrinkAmount);
 							arena->used -= shrinkAmount - (isNextAllocFilled ? 0 : sizeof(HeapAllocPrefix_t));
 						}
 						else

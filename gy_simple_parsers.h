@@ -28,20 +28,22 @@ struct LineParser_t
 enum ParsingTokenType_t
 {
 	ParsingTokenType_Unknown = 0,
-	ParsingTokenType_FilePrefix,
-	ParsingTokenType_KeyValuePair,
-	ParsingTokenType_Comment,
+	ParsingTokenType_FilePrefix, //lines starting with #
+	ParsingTokenType_Directive, //lines starting with @
+	ParsingTokenType_KeyValuePair, //lines with key: value (where leading/trailing whitespace is stripped from key and value)
+	ParsingTokenType_Comment, //anything after a // on any line
 	ParsingTokenType_NumTypes,
 };
-const char* GetParsingTokenTypeStr(ParsingTokenType_t type)
+const char* GetParsingTokenTypeStr(ParsingTokenType_t enumValue)
 {
-	switch (type)
+	switch (enumValue)
 	{
 		case ParsingTokenType_Unknown:      return "Unknown";
 		case ParsingTokenType_FilePrefix:   return "FilePrefix";
+		case ParsingTokenType_Directive:    return "Directive";
 		case ParsingTokenType_KeyValuePair: return "KeyValuePair";
 		case ParsingTokenType_Comment:      return "Comment";
-		default: return "UNKNOWN";
+		default: return "Unknown";
 	}
 }
 
@@ -283,6 +285,15 @@ bool TextParserGetToken(TextParser_t* parser, ParsingToken_t* tokenOut)
 		{
 			ClearPointer(tokenOut);
 			tokenOut->type = ParsingTokenType_FilePrefix;
+			tokenOut->str = line;
+			tokenOut->value = StrSubstring(&line, 1);
+			parser->byteIndex += numTrimmedWhitespaceChars + line.length;
+			return true;
+		}
+		else if (StrStartsWith(line, "@"))
+		{
+			ClearPointer(tokenOut);
+			tokenOut->type = ParsingTokenType_Directive;
 			tokenOut->str = line;
 			tokenOut->value = StrSubstring(&line, 1);
 			parser->byteIndex += numTrimmedWhitespaceChars + line.length;
@@ -747,7 +758,7 @@ XmlToken_t
 XmlParser_t
 XmlParseResult_t
 @Functions
-const char* GetParsingTokenTypeStr(ParsingTokenType_t type)
+const char* GetParsingTokenTypeStr(ParsingTokenType_t enumValue)
 const char* GetXmlParsingErrorStr(XmlParsingError_t error)
 const char* GetXmlParseResultTypeStr(XmlParseResultType_t enumValue)
 LineParser_t NewLineParser(MyStr_t fileContents)
