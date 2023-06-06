@@ -175,7 +175,7 @@ MyStr_t PrintInArenaStr(MemArena_t* arena, const char* formatString, ...)
 // |                   Unicode String Functions                   |
 // +--------------------------------------------------------------+
 #ifdef _GY_UNICODE_H
-u8 GetCodepointForUtf8Str(MyStr_t str, u64 index, u32* codepointOut)
+u8 GetCodepointForUtf8Str(MyStr_t str, u64 index, u32* codepointOut = nullptr)
 {
 	Assert(index <= str.length);
 	return GetCodepointForUtf8(str.length - index, str.pntr + index, codepointOut);
@@ -278,6 +278,15 @@ MyWideStr_t ConvertUtf8StrToUcs2(MemArena_t* memArena, MyStr_t utf8Str)
 	
 	Assert(result.length == numWordsNeeded);
 	return result;
+}
+
+bool DoesStrContainMultibyteUtf8Characters(MyStr_t str)
+{
+	for (u64 bIndex = 0; bIndex < str.length; bIndex++)
+	{
+		if (GetCodepointForUtf8Str(str, bIndex) > 0) { return true; }
+	}
+	return false;
 }
 
 #endif //_GY_UNICODE_H
@@ -1902,10 +1911,11 @@ MyStr_t StrReplace(MyStr_t str, MyStr_t target, MyStr_t replacement, MemArena_t*
 bool FindSubstring(MyStr_t target, MyStr_t substring, u64* indexOut = nullptr, bool ignoreCase = false, u64 startIndex = 0)
 MyStr_t FindStrParensPart(MyStr_t target, char openParensChar = '[', char closeParensChar = ']')
 MyStr_t StringRepeat(MemArena_t* memArena, MyStr_t str, u64 numRepetitions)
-u8 GetCodepointForUtf8Str(MyStr_t str, u64 index, u32* codepointOut)
+u8 GetCodepointForUtf8Str(MyStr_t str, u64 index, u32* codepointOut = nullptr)
 MyStr_t ConvertUcs2StrToUtf8(MemArena_t* memArena, const wchar_t* wideStrPntr, u64 wideStrLength)
 MyStr_t ConvertUcs2StrToUtf8Nt(MemArena_t* memArena, const wchar_t* nullTermWideStr)
 MyWideStr_t ConvertUtf8StrToUcs2(MemArena_t* memArena, MyStr_t utf8Str)
+bool DoesStrContainMultibyteUtf8Characters(MyStr_t str)
 MyStr_t FormatBytes(u64 numBytes, MemArena_t* memArena)
 const char* FormatBytesNt(u64 numBytes, MemArena_t* memArena)
 u64 FnvHashStr(MyStr_t str)

@@ -452,6 +452,28 @@ bool IsStringValidIdentifier(u64 strLength, const char* strPntr, bool allowUnder
 	return true;
 }
 
+// +--------------------------------------------------------------+
+// |                     Bespoke Conversions                      |
+// +--------------------------------------------------------------+
+// +==============================+
+// |          Monospace           |
+// +==============================+
+// Works on all alphanumeric characters
+u32 GetMonospaceCodepointFor(u32 codepoint)
+{
+	if (codepoint >= 'A' && codepoint <= 'Z') { return 0x1D670 + (codepoint - 'A'); }
+	if (codepoint >= 'a' && codepoint <= 'z') { return 0x1D68A + (codepoint - 'a'); }
+	if (codepoint >= '0' && codepoint <= '9') { return 0x1D7F6 + (codepoint - '0'); }
+	return 0;
+}
+u32 GetRegularCodepointForMonospace(u32 monospaceCodepoint)
+{
+	if (monospaceCodepoint >= 0x1D670 && monospaceCodepoint <= 0x1D689) { return CharToU32('A') + (monospaceCodepoint - 0x1D670); }
+	if (monospaceCodepoint >= 0x1D68A && monospaceCodepoint <= 0x1D6A3) { return CharToU32('a') + (monospaceCodepoint - 0x1D68A); }
+	if (monospaceCodepoint >= 0x1D7F6 && monospaceCodepoint <= 0x1D7FF) { return CharToU32('0') + (monospaceCodepoint - 0x1D7F6); }
+	return 0;
+}
+
 #endif //  _GY_UNICODE_H
 
 // +--------------------------------------------------------------+
