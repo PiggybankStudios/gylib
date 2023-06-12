@@ -60,6 +60,7 @@ enum MemArenaType_t
 	MemArenaType_PagedHeap,
 	MemArenaType_MarkedStack,
 	MemArenaType_Buffer,
+	MemArenaType_NumTypes,
 };
 const char* GetMemArenaTypeStr(MemArenaType_t arenaType)
 {
