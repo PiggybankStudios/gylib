@@ -191,11 +191,12 @@ bool StrHashDictIter_(StrHashDictIter_t* iter, u64 itemSize, void** itemPntrOut)
 // +--------------------------------------------------------------+
 // |                             Add                              |
 // +--------------------------------------------------------------+
-void* StrHashDictAdd_(StrHashDict_t* dict, MyStr_t key, u64 itemSize, bool assertOnDuplicate)
+void* StrHashDictAdd_(StrHashDict_t* dict, MyStr_t key, u64 itemSize, bool assertOnDuplicate, bool* isNewEntryOut = nullptr)
 {
 	NotNull(dict);
 	Assert(dict->itemSize == itemSize);
 	NotNull(dict->allocArena);
+	SetOptionalOutPntr(isNewEntryOut, false);
 	
 	StrHashExpand(dict, dict->numItems+1);
 	
@@ -215,29 +216,32 @@ void* StrHashDictAdd_(StrHashDict_t* dict, MyStr_t key, u64 itemSize, bool asser
 			AssertIfMsg(assertOnDuplicate, false, "Duplicate key added to StrHashDict!");
 			newSlot->hash = keyHash;
 			result = (void*)(newSlot + 1);
+			SetOptionalOutPntr(isNewEntryOut, false);
 			break;
 		}
 		else if (newSlot->hash == 0)
 		{
 			newSlot->hash = keyHash;
 			result = (void*)(newSlot + 1);
+			SetOptionalOutPntr(isNewEntryOut, true);
+			dict->numItems++;
 			break;
 		}
 		offset++;
 	}
 	Assert(result != nullptr);
 	
-	dict->numItems++;
 	return result;
 }
-void* StrHashDictAdd_(StrHashDict_t* dict, const char* nullTermStr, u64 itemSize, bool assertOnFailure)
+void* StrHashDictAdd_(StrHashDict_t* dict, const char* nullTermStr, u64 itemSize, bool assertOnFailure, bool* isNewEntryOut = nullptr)
 {
-	return StrHashDictAdd_(dict, NewStr(nullTermStr), itemSize, assertOnFailure);
+	return StrHashDictAdd_(dict, NewStr(nullTermStr), itemSize, assertOnFailure, isNewEntryOut);
 }
 
 #define StrHashDictAddHard(dict, key, type) (type*)StrHashDictAdd_((dict), (key), sizeof(type), true)
 #define StrHashDictAddSoft(dict, key, type) (type*)StrHashDictAdd_((dict), (key), sizeof(type), false)
 #define StrHashDictAdd(dict, key, type)     StrHashDictAddHard(dict, key, type)
+#define StrHashDictAddSoftEx(dict, key, isNewEntryOut, type) (type*)StrHashDictAdd_((dict), (key), sizeof(type), false, (isNewEntryOut))
 #define StrHashDictAddEmptyHard(dict, key)  StrHashDictAdd_((dict), (key), 0, true)
 #define StrHashDictAddEmptySoft(dict, key)  StrHashDictAdd_((dict), (key), 0, false)
 #define StrHashDictAddEmpty(dict, key)      StrHashDictAddEmptyHard(dict, key)
@@ -357,6 +361,7 @@ bool StrHashExpand(StrHashDict_t* dict, u64 numItemsRequired)
 #define StrHashDictAddHard(dict, key, type)
 #define StrHashDictAddSoft(dict, key, type)
 #define StrHashDictAdd(dict, key, type)
+#define StrHashDictAddSoftEx(dict, key, isNewEntryOut, type)
 #define StrHashDictAddEmptyHard(dict, key)
 #define StrHashDictAddEmptySoft(dict, key)
 #define StrHashDictAddEmpty(dict, key)

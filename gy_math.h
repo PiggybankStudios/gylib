@@ -367,12 +367,20 @@ void ReduceRatioU64(u64* num1, u64* num2)
 	*num2 = result2;
 }
 
-//TODO: Make a 3D version of this function?
 v2 ClosestPointOnLine(v2 lineStart, v2 lineEnd, v2 point)
 {
 	r32 lineLength = Vec2Length(lineEnd - lineStart);
 	v2 lineNorm = (lineEnd - lineStart) / lineLength;
 	r32 dot = Vec2Dot(lineNorm, point - lineStart);
+	if (dot <= 0) { return lineStart; }
+	if (dot >= lineLength) { return lineEnd; }
+	return lineStart + (lineNorm * dot);
+}
+v3 ClosestPointOnLine(v3 lineStart, v3 lineEnd, v3 point)
+{
+	r32 lineLength = Vec3Length(lineEnd - lineStart);
+	v3 lineNorm = (lineEnd - lineStart) / lineLength;
+	r32 dot = Vec3Dot(lineNorm, point - lineStart);
 	if (dot <= 0) { return lineStart; }
 	if (dot >= lineLength) { return lineEnd; }
 	return lineStart + (lineNorm * dot);
