@@ -57,6 +57,7 @@ Description:
 #include "gylib/gy_process_log.h"
 #include "gylib/gy_simple_parsers.h"
 #include "gylib/gy_collision.h"
+#include "gylib/gy_ip.h"
 #include "gylib/gy_extras.h"
 
 #endif //  _GY_H

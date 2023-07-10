@@ -76,13 +76,14 @@ const char* GetTryParseFailureReasonStr(TryParseFailureReason_t reason)
 // |                        Parse Integer                         |
 // +--------------------------------------------------------------+
 //TODO: For some reason 18446744073709551616-18446744073709551619 incorrectly succeed parsing and return 0-3
-bool TryParseU64(MyStr_t str, u64* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true)
+bool TryParseU64(MyStr_t str, u64* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true, bool allowDecimal = true)
 {
 	NotNullStr(&str);
+	Assert(allowDecimal || allowHex || allowBinary);
 	TrimWhitespace(&str);
 	u64 result = 0;
-	bool foundHexDesignation = false;
-	bool foundBinaryDesignation = false;
+	bool foundHexDesignation = (allowHex && !allowDecimal);
+	bool foundBinaryDesignation = (allowBinary && !allowDecimal && !allowHex);
 	if (allowHex && StrStartsWith(str, "0x", true)) { foundHexDesignation = true; str = StrSubstring(&str, 2); }
 	else if (allowBinary && StrStartsWith(str, "0b", true)) { foundBinaryDesignation = true; str = StrSubstring(&str, 2); }
 	
@@ -166,10 +167,10 @@ bool TryParseU64(MyStr_t str, u64* valueOut, TryParseFailureReason_t* reasonOut 
 	if (valueOut != nullptr) { *valueOut = result; }
 	return true;
 }
-bool TryParseU32(MyStr_t str, u32* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true)
+bool TryParseU32(MyStr_t str, u32* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true, bool allowDecimal = true)
 {
 	u64 resultU64 = 0;
-	if (!TryParseU64(str, &resultU64, reasonOut, allowHex, allowBinary)) { return false; }
+	if (!TryParseU64(str, &resultU64, reasonOut, allowHex, allowBinary, allowDecimal)) { return false; }
 	if (resultU64 > UINT32_MAX)
 	{
 		if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_Overflow; }
@@ -178,10 +179,10 @@ bool TryParseU32(MyStr_t str, u32* valueOut, TryParseFailureReason_t* reasonOut 
 	if (valueOut != nullptr) { *valueOut = (u32)resultU64; }
 	return true;
 }
-bool TryParseU16(MyStr_t str, u16* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true)
+bool TryParseU16(MyStr_t str, u16* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true, bool allowDecimal = true)
 {
 	u64 resultU64 = 0;
-	if (!TryParseU64(str, &resultU64, reasonOut, allowHex, allowBinary)) { return false; }
+	if (!TryParseU64(str, &resultU64, reasonOut, allowHex, allowBinary, allowDecimal)) { return false; }
 	if (resultU64 > UINT16_MAX)
 	{
 		if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_Overflow; }
@@ -190,10 +191,10 @@ bool TryParseU16(MyStr_t str, u16* valueOut, TryParseFailureReason_t* reasonOut 
 	if (valueOut != nullptr) { *valueOut = (u16)resultU64; }
 	return true;
 }
-bool TryParseU8(MyStr_t str, u8* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true)
+bool TryParseU8(MyStr_t str, u8* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true, bool allowDecimal = true)
 {
 	u64 resultU64 = 0;
-	if (!TryParseU64(str, &resultU64, reasonOut, allowHex, allowBinary)) { return false; }
+	if (!TryParseU64(str, &resultU64, reasonOut, allowHex, allowBinary, allowDecimal)) { return false; }
 	if (resultU64 > UINT8_MAX)
 	{
 		if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_Overflow; }
@@ -203,7 +204,7 @@ bool TryParseU8(MyStr_t str, u8* valueOut, TryParseFailureReason_t* reasonOut = 
 	return true;
 }
 
-bool TryParseI64(MyStr_t str, i64* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true)
+bool TryParseI64(MyStr_t str, i64* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true, bool allowDecimal = true)
 {
 	NotNullStr(&str);
 	TrimWhitespace(&str);
@@ -211,7 +212,7 @@ bool TryParseI64(MyStr_t str, i64* valueOut, TryParseFailureReason_t* reasonOut 
 	if (StrStartsWith(str, "-")) { isNegative = true; str = StrSubstring(&str, 1); }
 	else if (StrStartsWith(str, "+")) { isNegative = false; str = StrSubstring(&str, 1); }
 	u64 resultU64 = 0;
-	if (!TryParseU64(str, &resultU64, reasonOut, allowHex, allowBinary)) { return false; }
+	if (!TryParseU64(str, &resultU64, reasonOut, allowHex, allowBinary, allowDecimal)) { return false; }
 	if (!isNegative && resultU64 > INT64_MAX)
 	{
 		if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_Overflow; }
@@ -236,11 +237,11 @@ bool TryParseI64(MyStr_t str, i64* valueOut, TryParseFailureReason_t* reasonOut 
 	}
 	return true;
 }
-bool TryParseI32(MyStr_t str, i32* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true)
+bool TryParseI32(MyStr_t str, i32* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true, bool allowDecimal = true)
 {
 	NotNullStr(&str);
 	i64 resultI64 = 0;
-	if (!TryParseI64(str, &resultI64, reasonOut, allowHex, allowBinary)) { return false; }
+	if (!TryParseI64(str, &resultI64, reasonOut, allowHex, allowBinary, allowDecimal)) { return false; }
 	if (resultI64 > INT32_MAX)
 	{
 		if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_Overflow; }
@@ -254,11 +255,11 @@ bool TryParseI32(MyStr_t str, i32* valueOut, TryParseFailureReason_t* reasonOut 
 	if (valueOut != nullptr) { *valueOut = (i32)resultI64; }
 	return true;
 }
-bool TryParseI16(MyStr_t str, i16* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true)
+bool TryParseI16(MyStr_t str, i16* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true, bool allowDecimal = true)
 {
 	NotNullStr(&str);
 	i64 resultI64 = 0;
-	if (!TryParseI64(str, &resultI64, reasonOut, allowHex, allowBinary)) { return false; }
+	if (!TryParseI64(str, &resultI64, reasonOut, allowHex, allowBinary, allowDecimal)) { return false; }
 	if (resultI64 > INT16_MAX)
 	{
 		if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_Overflow; }
@@ -272,11 +273,11 @@ bool TryParseI16(MyStr_t str, i16* valueOut, TryParseFailureReason_t* reasonOut 
 	if (valueOut != nullptr) { *valueOut = (i16)resultI64; }
 	return true;
 }
-bool TryParseI8(MyStr_t str, i8* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true)
+bool TryParseI8(MyStr_t str, i8* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true, bool allowDecimal = true)
 {
 	NotNullStr(&str);
 	i64 resultI64 = 0;
-	if (!TryParseI64(str, &resultI64, reasonOut, allowHex, allowBinary)) { return false; }
+	if (!TryParseI64(str, &resultI64, reasonOut, allowHex, allowBinary, allowDecimal)) { return false; }
 	if (resultI64 > INT8_MAX)
 	{
 		if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_Overflow; }
@@ -1005,14 +1006,14 @@ TryParseFailureReason_NumReasons
 TryParseFailureReason_t
 @Functions
 const char* GetTryParseFailureReasonStr(TryParseFailureReason_t reason)
-bool TryParseU64(MyStr_t str, u64* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true)
-bool TryParseU32(MyStr_t str, u32* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true)
-bool TryParseU16(MyStr_t str, u16* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true)
-bool TryParseU8(MyStr_t str, u8* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true)
-bool TryParseI64(MyStr_t str, i64* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true)
-bool TryParseI32(MyStr_t str, i32* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true)
-bool TryParseI16(MyStr_t str, i16* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true)
-bool TryParseI8(MyStr_t str, i8* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true)
+bool TryParseU64(MyStr_t str, u64* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true, bool allowDecimal = true)
+bool TryParseU32(MyStr_t str, u32* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true, bool allowDecimal = true)
+bool TryParseU16(MyStr_t str, u16* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true, bool allowDecimal = true)
+bool TryParseU8(MyStr_t str, u8* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true, bool allowDecimal = true)
+bool TryParseI64(MyStr_t str, i64* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true, bool allowDecimal = true)
+bool TryParseI32(MyStr_t str, i32* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true, bool allowDecimal = true)
+bool TryParseI16(MyStr_t str, i16* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true, bool allowDecimal = true)
+bool TryParseI8(MyStr_t str, i8* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true, bool allowDecimal = true)
 bool TryParseR64(MyStr_t str, r64* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowInfinity = false)
 bool TryParseR32(MyStr_t str, r32* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowSuffix = true, bool allowInfinity = false)
 bool TryParseEnum(MyStr_t str, enum_t* valueOut, enum_t enumCount, GetEnumStr_f* getEnumStrFunc, TryParseFailureReason_t* reasonOut = nullptr)
