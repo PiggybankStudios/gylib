@@ -19,6 +19,13 @@ Description:
 #define IPV4_SEP_CHAR    '.' //period
 #define IPV6_SEP_CHAR    ':' //colon
 
+#define IPV4_MAX_STR_LENGTH      15 //3*4 + 3 = 3 characters per part, 4 parts, 3 periods in-between
+#define IPV6_MAX_STR_LENGTH      39 //4*8 + 7 4 characters per part, 8 parts, 7 colons in-between
+#define IPADDRESS_MAX_STR_LENGTH 39
+
+#define DEFAULT_HTTP_PORT   80  //port #
+#define DEFAULT_HTTPS_PORT  443 //port #
+
 // +--------------------------------------------------------------+
 // |                          Structures                          |
 // +--------------------------------------------------------------+
@@ -97,6 +104,30 @@ IpAddress_t NewIpAddress(u16 part0, u16 part1, u16 part2, u16 part3, u16 part4, 
 	IpAddress_t result;
 	result.isIpv6 = true;
 	result.ipv6 = NewIpAddress6(part0, part1, part2, part3, part4, part5, part6, part7);
+	return result;
+}
+
+IpAddressAndPort_t NewIpAddress4AndPort(u8 part0, u8 part1, u8 part2, u8 part3, IpPort_t port)
+{
+	IpAddressAndPort_t result;
+	result.address.isIpv6 = false;
+	result.address.ipv4 = NewIpAddress4(part0, part1, part2, part3);
+	result.port = port;
+	return result;
+}
+IpAddressAndPort_t NewIpAddress6AndPort(u16 part0, u16 part1, u16 part2, u16 part3, u16 part4, u16 part5, u16 part6, u16 part7, IpPort_t port)
+{
+	IpAddressAndPort_t result;
+	result.address.isIpv6 = true;
+	result.address.ipv6 = NewIpAddress6(part0, part1, part2, part3, part4, part5, part6, part7);
+	result.port = port;
+	return result;
+}
+IpAddressAndPort_t NewIpAddressAndPort(IpAddress_t address, IpPort_t port)
+{
+	IpAddressAndPort_t result;
+	result.address = address;
+	result.port = port;
 	return result;
 }
 
@@ -240,6 +271,36 @@ bool TryParseIpAddress(MyStr_t str, IpAddress_t* valueOut = nullptr, TryParseFai
 	else { return false; }
 }
 
+// +--------------------------------------------------------------+
+// |                        Url Functions                         |
+// +--------------------------------------------------------------+
+void SplitUrlHostAndPath(MyStr_t* fullUrl, MyStr_t* hostNameOut = nullptr, MyStr_t* pathNameOut = nullptr)
+{
+	for (u32 cIndex = 0; cIndex < fullUrl->length; cIndex++)
+	{
+		if (fullUrl->chars[cIndex] == '/' || fullUrl->chars[cIndex] == '\\')
+		{
+			SetOptionalOutPntr(hostNameOut, StrSubstring(fullUrl, 0, cIndex));
+			SetOptionalOutPntr(pathNameOut, StrSubstring(fullUrl, cIndex));
+			return;
+		}
+	}
+	SetOptionalOutPntr(hostNameOut, *fullUrl);
+	SetOptionalOutPntr(pathNameOut, MyStr_Empty);
+}
+MyStr_t GetUrlHostNamePart(MyStr_t* fullUrl)
+{
+	MyStr_t hostNameStr = MyStr_Empty;
+	SplitUrlHostAndPath(fullUrl, &hostNameStr, nullptr);
+	return hostNameStr;
+}
+MyStr_t GetUrlPathPart(MyStr_t* fullUrl)
+{
+	MyStr_t pathStr = MyStr_Empty;
+	SplitUrlHostAndPath(fullUrl, nullptr, &pathStr);
+	return pathStr;
+}
+
 #endif //  _GY_IP_H
 
 // +--------------------------------------------------------------+
@@ -265,10 +326,16 @@ IPV6_SEP_CHAR
 IpAddress4_t NewIpAddress4(u8 part0, u8 part1, u8 part2, u8 part3)
 IpAddress6_t NewIpAddress6(u16 part0, u16 part1, u16 part2, u16 part3, u16 part4, u16 part5, u16 part6, u16 part7)
 IpAddress_t NewIpAddress(u8 part0, u8 part1, u8 part2, u8 part3)
+IpAddressAndPort_t NewIpAddress4AndPort(u8 part0, u8 part1, u8 part2, u8 part3, IpPort_t port)
+IpAddressAndPort_t NewIpAddress6AndPort(u16 part0, u16 part1, u16 part2, u16 part3, u16 part4, u16 part5, u16 part6, u16 part7, IpPort_t port)
+IpAddressAndPort_t NewIpAddressAndPort(IpAddress_t address, IpPort_t port)
 MyStr_t GetIpAddress4String(IpAddress4_t address, MemArena_t* memArena)
 MyStr_t GetIpAddress6String(IpAddress6_t address, MemArena_t* memArena)
 MyStr_t GetIpAddressString(IpAddress_t address, MemArena_t* memArena)
 bool TryParseIpAddress4(MyStr_t str, IpAddress4_t* valueOut = nullptr, TryParseFailureReason_t* reasonOut = nullptr)
 bool TryParseIpAddress6(MyStr_t str, IpAddress6_t* valueOut = nullptr, TryParseFailureReason_t* reasonOut = nullptr)
 bool TryParseIpAddress(MyStr_t str, IpAddress_t* valueOut = nullptr, TryParseFailureReason_t* reasonOut = nullptr)
+void SplitUrlHostAndPath(MyStr_t* fullUrl, MyStr_t* hostNameOut = nullptr, MyStr_t* pathNameOut = nullptr)
+MyStr_t GetUrlHostNamePart(MyStr_t* fullUrl)
+MyStr_t GetUrlPathPart(MyStr_t* fullUrl)
 */

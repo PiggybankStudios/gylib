@@ -58,6 +58,7 @@ Description:
 #include "gylib/gy_simple_parsers.h"
 #include "gylib/gy_collision.h"
 #include "gylib/gy_ip.h"
+#include "gylib/gy_socket.h"
 #include "gylib/gy_extras.h"
 
 #endif //  _GY_H
