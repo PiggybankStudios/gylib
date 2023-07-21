@@ -13,32 +13,97 @@ Description:
 //NOTE: You must link Ws2_32.lib for this file to link successfully when SOCKETS_SUPPORTED
 
 // +--------------------------------------------------------------+
-// |                          Structures                          |
+// |                           Defines                            |
 // +--------------------------------------------------------------+
+#define BUFFERED_SOCKET_MAX_NUM_BUFFERS 32 //this is pretty cheap and can be increased if needed
+#define MAX_NUM_RECEIVE_ITERATIONS      10
+
+// +--------------------------------------------------------------+
+// |                         Enumerations                         |
+// +--------------------------------------------------------------+
+enum SocketProtocol_t
+{
+	SocketProtocol_None = 0,
+	SocketProtocol_Udp,
+	SocketProtocol_Tcp,
+	SocketProtocol_NumProtocols,
+};
+const char* GetSocketProtocolStr(SocketProtocol_t enumValue)
+{
+	switch (enumValue)
+	{
+		case SocketProtocol_None: return "None";
+		case SocketProtocol_Udp:  return "Udp";
+		case SocketProtocol_Tcp:  return "Tcp";
+		default: return "Unknown";
+	}
+}
+
 enum SocketType_t
 {
 	SocketType_None = 0,
-	SocketType_Udp,
-	SocketType_Tcp,
+	SocketType_Normal, //aka client, bi-directional, only 1 destination
+	SocketType_Listening, //aka server, multiple destinations
 	SocketType_NumTypes,
 };
 const char* GetSocketTypeStr(SocketType_t enumValue)
 {
 	switch (enumValue)
 	{
-		case SocketType_None: return "None";
-		case SocketType_Udp:  return "Udp";
-		case SocketType_Tcp:  return "Tcp";
+		case SocketType_None:      return "None";
+		case SocketType_Normal:    return "Normal";
+		case SocketType_Listening: return "Listening";
 		default: return "Unknown";
 	}
 }
 
+enum SocketError_t
+{
+	SocketError_None = 0,
+	SocketError_Unknown,
+	SocketError_ReadError,
+	SocketError_NumErrors,
+};
+const char* GetSocketErrorStr(SocketError_t enumValue)
+{
+	switch (enumValue)
+	{
+		case SocketError_None:                   return "None";
+		case SocketError_ReadError:              return "ReadError";
+		default: return "Unknown";
+	}
+}
+
+enum SocketWarning_t
+{
+	SocketWarning_None = 0,
+	SocketWarning_TooManySourceAddresses,
+	SocketWarning_BufferIsFull,
+	SocketWarning_NumWarnings,
+};
+const char* GetSocketWarningStr(SocketWarning_t enumValue)
+{
+	switch (enumValue)
+	{
+		case SocketWarning_None:                   return "None";
+		case SocketWarning_TooManySourceAddresses: return "TooManySourceAddresses";
+		case SocketWarning_BufferIsFull:           return "BufferIsFull";
+		default: return "Unknown";
+	}
+}
+
+// +--------------------------------------------------------------+
+// |                          Structures                          |
+// +--------------------------------------------------------------+
 struct OpenSocket_t
 {
 	SocketType_t type;
+	SocketProtocol_t protocol;
 	IpAddressAndPort_t destAddress;
 	
 	bool isOpen;
+	SocketError_t error;
+	SocketWarning_t warning;
 	
 	#if WINDOWS_COMPILATION
 	SOCKET handle_win32;
@@ -47,21 +112,32 @@ struct OpenSocket_t
 	#endif
 };
 
-//UDP datagram header (https://en.wikipedia.org/wiki/User_Datagram_Protocol)
-START_PACK()
-struct ATTR_PACKED UdpHeader_t
+struct BufferedSocketBuffer_t
 {
-	u16 sourcePort; //optional
-	u16 destPort;
-	u16 length;
-	u16 checksum; //optional for IPv4, not IPv6
+	bool isUsed;
+	IpAddress_t address;
+	u8* pntr;
+	u64 size;
+	u64 used;
 };
-END_PACK()
+struct BufferedSocket_t
+{
+	MemArena_t* allocArena;
+	BufferedSocketBuffer_t buffers[BUFFERED_SOCKET_MAX_NUM_BUFFERS];
+	BufferedSocketBuffer_t* mainBuffer;
+	u64 newBufferSize;
+		
+	OpenSocket_t socket;
+};
 
 // +--------------------------------------------------------------+
 // |                       Helper Functions                       |
 // +--------------------------------------------------------------+
+// +==============================+
+// |   Windows Helper Functions   |
+// +==============================+
 #if WINDOWS_COMPILATION
+
 const char* Win32_GetWsaErrorStr(int wsaErrorCode)
 {
 	switch (wsaErrorCode)
@@ -106,9 +182,7 @@ const char* Win32_GetWsaErrorStr(int wsaErrorCode)
 		default: return "Unknown";
 	}
 }
-#endif
 
-#if WINDOWS_COMPILATION
 sockaddr_in Win32_GetSockAddrFromIpAddressAndPort(IpAddressAndPort_t addressAndPort)
 {
 	sockaddr_in result = {};
@@ -136,18 +210,89 @@ sockaddr_in Win32_GetSockAddrFromIpAddressAndPort(IpAddressAndPort_t addressAndP
 	}
 	return result;
 }
-#endif
 
-u16 CalculateUdpChecksum(u16 dataLength, const void* dataPntr)
+IpAddressAndPort_t Win32_GetIpAddressAndPortFromSockAddr(sockaddr_in sockAddr)
 {
-	AssertIf(dataLength > 0, dataPntr != nullptr);
-	const u8* dataPntrU8 = (const u8*)dataPntr;
-	u16 result = 0x0000;
-	for (u16 bIndex = 0; bIndex < dataLength; bIndex++)
+	Assert(sockAddr.sin_family == AF_INET || sockAddr.sin_family == AF_INET6);
+	IpAddressAndPort_t result = {};
+	result.port = MyNetworkToHostByteOrderU16(sockAddr.sin_port);
+	result.address.isIpv6 = (sockAddr.sin_family == AF_INET6);
+	if (result.address.isIpv6)
 	{
-		//TODO: Implement me!
+		sockaddr_in6* sockAddr6 = (sockaddr_in6*)&sockAddr;
+		result.address.ipv6.part0 = MyNetworkToHostByteOrderU16(sockAddr6->sin6_addr.u.Word[0]);
+		result.address.ipv6.part1 = MyNetworkToHostByteOrderU16(sockAddr6->sin6_addr.u.Word[1]);
+		result.address.ipv6.part2 = MyNetworkToHostByteOrderU16(sockAddr6->sin6_addr.u.Word[2]);
+		result.address.ipv6.part3 = MyNetworkToHostByteOrderU16(sockAddr6->sin6_addr.u.Word[3]);
+		result.address.ipv6.part4 = MyNetworkToHostByteOrderU16(sockAddr6->sin6_addr.u.Word[4]);
+		result.address.ipv6.part5 = MyNetworkToHostByteOrderU16(sockAddr6->sin6_addr.u.Word[5]);
+	}
+	else
+	{
+		result.address.ipv4.part0 = sockAddr.sin_addr.S_un.S_un_b.s_b1;
+		result.address.ipv4.part1 = sockAddr.sin_addr.S_un.S_un_b.s_b2;
+		result.address.ipv4.part2 = sockAddr.sin_addr.S_un.S_un_b.s_b3;
+		result.address.ipv4.part3 = sockAddr.sin_addr.S_un.S_un_b.s_b4;
 	}
 	return result;
+}
+
+#endif //WINDOWS_COMPILATION
+
+SocketError_t PrintSocketError(int errorCode, const char* message, const char* functionName)
+{
+	SocketError_t result = SocketError_Unknown;
+	
+	#if WINDOWS_COMPILATION
+	{
+		GyLibPrintLine_E("%s (%s): %s (%d)", message, functionName, Win32_GetWsaErrorStr(errorCode), errorCode);
+		if (MyStrCompareNt(functionName, "recv") == 0 || MyStrCompareNt(functionName, "recvfrom") == 0) { result = SocketError_ReadError; }
+	}
+	#else
+	#error Unsupported platform for gy_socket.h PrintSocketError
+	#endif
+	
+	return result;
+}
+
+inline bool IsSocketOpen(const OpenSocket_t* socket)
+{
+	if (socket == nullptr) { return false; }
+	return socket->isOpen;
+}
+inline bool IsSocketOpen(const BufferedSocket_t* socket)
+{
+	if (socket == nullptr) { return false; }
+	return socket->socket.isOpen;
+}
+
+inline bool DoesSocketHaveErrors(const OpenSocket_t* socket)
+{
+	if (socket == nullptr) { return false; }
+	return (socket->error != SocketError_None);
+}
+inline bool DoesSocketHaveErrors(const BufferedSocket_t* socket)
+{
+	if (socket == nullptr) { return false; }
+	return (socket->socket.error != SocketError_None);
+}
+
+BufferedSocketBuffer_t* FindBufferForAddress(BufferedSocket_t* socket, IpAddress_t address, bool findFreeBufferIfNeeded = true)
+{
+	NotNull(socket);
+	BufferedSocketBuffer_t* freeBuffer = nullptr;
+	for (u64 bufferIndex = 0; bufferIndex < BUFFERED_SOCKET_MAX_NUM_BUFFERS; bufferIndex++)
+	{
+		if (socket->buffers[bufferIndex].isUsed && socket->mainBuffer != &socket->buffers[bufferIndex])
+		{
+			if (AreIpAddressesEqual(address, socket->buffers[bufferIndex].address))
+			{
+				return &socket->buffers[bufferIndex];
+			}
+		}
+		if (!socket->buffers[bufferIndex].isUsed && freeBuffer == nullptr) { freeBuffer = &socket->buffers[bufferIndex]; }
+	}
+	return (findFreeBufferIfNeeded ? freeBuffer : nullptr);
 }
 
 // +--------------------------------------------------------------+
@@ -164,8 +309,8 @@ bool InitializeSockets()
 		);
 		if (startupResult != 0)
 		{
-			//TODO: WSASYSNOTREADY, WSAVERNOTSUPPORTED, WSAEINPROGRESS, WSAEPROCLIM, WSAEFAULT
-			GyLibPrintLine_E("WSAStartup returned error: %s (%d)", Win32_GetWsaErrorStr(startupResult), startupResult);
+			PrintSocketError(startupResult, "Failed to startup sockets system", "WSAStartup");
+			//Possible Errors: WSASYSNOTREADY, WSAVERNOTSUPPORTED, WSAEINPROGRESS, WSAEPROCLIM, WSAEFAULT
 			return false;
 		}
 	}
@@ -197,56 +342,79 @@ void CloseOpenSocket(OpenSocket_t* socket)
 	
 	socket->isOpen = false;
 }
+SocketError_t CloseOpenSocketIfErrors(OpenSocket_t* socket, bool printOutError = false)
+{
+	NotNull(socket);
+	SocketError_t result = SocketError_None;
+	if (DoesSocketHaveErrors(socket))
+	{
+		if (printOutError) { GyLibPrintLine_E("Socket closing because of error: %s", GetSocketErrorStr(socket->error)); }
+		result = socket->error;
+		CloseOpenSocket(socket);
+	}
+	return result;
+}
+void FreeBufferedSocketBuffer(BufferedSocket_t* socket, BufferedSocketBuffer_t* buffer)
+{
+	NotNull2(socket, buffer);
+	if (buffer->pntr != nullptr)
+	{
+		NotNull(socket->allocArena);
+		FreeMem(socket->allocArena, buffer->pntr, buffer->size);
+	}
+	ClearPointer(buffer);
+}
+void DestroyBufferedSocket(BufferedSocket_t* socket)
+{
+	CloseOpenSocket(&socket->socket);
+	for (u64 bufferIndex = 0; bufferIndex < BUFFERED_SOCKET_MAX_NUM_BUFFERS; bufferIndex++)
+	{
+		FreeBufferedSocketBuffer(socket, &socket->buffers[bufferIndex]);
+	}
+	ClearPointer(socket);
+}
+SocketError_t DestroyBufferedSocketIfErrors(BufferedSocket_t* socket, bool printOutError = false)
+{
+	NotNull(socket);
+	SocketError_t result = SocketError_None;
+	if (DoesSocketHaveErrors(socket))
+	{
+		if (printOutError) { GyLibPrintLine_E("Socket closing because of error: %s", GetSocketErrorStr(socket->socket.error)); }
+		result = socket->socket.error;
+		DestroyBufferedSocket(socket);
+	}
+	return result;
+}
 
 // +--------------------------------------------------------------+
 // |                         Open Socket                          |
 // +--------------------------------------------------------------+
-bool TryOpenNewSocket(SocketType_t type, IpAddressAndPort_t destAddress, OpenSocket_t* socketOut)
+bool TryOpenNewSocket(SocketProtocol_t protocol, IpAddressAndPort_t destAddress, OpenSocket_t* socketOut)
 {
 	NotNull(socketOut);
 	ClearPointer(socketOut);
-	socketOut->type = type;
+	socketOut->type = SocketType_Normal;
+	socketOut->protocol = protocol;
 	socketOut->destAddress = destAddress;
 	socketOut->isOpen = false;
 	
 	#if WINDOWS_COMPILATION
 	{
 		ADDRESS_FAMILY win32_addressFamily = (destAddress.address.isIpv6 ? AF_INET6 : AF_INET);
-		Assert(type == SocketType_Tcp || type == SocketType_Udp);
-		int win32_type = ((type == SocketType_Tcp) ? SOCK_STREAM : SOCK_DGRAM);      //Other Values: SOCK_RAW, SOCK_RDM, SOCK_SEQPACKET
-		int win32_protocol = ((type == SocketType_Tcp) ? IPPROTO_TCP : IPPROTO_UDP); //TODO: This could be 0? Other Values: IPPROTO_ICMP, IPPROTO_IGMP, BTHPROTO_RFCOMM, IPPROTO_ICMPV6, IPPROTO_RM
+		Assert(protocol == SocketProtocol_Tcp || protocol == SocketProtocol_Udp);
+		int win32_type = ((protocol == SocketProtocol_Tcp) ? SOCK_STREAM : SOCK_DGRAM);      //Other Values: SOCK_RAW, SOCK_RDM, SOCK_SEQPACKET
+		int win32_protocol = ((protocol == SocketProtocol_Tcp) ? IPPROTO_TCP : IPPROTO_UDP); //TODO: This could be 0? Other Values: IPPROTO_ICMP, IPPROTO_IGMP, BTHPROTO_RFCOMM, IPPROTO_ICMPV6, IPPROTO_RM
 		
 		socketOut->handle_win32 = socket(win32_addressFamily, win32_type, win32_protocol);
 		if (socketOut->handle_win32 == INVALID_SOCKET)
 		{
-			int socketError = WSAGetLastError();
-			const char* socketErrorStr = Win32_GetWsaErrorStr(socketError);
-			GyLibPrintLine_E("Failed to create socket: %s (%d)", socketErrorStr, socketError);
+			socketOut->error = PrintSocketError(WSAGetLastError(), "Failed to create socket", "socket");
 			//TODO: Can we return some sort of error code? ()
 			// Possible Errors: WSANOTINITIALISED, WSAENETDOWN, WSAEAFNOSUPPORT, WSAEINPROGRESS, WSAEMFILE, WSAEINVAL, WSAEINVALIDPROVIDER, WSAEINVALIDPROCTABLE, WSAENOBUFS, WSAEPROTONOSUPPORT, WSAEPROTOTYPE, WSAEPROVIDERFAILEDINIT, WSAESOCKTNOSUPPORT
 			return false;
 		}
 		
 		socketOut->isOpen = true;
-		
-		#if 0
-		sockaddr_in win32_address = Win32_GetSockAddrFromIpAddressAndPort(destAddress);
-		int connectResult = connect(
-			socketOut->handle_win32, //s
-			(sockaddr*)&win32_address, //name
-			sizeof(win32_address) //namelen
-		);
-		if (connectResult != 0)
-		{
-			int socketError = WSAGetLastError();
-			const char* socketErrorStr = Win32_GetWsaErrorStr(socketError);
-			GyLibPrintLine_E("Failed to connect socket: %s (%d)", socketErrorStr, socketError);
-			//TODO: Can we return some sort of error code? ()
-			// Possible Errors: WSANOTINITIALISED, WSAENETDOWN, WSAEADDRINUSE, WSAEINTR, WSAEINPROGRESS, WSAEALREADY, WSAEADDRNOTAVAIL, WSAEAFNOSUPPORT, WSAECONNREFUSED, WSAEFAULT, WSAEINVAL, WSAEISCONN, WSAENETUNREACH, WSAEHOSTUNREACH, WSAENOBUFS, WSAENOTSOCK, WSAETIMEDOUT, WSAEWOULDBLOCK, WSAEACCES
-			CloseOpenSocket(socketOut);
-			return false;
-		}
-		#endif
 	}
 	#else
 	#error Unsupported platform for gy_socket.h TryOpenNewSocket
@@ -255,28 +423,26 @@ bool TryOpenNewSocket(SocketType_t type, IpAddressAndPort_t destAddress, OpenSoc
 	return socketOut->isOpen;
 }
 
-bool TryOpenNewListeningSocket(SocketType_t type, IpPort_t port, OpenSocket_t* socketOut)
+bool TryOpenNewListeningSocket(SocketProtocol_t protocol, IpPort_t port, OpenSocket_t* socketOut)
 {
 	NotNull(socketOut);
 	ClearPointer(socketOut);
-	socketOut->type = type;
+	socketOut->type = SocketType_Listening;
+	socketOut->protocol = protocol;
 	socketOut->destAddress = NewIpAddressAndPort(IpAddress_Zero, port);
 	socketOut->isOpen = false;
 	
 	#if WINDOWS_COMPILATION
 	{
 		ADDRESS_FAMILY win32_addressFamily = AF_INET; //TODO: Should we allow the calling code to choose this somehow? (https://www.ibm.com/docs/it/i/7.1?topic=families-using-af-inet6-address-family)
-		Assert(type == SocketType_Tcp || type == SocketType_Udp);
-		int win32_type = ((type == SocketType_Tcp) ? SOCK_STREAM : SOCK_DGRAM);      //Other Values: SOCK_RAW, SOCK_RDM, SOCK_SEQPACKET
-		int win32_protocol = ((type == SocketType_Tcp) ? IPPROTO_TCP : IPPROTO_UDP); //TODO: This could be 0? Other Values: IPPROTO_ICMP, IPPROTO_IGMP, BTHPROTO_RFCOMM, IPPROTO_ICMPV6, IPPROTO_RM
+		Assert(protocol == SocketProtocol_Tcp || protocol == SocketProtocol_Udp);
+		int win32_type = ((protocol == SocketProtocol_Tcp) ? SOCK_STREAM : SOCK_DGRAM);      //Other Values: SOCK_RAW, SOCK_RDM, SOCK_SEQPACKET
+		int win32_protocol = ((protocol == SocketProtocol_Tcp) ? IPPROTO_TCP : IPPROTO_UDP); //TODO: This could be 0? Other Values: IPPROTO_ICMP, IPPROTO_IGMP, BTHPROTO_RFCOMM, IPPROTO_ICMPV6, IPPROTO_RM
 		
 		socketOut->handle_win32 = socket(win32_addressFamily, win32_type, win32_protocol);
 		if (socketOut->handle_win32 == INVALID_SOCKET)
 		{
-			int socketError = WSAGetLastError();
-			const char* socketErrorStr = Win32_GetWsaErrorStr(socketError);
-			GyLibPrintLine_E("Failed to create socket: %s (%d)", socketErrorStr, socketError);
-			//TODO: Can we return some sort of error code? ()
+			socketOut->error = PrintSocketError(WSAGetLastError(), "Failed to create socket", "socket");
 			// Possible Errors: WSANOTINITIALISED, WSAENETDOWN, WSAEAFNOSUPPORT, WSAEINPROGRESS, WSAEMFILE, WSAEINVAL, WSAEINVALIDPROVIDER, WSAEINVALIDPROCTABLE, WSAENOBUFS, WSAEPROTONOSUPPORT, WSAEPROTOTYPE, WSAEPROVIDERFAILEDINIT, WSAESOCKTNOSUPPORT
 			return false;
 		}
@@ -291,10 +457,7 @@ bool TryOpenNewListeningSocket(SocketType_t type, IpPort_t port, OpenSocket_t* s
 		);
 		if (setNonBlockingResult != 0)
 		{
-			int socketError = WSAGetLastError();
-			const char* socketErrorStr = Win32_GetWsaErrorStr(socketError);
-			GyLibPrintLine_E("Failed to set listening socket to non-blocking mode: %s (%d)", socketErrorStr, socketError);
-			//TODO: Can we return some sort of error code? ()
+			socketOut->error = PrintSocketError(WSAGetLastError(), "Failed to set listening socket to non-blocking mode", "ioctlsocket");
 			//Possible Errors: WSANOTINITIALISED, WSAENETDOWN, WSAEINPROGRESS, WSAENOTSOCK, WSAEFAULT
 			CloseOpenSocket(socketOut);
 			return false;
@@ -304,13 +467,14 @@ bool TryOpenNewListeningSocket(SocketType_t type, IpPort_t port, OpenSocket_t* s
 		listenAddress.sin_family = win32_addressFamily;
 		listenAddress.sin_port = MyHostToNetworkByteOrderU16(port);
 		listenAddress.sin_addr.s_addr = MyHostToNetworkByteOrderU32(INADDR_ANY); //TODO: We should probably allow the calling code to specify address ranges which it wants to accept
-		int bindError = bind(socketOut->handle_win32, (struct sockaddr*)&listenAddress, sizeof(listenAddress));
+		int bindError = bind(
+			socketOut->handle_win32,
+			(struct sockaddr*)&listenAddress,
+			sizeof(listenAddress)
+		);
 		if (bindError == SOCKET_ERROR)
 		{
-			int socketError = WSAGetLastError();
-			const char* socketErrorStr = Win32_GetWsaErrorStr(socketError);
-			GyLibPrintLine_E("Failed to bind listening socket: %s (%d)", socketErrorStr, socketError);
-			//TODO: Can we return some sort of error code? ()
+			socketOut->error = PrintSocketError(WSAGetLastError(), "Failed to bind listening socket", "bind");
 			// Possible Errors: WSANOTINITIALISED, WSAENETDOWN, WSAEACCES, WSAEADDRINUSE, WSAEADDRNOTAVAIL, WSAEFAULT, WSAEINPROGRESS, WSAEINVAL, WSAENOBUFS, WSAENOTSOCK
 			CloseOpenSocket(socketOut);
 			return false;
@@ -323,154 +487,218 @@ bool TryOpenNewListeningSocket(SocketType_t type, IpPort_t port, OpenSocket_t* s
 	return socketOut->isOpen;
 }
 
+bool TryOpenNewBufferedSocket(SocketProtocol_t protocol, IpAddressAndPort_t destAddress, BufferedSocket_t* socketOut, MemArena_t* memArena, u64 bufferSize)
+{
+	NotNull(memArena);
+	Assert(bufferSize > 0);
+	ClearPointer(socketOut);
+	if (!TryOpenNewSocket(protocol, destAddress, &socketOut->socket)) { return false; }
+	socketOut->allocArena = memArena;
+	socketOut->mainBuffer = &socketOut->buffers[0];
+	socketOut->mainBuffer->isUsed = true;
+	socketOut->mainBuffer->pntr = AllocArray(memArena, u8, bufferSize);
+	NotNull(socketOut->mainBuffer->pntr);
+	socketOut->mainBuffer->size = bufferSize;
+	socketOut->mainBuffer->used = 0;
+	return true;
+}
+
+//NOTE: We use one mainBuffer for receiving data before we know where it's come from. After that we store the data into separate buffers for each sourceAddress
+bool TryOpenNewBufferedListeningSocket(SocketProtocol_t protocol, IpPort_t port, BufferedSocket_t* socketOut, MemArena_t* memArena, u64 mainBufferSize, u64 connectionBufferSize)
+{
+	NotNull(memArena);
+	Assert(mainBufferSize > 0);
+	Assert(connectionBufferSize > 0);
+	ClearPointer(socketOut);
+	if (!TryOpenNewListeningSocket(protocol, port, &socketOut->socket)) { return false; }
+	socketOut->allocArena = memArena;
+	socketOut->newBufferSize = connectionBufferSize;
+	socketOut->mainBuffer = &socketOut->buffers[0];
+	socketOut->mainBuffer->isUsed = true;
+	socketOut->mainBuffer->pntr = AllocArray(memArena, u8, mainBufferSize);
+	NotNull(socketOut->mainBuffer->pntr);
+	socketOut->mainBuffer->size = mainBufferSize;
+	socketOut->mainBuffer->used = 0;
+	return true;
+}
+
 // +--------------------------------------------------------------+
 // |                            Write                             |
 // +--------------------------------------------------------------+
-//https://gist.github.com/GreenRecycleBin/1273763
-u16 udp_checksum(UdpHeader_t* udpHeaderPntr, size_t packetLength, u32 src_addr, u32 dest_addr)
-{
-	const u16* buf = (const u16*)udpHeaderPntr;
-	u16* ip_src = (u16*)&src_addr;
-	u16* ip_dst = (u16*)&dest_addr;
-	u32 sum = 0;
-	size_t length = packetLength;
-
-	// Calculate the sum
-	while (packetLength > 1)
-	{
-		sum += *buf++;
-		if (sum & 0x80000000) { sum = (sum & 0xFFFF) + (sum >> 16); }
-		packetLength -= 2;
-	}
-
-	if (packetLength & 1)
-	{
-		// Add the padding if the packet length is odd
-		sum += *((u8*)buf);
-	}
-
-	// Add the pseudo-header
-	sum += *(ip_src++);
-	sum += *ip_src;
-
-	sum += *(ip_dst++);
-	sum += *ip_dst;
-
-	sum += htons(IPPROTO_UDP);
-	sum += htons((u16)length);
-
-	// Add the carries
-	while (sum >> 16)
-	{
-		sum = (sum & 0xFFFF) + (sum >> 16);
-	}
-
-	// Return the one's complement of sum
-	return (u16)~sum;
-}
-bool SocketWriteStr(OpenSocket_t* socket, MyStr_t messageStr)
+bool SocketWrite(OpenSocket_t* socket, u64 numBytes, const u8* bytesPntr)
 {
 	NotNull(socket);
 	Assert(socket->isOpen);
-	NotNullStr(&messageStr);
+	AssertIf(numBytes > 0, bytesPntr != nullptr);
 	
 	#if WINDOWS_COMPILATION
 	{
-		Assert(messageStr.length <= INT_MAX);
-		
-		#if 0
-		u8 packetBuffer[sizeof(UdpHeader_t) + Kilobytes(8)];
-		Assert(messageStr.length < ArrayCount(packetBuffer) - sizeof(UdpHeader_t));
-		UdpHeader_t* header = (UdpHeader_t*)&packetBuffer[0];
-		u8* payloadPntr = &packetBuffer[sizeof(UdpHeader_t)];
-		
-		header->sourcePort = socket->destAddress.port;
-		header->destPort = socket->destAddress.port;
-		header->length = (u16)messageStr.length;
-		header->checksum = 0x0000;
-		// header->checksum = CalculateUdpChecksum((u16)messageStr.length, messageStr.chars);
-		
-		MyMemCopy(payloadPntr, messageStr.chars, messageStr.length);
-		
-		const char* packetPntr = (const char*)&packetBuffer[0];
-		int packetSize = sizeof(UdpHeader_t) + (int)messageStr.length;
-		GyLibPrint_D("Checksumming[%d]: ", packetSize);
-		for (int bIndex = 0; bIndex < packetSize; bIndex++) { GyLibPrint_D("%02X", packetBuffer[bIndex]); }
-		GyLibWriteLine_D("");
-		header->checksum = udp_checksum(header, packetSize, header->sourcePort, header->destPort);
-		GyLibPrintLine_D("Checksum: 0x%04X", header->checksum);
-		#endif
+		Assert(numBytes <= INT_MAX);
 		
 		sockaddr_in destAddress = Win32_GetSockAddrFromIpAddressAndPort(socket->destAddress);
 		int sendResult = sendto(
-			socket->handle_win32,        //s
-			messageStr.chars,            //buf
-			(int)messageStr.length,      //len
-			0,                           //flags TODO: What is MSG_CONFIRM?
-			(sockaddr*)&destAddress,     //dest_addr
-			sizeof(destAddress)          //addrlen
+			socket->handle_win32,    //s
+			(const char*)bytesPntr,  //buf
+			(int)numBytes,           //len
+			0,                       //flags
+			(sockaddr*)&destAddress, //dest_addr
+			sizeof(destAddress)      //addrlen
 		);
+		
 		if (sendResult == SOCKET_ERROR)
 		{
-			int errorCode = WSAGetLastError();
-			GyLibPrintLine_E("sendto failed with error: %s (%d)", Win32_GetWsaErrorStr(errorCode), errorCode);
+			socket->error = PrintSocketError(WSAGetLastError(), "Failed to send data", "sendto");
 			//WSANOTINITIALISED, WSAENETDOWN, WSAEACCES, WSAEINVAL, WSAEINTR, WSAEINPROGRESS, WSAEFAULT, WSAENETRESET, WSAENOBUFS, WSAENOTCONN, WSAENOTSOCK, WSAEOPNOTSUPP, WSAESHUTDOWN, WSAEWOULDBLOCK, WSAEMSGSIZE, WSAEHOSTUNREACH, WSAECONNABORTED, WSAECONNRESET, WSAEADDRNOTAVAIL, WSAEAFNOSUPPORT, WSAEDESTADDRREQ, WSAENETUNREACH, WSAETIMEDOUT
-			//TODO: Handle errors!
 			return false;
 		}
-		else if (sendResult != (int)messageStr.length)
+		else if (sendResult != (int)numBytes)
 		{
-			int errorCode = WSAGetLastError();
-			GyLibPrintLine_E("send send all %d bytes, only sent %d: %s (%d)", (int)messageStr.length, sendResult, Win32_GetWsaErrorStr(errorCode), errorCode);
+			GyLibPrintLine_E("Only sent %d / %d bytes", sendResult, (int)numBytes);
+			socket->error = PrintSocketError(WSAGetLastError(), "Failed to send some data", "sendto");
 			return false;
 		}
 	}
 	#else
 	#error Unsupported platform for gy_socket.h SocketWriteStr
 	#endif
+	
 	return true;
 }
+bool SocketWriteStr(OpenSocket_t* socket, MyStr_t messageStr)
+{
+	return SocketWrite(socket, messageStr.length, messageStr.bytes);
+}
 
-//TODO: Our return value should probably distinguish between "failed" and just "didn't receive any data"
-//TODO: Output the fromAddress
+bool BufferedSocketWrite(BufferedSocket_t* socket, u64 numBytes, const u8* bytesPntr)
+{
+	Unimplemented(); //TODO: Implement me!
+	return false;
+}
+
+// +--------------------------------------------------------------+
+// |                             Read                             |
+// +--------------------------------------------------------------+
+//NOTE: If any of these functions fail, please check socket->error and call CloseOpenSocket if there are any errors
+
+bool SocketReadFromAny(OpenSocket_t* socket, void* outBufferPntr, u64 outBufferSize, u64* outReceivedNumBytes, IpAddress_t* addressOut = nullptr)
+{
+	NotNull(socket);
+	NotNull(outBufferPntr);
+	NotNull(outReceivedNumBytes);
+	Assert(socket->isOpen);
+	Assert(socket->type == SocketType_Listening);
+	
+	#if WINDOWS_COMPILATION
+	{
+		Assert(outBufferSize <= INT_MAX);
+		
+		sockaddr_in fromAddr;
+		int fromAddrSize = sizeof(fromAddr);
+		int recvResult = recvfrom(
+			socket->handle_win32, //sockfd
+			(char*)outBufferPntr, //buf
+			(int)outBufferSize,   //len
+			0,                    //flags
+			(sockaddr*)&fromAddr, //src_addr
+			&fromAddrSize         //addrlen
+		);
+		Assert(fromAddrSize <= sizeof(fromAddr)); //TODO: We should maybe handle this gracefully?
+		if (recvResult == SOCKET_ERROR)
+		{
+			int errorCode = WSAGetLastError();
+			if (errorCode == WSAEWOULDBLOCK || errorCode == EAGAIN)
+			{
+				//For a non-blocking socket, this just means there's no data, so these "errors" are totally acceptable
+				return false;
+			}
+			else
+			{
+				socket->error = PrintSocketError(errorCode, "Error while receiving data", "recvfrom");
+				return false;
+			}
+		}
+		
+		//TODO: Winsock docs say this is a graceful close, but that doesn't mean the socket is closed because we are listening to everyone, so we just treat it as if nothing happened
+		if (recvResult == 0) { return false; } //no bytes received
+		
+		Assert(recvResult > 0);
+		*outReceivedNumBytes = (u64)recvResult;
+		SetOptionalOutPntr(addressOut, Win32_GetIpAddressAndPortFromSockAddr(fromAddr).address);
+	}
+	#else
+	#error Unsupported platform for gy_socket.h SocketReadFromAny
+	#endif
+	
+	return true;
+}
+//You're expected to call FreeString on the result of this function with the memArena passed
+MyStr_t SocketReadFromAnyStr(OpenSocket_t* socket, MemArena_t* memArena, u64 maxReadSize, IpAddress_t* addressOut = nullptr)
+{
+	NotNull(socket);
+	NotNull(memArena);
+	Assert(socket->isOpen);
+	Assert(maxReadSize > 0);
+	
+	char* resultPntr = AllocArray(memArena, char, maxReadSize+1);
+	NotNull(resultPntr);
+	
+	u64 numBytesReceived = 0;
+	if (SocketReadFromAny(socket, resultPntr, maxReadSize, &numBytesReceived, addressOut))
+	{
+		Assert(numBytesReceived <= maxReadSize);
+		Assert(numBytesReceived > 0);
+		if (numBytesReceived < maxReadSize) { ShrinkMem(memArena, resultPntr, maxReadSize+1, numBytesReceived+1); }
+		resultPntr[numBytesReceived] = '\0';
+		return NewStr(numBytesReceived, resultPntr);
+	}
+	else
+	{
+		FreeMem(memArena, resultPntr, maxReadSize+1);
+		return MyStr_Empty;
+	}
+}
+
 bool SocketRead(OpenSocket_t* socket, void* outBufferPntr, u64 outBufferSize, u64* outReceivedNumBytes)
 {
 	NotNull(socket);
 	NotNull(outBufferPntr);
 	NotNull(outReceivedNumBytes);
 	Assert(socket->isOpen);
-	Assert(outBufferSize <= INT_MAX);
+	Assert(socket->type == SocketType_Normal);
 	
 	#if WINDOWS_COMPILATION
 	{
-		struct sockaddr_in fromAddr;
-		int fromAddrSize = sizeof(fromAddr);
+		Assert(outBufferSize <= INT_MAX);
+		
+		sockaddr_in destAddr; // = Win32_GetSockAddrFromIpAddressAndPort(socket->destAddress);
+		int destAddrSize = sizeof(destAddr);
 		int recvResult = recvfrom(
-			socket->handle_win32,        //sockfd
-			(char*)outBufferPntr,        //buf
-			(int)outBufferSize,          //len
-			0,                           //flags (MSG_CMSG_CLOEXEC, MSG_DONTWAIT, MSG_ERRQUEUE, ...)
-			(struct sockaddr*)&fromAddr, //src_addr
-			&fromAddrSize                //addrlen
+			socket->handle_win32, //sockfd
+			(char*)outBufferPntr, //buf
+			(int)outBufferSize,   //len
+			0,                    //flags
+			(sockaddr*)&destAddr, //src_addr
+			&destAddrSize         //addrlen
 		);
 		if (recvResult == SOCKET_ERROR)
 		{
 			int errorCode = WSAGetLastError();
 			if (errorCode == WSAEWOULDBLOCK || errorCode == EAGAIN)
 			{
+				//For a non-blocking socket, this just means there's no data, so these "errors" are totally acceptable
 				return false;
 			}
 			else
 			{
-				GyLibPrintLine_E("recvfrom failed with error: %s (%d)", Win32_GetWsaErrorStr(errorCode), errorCode);
-				//TODO: Handle errors!
+				socket->error = PrintSocketError(errorCode, "Error while receiving data", "recv");
 				return false;
 			}
 		}
 		
-		if (recvResult == 0) { return false; } //no bytes received (TODO: Winsock docs say this is a graceful close, but that doesn't mean the socket is closed because we are listening to everyone)
+		//TODO: Winsock docs say this is a graceful close, but this isn't a connection oriented socket so why would that happen?
+		if (recvResult == 0) { return false; } //no bytes received
 		
-		Assert(recvResult >= 0);
+		Assert(recvResult > 0);
 		*outReceivedNumBytes = (u64)recvResult;
 	}
 	#else
@@ -478,6 +706,110 @@ bool SocketRead(OpenSocket_t* socket, void* outBufferPntr, u64 outBufferSize, u6
 	#endif
 	
 	return true;
+}
+
+void UpdateBufferedSocket(BufferedSocket_t* socket)
+{
+	NotNull(socket);
+	Assert(socket->socket.isOpen);
+	NotNull2(socket->mainBuffer, socket->mainBuffer->pntr);
+	
+	u64 numReceiveIterations = 0;
+	while (numReceiveIterations < MAX_NUM_RECEIVE_ITERATIONS)
+	{
+		numReceiveIterations++;
+		
+		if (socket->socket.type == SocketType_Normal)
+		{
+			Assert(socket->mainBuffer->used <= socket->mainBuffer->size);
+			u64 numFreeBytes = socket->mainBuffer->size - socket->mainBuffer->used;
+			u8* freeBytesPntr = &socket->mainBuffer->pntr[socket->mainBuffer->used];
+			if (numFreeBytes == 0) { break; }
+			
+			// u64 numNewBytesReceived = 0;
+			// bool readSuccess = SocketRead(&socket->socket, socket->mainBuffer->pntr, socket->mainBuffer->size, &numNewBytesReceived);
+			// if (!readSuccess) { break; }
+			// Assert(numNewBytesReceived > 0);
+			break; //TODO: Remove me!
+			
+			//TODO: Is there anything more we have to do for regular buffered sockets?
+		}
+		else if (socket->socket.type == SocketType_Listening)
+		{
+			u64 numNewBytesReceived = 0;
+			IpAddress_t sourceAddress = {};
+			if (socket->mainBuffer->used != 0)
+			{
+				//We have pending data for an existing connection, we need to clear it from mainBuffer before we can receive any more data
+				numNewBytesReceived = socket->mainBuffer->used;
+				sourceAddress = socket->mainBuffer->address;
+			}
+			else
+			{
+				bool readSuccess = SocketReadFromAny(&socket->socket, socket->mainBuffer->pntr, socket->mainBuffer->size, &numNewBytesReceived, &sourceAddress);
+				if (!readSuccess) { return; }
+			}
+			
+			Assert(numNewBytesReceived > 0);
+			Assert(numNewBytesReceived <= socket->mainBuffer->size);
+			
+			BufferedSocketBuffer_t* buffer = FindBufferForAddress(socket, sourceAddress, true);
+			if (buffer == nullptr)
+			{
+				socket->socket.warning = SocketWarning_TooManySourceAddresses;
+				//We're just gonna drop the data that came from that address
+				continue;
+			}
+			if (!buffer->isUsed)
+			{
+				//We got data from a new sourceAddress, we need to spin up a new buffer for it
+				NotNull(socket->allocArena);
+				Assert(socket->newBufferSize > 0);
+				buffer->isUsed = true;
+				buffer->address = sourceAddress;
+				buffer->pntr = AllocArray(socket->allocArena, u8, socket->newBufferSize);
+				NotNull(buffer->pntr);
+				buffer->size = socket->newBufferSize;
+				buffer->used = 0;
+			}
+			
+			Assert(buffer->used <= buffer->size);
+			u64 numBytesFree = buffer->size - buffer->used;
+			u8* freeBytesPntr = &buffer->pntr[buffer->used];
+			if (numBytesFree >= numNewBytesReceived)
+			{
+				MyMemCopy(freeBytesPntr, socket->mainBuffer->pntr, numNewBytesReceived);
+				buffer->used += numNewBytesReceived;
+				
+				socket->mainBuffer->address = IpAddress_Zero;
+				socket->mainBuffer->used = 0;
+				socket->socket.warning = SocketWarning_None;
+			}
+			else
+			{
+				if (numBytesFree > 0)
+				{
+					//Move what we can into the buffer for that connection
+					MyMemCopy(freeBytesPntr, socket->mainBuffer->pntr, numBytesFree);
+					buffer->used += numBytesFree;
+					
+					//Shift the remaining bytes in mainBuffer down
+					u64 numLeftoverBytes = numNewBytesReceived - numBytesFree;
+					for (u64 bIndex = 0; bIndex < numLeftoverBytes; bIndex++)
+					{
+						socket->mainBuffer->pntr[bIndex] = socket->mainBuffer->pntr[bIndex + numBytesFree];
+					}
+					
+					//Set sourceAddress and used to indicate we have pending data for a socket that has a full buffer
+					socket->mainBuffer->address = sourceAddress;
+					socket->mainBuffer->used = numLeftoverBytes;
+					
+					socket->socket.warning = SocketWarning_BufferIsFull;
+					break;
+				}
+			}
+		}
+	}
 }
 
 #endif // SOCKETS_SUPPORTED

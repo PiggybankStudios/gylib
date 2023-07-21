@@ -143,6 +143,49 @@ IpAddressAndPort_t NewIpAddressAndPort(IpAddress_t address, IpPort_t port)
 #define IpAddress_LocalHost NewIpAddress(127, 0, 0, 1)
 
 // +--------------------------------------------------------------+
+// |                Operator Overload Equivalents                 |
+// +--------------------------------------------------------------+
+inline bool AreIpAddress4sEqual(IpAddress4_t left, IpAddress4_t right)
+{
+	return (
+		left.part0 == right.part0 &&
+		left.part1 == right.part1 &&
+		left.part2 == right.part2 &&
+		left.part3 == right.part3
+	);
+}
+inline bool AreIpAddress6sEqual(IpAddress6_t left, IpAddress6_t right)
+{
+	return (
+		left.part0 == right.part0 &&
+		left.part1 == right.part1 &&
+		left.part2 == right.part2 &&
+		left.part3 == right.part3 &&
+		left.part4 == right.part4 &&
+		left.part5 == right.part5
+	);
+}
+inline bool AreIpAddressesEqual(IpAddress_t left, IpAddress_t right)
+{
+	if (left.isIpv6 != right.isIpv6) { return false; }
+	if (left.isIpv6)
+	{
+		return AreIpAddress6sEqual(left.ipv6, right.ipv6);
+		
+	}
+	else
+	{
+		return AreIpAddress4sEqual(left.ipv4, right.ipv4);
+	}
+}
+
+inline bool AreIpAddressAndPortsEqual(IpAddressAndPort_t left, IpAddressAndPort_t right)
+{
+	if (left.port != right.port) { return false; }
+	return AreIpAddressesEqual(left.address, right.address);
+}
+
+// +--------------------------------------------------------------+
 // |                       String Functions                       |
 // +--------------------------------------------------------------+
 MyStr_t GetIpAddress4String(IpAddress4_t address, MemArena_t* memArena)
