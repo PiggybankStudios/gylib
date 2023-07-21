@@ -85,6 +85,18 @@ Date:   09\14\2021
 	#define MyVaListPrintf(buffer, bufferSize, formatStr, vaList) vsnprintf(buffer, bufferSize, formatStr, vaList)
 	#endif
 #endif
+#ifndef MyHostToNetworkByteOrderU16
+#define MyHostToNetworkByteOrderU16(integer) htons(integer)
+#endif
+#ifndef MyHostToNetworkByteOrderU32
+#define MyHostToNetworkByteOrderU32(integer) htonl(integer)
+#endif
+#ifndef MyNetworkToHostByteOrderU16
+#define MyNetworkToHostByteOrderU16(integer) ntohs(integer)
+#endif
+#ifndef MyNetworkToHostByteOrderU32
+#define MyNetworkToHostByteOrderU32(integer) ntohl(integer)
+#endif
 
 #endif // _GY_STD_H
 
@@ -113,4 +125,8 @@ Date:   09\14\2021
 #define MyFree(size)
 #define MyBufferPrintf(buffer, bufferSize, formatStr, ...)
 #define MyVaListPrintf(buffer, bufferSize, formatStr, vaList)
+#define MyHostToNetworkByteOrderU32(integer)
+#define MyHostToNetworkByteOrderU32(integer)
+#define MyNetworkToHostByteOrderU16(integer)
+#define MyNetworkToHostByteOrderU32(integer)
 */

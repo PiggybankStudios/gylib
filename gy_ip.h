@@ -26,12 +26,20 @@ Description:
 #define DEFAULT_HTTP_PORT   80  //port #
 #define DEFAULT_HTTPS_PORT  443 //port #
 
+#define IP_PORT_RANGE_COMMON_SERVICES_START 0     //Used for common, well-known services
+#define IP_PORT_RANGE_COMMON_SERVICES_END   1023  //(On Unix-like operating systems, using one of these ports requires superuser operating permission)
+#define IP_PORT_RANGE_REGISTERED_START      1024  //The registered ports used for IANA-registered services
+#define IP_PORT_RANGE_REGISTERED_END        49151
+#define IP_PORT_RANGE_DYNAMIC_START         49152 //Not officially designated for any specific service and may be used for any purpose
+#define IP_PORT_RANGE_DYNAMIC_END           65535
+
 // +--------------------------------------------------------------+
 // |                          Structures                          |
 // +--------------------------------------------------------------+
+typedef u16 IpPort_t;
+
 typedef u8  Ipv4Part_t;
 typedef u16 Ipv6Part_t;
-typedef u16 IpPort_t;
 
 union IpAddress4_t
 {
@@ -130,6 +138,9 @@ IpAddressAndPort_t NewIpAddressAndPort(IpAddress_t address, IpPort_t port)
 	result.port = port;
 	return result;
 }
+
+#define IpAddress_Zero      NewIpAddress(0, 0, 0, 0)
+#define IpAddress_LocalHost NewIpAddress(127, 0, 0, 1)
 
 // +--------------------------------------------------------------+
 // |                       String Functions                       |
@@ -308,9 +319,9 @@ MyStr_t GetUrlPathPart(MyStr_t* fullUrl)
 // +--------------------------------------------------------------+
 /*
 @Types
+IpPort_t
 Ipv4Part_t
 Ipv6Part_t
-IpPort_t
 IpAddress4_t
 IpAddress6_t
 IpAddress_t
