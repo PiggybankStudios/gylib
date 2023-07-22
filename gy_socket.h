@@ -15,8 +15,9 @@ Description:
 // +--------------------------------------------------------------+
 // |                           Defines                            |
 // +--------------------------------------------------------------+
-#define BUFFERED_SOCKET_MAX_NUM_BUFFERS 32 //this is pretty cheap and can be increased if needed
+#define BUFFERED_SOCKET_MAX_NUM_BUFFERS 32 //this is pretty cheap and can be increased if needed, we need one tx and one rx buffer for every concurrent connection on a MultiDestination socket
 #define MAX_NUM_RECEIVE_ITERATIONS      10
+#define MAX_NUM_TRANSMIT_ITERATIONS     10
 
 // +--------------------------------------------------------------+
 // |                         Enumerations                         |
@@ -87,6 +88,7 @@ enum SocketWarning_t
 {
 	SocketWarning_None = 0,
 	SocketWarning_TooManySourceAddresses,
+	SocketWarning_TooManyDestAddresses,
 	SocketWarning_BufferIsFull,
 	SocketWarning_NumWarnings,
 };
@@ -96,6 +98,7 @@ const char* GetSocketWarningStr(SocketWarning_t enumValue)
 	{
 		case SocketWarning_None:                   return "None";
 		case SocketWarning_TooManySourceAddresses: return "TooManySourceAddresses";
+		case SocketWarning_TooManyDestAddresses:   return "TooManyDestAddresses";
 		case SocketWarning_BufferIsFull:           return "BufferIsFull";
 		default: return "Unknown";
 	}
@@ -121,11 +124,31 @@ struct OpenSocket_t
 	#endif
 };
 
+enum BufferedSocketBufferType_t
+{
+	BufferedSocketBufferType_None = 0,
+	BufferedSocketBufferType_Rx,
+	BufferedSocketBufferType_Tx,
+	BufferedSocketBufferType_Routing,
+	BufferedSocketBufferType_NumTypes,
+};
+const char* GetBufferedSocketBufferTypeStr(BufferedSocketBufferType_t enumValue)
+{
+	switch (enumValue)
+	{
+		case BufferedSocketBufferType_None:    return "None";
+		case BufferedSocketBufferType_Rx:      return "Rx";
+		case BufferedSocketBufferType_Tx:      return "Tx";
+		case BufferedSocketBufferType_Routing: return "Routing";
+		default: return "Unknown";
+	}
+}
+
 struct BufferedSocketBuffer_t
 {
-	bool isUsed;
+	BufferedSocketBufferType_t type;
 	IpAddressAndPort_t address;
-	u64 lastReceiveTime;
+	u64 lastDataTime; //for tx buffers, this is the time it actually went out over the socket (successful send), not the time the data was added to the buffer
 	u8* pntr;
 	u64 size;
 	u64 used;
@@ -134,8 +157,10 @@ struct BufferedSocket_t
 {
 	MemArena_t* allocArena;
 	u64 newBufferSize;
+	u64 prevProgramTime;
 	
-	BufferedSocketBuffer_t* mainBuffer;
+	BufferedSocketBuffer_t* mainRxBuffer;
+	BufferedSocketBuffer_t* mainTxBuffer;
 	BufferedSocketBuffer_t* mostRecentBuffer;
 	BufferedSocketBuffer_t buffers[BUFFERED_SOCKET_MAX_NUM_BUFFERS];
 	OpenSocket_t socket;
@@ -292,37 +317,38 @@ inline bool DoesSocketHaveErrors(const BufferedSocket_t* socket)
 	return (socket->socket.error != SocketError_None);
 }
 
-BufferedSocketBuffer_t* FindBufferForAddress(BufferedSocket_t* socket, IpAddress_t address, bool findFreeBufferIfNeeded = true)
+BufferedSocketBuffer_t* FindBufferForAddress(BufferedSocket_t* socket, IpAddress_t address, BufferedSocketBufferType_t type = BufferedSocketBufferType_Rx, bool findFreeBufferIfNeeded = true)
 {
 	NotNull(socket);
+	Assert(type != BufferedSocketBufferType_None);
 	BufferedSocketBuffer_t* freeBuffer = nullptr;
 	for (u64 bufferIndex = 0; bufferIndex < BUFFERED_SOCKET_MAX_NUM_BUFFERS; bufferIndex++)
 	{
-		if (socket->buffers[bufferIndex].isUsed && socket->mainBuffer != &socket->buffers[bufferIndex])
+		if (socket->buffers[bufferIndex].type == type)
 		{
 			if (AreIpAddressesEqual(address, socket->buffers[bufferIndex].address.address))
 			{
 				return &socket->buffers[bufferIndex];
 			}
 		}
-		if (!socket->buffers[bufferIndex].isUsed && freeBuffer == nullptr) { freeBuffer = &socket->buffers[bufferIndex]; }
+		if (socket->buffers[bufferIndex].type == BufferedSocketBufferType_None && freeBuffer == nullptr) { freeBuffer = &socket->buffers[bufferIndex]; }
 	}
 	return (findFreeBufferIfNeeded ? freeBuffer : nullptr);
 }
-BufferedSocketBuffer_t* FindBufferForAddressAndPort(BufferedSocket_t* socket, IpAddressAndPort_t address, bool findFreeBufferIfNeeded = true)
+BufferedSocketBuffer_t* FindBufferForAddressAndPort(BufferedSocket_t* socket, IpAddressAndPort_t address, BufferedSocketBufferType_t type = BufferedSocketBufferType_Rx, bool findFreeBufferIfNeeded = true)
 {
 	NotNull(socket);
 	BufferedSocketBuffer_t* freeBuffer = nullptr;
 	for (u64 bufferIndex = 0; bufferIndex < BUFFERED_SOCKET_MAX_NUM_BUFFERS; bufferIndex++)
 	{
-		if (socket->buffers[bufferIndex].isUsed && socket->mainBuffer != &socket->buffers[bufferIndex])
+		if (socket->buffers[bufferIndex].type == type)
 		{
 			if (AreIpAddressAndPortsEqual(address, socket->buffers[bufferIndex].address))
 			{
 				return &socket->buffers[bufferIndex];
 			}
 		}
-		if (!socket->buffers[bufferIndex].isUsed && freeBuffer == nullptr) { freeBuffer = &socket->buffers[bufferIndex]; }
+		if (socket->buffers[bufferIndex].type == BufferedSocketBufferType_None && freeBuffer == nullptr) { freeBuffer = &socket->buffers[bufferIndex]; }
 	}
 	return (findFreeBufferIfNeeded ? freeBuffer : nullptr);
 }
@@ -567,54 +593,67 @@ bool TryOpenNewBufferedSocket(SocketProtocol_t protocol, IpAddressAndPort_t dest
 	ClearPointer(socketOut);
 	if (!TryOpenNewSocket(protocol, destAddress, &socketOut->socket)) { return false; }
 	socketOut->allocArena = memArena;
-	socketOut->mainBuffer = &socketOut->buffers[0];
-	socketOut->mainBuffer->isUsed = true;
-	socketOut->mainBuffer->pntr = AllocArray(memArena, u8, bufferSize);
-	NotNull(socketOut->mainBuffer->pntr);
-	socketOut->mainBuffer->size = bufferSize;
-	socketOut->mainBuffer->used = 0;
 	socketOut->mostRecentBuffer = nullptr;
+	
+	socketOut->mainRxBuffer = &socketOut->buffers[0];
+	socketOut->mainRxBuffer->type = BufferedSocketBufferType_Rx;
+	socketOut->mainRxBuffer->pntr = AllocArray(memArena, u8, bufferSize);
+	NotNull(socketOut->mainRxBuffer->pntr);
+	socketOut->mainRxBuffer->size = bufferSize;
+	socketOut->mainRxBuffer->used = 0;
+	
+	socketOut->mainTxBuffer = &socketOut->buffers[1];
+	socketOut->mainTxBuffer->type = BufferedSocketBufferType_Tx;
+	socketOut->mainTxBuffer->pntr = AllocArray(memArena, u8, bufferSize);
+	NotNull(socketOut->mainTxBuffer->pntr);
+	socketOut->mainTxBuffer->size = bufferSize;
+	socketOut->mainTxBuffer->used = 0;
+	
 	return true;
 }
-//NOTE: We use one mainBuffer for receiving data before we know where it's come from. After that we store the data into separate buffers for each sourceAddress
-bool TryOpenNewBufferedMultiSocket(SocketProtocol_t protocol, IpPort_t port, BufferedSocket_t* socketOut, MemArena_t* memArena, u64 mainBufferSize, u64 connectionBufferSize)
+//NOTE: We use one mainRxBuffer for receiving data before we know where it's come from. After that we store the data into separate buffers for each sourceAddress
+bool TryOpenNewBufferedMultiSocket(SocketProtocol_t protocol, IpPort_t port, BufferedSocket_t* socketOut, MemArena_t* memArena, u64 mainRxBufferSize, u64 connectionBufferSize)
 {
 	NotNull(memArena);
-	Assert(mainBufferSize > 0);
+	Assert(mainRxBufferSize > 0);
 	Assert(connectionBufferSize > 0);
 	ClearPointer(socketOut);
 	if (!TryOpenNewMultiSocket(protocol, port, &socketOut->socket)) { return false; }
 	socketOut->allocArena = memArena;
-	socketOut->newBufferSize = connectionBufferSize;
-	socketOut->mainBuffer = &socketOut->buffers[0];
-	socketOut->mainBuffer->isUsed = true;
-	socketOut->mainBuffer->pntr = AllocArray(memArena, u8, mainBufferSize);
-	NotNull(socketOut->mainBuffer->pntr);
-	socketOut->mainBuffer->size = mainBufferSize;
-	socketOut->mainBuffer->used = 0;
 	socketOut->mostRecentBuffer = nullptr;
+	socketOut->newBufferSize = connectionBufferSize;
+	
+	socketOut->mainRxBuffer = &socketOut->buffers[0];
+	socketOut->mainRxBuffer->type = BufferedSocketBufferType_Routing;
+	socketOut->mainRxBuffer->pntr = AllocArray(memArena, u8, mainRxBufferSize);
+	NotNull(socketOut->mainRxBuffer->pntr);
+	socketOut->mainRxBuffer->size = mainRxBufferSize;
+	socketOut->mainRxBuffer->used = 0;
+	
 	return true;
 }
 
 // +--------------------------------------------------------------+
 // |                            Write                             |
 // +--------------------------------------------------------------+
-bool SocketWriteTo(OpenSocket_t* socket, IpAddressAndPort_t destAddress, u64 numBytes, const u8* bytesPntr)
+//Only returns true if all data was sent, otherwise check socket->error for true failure, or numBytesSentOut for partial send
+bool SocketWriteTo(OpenSocket_t* socket, IpAddressAndPort_t destAddress, u64 dataSize, const void* dataPntr, u64* numBytesSentOut = nullptr)
 {
 	NotNull(socket);
 	Assert(socket->isOpen);
 	Assert(socket->type == SocketType_MultiDestination);
-	AssertIf(numBytes > 0, bytesPntr != nullptr);
+	AssertIf(dataSize > 0, dataPntr != nullptr);
+	if (dataSize == 0) { SetOptionalOutPntr(numBytesSentOut, 0); return true; }
 	
 	#if WINDOWS_COMPILATION
 	{
-		Assert(numBytes <= INT_MAX);
+		Assert(dataSize <= INT_MAX);
 		
 		sockaddr_in destAddr = Win32_GetSockAddrFromIpAddressAndPort(destAddress);
 		int sendResult = sendto(
 			socket->handle_win32,    //s
-			(const char*)bytesPntr,  //buf
-			(int)numBytes,           //len
+			(const char*)dataPntr,  //buf
+			(int)dataSize,           //len
 			0,                       //flags
 			(sockaddr*)&destAddr,    //to
 			sizeof(destAddr)         //tolen
@@ -622,15 +661,25 @@ bool SocketWriteTo(OpenSocket_t* socket, IpAddressAndPort_t destAddress, u64 num
 		
 		if (sendResult == SOCKET_ERROR)
 		{
-			socket->error = PrintSocketError(WSAGetLastError(), "Failed to send data to specified address", "sendto");
-			//WSANOTINITIALISED, WSAENETDOWN, WSAEACCES, WSAEINVAL, WSAEINTR, WSAEINPROGRESS, WSAEFAULT, WSAENETRESET, WSAENOBUFS, WSAENOTCONN, WSAENOTSOCK, WSAEOPNOTSUPP, WSAESHUTDOWN, WSAEWOULDBLOCK, WSAEMSGSIZE, WSAEHOSTUNREACH, WSAECONNABORTED, WSAECONNRESET, WSAEADDRNOTAVAIL, WSAEAFNOSUPPORT, WSAEDESTADDRREQ, WSAENETUNREACH, WSAETIMEDOUT
-			return false;
+			int errorCode = WSAGetLastError();
+			if (errorCode == WSAEWOULDBLOCK || errorCode == EAGAIN)
+			{
+				//For a non-blocking socket, this just means it didn't have room to send any data, so these "errors" are totally acceptable
+				SetOptionalOutPntr(numBytesSentOut, 0);
+				return false;
+			}
+			else
+			{
+				socket->error = PrintSocketError(errorCode, "Failed to send data to specified address", "sendto");
+				//WSANOTINITIALISED, WSAENETDOWN, WSAEACCES, WSAEINVAL, WSAEINTR, WSAEINPROGRESS, WSAEFAULT, WSAENETRESET, WSAENOBUFS, WSAENOTCONN, WSAENOTSOCK, WSAEOPNOTSUPP, WSAESHUTDOWN, WSAEWOULDBLOCK, WSAEMSGSIZE, WSAEHOSTUNREACH, WSAECONNABORTED, WSAECONNRESET, WSAEADDRNOTAVAIL, WSAEAFNOSUPPORT, WSAEDESTADDRREQ, WSAENETUNREACH, WSAETIMEDOUT
+				return false;
+			}
 		}
-		else if (sendResult != (int)numBytes)
+		else
 		{
-			GyLibPrintLine_E("Only sent %d / %d bytes", sendResult, (int)numBytes);
-			socket->error = PrintSocketError(WSAGetLastError(), "Failed to send some data", "sendto");
-			return false;
+			Assert(sendResult <= (int)dataSize);
+			SetOptionalOutPntr(numBytesSentOut, (u64)sendResult);
+			return (sendResult == (int)dataSize);
 		}
 	}
 	#else
@@ -639,40 +688,53 @@ bool SocketWriteTo(OpenSocket_t* socket, IpAddressAndPort_t destAddress, u64 num
 	
 	return true;
 }
-bool SocketWriteToStr(OpenSocket_t* socket, IpAddressAndPort_t destAddress, MyStr_t messageStr)
+bool SocketWriteToStr(OpenSocket_t* socket, IpAddressAndPort_t destAddress, MyStr_t messageStr, u64* numBytesSentOut = nullptr)
 {
-	return SocketWriteTo(socket, destAddress, messageStr.length, messageStr.bytes);
+	return SocketWriteTo(socket, destAddress, messageStr.length, messageStr.bytes, numBytesSentOut);
 }
 
-bool SocketWrite(OpenSocket_t* socket, u64 numBytes, const u8* bytesPntr)
+//Only returns true if all data was sent, otherwise check socket->error for true failure, or numBytesSentOut for partial send
+bool SocketWrite(OpenSocket_t* socket, u64 dataSize, const void* dataPntr, u64* numBytesSentOut = nullptr)
 {
 	NotNull(socket);
 	Assert(socket->isOpen);
 	Assert(socket->type == SocketType_SingleDestination);
-	AssertIf(numBytes > 0, bytesPntr != nullptr);
+	AssertIf(dataSize > 0, dataPntr != nullptr);
+	if (dataSize == 0) { SetOptionalOutPntr(numBytesSentOut, 0); return true; }
 	
 	#if WINDOWS_COMPILATION
 	{
-		Assert(numBytes <= INT_MAX);
+		Assert(dataSize <= INT_MAX);
 		
+		// care must be taken not to exceed the maximum packet size of the underlying provider. The maximum message packet size for a provider can be obtained by calling getsockopt with the optname parameter set to SO_MAX_MSG_SIZE to retrieve the value of socket option. If the data is too long to pass atomically through the underlying protocol, the error WSAEMSGSIZE is returned, and no data is transmitted.
 		int sendResult = send(
 			socket->handle_win32,    //s
-			(const char*)bytesPntr,  //buf
-			(int)numBytes,           //len
+			(const char*)dataPntr,  //buf
+			(int)dataSize,           //len
 			0                        //flags
 		);
 		
 		if (sendResult == SOCKET_ERROR)
 		{
-			socket->error = PrintSocketError(WSAGetLastError(), "Failed to send data", "send");
-			//WSANOTINITIALISED, WSAENETDOWN, WSAEACCES, WSAEINVAL, WSAEINTR, WSAEINPROGRESS, WSAEFAULT, WSAENETRESET, WSAENOBUFS, WSAENOTCONN, WSAENOTSOCK, WSAEOPNOTSUPP, WSAESHUTDOWN, WSAEWOULDBLOCK, WSAEMSGSIZE, WSAEHOSTUNREACH, WSAECONNABORTED, WSAECONNRESET, WSAEADDRNOTAVAIL, WSAEAFNOSUPPORT, WSAEDESTADDRREQ, WSAENETUNREACH, WSAETIMEDOUT
-			return false;
+			int errorCode = WSAGetLastError();
+			if (errorCode == WSAEWOULDBLOCK || errorCode == EAGAIN)
+			{
+				//For a non-blocking socket, this just means it didn't have room to send any data, so these "errors" are totally acceptable
+				SetOptionalOutPntr(numBytesSentOut, 0);
+				return false;
+			}
+			else
+			{
+				socket->error = PrintSocketError(errorCode, "Failed to send data", "send");
+				//WSANOTINITIALISED, WSAENETDOWN, WSAEACCES, WSAEINVAL, WSAEINTR, WSAEINPROGRESS, WSAEFAULT, WSAENETRESET, WSAENOBUFS, WSAENOTCONN, WSAENOTSOCK, WSAEOPNOTSUPP, WSAESHUTDOWN, WSAEWOULDBLOCK, WSAEMSGSIZE, WSAEHOSTUNREACH, WSAECONNABORTED, WSAECONNRESET, WSAEADDRNOTAVAIL, WSAEAFNOSUPPORT, WSAEDESTADDRREQ, WSAENETUNREACH, WSAETIMEDOUT
+				return false;
+			}
 		}
-		else if (sendResult != (int)numBytes)
+		else
 		{
-			GyLibPrintLine_E("Only sent %d / %d bytes", sendResult, (int)numBytes);
-			socket->error = PrintSocketError(WSAGetLastError(), "Failed to send some data", "send");
-			return false;
+			Assert(sendResult <= (int)dataSize);
+			SetOptionalOutPntr(numBytesSentOut, (u64)sendResult);
+			return (sendResult == (int)dataSize);
 		}
 	}
 	#else
@@ -681,15 +743,72 @@ bool SocketWrite(OpenSocket_t* socket, u64 numBytes, const u8* bytesPntr)
 	
 	return true;
 }
-bool SocketWriteStr(OpenSocket_t* socket, MyStr_t messageStr)
+bool SocketWriteStr(OpenSocket_t* socket, MyStr_t messageStr, u64* numBytesSentOut = nullptr)
 {
-	return SocketWrite(socket, messageStr.length, messageStr.bytes);
+	return SocketWrite(socket, messageStr.length, messageStr.bytes, numBytesSentOut);
 }
 
-bool BufferedSocketWrite(BufferedSocket_t* socket, u64 numBytes, const u8* bytesPntr)
+bool BufferedSocketWriteTo(BufferedSocket_t* socket, BufferedSocketBuffer_t* buffer, u64 dataSize, const void* dataPntr, u64* numBytesSentOut = nullptr)
 {
-	Unimplemented(); //TODO: Implement me!
-	return false;
+	NotNull(socket);
+	Assert(socket->socket.type == SocketType_MultiDestination);
+	NotNull(buffer);
+	Assert(buffer->type == BufferedSocketBufferType_Tx);
+	u64 numBytesFree = buffer->size - buffer->used;
+	if (numBytesFree > 0)
+	{
+		u64 numBytesToCopy = MinU64(numBytesFree, dataSize);
+		MyMemCopy(&buffer->pntr[buffer->used], dataPntr, numBytesToCopy);
+		buffer->used += numBytesToCopy;
+		SetOptionalOutPntr(numBytesSentOut, numBytesToCopy);
+		return (numBytesToCopy == dataSize);
+	}
+	else { SetOptionalOutPntr(numBytesSentOut, 0); return false; }
+}
+bool BufferedSocketWriteTo(BufferedSocket_t* socket, IpAddressAndPort_t destAddress, u64 dataSize, const void* dataPntr, u64* numBytesSentOut = nullptr)
+{
+	NotNull(socket);
+	Assert(socket->socket.type == SocketType_MultiDestination);
+	
+	BufferedSocketBuffer_t* buffer = FindBufferForAddressAndPort(socket, destAddress, BufferedSocketBufferType_Tx, true);
+	if (buffer == nullptr)
+	{
+		socket->socket.warning = SocketWarning_TooManyDestAddresses;
+		SetOptionalOutPntr(numBytesSentOut, 0);
+		return false;
+	}
+	if (buffer->type == BufferedSocketBufferType_None)
+	{
+		//We got data going to a new destAddress, we need to spin up a new buffer for it
+		NotNull(socket->allocArena);
+		Assert(socket->newBufferSize > 0);
+		buffer->type = BufferedSocketBufferType_Tx;
+		buffer->address = destAddress;
+		buffer->lastDataTime = socket->prevProgramTime;
+		buffer->pntr = AllocArray(socket->allocArena, u8, socket->newBufferSize);
+		NotNull(buffer->pntr);
+		buffer->size = socket->newBufferSize;
+		buffer->used = 0;
+	}
+	
+	return BufferedSocketWriteTo(socket, buffer, dataSize, dataPntr, numBytesSentOut);
+}
+
+bool BufferedSocketWrite(BufferedSocket_t* socket, u64 dataSize, const void* dataPntr, u64* numBytesSentOut = nullptr)
+{
+	NotNull(socket);
+	Assert(socket->socket.type == SocketType_SingleDestination);
+	NotNull(socket->mainTxBuffer);
+	u64 numBytesFree = socket->mainTxBuffer->size - socket->mainTxBuffer->used;
+	if (numBytesFree > 0)
+	{
+		u64 numBytesToCopy = MinU64(numBytesFree, dataSize);
+		MyMemCopy(&socket->mainTxBuffer->pntr[socket->mainTxBuffer->used], dataPntr, numBytesToCopy);
+		socket->mainTxBuffer->used += numBytesToCopy;
+		SetOptionalOutPntr(numBytesSentOut, numBytesToCopy);
+		return (numBytesToCopy == dataSize);
+	}
+	else { return false; }
 }
 
 // +--------------------------------------------------------------+
@@ -850,8 +969,13 @@ void UpdateBufferedSocket(BufferedSocket_t* socket, u64 programTime)
 {
 	NotNull(socket);
 	Assert(socket->socket.isOpen);
-	NotNull2(socket->mainBuffer, socket->mainBuffer->pntr);
+	NotNull2(socket->mainRxBuffer, socket->mainRxBuffer->pntr);
 	
+	socket->prevProgramTime = programTime;
+	
+	// +==============================+
+	// |           Receive            |
+	// +==============================+
 	u64 numReceiveIterations = 0;
 	while (numReceiveIterations < MAX_NUM_RECEIVE_ITERATIONS)
 	{
@@ -859,53 +983,53 @@ void UpdateBufferedSocket(BufferedSocket_t* socket, u64 programTime)
 		
 		if (socket->socket.type == SocketType_SingleDestination)
 		{
-			Assert(socket->mainBuffer->used <= socket->mainBuffer->size);
-			u64 numFreeBytes = socket->mainBuffer->size - socket->mainBuffer->used;
-			u8* freeBytesPntr = &socket->mainBuffer->pntr[socket->mainBuffer->used];
+			Assert(socket->mainRxBuffer->used <= socket->mainRxBuffer->size);
+			u64 numFreeBytes = socket->mainRxBuffer->size - socket->mainRxBuffer->used;
+			u8* freeBytesPntr = &socket->mainRxBuffer->pntr[socket->mainRxBuffer->used];
 			if (numFreeBytes == 0) { break; }
 			
 			u64 numNewBytesReceived = 0;
 			bool readSuccess = SocketRead(&socket->socket, freeBytesPntr, numFreeBytes, &numNewBytesReceived);
 			if (!readSuccess) { break; }
 			Assert(numNewBytesReceived > 0);
-			socket->mainBuffer->used += numNewBytesReceived;
-			socket->mainBuffer->lastReceiveTime = programTime;
+			socket->mainRxBuffer->used += numNewBytesReceived;
+			socket->mainRxBuffer->lastDataTime = programTime;
 		}
 		else if (socket->socket.type == SocketType_MultiDestination)
 		{
 			u64 numNewBytesReceived = 0;
 			IpAddressAndPort_t sourceAddress = {};
-			if (socket->mainBuffer->used != 0)
+			if (socket->mainRxBuffer->used != 0)
 			{
-				//We have pending data for an existing connection, we need to clear it from mainBuffer before we can receive any more data
-				numNewBytesReceived = socket->mainBuffer->used;
-				sourceAddress = socket->mainBuffer->address;
+				//We have pending data for an existing connection, we need to clear it from mainRxBuffer before we can receive any more data
+				numNewBytesReceived = socket->mainRxBuffer->used;
+				sourceAddress = socket->mainRxBuffer->address;
 			}
 			else
 			{
-				bool readSuccess = SocketReadFromAny(&socket->socket, socket->mainBuffer->pntr, socket->mainBuffer->size, &numNewBytesReceived, &sourceAddress);
-				socket->mainBuffer->used = numNewBytesReceived;
-				if (!readSuccess) { return; }
+				bool readSuccess = SocketReadFromAny(&socket->socket, socket->mainRxBuffer->pntr, socket->mainRxBuffer->size, &numNewBytesReceived, &sourceAddress);
+				if (!readSuccess) { break; }
+				socket->mainRxBuffer->used = numNewBytesReceived;
 			}
 			
 			Assert(numNewBytesReceived > 0);
-			Assert(numNewBytesReceived <= socket->mainBuffer->size);
+			Assert(numNewBytesReceived <= socket->mainRxBuffer->size);
 			
-			BufferedSocketBuffer_t* buffer = FindBufferForAddressAndPort(socket, sourceAddress, true);
+			BufferedSocketBuffer_t* buffer = FindBufferForAddressAndPort(socket, sourceAddress, BufferedSocketBufferType_Rx, true);
 			if (buffer == nullptr)
 			{
 				socket->socket.warning = SocketWarning_TooManySourceAddresses;
 				//We're just gonna drop the data that came from that address
 				continue;
 			}
-			if (!buffer->isUsed)
+			if (buffer->type == BufferedSocketBufferType_None)
 			{
 				//We got data from a new sourceAddress, we need to spin up a new buffer for it
 				NotNull(socket->allocArena);
 				Assert(socket->newBufferSize > 0);
-				buffer->isUsed = true;
+				buffer->type = BufferedSocketBufferType_Rx;
 				buffer->address = sourceAddress;
-				buffer->lastReceiveTime = programTime;
+				buffer->lastDataTime = programTime;
 				buffer->pntr = AllocArray(socket->allocArena, u8, socket->newBufferSize);
 				NotNull(buffer->pntr);
 				buffer->size = socket->newBufferSize;
@@ -917,13 +1041,13 @@ void UpdateBufferedSocket(BufferedSocket_t* socket, u64 programTime)
 			u8* freeBytesPntr = &buffer->pntr[buffer->used];
 			if (numBytesFree >= numNewBytesReceived)
 			{
-				MyMemCopy(freeBytesPntr, socket->mainBuffer->pntr, numNewBytesReceived);
+				MyMemCopy(freeBytesPntr, socket->mainRxBuffer->pntr, numNewBytesReceived);
 				buffer->used += numNewBytesReceived;
-				buffer->lastReceiveTime = programTime;
+				buffer->lastDataTime = programTime;
 				socket->mostRecentBuffer = buffer;
 				
-				socket->mainBuffer->address = NewIpAddressAndPort(IpAddress_Zero, 0);
-				socket->mainBuffer->used = 0;
+				socket->mainRxBuffer->address = NewIpAddressAndPort(IpAddress_Zero, 0);
+				socket->mainRxBuffer->used = 0;
 				socket->socket.warning = SocketWarning_None;
 			}
 			else
@@ -931,20 +1055,61 @@ void UpdateBufferedSocket(BufferedSocket_t* socket, u64 programTime)
 				if (numBytesFree > 0)
 				{
 					//Move what we can into the buffer for that connection
-					MyMemCopy(freeBytesPntr, socket->mainBuffer->pntr, numBytesFree);
+					MyMemCopy(freeBytesPntr, socket->mainRxBuffer->pntr, numBytesFree);
 					buffer->used += numBytesFree;
-					buffer->lastReceiveTime = programTime;
+					buffer->lastDataTime = programTime;
 					socket->mostRecentBuffer = buffer;
 					
-					//mainBuffer will have some non-zero "used" value, which acts as a flag saying we are blocked from receiving more bytes
-					BufferedSocketBufferPop(socket->mainBuffer, numBytesFree);
+					//mainRxBuffer will have some non-zero "used" value, which acts as a flag saying we are blocked from receiving more bytes
+					BufferedSocketBufferPop(socket->mainRxBuffer, numBytesFree);
 					//Set sourceAddress so we know where this data was originally bound to
-					socket->mainBuffer->address = sourceAddress;
+					socket->mainRxBuffer->address = sourceAddress;
 					
 					socket->socket.warning = SocketWarning_BufferIsFull;
 					break;
 				}
 			}
+		}
+	}
+	
+	// +==============================+
+	// |           Transmit           |
+	// +==============================+
+	u64 numTransmitIterations = 0;
+	while (numTransmitIterations < MAX_NUM_TRANSMIT_ITERATIONS)
+	{
+		numTransmitIterations++;
+		
+		if (socket->socket.type == SocketType_SingleDestination)
+		{
+			NotNull2(socket->mainTxBuffer, socket->mainTxBuffer->pntr);
+			Assert(socket->mainTxBuffer->used <= socket->mainTxBuffer->size);
+			if (socket->mainTxBuffer->used == 0) { break; }
+			
+			u64 numBytesSent = 0;
+			bool writeSuccess = SocketWrite(&socket->socket, socket->mainTxBuffer->used, socket->mainTxBuffer->pntr, &numBytesSent);
+			if (numBytesSent == 0) { break; }
+			BufferedSocketBufferPop(socket->mainTxBuffer, numBytesSent);
+			socket->mainTxBuffer->lastDataTime = programTime;
+		}
+		else if (socket->socket.type == SocketType_MultiDestination)
+		{
+			bool sentSomeData = false;
+			for (u64 bufferIndex = 0; bufferIndex < BUFFERED_SOCKET_MAX_NUM_BUFFERS; bufferIndex++)
+			{
+				BufferedSocketBuffer_t* buffer = &socket->buffers[bufferIndex];
+				if (buffer->type == BufferedSocketBufferType_Tx && buffer->used > 0)
+				{
+					u64 numBytesSent = 0;
+					bool writeSuccess = SocketWriteTo(&socket->socket, buffer->address, buffer->used, buffer->pntr, &numBytesSent);
+					// GyLibPrintLine_D("Sent %llu/%llu bytes on Tx buffer[%llu]", numBytesSent, buffer->used, bufferIndex);
+					if (numBytesSent == 0) { continue; }
+					BufferedSocketBufferPop(buffer, numBytesSent);
+					buffer->lastDataTime = programTime;
+					sentSomeData = true;
+				}
+			}
+			if (!sentSomeData) { break; }
 		}
 	}
 }
