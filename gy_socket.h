@@ -679,6 +679,7 @@ bool SocketWriteTo(OpenSocket_t* socket, IpAddressAndPort_t destAddress, u64 dat
 		{
 			Assert(sendResult <= (int)dataSize);
 			SetOptionalOutPntr(numBytesSentOut, (u64)sendResult);
+			// GyLibPrintLine_D("sendto %d/%llu bytes", sendResult, dataSize);
 			return (sendResult == (int)dataSize);
 		}
 	}
@@ -845,6 +846,13 @@ bool SocketReadFromAny(OpenSocket_t* socket, void* outBufferPntr, u64 outBufferS
 			if (errorCode == WSAEWOULDBLOCK || errorCode == EAGAIN)
 			{
 				//For a non-blocking socket, this just means there's no data, so these "errors" are totally acceptable
+				return false;
+			}
+			else if (errorCode == WSAECONNRESET)
+			{
+				// CreateBufferArenaOnStack(tempBufferArena, tempBuffer, 256);
+				// IpAddressAndPort_t fromAddressAndPort = Win32_GetIpAddressAndPortFromSockAddr(fromAddr);
+				// GyLibPrintLine_W("We got a WSAECONNRESET on recv for MultiDestination socket for address %s:%u! (Ignoring)", GetIpAddressString(fromAddressAndPort.address, &tempBufferArena).chars, fromAddressAndPort.port);
 				return false;
 			}
 			else
