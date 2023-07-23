@@ -178,6 +178,10 @@ inline bool AreIpAddressesEqual(IpAddress_t left, IpAddress_t right)
 		return AreIpAddress4sEqual(left.ipv4, right.ipv4);
 	}
 }
+inline bool IsZero(IpAddress_t address)
+{
+	return AreIpAddressesEqual(address, IpAddress_Zero);
+}
 
 inline bool AreIpAddressAndPortsEqual(IpAddressAndPort_t left, IpAddressAndPort_t right)
 {
@@ -361,6 +365,26 @@ MyStr_t GetUrlPathPart(MyStr_t* fullUrl)
 // |                   Autocomplete Dictionary                    |
 // +--------------------------------------------------------------+
 /*
+@Defines
+IPV4_NUM_PARTS
+IPV6_NUM_PARTS
+IPV4_PART_SIZE
+IPV6_PART_SIZE
+IPV4_SEP_CHAR
+IPV6_SEP_CHAR
+IPV4_MAX_STR_LENGTH
+IPV6_MAX_STR_LENGTH
+IPADDRESS_MAX_STR_LENGTH
+DEFAULT_HTTP_PORT
+DEFAULT_HTTPS_PORT
+IP_PORT_RANGE_COMMON_SERVICES_START
+IP_PORT_RANGE_COMMON_SERVICES_END
+IP_PORT_RANGE_REGISTERED_START
+IP_PORT_RANGE_REGISTERED_END
+IP_PORT_RANGE_DYNAMIC_START
+IP_PORT_RANGE_DYNAMIC_END
+IpAddress_Zero
+IpAddress_LocalHost
 @Types
 IpPort_t
 Ipv4Part_t
@@ -369,13 +393,6 @@ IpAddress4_t
 IpAddress6_t
 IpAddress_t
 IpAddressAndPort_t
-@Defines
-IPV4_NUM_PARTS
-IPV6_NUM_PARTS
-IPV4_PART_SIZE
-IPV6_PART_SIZE
-IPV4_SEP_CHAR
-IPV6_SEP_CHAR
 @Functions
 IpAddress4_t NewIpAddress4(u8 part0, u8 part1, u8 part2, u8 part3)
 IpAddress6_t NewIpAddress6(u16 part0, u16 part1, u16 part2, u16 part3, u16 part4, u16 part5, u16 part6, u16 part7)
@@ -383,6 +400,11 @@ IpAddress_t NewIpAddress(u8 part0, u8 part1, u8 part2, u8 part3)
 IpAddressAndPort_t NewIpAddress4AndPort(u8 part0, u8 part1, u8 part2, u8 part3, IpPort_t port)
 IpAddressAndPort_t NewIpAddress6AndPort(u16 part0, u16 part1, u16 part2, u16 part3, u16 part4, u16 part5, u16 part6, u16 part7, IpPort_t port)
 IpAddressAndPort_t NewIpAddressAndPort(IpAddress_t address, IpPort_t port)
+inline bool AreIpAddress4sEqual(IpAddress4_t left, IpAddress4_t right)
+inline bool AreIpAddress6sEqual(IpAddress6_t left, IpAddress6_t right)
+inline bool AreIpAddressesEqual(IpAddress_t left, IpAddress_t right)
+inline bool IsZero(IpAddress_t address)
+inline bool AreIpAddressAndPortsEqual(IpAddressAndPort_t left, IpAddressAndPort_t right)
 MyStr_t GetIpAddress4String(IpAddress4_t address, MemArena_t* memArena)
 MyStr_t GetIpAddress6String(IpAddress6_t address, MemArena_t* memArena)
 MyStr_t GetIpAddressString(IpAddress_t address, MemArena_t* memArena)

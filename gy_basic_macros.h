@@ -65,6 +65,9 @@ Description:
 
 #define SetOptionalOutPntr(outputPntr, value) if ((outputPntr) != nullptr) { *(outputPntr) = (value); }
 
+#define PluralEx(number, singularSuffix, multipleSuffix) (((number) == 1) ? (singularSuffix) : (multipleSuffix))
+#define Plural(number, multipleSuffix) (((number) == 1) ? "" : (multipleSuffix))
+
 // +--------------------------------------------------------------+
 // |                  Platform Dependant Macros                   |
 // +--------------------------------------------------------------+
@@ -146,6 +149,8 @@ EXTERN_C_END
 #define IsPntrWithin(regionStart, regionSize, pntr)
 #define IsSizedPntrWithin(regionStart, regionSize, pntr, size)
 #define SetOptionalOutPntr(outputPntr, value)
+#define PluralEx(number, singularSuffix, multipleSuffix)
+#define Plural(number, multipleSuffix)
 #define UNUSED(varName)
 #define UNREFERENCED(varName)
 #define PACKED(class_to_pack)

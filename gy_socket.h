@@ -104,26 +104,6 @@ const char* GetSocketWarningStr(SocketWarning_t enumValue)
 	}
 }
 
-// +--------------------------------------------------------------+
-// |                          Structures                          |
-// +--------------------------------------------------------------+
-struct OpenSocket_t
-{
-	SocketType_t type;
-	SocketProtocol_t protocol;
-	IpAddressAndPort_t destAddress;
-	
-	bool isOpen;
-	SocketError_t error;
-	SocketWarning_t warning;
-	
-	#if WINDOWS_COMPILATION
-	SOCKET handle_win32;
-	#else
-	#error Unsupported platform for gy_socket.h OpenSocket_t
-	#endif
-};
-
 enum BufferedSocketBufferType_t
 {
 	BufferedSocketBufferType_None = 0,
@@ -143,6 +123,26 @@ const char* GetBufferedSocketBufferTypeStr(BufferedSocketBufferType_t enumValue)
 		default: return "Unknown";
 	}
 }
+
+// +--------------------------------------------------------------+
+// |                          Structures                          |
+// +--------------------------------------------------------------+
+struct OpenSocket_t
+{
+	SocketType_t type;
+	SocketProtocol_t protocol;
+	IpAddressAndPort_t destAddress;
+	
+	bool isOpen;
+	SocketError_t error;
+	SocketWarning_t warning;
+	
+	#if WINDOWS_COMPILATION
+	SOCKET handle_win32;
+	#else
+	#error Unsupported platform for gy_socket.h OpenSocket_t
+	#endif
+};
 
 struct BufferedSocketBuffer_t
 {
@@ -1117,3 +1117,79 @@ void UpdateBufferedSocket(BufferedSocket_t* socket, u64 programTime)
 #endif // SOCKETS_SUPPORTED
 
 #endif //  _GY_SOCKET_H
+
+// +--------------------------------------------------------------+
+// |                   Autocomplete Dictionary                    |
+// +--------------------------------------------------------------+
+/*
+@Defines
+SocketProtocol_None
+SocketProtocol_Udp
+SocketProtocol_Tcp
+SocketProtocol_NumProtocols
+SocketType_None
+SocketType_SingleDestination
+SocketType_MultiDestination
+SocketType_NumTypes
+SocketError_None
+SocketError_Generic
+SocketError_CreationFailed
+SocketError_CreationBindFailed
+SocketError_CreationNonBlockingFailed
+SocketError_ReadError
+SocketError_WriteError
+SocketError_NumErrors
+SocketWarning_None
+SocketWarning_TooManySourceAddresses
+SocketWarning_TooManyDestAddresses
+SocketWarning_BufferIsFull
+SocketWarning_NumWarnings
+BufferedSocketBufferType_None
+BufferedSocketBufferType_Rx
+BufferedSocketBufferType_Tx
+BufferedSocketBufferType_Routing
+BufferedSocketBufferType_NumTypes
+@Types
+SocketProtocol_t
+SocketType_t
+SocketError_t
+SocketWarning_t
+OpenSocket_t
+BufferedSocketBufferType_t
+BufferedSocketBuffer_t
+BufferedSocket_t
+@Functions
+const char* GetSocketProtocolStr(SocketProtocol_t enumValue)
+const char* GetSocketTypeStr(SocketType_t enumValue)
+const char* GetSocketErrorStr(SocketError_t enumValue)
+const char* GetSocketWarningStr(SocketWarning_t enumValue)
+const char* GetBufferedSocketBufferTypeStr(BufferedSocketBufferType_t enumValue)
+SocketError_t PrintSocketError(int errorCode, const char* message, const char* functionName)
+inline bool IsSocketOpen(const OpenSocket_t* socket)
+inline bool DoesSocketHaveErrors(const OpenSocket_t* socket)
+BufferedSocketBuffer_t* FindBufferForAddress(BufferedSocket_t* socket, IpAddress_t address, BufferedSocketBufferType_t type = BufferedSocketBufferType_Rx, bool findFreeBufferIfNeeded = true)
+BufferedSocketBuffer_t* FindBufferForAddressAndPort(BufferedSocket_t* socket, IpAddressAndPort_t address, BufferedSocketBufferType_t type = BufferedSocketBufferType_Rx, bool findFreeBufferIfNeeded = true)
+void BufferedSocketBufferPop(BufferedSocketBuffer_t* buffer, u64 numBytesToPop)
+bool InitializeSockets()
+void CloseOpenSocket(OpenSocket_t* socket)
+SocketError_t CloseOpenSocketIfErrors(OpenSocket_t* socket, bool printOutError = false)
+void FreeBufferedSocketBuffer(BufferedSocket_t* socket, BufferedSocketBuffer_t* buffer)
+void DestroyBufferedSocket(BufferedSocket_t* socket)
+SocketError_t DestroyBufferedSocketIfErrors(BufferedSocket_t* socket, bool printOutError = false)
+bool TryOpenNewSocket(SocketProtocol_t protocol, IpAddressAndPort_t destAddress, OpenSocket_t* socketOut)
+bool TryOpenNewMultiSocket(SocketProtocol_t protocol, IpPort_t port, OpenSocket_t* socketOut)
+bool TryOpenNewBufferedSocket(SocketProtocol_t protocol, IpAddressAndPort_t destAddress, BufferedSocket_t* socketOut, MemArena_t* memArena, u64 bufferSize)
+bool TryOpenNewBufferedMultiSocket(SocketProtocol_t protocol, IpPort_t port, BufferedSocket_t* socketOut, MemArena_t* memArena, u64 mainRxBufferSize, u64 connectionBufferSize)
+bool SocketWriteTo(OpenSocket_t* socket, IpAddressAndPort_t destAddress, u64 dataSize, const void* dataPntr, u64* numBytesSentOut = nullptr)
+bool SocketWriteToStr(OpenSocket_t* socket, IpAddressAndPort_t destAddress, MyStr_t messageStr, u64* numBytesSentOut = nullptr)
+bool SocketWrite(OpenSocket_t* socket, u64 dataSize, const void* dataPntr, u64* numBytesSentOut = nullptr)
+bool SocketWriteStr(OpenSocket_t* socket, MyStr_t messageStr, u64* numBytesSentOut = nullptr)
+bool BufferedSocketWriteTo(BufferedSocket_t* socket, BufferedSocketBuffer_t* buffer, u64 dataSize, const void* dataPntr, u64* numBytesSentOut = nullptr)
+bool BufferedSocketWriteTo(BufferedSocket_t* socket, IpAddressAndPort_t destAddress, u64 dataSize, const void* dataPntr, u64* numBytesSentOut = nullptr)
+bool BufferedSocketWrite(BufferedSocket_t* socket, u64 dataSize, const void* dataPntr, u64* numBytesSentOut = nullptr)
+bool SocketReadFromAny(OpenSocket_t* socket, void* outBufferPntr, u64 outBufferSize, u64* outReceivedNumBytes, IpAddressAndPort_t* addressOut = nullptr)
+MyStr_t SocketReadFromAnyStr(OpenSocket_t* socket, MemArena_t* memArena, u64 maxReadSize, IpAddressAndPort_t* addressOut = nullptr)
+bool SocketRead(OpenSocket_t* socket, void* outBufferPntr, u64 outBufferSize, u64* outReceivedNumBytes)
+MyStr_t SocketReadStr(OpenSocket_t* socket, MemArena_t* memArena, u64 maxReadSize)
+void UpdateBufferedSocket(BufferedSocket_t* socket, u64 programTime)
+*/

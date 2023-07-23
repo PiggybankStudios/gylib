@@ -55,6 +55,13 @@ enum WordBreakCharClass_t
 // +--------------------------------------------------------------+
 // |                        New Functions                         |
 // +--------------------------------------------------------------+
+MyStr_t NewStrLengthOnly(u64 length)
+{
+	MyStr_t result;
+	result.length = length;
+	result.pntr = nullptr;
+	return result;
+}
 MyStr_t NewStr(u64 length, char* pntr)
 {
 	MyStr_t result;
@@ -1865,6 +1872,7 @@ MyStr_t
 MyWideStr_t
 WordBreakCharClass_t
 @Functions
+MyStr_t NewStrLengthOnly(u64 length)
 MyStr_t NewStr(u64 length, char* pntr)
 bool IsNullStr(MyStr_t target)
 bool IsEmptyStr(MyStr_t target)
