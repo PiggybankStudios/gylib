@@ -686,8 +686,6 @@ bool SocketWriteTo(OpenSocket_t* socket, IpAddressAndPort_t destAddress, u64 dat
 	#else
 	#error Unsupported platform for gy_socket.h SocketWriteTo
 	#endif
-	
-	return true;
 }
 bool SocketWriteToStr(OpenSocket_t* socket, IpAddressAndPort_t destAddress, MyStr_t messageStr, u64* numBytesSentOut = nullptr)
 {
@@ -741,8 +739,6 @@ bool SocketWrite(OpenSocket_t* socket, u64 dataSize, const void* dataPntr, u64* 
 	#else
 	#error Unsupported platform for gy_socket.h SocketWrite
 	#endif
-	
-	return true;
 }
 bool SocketWriteStr(OpenSocket_t* socket, MyStr_t messageStr, u64* numBytesSentOut = nullptr)
 {
@@ -1096,6 +1092,7 @@ void UpdateBufferedSocket(BufferedSocket_t* socket, u64 programTime)
 			
 			u64 numBytesSent = 0;
 			bool writeSuccess = SocketWrite(&socket->socket, socket->mainTxBuffer->used, socket->mainTxBuffer->pntr, &numBytesSent);
+			if (!writeSuccess) { break; }
 			if (numBytesSent == 0) { break; }
 			BufferedSocketBufferPop(socket->mainTxBuffer, numBytesSent);
 			socket->mainTxBuffer->lastDataTime = programTime;
@@ -1111,6 +1108,7 @@ void UpdateBufferedSocket(BufferedSocket_t* socket, u64 programTime)
 					u64 numBytesSent = 0;
 					bool writeSuccess = SocketWriteTo(&socket->socket, buffer->address, buffer->used, buffer->pntr, &numBytesSent);
 					// GyLibPrintLine_D("Sent %llu/%llu bytes on Tx buffer[%llu]", numBytesSent, buffer->used, bufferIndex);
+					if (!writeSuccess) { continue; }
 					if (numBytesSent == 0) { continue; }
 					BufferedSocketBufferPop(buffer, numBytesSent);
 					buffer->lastDataTime = programTime;

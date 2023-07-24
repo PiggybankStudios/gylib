@@ -17,6 +17,7 @@ Description:
 // +==============================+
 SERIALIZE_FUNC_DEFINITION(Serialize_BinaryCopy)
 {
+	UNUSED(contextPntr);
 	Assert(structSize > 0);
 	NotNull(structPntr);
 	if (memArena == nullptr) { return NewStrLengthOnly(structSize); }
@@ -30,6 +31,8 @@ SERIALIZE_FUNC_DEFINITION(Serialize_BinaryCopy)
 // +==============================+
 DESERIALIZE_FUNC_DEFINITION(Deserialize_BinaryCopy)
 {
+	UNUSED(contextPntr);
+	UNUSED(memArena);
 	Assert(structOutSize > 0);
 	NotNull(structOutPntr);
 	if (serializedData.length != structOutSize) { return false; }
@@ -71,6 +74,7 @@ inline Serializable_t NewSerializable_Obb3D(obb3* obb3Pntr) { return NewSerializ
 // +==============================+
 SERIALIZE_FUNC_DEFINITION(Serialize_MyStr)
 {
+	UNUSED(contextPntr);
 	Assert(structSize == sizeof(MyStr_t));
 	const MyStr_t* strPntr = (const MyStr_t*)structPntr;
 	NotNullStr(strPntr);
@@ -89,6 +93,7 @@ SERIALIZE_FUNC_DEFINITION(Serialize_MyStr)
 // +==============================+
 DESERIALIZE_FUNC_DEFINITION(Deserialize_MyStr)
 {
+	UNUSED(contextPntr);
 	NotNull(memArena);
 	Assert(structOutSize == sizeof(MyStr_t));
 	NotNull(structOutPntr);
@@ -114,6 +119,7 @@ inline Serializable_t NewSerializable_MyStr(MyStr_t* strPntr) { return NewSerial
 // +==============================+
 SERIALIZE_FUNC_DEFINITION(Serialize_VarArrayBinaryCopy)
 {
+	UNUSED(contextPntr);
 	Assert(structSize == sizeof(VarArray_t));
 	const VarArray_t* arrayPntr = (const VarArray_t*)structPntr;
 	AssertIf(arrayPntr->length > 0, arrayPntr->items != nullptr);
@@ -138,6 +144,7 @@ SERIALIZE_FUNC_DEFINITION(Serialize_VarArrayBinaryCopy)
 // +================================+
 DESERIALIZE_FUNC_DEFINITION(Deserialize_VarArrayBinaryCopy)
 {
+	UNUSED(contextPntr);
 	NotNull(memArena);
 	Assert(structOutSize == sizeof(VarArray_t));
 	NotNull(structOutPntr);

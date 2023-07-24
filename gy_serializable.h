@@ -57,7 +57,7 @@ Serializable_t NewSerializable_(SerializableFuncs_t funcs, u64 structSize, void*
 }
 Serializable_t NewSerializable_(SerializableFuncs_t funcs, u64 structSize, const void* structPntr, void* contextPntr = nullptr) //const-variant
 {
-	return NewSerializable_(funcs, structSize, (void*)structPntr);
+	return NewSerializable_(funcs, structSize, (void*)structPntr, contextPntr);
 }
 #define NewSerializable(funcs, structPntr)                         NewSerializable_((funcs), sizeof(*(structPntr)), (structPntr))
 #define NewSerializableWithContext(funcs, structPntr, contextPntr) NewSerializable_((funcs), sizeof(*(structPntr)), (structPntr), (contextPntr)) 
@@ -163,6 +163,7 @@ bool Deserialize(Serializable_t serializable, MyStr_t serializedData, MemArena_t
 // +==============================+
 SERIALIZE_FUNC_DEFINITION(Serialize_JoinedSerializable)
 {
+	UNUSED(contextPntr);
 	Assert(structSize == sizeof(JoinedSerializableContext_t));
 	NotNull(structPntr);
 	JoinedSerializableContext_t* joinedContext = (JoinedSerializableContext_t*)structPntr;
@@ -193,6 +194,7 @@ SERIALIZE_FUNC_DEFINITION(Serialize_JoinedSerializable)
 //NOTE: For now, you must free all the serializable structures if deserialization fails and memArena is used for allocations!
 DESERIALIZE_FUNC_DEFINITION(Deserialize_JoinedSerializable)
 {
+	UNUSED(contextPntr);
 	//TODO: We have a problem in all the cases where we return false after staring the for loop, things may have been allocated with memArena in serializables that succeeded up to that point! Somehow they need to be freed!
 	//TODO: Maybe we could add another optional function to SerializableFuncs_t that does Cleanup/Freeing when deserialization fails?
 	Assert(structOutSize == sizeof(JoinedSerializableContext_t));
