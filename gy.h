@@ -62,6 +62,7 @@ Description:
 #include "gylib/gy_collision.h"
 #include "gylib/gy_ip.h"
 #include "gylib/gy_socket.h"
+#include "gylib/gy_network_bus.h"
 #include "gylib/gy_extras.h"
 
 #endif //  _GY_H

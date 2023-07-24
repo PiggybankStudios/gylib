@@ -409,6 +409,18 @@ u64 PowerOfTwoGreaterThanOrEqualTo(u64 value, u8* powerOut = nullptr)
 	return result;
 }
 
+u64 TimeSinceBy(u64 timeSource, u64 programTimeSnapshot)
+{
+	if (programTimeSnapshot <= timeSource)
+	{
+		return timeSource - programTimeSnapshot;
+	}
+	else 
+	{
+		return 0;
+	}
+}
+
 #endif //  _GY_MATH_H
 
 // +--------------------------------------------------------------+
