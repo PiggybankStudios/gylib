@@ -16,8 +16,9 @@ Description:
 // |                           Defines                            |
 // +--------------------------------------------------------------+
 #define NETWORK_BUS_RESERVED_BASE_CMD         0x00000000
-#define NETWORK_BUS_CLIENT_TO_SERVER_BASE_CMD 0x10000000
-#define NETWORK_BUS_SERVER_TO_CLIENT_BASE_CMD 0x20000000
+#define NETWORK_BUS_CLIENT_TO_SERVER_BASE_CMD 0x00000010
+#define NETWORK_BUS_SERVER_TO_CLIENT_BASE_CMD 0x00000020
+#define NETWORK_BUS_UNRESERVED_BASE_CMD       0x00000030
 
 #define NETWORK_BUS_ATTN_STR         "~!#@"
 #define NETWORK_BUS_ATTN_STR_LENGTH  4 //bytes
@@ -29,45 +30,31 @@ Description:
 #define NETWORK_BUS_DEFAULT_MAX_NUM_TRIES  4 //tries
 
 // +--------------------------------------------------------------+
-// |                    Function Pointer Types                    |
-// +--------------------------------------------------------------+
-//NOTE: NB stands for "Network Bus"
-
-#define NB_GET_PROGRAM_TIME_DEFINITION(functionName) u64 functionName(struct NetworkBus_t* bus)
-typedef NB_GET_PROGRAM_TIME_DEFINITION(NbGetProgramTime_f);
-
-//return true if the command was handled
-#define NB_HANDLE_COMMAND_DEFINITION(functionName) bool functionName(struct NetworkBus_t* bus, struct BufferedSocketBuffer_t* buffer, bool wasRetryResponse, struct NetworkCmdHeader_t header, const u8* payloadPntr)
-typedef NB_HANDLE_COMMAND_DEFINITION(NbHandleCommand_f);
-
-//return true if the command is a valid response for the RetryPacket_t
-#define NB_RESPONSE_CHECK_DEFINITION(functionName) bool functionName(struct NetworkBus_t* bus, struct RetryPacket_t* packet, struct NetworkCmdHeader_t header, const u8* payloadPntr)
-typedef NB_RESPONSE_CHECK_DEFINITION(NbResponseCheck_f);
-
-#define NB_RETRY_PACKET_FINISHED_DEFINITION(functionName) void functionName(struct NetworkBus_t* bus, struct RetryPacket_t* packet, bool success, struct NetworkCmdHeader_t rspHeader, const u8* rspPayloadPntr)
-typedef NB_RETRY_PACKET_FINISHED_DEFINITION(NbRetryPacketFinished_f);
-
-#define NB_CLIENT_CONNECTED_OR_DISCONNECTED_DEFINITION(functionName) void functionName(struct NetworkBus_t* bus, struct NetworkBusClient_t* client, bool connected)
-typedef NB_CLIENT_CONNECTED_OR_DISCONNECTED_DEFINITION(NbClientConnectedOrDisconnected_f);
-
-// +--------------------------------------------------------------+
 // |                         Enumerations                         |
 // +--------------------------------------------------------------+
 enum NetworkBusCmd_t
 {
-	NetworkBusCmd_None = NETWORK_BUS_RESERVED_BASE_CMD,
-	NetworkBusCmd_NewClient,
+	NetworkBusCmd_None = 0,
+	NetworkBusRsp_None = 0,
+	
+	NetworkBusCmd_NewClient = NETWORK_BUS_CLIENT_TO_SERVER_BASE_CMD,
 	NetworkBusCmd_Disconnect,
 	NetworkBusCmd_Success,
 	NetworkBusCmd_Failure,
+	NetworkBusCmd_Ping,
+	NetworkBusCmd_Ack,
+	NetworkBusCmd_Last,
 	
-	NetworkBusRsp_IdAssigned,
+	NetworkBusRsp_IdAssigned = NETWORK_BUS_SERVER_TO_CLIENT_BASE_CMD,
 	NetworkBusRsp_Kicked,
 	NetworkBusRsp_Success,
 	NetworkBusRsp_Failure,
-	
-	NetworkBusCmd_Last,
+	NetworkBusRsp_Ping,
+	NetworkBusRsp_Ack,
+	NetworkBusRsp_Last,
 };
+CompileAssert(NetworkBusCmd_Last <= NETWORK_BUS_SERVER_TO_CLIENT_BASE_CMD);
+CompileAssert(NetworkBusRsp_Last <= NETWORK_BUS_UNRESERVED_BASE_CMD);
 const char* GetNetworkBusCmdStr(NetworkBusCmd_t cmd)
 {
 	switch (cmd)
@@ -77,14 +64,19 @@ const char* GetNetworkBusCmdStr(NetworkBusCmd_t cmd)
 		case NetworkBusCmd_Disconnect:     return "Cmd_Disconnect";
 		case NetworkBusCmd_Success:        return "Cmd_Success";
 		case NetworkBusCmd_Failure:        return "Cmd_Failure";
+		case NetworkBusCmd_Ping:           return "Cmd_Ping";
+		case NetworkBusCmd_Ack:            return "Cmd_Ack";
+		case NetworkBusCmd_Last:           return "Cmd_Last";
 		case NetworkBusRsp_IdAssigned:     return "Rsp_IdAssigned";
 		case NetworkBusRsp_Kicked:         return "Rsp_Kicked";
 		case NetworkBusRsp_Success:        return "Rsp_Success";
 		case NetworkBusRsp_Failure:        return "Rsp_Failure";
+		case NetworkBusRsp_Ping:           return "Rsp_Ping";
+		case NetworkBusRsp_Ack:            return "Rsp_Ack";
+		case NetworkBusRsp_Last:           return "Rsp_Last";
 		default: return "Unknown";
 	}
 }
-CompileAssert(NetworkBusCmd_Last < NETWORK_BUS_CLIENT_TO_SERVER_BASE_CMD);
 
 enum NetworkBusState_t
 {
@@ -106,6 +98,54 @@ const char* GetNetworkBusStateStr(NetworkBusState_t enumValue)
 		default: return "Unknown";
 	}
 }
+
+enum ResponseCheckResult_t
+{
+	ResponseCheckResult_NA = 0, //not applicable, aka this cmd is not a response to our RetryPacket
+	ResponseCheckResult_Failure,
+	ResponseCheckResult_Success,
+	ResponseCheckResult_NumResults,
+};
+const char* GetResponseCheckResultStr(ResponseCheckResult_t enumValue)
+{
+	switch (enumValue)
+	{
+		case ResponseCheckResult_NA:      return "NA";
+		case ResponseCheckResult_Failure: return "Failure";
+		case ResponseCheckResult_Success: return "Success";
+		default: return "Unknown";
+	}
+}
+
+enum NbPacketHandleFlags_t
+{
+	NbPacketHandleFlags_None        = 0x00,
+	NbPacketHandleFlags_NbInternal  = 0x01,
+	NbPacketHandleFlags_RetryPacket = 0x02,
+	NbPacketHandleFlags_All         = (NbPacketHandleFlags_NbInternal | NbPacketHandleFlags_RetryPacket),
+};
+
+// +--------------------------------------------------------------+
+// |                    Function Pointer Types                    |
+// +--------------------------------------------------------------+
+//NOTE: NB stands for "Network Bus"
+
+#define NB_GET_PROGRAM_TIME_DEFINITION(functionName) u64 functionName(struct NetworkBus_t* bus)
+typedef NB_GET_PROGRAM_TIME_DEFINITION(NbGetProgramTime_f);
+
+//return true if the command was handled
+#define NB_HANDLE_COMMAND_DEFINITION(functionName) bool functionName(struct NetworkBus_t* bus, struct NetworkBusClient_t* sourceClient, NbPacketHandleFlags_t handleFlags, struct NetworkCmdHeader_t header, const u8* payloadPntr)
+typedef NB_HANDLE_COMMAND_DEFINITION(NbHandleCommand_f);
+
+//return true if the command is a valid response for the RetryPacket_t
+#define NB_RESPONSE_CHECK_DEFINITION(functionName) Tribool_t functionName(struct NetworkBus_t* bus, struct RetryPacket_t* packet, struct NetworkCmdHeader_t header, const u8* payloadPntr)
+typedef NB_RESPONSE_CHECK_DEFINITION(NbResponseCheck_f);
+
+#define NB_RETRY_PACKET_FINISHED_DEFINITION(functionName) void functionName(struct NetworkBus_t* bus, struct RetryPacket_t* packet, bool success, struct NetworkCmdHeader_t rspHeader, const u8* rspPayloadPntr)
+typedef NB_RETRY_PACKET_FINISHED_DEFINITION(NbRetryPacketFinished_f);
+
+#define NB_CLIENT_CONNECTED_OR_DISCONNECTED_DEFINITION(functionName) void functionName(struct NetworkBus_t* bus, struct NetworkBusClient_t* client, bool connected)
+typedef NB_CLIENT_CONNECTED_OR_DISCONNECTED_DEFINITION(NbClientConnectedOrDisconnected_f);
 
 // +--------------------------------------------------------------+
 // |                          Structures                          |
@@ -174,6 +214,7 @@ struct NetworkBus_t
 	//client side
 	u64 nextClientPacketId;
 	u64 clientId;
+	u64 lastPingSuccessTime;
 	
 	VarArray_t clients; //NetworkBusClient_t
 	VarArray_t retryPackets; //RetryPacket_t
@@ -182,7 +223,7 @@ struct NetworkBus_t
 START_PACK();
 struct ATTR_PACKED NetworkBusStandardPayload_t
 {
-	u64 packetId;
+	u64 sentPacketId;
 	u32 sentCmd;
 };
 END_PACK();
@@ -216,7 +257,7 @@ void CreateNetworkBus(NetworkBus_t* busOut, BufferedSocket_t* socket, MemArena_t
 {
 	NotNull(busOut);
 	NotNull2(memArena, tempArena);
-	Assert(tempArena->type == MemArenaType_MarkedStack);
+	Assert(DoesMemArenaSupportPushAndPop(tempArena));
 	ClearPointer(busOut);
 	busOut->allocArena = memArena;
 	busOut->tempArena = tempArena;
@@ -295,7 +336,7 @@ bool NetworkBusSendCmdStandardPayload(NetworkBus_t* bus, NetworkBusClient_t* cli
 {
 	Assert(cmd == NetworkBusRsp_Success || cmd == NetworkBusRsp_Failure || cmd == NetworkBusCmd_Success || cmd == NetworkBusCmd_Failure);
 	NetworkBusStandardPayload_t standardPayload = {};
-	standardPayload.packetId = sentPacketId;
+	standardPayload.sentPacketId = sentPacketId;
 	standardPayload.sentCmd = sentCmd;
 	PushMemMark(bus->tempArena);
 	MyStr_t payloadSerialized = Serialize(NewSerializable_NetworkBusStandardPayload(&standardPayload), bus->tempArena);
@@ -320,6 +361,16 @@ bool NetworkBusSendCmd(NetworkBus_t* bus, NetworkBusClient_t* client, u64 packet
 		result = NetworkBusSendCmdWithPayload(bus, client, packetId, cmd, 0, nullptr);
 	}
 	return result;
+}
+bool NetworkBusSendSuccess(NetworkBus_t* bus, NetworkBusClient_t* client, u64 packetId, u64 sentPacketId, u32 sentCmd)
+{
+	NotNull(bus);
+	return NetworkBusSendCmdStandardPayload(bus, client, packetId, NetworkBusRsp_Success, sentPacketId, sentCmd);
+}
+bool NetworkBusSendFailure(NetworkBus_t* bus, NetworkBusClient_t* client, u64 packetId, u64 sentPacketId, u32 sentCmd)
+{
+	NotNull(bus);
+	return NetworkBusSendCmdStandardPayload(bus, client, packetId, NetworkBusRsp_Failure, sentPacketId, sentCmd);
 }
 
 u64 NetworkBusSendRetryPacketWithPayload(NetworkBus_t* bus, NetworkBusClient_t* client, u32 cmd, u32 expectedRspCmd, u32 failureRspCmd, u64 payloadLength, const void* payloadPntr, u64 maxNumTries = NETWORK_BUS_DEFAULT_MAX_NUM_TRIES)
@@ -389,6 +440,17 @@ NetworkBusClient_t* FindNetworkBusClientById(NetworkBus_t* bus, u64 clientId)
 	{
 		VarArrayLoopGet(NetworkBusClient_t, client, &bus->clients, cIndex);
 		if (client->id == clientId) { return client; }
+	}
+	return nullptr;
+}
+NetworkBusClient_t* FindNetworkBusClientByAddress(NetworkBus_t* bus, IpAddressAndPort_t address)
+{
+	NotNull(bus);
+	Assert(bus->isServerSide);
+	VarArrayLoop(&bus->clients, cIndex)
+	{
+		VarArrayLoopGet(NetworkBusClient_t, client, &bus->clients, cIndex);
+		if (AreIpAddressAndPortsEqual(client->address, address)) { return client; }
 	}
 	return nullptr;
 }
@@ -502,7 +564,17 @@ void NetworkBusHandleCmd(NetworkBus_t* bus, BufferedSocketBuffer_t* buffer, Netw
 	u64 programTime = bus->callbacks.GetProgramTime(bus);
 	MyStr_t payloadStr = NewStr(header.length, (char*)payloadPntr);
 	
-	bool wasRetryResponse = false;
+	NetworkBusClient_t* client = nullptr;
+	if (bus->isServerSide && bus->state == NetworkBusState_Connected)
+	{
+		NotNull(buffer);
+		client = FindNetworkBusClientByAddress(bus, buffer->address);
+	}
+	
+	// +==============================+
+	// | Match Retry Packet Responses |
+	// +==============================+
+	u8 packetHandleFlags = NbPacketHandleFlags_None;
 	VarArrayLoop(&bus->retryPackets, rIndex)
 	{
 		VarArrayLoopGet(RetryPacket_t, retryPacket, &bus->retryPackets, rIndex);
@@ -519,7 +591,7 @@ void NetworkBusHandleCmd(NetworkBus_t* bus, BufferedSocketBuffer_t* buffer, Netw
 			{
 				if (Deserialize(NewSerializable_NetworkBusStandardPayload(&standardPayload), payloadStr))
 				{
-					if (standardPayload.packetId == retryPacket->header.packetId &&
+					if (standardPayload.sentPacketId == retryPacket->header.packetId &&
 						standardPayload.sentCmd == retryPacket->header.cmd)
 					{
 						isResponsePositive = (header.cmd == NetworkBusCmd_Success || header.cmd == NetworkBusRsp_Success);
@@ -537,28 +609,22 @@ void NetworkBusHandleCmd(NetworkBus_t* bus, BufferedSocketBuffer_t* buffer, Netw
 			{
 				NetworkBusFinishRetryPacket(bus, retryPacket, rIndex, (header.cmd == retryPacket->expectedRspCmd), header, payloadPntr);
 				rIndex--; //Not needed because of break; below, but added just in-case we remove that later
-				wasRetryResponse = true;
+				FlagSet(packetHandleFlags, NbPacketHandleFlags_RetryPacket);
 				break;
 			}
 		}
 	}
 	
-	if (bus->state == NetworkBusState_Connected)
+	if (bus->isServerSide)
 	{
-		bool handled = bus->callbacks.HandleCommand(bus, buffer, wasRetryResponse, header, payloadPntr);
-		UNUSED(handled);
-		//TODO: Do we do something with handled? Maybe print out a warning if not handled?
-	}
-	else if (bus->state == NetworkBusState_WaitingForClientId && header.cmd == NetworkBusRsp_IdAssigned)
-	{
-		if (bus->isServerSide)
+		switch (header.cmd)
 		{
-			switch (header.cmd)
+			// +==============================+
+			// |   NetworkBusCmd_NewClient    |
+			// +==============================+
+			case NetworkBusCmd_NewClient:
 			{
-				// +==============================+
-				// |   NetworkBusCmd_NewClient    |
-				// +==============================+
-				case NetworkBusCmd_NewClient:
+				if (bus->state == NetworkBusState_Connected)
 				{
 					NetworkBusClient_t* newClient = VarArrayAdd(&bus->clients, NetworkBusClient_t);
 					NotNull(newClient);
@@ -571,50 +637,90 @@ void NetworkBusHandleCmd(NetworkBus_t* bus, BufferedSocketBuffer_t* buffer, Netw
 					newClient->lastPingTryTime = programTime;
 					
 					NetworkBusSendCmd(bus, newClient, 0, NetworkBusRsp_IdAssigned, NewSerializable_U64(&newClient->id));
+					FlagSet(packetHandleFlags, NbPacketHandleFlags_NbInternal);
 					
 					if (bus->callbacks.ClientConnectedOrDisconnected != nullptr) { bus->callbacks.ClientConnectedOrDisconnected(bus, newClient, true); }
-				} break;
-				
-				default:
-				{
-					//TODO: Print out an error? Store an error or warning for calling code to see?
-				} break;
-			}
-		}
-		else
-		{
-			switch (header.cmd)
+				}
+			} break;
+			
+			// +==============================+
+			// |      NetworkBusCmd_Ping      |
+			// +==============================+
+			case NetworkBusCmd_Ping:
 			{
-				// +==============================+
-				// |   NetworkBusRsp_IdAssigned   |
-				// +==============================+
-				case NetworkBusRsp_IdAssigned:
+				if (client != nullptr)
 				{
-					u64 newClientId = 0;
-					if (Deserialize(NewSerializable_U64(&newClientId), payloadStr))
+					NetworkBusSendCmd(bus, client, 0, NetworkBusRsp_Ack);
+					FlagSet(packetHandleFlags, NbPacketHandleFlags_NbInternal);
+				}
+			} break;
+			// +==============================+
+			// |      NetworkBusCmd_Ack       |
+			// +==============================+
+			case NetworkBusCmd_Ack:
+			{
+				if (client != nullptr)
+				{
+					client->lastPingSuccessTime = bus->callbacks.GetProgramTime(bus);
+					FlagSet(packetHandleFlags, NbPacketHandleFlags_NbInternal);
+				}
+			} break;
+		}
+	}
+	else
+	{
+		switch (header.cmd)
+		{
+			// +==============================+
+			// |   NetworkBusRsp_IdAssigned   |
+			// +==============================+
+			case NetworkBusRsp_IdAssigned:
+			{
+				u64 newClientId = 0;
+				if (Deserialize(NewSerializable_U64(&newClientId), payloadStr))
+				{
+					if (bus->state == NetworkBusState_WaitingForClientId)
 					{
-						if (bus->state == NetworkBusState_WaitingForClientId)
-						{
-							bus->clientId = newClientId;
-							NetworkBusChangeState(bus, NetworkBusState_Connected);
-						}
-						else
-						{
-							//TODO: Print out an error? Store an error or warning for calling code to see?
-						}
+						bus->clientId = newClientId;
+						NetworkBusChangeState(bus, NetworkBusState_Connected);
 					}
 					else
 					{
 						//TODO: Print out an error? Store an error or warning for calling code to see?
 					}
-				} break;
-				
-				default:
+				}
+				else
 				{
 					//TODO: Print out an error? Store an error or warning for calling code to see?
-				} break;
-			}
+				}
+				
+				FlagSet(packetHandleFlags, NbPacketHandleFlags_NbInternal);
+			} break;
+			
+			// +==============================+
+			// |      NetworkBusRsp_Ping      |
+			// +==============================+
+			case NetworkBusRsp_Ping:
+			{
+				NetworkBusSendCmd(bus, nullptr, 0, NetworkBusCmd_Ack);
+				FlagSet(packetHandleFlags, NbPacketHandleFlags_NbInternal);
+			} break;
+			// +==============================+
+			// |      NetworkBusRsp_Ack       |
+			// +==============================+
+			case NetworkBusRsp_Ack:
+			{
+				bus->lastPingSuccessTime = bus->callbacks.GetProgramTime(bus);
+				FlagSet(packetHandleFlags, NbPacketHandleFlags_NbInternal);
+			} break;
 		}
+	}
+	
+	if (bus->state == NetworkBusState_Connected)
+	{
+		bool handled = bus->callbacks.HandleCommand(bus, client, (NbPacketHandleFlags_t)packetHandleFlags, header, payloadPntr);
+		UNUSED(handled);
+		//TODO: Do we do something with handled? Maybe print out a warning if not handled?
 	}
 }
 

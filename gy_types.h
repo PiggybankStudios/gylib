@@ -48,6 +48,27 @@ typedef float       r32;
 typedef double      r64;
 
 // +--------------------------------------------------------------+
+// |                           Tribool                            |
+// +--------------------------------------------------------------+
+enum Tribool_t
+{
+	Tribool_NA    = -1, //Not applicable, i.e. it's neither true nor false
+	Tribool_False =  0,
+	Tribool_True  =  1,
+	Tribool_NumValues = 3,
+};
+const char* GetTriboolStr(Tribool_t enumValue)
+{
+	switch (enumValue)
+	{
+		case Tribool_NA:    return "NA";
+		case Tribool_False: return "False";
+		case Tribool_True:  return "True";
+		default: return "Unknown";
+	}
+}
+
+// +--------------------------------------------------------------+
 // |                        General Macros                        |
 // +--------------------------------------------------------------+
 #define Increment(variable, max)           if ((variable) < (max)) { (variable)++; } else { (variable) = (max); }
