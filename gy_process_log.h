@@ -29,6 +29,7 @@ struct ProcessLogLine_t
 
 struct ProcessLog_t
 {
+	bool isInitilized;
 	bool hadErrors;
 	bool hadWarnings;
 	bool debugBreakOnWarningsAndErrors;
@@ -64,13 +65,16 @@ LogGlobals_t* logGlobals = nullptr;
 // +--------------------------------------------------------------+
 // |                       Create and Free                        |
 // +--------------------------------------------------------------+
+bool IsInitialized(const ProcessLog_t* log)
+{
+	NotNull(log);
+	return log->isInitilized;
+}
+
 void FreeProcessLog(ProcessLog_t* log)
 {
 	NotNull_(log);
-	if (log->fifo.allocArena == nullptr || log->fifo.allocArena->type != MemArenaType_MarkedStack)
-	{
-		DestroyStringFifo(&log->fifo);
-	}
+	DestroyStringFifo(&log->fifo);
 	if (!IsEmptyStr(log->filePath))
 	{
 		NotNull(log->allocArena);
@@ -90,8 +94,9 @@ void CreateProcessLog(ProcessLog_t* logOut, u64 fifoSize, MemArena_t* fifoArena,
 	NotNull(logOut);
 	NotNull(logArena);
 	NotNull(tempArena);
-	Assert(tempArena->type == MemArenaType_MarkedStack);
+	Assert(DoesMemArenaSupportPushAndPop(tempArena));
 	ClearPointer(logOut);
+	logOut->isInitilized = true;
 	logOut->allocArena = logArena;
 	logOut->tempArena = tempArena;
 	if (fifoSize > 0)
@@ -111,6 +116,7 @@ void CreateProcessLogStub(ProcessLog_t* logOut)
 {
 	NotNull(logOut);
 	ClearPointer(logOut);
+	logOut->isInitilized = true;
 	logOut->allocArena = nullptr;
 	logOut->tempArena = nullptr;
 	logOut->hadErrors = false;

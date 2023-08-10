@@ -859,7 +859,7 @@ bool SplitStringFast(SplitStringContext_t* context, MyStr_t target, char separat
 MyStr_t* SplitStringBySpacesFastTemp(MemArena_t* tempArena, MyStr_t target, u64* numPiecesOut)
 {
 	DebugAssert(tempArena != nullptr);
-	DebugAssert(tempArena->type == MemArenaType_MarkedStack);
+	DebugAssert(DoesMemArenaSupportPushAndPop(tempArena));
 	DebugAssert(target.pntr != nullptr || target.length == 0);
 	DebugAssert(numPiecesOut != nullptr);
 	*numPiecesOut = 0;
@@ -887,7 +887,7 @@ MyStr_t* SplitStringBySpacesFastTemp(MemArena_t* tempArena, MyStr_t target, u64*
 MyStr_t* SplitStringBySlashesFastTemp(MemArena_t* tempArena, MyStr_t target, u64* numPiecesOut)
 {
 	DebugAssert(tempArena != nullptr);
-	DebugAssert(tempArena->type == MemArenaType_MarkedStack);
+	DebugAssert(DoesMemArenaSupportPushAndPop(tempArena));
 	DebugAssert(target.pntr != nullptr || target.length == 0);
 	DebugAssert(numPiecesOut != nullptr);
 	*numPiecesOut = 0;

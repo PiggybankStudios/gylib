@@ -69,6 +69,12 @@ struct StringFifo_t
 // +--------------------------------------------------------------+
 // |                       Helper Functions                       |
 // +--------------------------------------------------------------+
+bool IsInitialized(const StringFifo_t* stringFifo)
+{
+	NotNull(stringFifo);
+	return (stringFifo->buffer != nullptr);
+}
+
 u64 GetFifoLineMetaSize(const StringFifoLine_t* line)
 {
 	NotNull_(line);
@@ -147,6 +153,7 @@ void DestroyStringFifo(StringFifo_t* fifo)
 	NotNull_(fifo);
 	if (fifo->allocArena != nullptr)
 	{
+		NotNull(fifo->buffer);
 		FreeMem(fifo->allocArena, fifo->buffer, fifo->bufferSize);
 	}
 	if (fifo->buildBuffArena != nullptr)
@@ -641,9 +648,6 @@ void StringFifoInsertLinesFromFifo(StringFifo_t* fifo, const StringFifo_t* srcFi
 		return;
 	}
 	
-	bool usePushPop = (arenaForTempSpace->type == MemArenaType_MarkedStack);
-	if (usePushPop) { PushMemMark(arenaForTempSpace); }
-	
 	// +====================================================+
 	// | Move lines already in Fifo into Temporary Storage  |
 	// +====================================================+
@@ -753,8 +757,7 @@ void StringFifoInsertLinesFromFifo(StringFifo_t* fifo, const StringFifo_t* srcFi
 		}
 	}
 	
-	if (usePushPop) { PopMemMark(arenaForTempSpace); }
-	else { FreeMem(arenaForTempSpace, tempSpace, totalTempSpaceNeeded); }
+	FreeMem(arenaForTempSpace, tempSpace, totalTempSpaceNeeded);
 }
 
 #endif //  _GY_STRING_FIFO_H
@@ -771,6 +774,7 @@ StringFifoPushLineBefore_f
 StringFifoPushLineAfter_f
 StringFifoPushLineSort_f
 @Functions
+bool IsInitialized(const StringFifo_t* stringFifo)
 u64 GetFifoLineMetaSize(const StringFifoLine_t* line)
 u64 GetFifoLineTotalSize(const StringFifoLine_t* line)
 void* GetFifoLineMetaStruct_(StringFifoLine_t* line, u64 expectedStructSize)

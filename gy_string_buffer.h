@@ -82,7 +82,7 @@ void InitStringBuffer(StringBuffer_t<LENGTH>* stringBufferPntr, const char* init
 	InitStringBuffer(stringBufferPntr, NewStr(initialValueNullTerm));
 }
 
-bool IsInitialized(StringBufferGeneric_t* stringBuffer)
+bool IsInitialized(const StringBufferGeneric_t* stringBuffer)
 {
 	NotNull(stringBuffer);
 	return (stringBuffer->bufferSize > 0);
@@ -379,7 +379,7 @@ StringBuffer_t
 TempString_t
 @Functions
 void InitStringBuffer(StringBuffer_t* stringBufferPntr, MyStr_t initialValue = "")
-bool IsInitialized(StringBufferGeneric_t* stringBuffer)
+bool IsInitialized(const StringBufferGeneric_t* stringBuffer)
 bool IsNullTerminated(StringBufferGeneric_t* stringBuffer)
 void StringBufferSet(StringBufferGeneric_t* stringBuffer, MyStr_t str)
 bool StringBufferTrySet(StringBufferGeneric_t* stringBuffer, MyStr_t str, bool appendWhatYouCan = true)
