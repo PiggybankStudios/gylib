@@ -18,14 +18,13 @@ thread_local MemArena_t ThreadLocalScratchArenas[NUM_SCRATCH_ARENAS_PER_THREAD];
 // +--------------------------------------------------------------+
 // |                        Init and Free                         |
 // +--------------------------------------------------------------+
-void FreeThreadLocalScratchArenas(MemArena_t* sourceArena)
+void FreeThreadLocalScratchArenas()
 {
 	for (u64 aIndex = 0; aIndex < ArrayCount(ThreadLocalScratchArenas); aIndex++)
 	{
 		if (ThreadLocalScratchArenas[aIndex].size > 0)
 		{
-			NotNull(sourceArena);
-			FreeMem(sourceArena, ThreadLocalScratchArenas[aIndex].mainPntr, ThreadLocalScratchArenas[aIndex].size);
+			FreeMemArena(&ThreadLocalScratchArenas[aIndex]);
 		}
 		else
 		{
@@ -40,9 +39,7 @@ void InitThreadLocalScratchArenas(MemArena_t* sourceArena, u64 scratchSize, u64 
 	{
 		if (scratchSize > 0)
 		{
-			void* scratchSpace = AllocMem(sourceArena, scratchSize);
-			NotNull(scratchSpace);
-			InitMemArena_MarkedStack(&ThreadLocalScratchArenas[aIndex], scratchSize, scratchSpace, scratchMaxMarks);
+			InitMemArena_PagedStackArena(&ThreadLocalScratchArenas[aIndex], scratchSize, sourceArena, scratchMaxMarks);
 		}
 		else
 		{
@@ -87,7 +84,7 @@ NUM_SCRATCH_ARENAS_PER_THREAD
 @Globals
 ThreadLocalScratchArenas
 @Functions
-void FreeThreadLocalScratchArenas(MemArena_t* sourceArena)
+void FreeThreadLocalScratchArenas()
 void InitThreadLocalScratchArenas(MemArena_t* sourceArena, u64 scratchSize, u64 scratchMaxMarks)
 inline MemArena_t* GetScratchArena(MemArena_t* avoidConflictWith1 = nullptr, MemArena_t* avoidConflictWith2 = nullptr)
 inline void FreeScratchArena(MemArena_t* scratchArena)
