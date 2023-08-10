@@ -24,6 +24,7 @@ Description:
 #include "gylib/gy_easing.h"
 #include "gylib/gy_hash.h"
 #include "gylib/gy_memory.h"
+#include "gylib/gy_scratch_arenas.h"
 #include "gylib/gy_fifo.h"
 #include "gylib/gy_unicode.h"
 #include "gylib/gy_time.h"
@@ -60,6 +61,9 @@ Description:
 #include "gylib/gy_common_serializables.h"
 #include "gylib/gy_simple_parsers.h"
 #include "gylib/gy_collision.h"
+
+#include "gylib/gy_os.h"
+
 #include "gylib/gy_ip.h"
 #include "gylib/gy_socket.h"
 #include "gylib/gy_network_bus.h"

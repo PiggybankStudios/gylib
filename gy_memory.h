@@ -2181,9 +2181,24 @@ void ShrinkMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, 
 		// |     MemArenaType_StdHeap     |
 		// +==============================+
 		case MemArenaType_StdHeap:
-		case MemArenaType_MarkedStack:
 		{
 			//We don't really need to do anything for these arenas because they are fine if you pass the incorrect size to FreeMem
+		} break;
+		
+		// +==============================+
+		// |   MemArenaType_MarkedStack   |
+		// +==============================+
+		case MemArenaType_MarkedStack:
+		{
+			Assert(IsPntrInsideRange(prevAllocPntr, arena->mainPntr, arena->size));
+			u64 prevAllocOffset = (u64)(((u8*)prevAllocPntr) - ((u8*)arena->mainPntr));
+			Assert(prevAllocOffset + prevAllocSize <= arena->used);
+			// If the allocation is the last one in the stack then we can actually shrink it by just moving our used amount down.
+			// This is the only scenario where we support shrinking
+			if (prevAllocOffset + prevAllocSize == arena->used)
+			{
+				arena->used -= (prevAllocSize - newAllocSize);
+			}
 		} break;
 		
 		// +==============================+
