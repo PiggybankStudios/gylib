@@ -7,6 +7,8 @@ Description:
 	** communication patterns, like retrying packets, periodically synchronized state
 */
 
+//TODO: Convert this file over to using scratch buffers and only being compiled if the scratch buffers macro was defined
+
 #ifndef _GY_NETWORK_BUS_H
 #define _GY_NETWORK_BUS_H
 

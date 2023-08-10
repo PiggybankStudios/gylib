@@ -24,6 +24,7 @@ Description:
 #include "gy_types.h"
 #include "gy_intrinsics.h"
 #include "gy_memory.h"
+#include "gy_scratch_arenas.h"
 #include "gy_string.h"
 
 struct StringFifoLine_t
@@ -600,15 +601,15 @@ void StringFifoPushLinesFromFifo(StringFifo_t* fifo, const StringFifo_t* srcFifo
 #define GY_STRING_FIFO_PUSH_LINES_SORT_CALLBACK_DEF(functionName) u64 functionName(StringFifo_t* fifo, const StringFifo_t* srcFifo, const StringFifoLine_t* fifoLine, void* userPntr)
 typedef GY_STRING_FIFO_PUSH_LINES_SORT_CALLBACK_DEF(StringFifoPushLineSort_f);
 
+#if GYLIB_SCRATCH_ARENA_AVAILABLE
 //TODO: We probably need to take into account the lineNumber and update nextLineNumber in the fifo
-void StringFifoInsertLinesFromFifo(StringFifo_t* fifo, const StringFifo_t* srcFifo, StringFifoPushLineSort_f* sortCallback, MemArena_t* arenaForTempSpace,
+void StringFifoInsertLinesFromFifo(StringFifo_t* fifo, const StringFifo_t* srcFifo, StringFifoPushLineSort_f* sortCallback,
 	bool includeMetaStructs = true, bool includeMetaStrings = true,
 	StringFifoPushLineBefore_f* beforeCallback = nullptr, StringFifoPushLineAfter_f* afterCallback = nullptr, void* userPntr = nullptr)
 {
 	NotNull(fifo);
 	NotNull(srcFifo);
 	NotNull(sortCallback);
-	NotNull(arenaForTempSpace);
 	if (srcFifo->numLines == 0) { return; }
 	
 	// +================================================+
@@ -651,7 +652,8 @@ void StringFifoInsertLinesFromFifo(StringFifo_t* fifo, const StringFifo_t* srcFi
 	// +====================================================+
 	// | Move lines already in Fifo into Temporary Storage  |
 	// +====================================================+
-	u8* tempSpace = AllocArray(arenaForTempSpace, u8, totalTempSpaceNeeded);
+	MemArena_t* scratchArena = GetScratchArena();
+	u8* tempSpace = AllocArray(scratchArena, u8, totalTempSpaceNeeded);
 	NotNull(tempSpace);
 	
 	//walk back to the first line we want to store in temporary buffer
@@ -757,8 +759,9 @@ void StringFifoInsertLinesFromFifo(StringFifo_t* fifo, const StringFifo_t* srcFi
 		}
 	}
 	
-	FreeMem(arenaForTempSpace, tempSpace, totalTempSpaceNeeded);
+	FreeScratchArena(scratchArena);
 }
+#endif // GYLIB_SCRATCH_ARENA_AVAILABLE
 
 #endif //  _GY_STRING_FIFO_H
 
@@ -800,5 +803,5 @@ void CopyStringFifo(StringFifo_t* destFifo, const StringFifo_t* srcFifo, MemAren
 #define GY_STRING_FIFO_PUSH_LINES_AFTER_CALLBACK_DEF(functionName)
 void StringFifoPushLinesFromFifo(StringFifo_t* fifo, const StringFifo_t* srcFifo, bool includeMetaStructs = true, bool includeMetaStrings = true, StringFifoPushLineBefore_f* beforeCallback = nullptr, StringFifoPushLineAfter_f* afterCallback = nullptr, void* userPntr = nullptr)
 #define GY_STRING_FIFO_PUSH_LINES_SORT_CALLBACK_DEF(functionName)
-void StringFifoInsertLinesFromFifo(StringFifo_t* fifo, const StringFifo_t* srcFifo, StringFifoPushLineSort_f* sortCallback, MemArena_t* arenaForTempSpace, bool includeMetaStructs = true, bool includeMetaStrings = true, StringFifoPushLineBefore_f* beforeCallback = nullptr, StringFifoPushLineAfter_f* afterCallback = nullptr, void* userPntr = nullptr)
+void StringFifoInsertLinesFromFifo(StringFifo_t* fifo, const StringFifo_t* srcFifo, StringFifoPushLineSort_f* sortCallback, bool includeMetaStructs = true, bool includeMetaStrings = true, StringFifoPushLineBefore_f* beforeCallback = nullptr, StringFifoPushLineAfter_f* afterCallback = nullptr, void* userPntr = nullptr)
 */

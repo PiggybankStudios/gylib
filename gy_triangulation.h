@@ -137,6 +137,7 @@ u64* Triangulate2DEarClip(MemArena_t* memArena, MemArena_t* tempArena, u64 numVe
 {
 	AssertIf(numVertices > 0, vertices != nullptr);
 	AssertIf(memArena != nullptr, tempArena != nullptr);
+	Assert(DoesMemArenaSupportPushAndPop(tempArena));
 	
 	if (numIndicesOut != nullptr) { *numIndicesOut = 0; }
 	

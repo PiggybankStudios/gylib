@@ -24,6 +24,7 @@ void FreeThreadLocalScratchArenas(MemArena_t* sourceArena)
 	{
 		if (ThreadLocalScratchArenas[aIndex].size > 0)
 		{
+			NotNull(sourceArena);
 			FreeMem(sourceArena, ThreadLocalScratchArenas[aIndex].mainPntr, ThreadLocalScratchArenas[aIndex].size);
 		}
 		else
@@ -34,6 +35,7 @@ void FreeThreadLocalScratchArenas(MemArena_t* sourceArena)
 }
 void InitThreadLocalScratchArenas(MemArena_t* sourceArena, u64 scratchSize, u64 scratchMaxMarks)
 {
+	AssertIf(scratchSize > 0, sourceArena != nullptr);
 	for (u64 aIndex = 0; aIndex < ArrayCount(ThreadLocalScratchArenas); aIndex++)
 	{
 		if (scratchSize > 0)

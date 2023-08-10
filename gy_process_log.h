@@ -7,6 +7,9 @@ Date:   05\09\2023
 #ifndef _GY_PROCESS_LOG_H
 #define _GY_PROCESS_LOG_H
 
+//NOTE: ProcessLog relies on scratch arenas for print formatting AND for concattenating the file and function names
+#if GYLIB_SCRATCH_ARENA_AVAILABLE
+
 // +--------------------------------------------------------------+
 // |                           Defines                            |
 // +--------------------------------------------------------------+
@@ -38,7 +41,6 @@ struct ProcessLog_t
 	enum XmlParsingError_t xmlParsingError;
 	
 	MemArena_t* allocArena;
-	MemArena_t* tempArena;
 	MyStr_t processName;
 	MyStr_t filePath;
 	StringFifo_t fifo;
@@ -88,17 +90,14 @@ void FreeProcessLog(ProcessLog_t* log)
 	ClearPointer(log);
 }
 
-//The fifoArena is where we do a 1 time allocation from NOW, the logArena is where we allocate things that get stored in ProcessLog_t, the tempArena is used for printing/formatting strings
-void CreateProcessLog(ProcessLog_t* logOut, u64 fifoSize, MemArena_t* fifoArena, MemArena_t* logArena, MemArena_t* tempArena)
+//The fifoArena is where we do a 1 time allocation from NOW, the logArena is where we allocate things that get stored in ProcessLog_t (like filePath and processName)
+void CreateProcessLog(ProcessLog_t* logOut, u64 fifoSize, MemArena_t* fifoArena, MemArena_t* logArena)
 {
 	NotNull(logOut);
 	NotNull(logArena);
-	NotNull(tempArena);
-	Assert(DoesMemArenaSupportPushAndPop(tempArena));
 	ClearPointer(logOut);
 	logOut->isInitilized = true;
 	logOut->allocArena = logArena;
-	logOut->tempArena = tempArena;
 	if (fifoSize > 0)
 	{
 		NotNull(fifoArena);
@@ -118,7 +117,6 @@ void CreateProcessLogStub(ProcessLog_t* logOut)
 	ClearPointer(logOut);
 	logOut->isInitilized = true;
 	logOut->allocArena = nullptr;
-	logOut->tempArena = nullptr;
 	logOut->hadErrors = false;
 	logOut->hadWarnings = false;
 	logOut->debugBreakOnWarningsAndErrors = false;
@@ -169,10 +167,10 @@ void LogOutput_(ProcessLog_t* log, u8 flags, const char* filePath, u32 lineNumbe
 	if (log->debugBreakOnWarningsAndErrors && (dbgLevel == DbgLevel_Warning || dbgLevel == DbgLevel_Error)) { MyDebugBreak(); }
 	if (log->fifo.bufferSize > 0)
 	{
-		PushMemMark(log->tempArena);
+		MemArena_t* scratch = GetScratchArena();
 		
 		MyStr_t text = NewStr(message);
-		MyStr_t filePathAndFuncName = PrintInArenaStr(log->tempArena, "%s%c%s", filePath, DBG_FILEPATH_AND_FUNCNAME_SEP_CHAR, funcName);
+		MyStr_t filePathAndFuncName = PrintInArenaStr(scratch, "%s%c%s", filePath, DBG_FILEPATH_AND_FUNCNAME_SEP_CHAR, funcName);
 		ProcessLogLine_t metaInfo = {};
 		metaInfo.flags = flags;
 		metaInfo.fileLineNumber = lineNumber;
@@ -185,7 +183,7 @@ void LogOutput_(ProcessLog_t* log, u8 flags, const char* filePath, u32 lineNumbe
 		StringFifoLine_t* newLine = StringFifoPushLineExt(&log->fifo, text, sizeof(metaInfo), &metaInfo, filePathAndFuncName);
 		DebugAssertAndUnused_(newLine != nullptr, newLine);
 		
-		PopMemMark(log->tempArena);
+		FreeScratchArena(scratch);
 	}
 }
 
@@ -195,42 +193,35 @@ void LogPrint_(ProcessLog_t* log, u8 flags, const char* filePath, u32 lineNumber
 	if (log->debugBreakOnWarningsAndErrors && (dbgLevel == DbgLevel_Warning || dbgLevel == DbgLevel_Error)) { MyDebugBreak(); }
 	if (log->fifo.bufferSize > 0)
 	{
-		if (log->tempArena != nullptr)
+		MemArena_t* scratch = GetScratchArena();
+		va_list args;
+		va_start(args, formatString);
+		int formattedStrLength = PrintVa_Measure((formatString), args);
+		va_end(args);
+		if (formattedStrLength >= 0)
 		{
-			PushMemMark(log->tempArena);
-			va_list args;
-			va_start(args, formatString);
-			int formattedStrLength = PrintVa_Measure((formatString), args);
-			va_end(args);
-			if (formattedStrLength >= 0)
+			char* formattedStr = AllocArray(scratch, char, formattedStrLength+1); //Allocate
+			if (formattedStr != nullptr)
 			{
-				char* formattedStr = AllocArray(log->tempArena, char, formattedStrLength+1); //Allocate
-				if (formattedStr != nullptr)
-				{
-					va_start(args, formatString);
-					PrintVa_Print(formatString, args, formattedStr, formattedStrLength);
-					va_end(args);
-					formattedStr[formattedStrLength] = '\0';
-					
-					LogOutput_(log, flags, filePath, lineNumber, funcName, dbgLevel, addNewLine, formattedStr);
-				}
-				else
-				{
-					//failed print, just send out the formatString
-					LogOutput_(log, flags, filePath, lineNumber, funcName, dbgLevel, addNewLine, formatString);
-				}
+				va_start(args, formatString);
+				PrintVa_Print(formatString, args, formattedStr, formattedStrLength);
+				va_end(args);
+				formattedStr[formattedStrLength] = '\0';
+				
+				LogOutput_(log, flags, filePath, lineNumber, funcName, dbgLevel, addNewLine, formattedStr);
 			}
 			else
 			{
 				//failed print, just send out the formatString
 				LogOutput_(log, flags, filePath, lineNumber, funcName, dbgLevel, addNewLine, formatString);
 			}
-			PopMemMark(log->tempArena);
 		}
 		else
 		{
-			LogOutput_(log, flags, filePath, lineNumber, funcName, dbgLevel, addNewLine, "[No TempMem For Print]");
+			//failed print, just send out the formatString
+			LogOutput_(log, flags, filePath, lineNumber, funcName, dbgLevel, addNewLine, formatString);
 		}
+		FreeScratchArena(scratch);
 	}
 }
 
@@ -330,6 +321,8 @@ void LogExit_(ProcessLog_t* log, bool success, u32 errorCode, const char* filePa
 
 #define LogExitSuccess(log)            LogExit_((log), true,  0,           __FILE__, __LINE__, __func__)
 #define LogExitFailure(log, errorCode) LogExit_((log), false, (errorCode), __FILE__, __LINE__, __func__)
+
+#endif // GYLIB_SCRATCH_ARENA_AVAILABLE
 
 #endif //  _GY_PROCESS_LOG_H
 
