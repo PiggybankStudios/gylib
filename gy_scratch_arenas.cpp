@@ -32,14 +32,14 @@ void FreeThreadLocalScratchArenas()
 		}
 	}
 }
-void InitThreadLocalScratchArenas(MemArena_t* sourceArena, u64 scratchSize, u64 scratchMaxMarks)
+void InitThreadLocalScratchArenas(MemArena_t* sourceArena, u64 scratchPageSize, u64 scratchMaxMarks)
 {
-	AssertIf(scratchSize > 0, sourceArena != nullptr);
+	AssertIf(scratchPageSize > 0, sourceArena != nullptr);
 	for (u64 aIndex = 0; aIndex < ArrayCount(ThreadLocalScratchArenas); aIndex++)
 	{
-		if (scratchSize > 0)
+		if (scratchPageSize > 0)
 		{
-			InitMemArena_PagedStackArena(&ThreadLocalScratchArenas[aIndex], scratchSize, sourceArena, scratchMaxMarks);
+			InitMemArena_PagedStackArena(&ThreadLocalScratchArenas[aIndex], scratchPageSize, sourceArena, scratchMaxMarks);
 		}
 		else
 		{
@@ -85,7 +85,7 @@ NUM_SCRATCH_ARENAS_PER_THREAD
 ThreadLocalScratchArenas
 @Functions
 void FreeThreadLocalScratchArenas()
-void InitThreadLocalScratchArenas(MemArena_t* sourceArena, u64 scratchSize, u64 scratchMaxMarks)
+void InitThreadLocalScratchArenas(MemArena_t* sourceArena, u64 scratchPageSize, u64 scratchMaxMarks)
 inline MemArena_t* GetScratchArena(MemArena_t* avoidConflictWith1 = nullptr, MemArena_t* avoidConflictWith2 = nullptr)
 inline void FreeScratchArena(MemArena_t* scratchArena)
 */

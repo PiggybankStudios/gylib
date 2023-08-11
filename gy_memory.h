@@ -1317,7 +1317,7 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride) 
 						// Allocate a new page!
 						
 						u8* newPageBytes = nullptr;
-						u64 newPageSize = MinU64(arena->pageSize, sizeof(MarkedStackArenaHeader_t) + numBytes);
+						u64 newPageSize = MaxU64(arena->pageSize, sizeof(MarkedStackArenaHeader_t) + numBytes);
 						if (arena->allocFunc != nullptr)
 						{
 							newPageBytes = (u8*)arena->allocFunc(newPageSize);
@@ -1341,6 +1341,13 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride) 
 							pageHeader->next = nextPageHeader;
 							arena->size += newPageSize - sizeof(MarkedStackArenaHeader_t);
 							arena->numPages++;
+							
+							//Mark this whole page as used, since we can't have an empty end of a page with another one in the list
+							arena->used = byteIndex + pageSize;
+							if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
+							{
+								if (arena->highUsedMark < arena->used) { arena->highUsedMark = arena->used; }
+							}
 						}
 					}
 					else
