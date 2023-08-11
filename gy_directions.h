@@ -1078,10 +1078,10 @@ r64 GetDir2ExAngleR64(Dir2Ex_t dir2ex)
 	Assert(IsSingleDir2Ex(dir2ex));
 	switch (dir2ex)
 	{
-		case Dir2_Right: return 0.0;
-		case Dir2_Down:  return HalfPi64;
-		case Dir2_Left:  return Pi64;
-		case Dir2_Up:    return ThreeHalfsPi64;
+		case Dir2Ex_Right: return 0.0;
+		case Dir2Ex_Down:  return HalfPi64;
+		case Dir2Ex_Left:  return Pi64;
+		case Dir2Ex_Up:    return ThreeHalfsPi64;
 		case Dir2Ex_TopLeft:     return (Pi64 + QuarterPi64);
 		case Dir2Ex_TopRight:    return (Pi64 + 3*QuarterPi64);
 		case Dir2Ex_BottomRight: return QuarterPi64;

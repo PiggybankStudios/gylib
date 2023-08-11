@@ -20,31 +20,6 @@ Description:
 #define _GY_OS_H
 
 // +--------------------------------------------------------------+
-// |                      Error Enumeration                       |
-// +--------------------------------------------------------------+
-enum OsError_t
-{
-	OsError_None = 0,
-	OsError_UnsupportedPlatform,
-	OsError_FailedToAllocateMemory,
-	OsError_EmptyPath,
-	OsError_ExePathTooLong,
-	OsError_NumErrors,
-};
-const char* GetOsErrorStr(OsError_t enumValue)
-{
-	switch (enumValue)
-	{
-		case OsError_None:                   return "None";
-		case OsError_UnsupportedPlatform:    return "UnsupportedPlatform";
-		case OsError_FailedToAllocateMemory: return "FailedToAllocateMemory";
-		case OsError_EmptyPath:              return "EmptyPath";
-		case OsError_ExePathTooLong:         return "ExePathTooLong";
-		default: return "Unknown";
-	}
-}
-
-// +--------------------------------------------------------------+
 // |                      GetExecutablePath                       |
 // +--------------------------------------------------------------+
 #if GYLIB_SCRATCH_ARENA_AVAILABLE
@@ -52,7 +27,7 @@ const char* GetOsErrorStr(OsError_t enumValue)
 #define MAX_EXECUTABLE_PATH_LENGTH 1024
 
 // Always returns path with forward slashes: /
-MyStr_t OsGetExecutablePath(MemArena_t* memArena, OsError_t* errorOut = nullptr)
+MyStr_t OsGetExecutablePath(MemArena_t* memArena, OsError_t* errorOut)
 {
 	NotNull(memArena);
 	SetOptionalOutPntr(errorOut, OsError_None);
@@ -106,10 +81,12 @@ MyStr_t OsGetExecutablePath(MemArena_t* memArena, OsError_t* errorOut = nullptr)
 	// +==============================+
 	// |            Linux             |
 	// +==============================+
-	// #elif LINUX_COMPILATION
-	// {
-	// 	SetOptionalOutPntr(errorOut, OsError_UnsupportedPlatform);
-	// }
+	#elif LINUX_COMPILATION
+	{
+		Unimplemented(); //TODO: Implement me!
+		SetOptionalOutPntr(errorOut, OsError_UnsupportedPlatform);
+		return MyStr_Empty;
+	}
 	// +==============================+
 	// |             OSX              |
 	// +==============================+
@@ -132,7 +109,7 @@ MyStr_t OsGetExecutablePath(MemArena_t* memArena, OsError_t* errorOut = nullptr)
 // +--------------------------------------------------------------+
 // Always returns path with forward slashes: /
 // Guarantees that the path ends with a forward slash
-MyStr_t OsGetWorkingDirectory(MemArena_t* memArena, OsError_t* errorOut = nullptr)
+MyStr_t OsGetWorkingDirectory(MemArena_t* memArena, OsError_t* errorOut)
 {
 	NotNull(memArena);
 	SetOptionalOutPntr(errorOut, OsError_None);
@@ -180,10 +157,12 @@ MyStr_t OsGetWorkingDirectory(MemArena_t* memArena, OsError_t* errorOut = nullpt
 	// +==============================+
 	// |            Linux             |
 	// +==============================+
-	// #elif LINUX_COMPILATION
-	// {
-	// 	SetOptionalOutPntr(errorOut, OsError_UnsupportedPlatform);
-	// }
+	#elif LINUX_COMPILATION
+	{
+		Unimplemented(); //TODO: Implement me!
+		SetOptionalOutPntr(errorOut, OsError_UnsupportedPlatform);
+		return MyStr_Empty;
+	}
 	// +==============================+
 	// |             OSX              |
 	// +==============================+
@@ -196,6 +175,193 @@ MyStr_t OsGetWorkingDirectory(MemArena_t* memArena, OsError_t* errorOut = nullpt
 	#endif
 }
 
+// +--------------------------------------------------------------+
+// |                     OsGetMemoryPageSize                      |
+// +--------------------------------------------------------------+
+u64 OsGetMemoryPageSize()
+{
+	// +==============================+
+	// |           Windows            |
+	// +==============================+
+	#if WINDOWS_COMPILATION
+	{
+		SYSTEM_INFO systemInfo;
+		GetSystemInfo(&systemInfo);
+		Assert(systemInfo.dwPageSize > 0);
+		return (u64)systemInfo.dwPageSize;
+	}
+	// +==============================+
+	// |            Linux             |
+	// +==============================+
+	#elif LINUX_COMPILATION
+	{
+		//TODO: Maybe we should be doing sysconf(_SC_PAGESIZE) instead?
+		int result = getpagesize();
+		Assert(result > 0);
+		return (u64)result;
+	}
+	// +==============================+
+	// |             OSX              |
+	// +==============================+
+	// #elif OSX_COMPILATION
+	// {
+	// 	SetOptionalOutPntr(errorOut, OsError_UnsupportedPlatform);
+	// }
+	#else
+	#error OsGetMemoryPageSize does not support the current platform yet!
+	#endif
+}
+
+// +--------------------------------------------------------------+
+// |                       OsReserveMemory                        |
+// +--------------------------------------------------------------+
+//NOTE: numBytes must be a multiple of memory page size
+void* OsReserveMemory(u64 numBytes)
+{
+	if (numBytes == 0) { return nullptr; }
+	u64 pageSize = OsGetMemoryPageSize();
+	Assert(numBytes % pageSize == 0);
+	
+	// +==============================+
+	// |           Windows            |
+	// +==============================+
+	#if WINDOWS_COMPILATION
+	{
+		void* result = VirtualAlloc(
+			nullptr, //lpAddress
+			numBytes, //dwSize
+			MEM_RESERVE, //flAllocationType
+			PAGE_READWRITE //flProtect
+		);
+		AssertIf(result != nullptr, (u64)result % pageSize == 0);
+		return result;
+	}
+	// +==============================+
+	// |            Linux             |
+	// +==============================+
+	#elif LINUX_COMPILATION
+	{
+		// https://unix.stackexchange.com/questions/405883/can-an-application-explicitly-commit-and-decommit-memory
+		// It seems like we can't force the application to commit any of this memory. Writing to pages automatically commits them.
+		// That's not the end of the world but it is a difference in behavior
+		// TODO: Maybe we can use mprotect? Do we need to calling code to manage the protection since it knows the size of the reserved memory?
+		void* result = mmap(
+			nullptr, //addr
+			numBytes, //length
+			PROT_READ|PROT_WRITE, //prot
+			MAP_PRIVATE | MAP_ANONYMOUS,
+			-1, //fd,
+			0 //offset
+		);
+		AssertIf(result != nullptr, (u64)result % pageSize == 0);
+		Assert(result != MAP_FAILED);
+		return result;
+	}
+	// +==============================+
+	// |             OSX              |
+	// +==============================+
+	// #elif OSX_COMPILATION
+	// {
+	// 	SetOptionalOutPntr(errorOut, OsError_UnsupportedPlatform);
+	// }
+	#else
+	#error OsReserveMemory does not support the current platform yet!
+	#endif
+}
+
+// +--------------------------------------------------------------+
+// |                    OsCommitReservedMemory                    |
+// +--------------------------------------------------------------+
+//NOTE: numBytes must be a multiple of memory page size, and memoryPntr must be aligned to the beginning of a page
+void OsCommitReservedMemory(void* memoryPntr, u64 numBytes)
+{
+	if (numBytes == 0) { return; }
+	u64 pageSize = OsGetMemoryPageSize();
+	NotNull(memoryPntr);
+	Assert((u64)memoryPntr % pageSize == 0);
+	Assert(numBytes % pageSize == 0);
+	
+	// +==============================+
+	// |           Windows            |
+	// +==============================+
+	#if WINDOWS_COMPILATION
+	{
+		void* commitResult = VirtualAlloc(
+			memoryPntr, //lpAddress
+			numBytes, //dwSize
+			MEM_COMMIT, //flAllocationType
+			PAGE_READWRITE //flProtect
+		);
+		Assert(commitResult == memoryPntr); //TODO: Handle errors, call GetLastError and return an OsError_t
+	}
+	// +==============================+
+	// |            Linux             |
+	// +==============================+
+	#elif LINUX_COMPILATION
+	{
+		int protectResult = mprotect(
+			memoryPntr,
+			numBytes,
+			PROT_READ|PROT_WRITE
+		);
+		Assert(protectResult == 0); //TODO: Handle errors, check errno and return an OsError_t
+	}
+	// +==============================+
+	// |             OSX              |
+	// +==============================+
+	// #elif OSX_COMPILATION
+	// {
+	// 	SetOptionalOutPntr(errorOut, OsError_UnsupportedPlatform);
+	// }
+	#else
+	#error OsReserveMemory does not support the current platform yet!
+	#endif
+}
+
+// +--------------------------------------------------------------+
+// |                     OsFreeReservedMemory                     |
+// +--------------------------------------------------------------+
+void OsFreeReservedMemory(void* memoryPntr, u64 reservedSize)
+{
+	Assert((memoryPntr == nullptr) == (reservedSize == 0));
+	if (memoryPntr == nullptr) { return; }
+	
+	u64 pageSize = OsGetMemoryPageSize();
+	Assert((u64)memoryPntr % pageSize == 0);
+	Assert(reservedSize % pageSize == 0);
+	
+	// +==============================+
+	// |           Windows            |
+	// +==============================+
+	#if WINDOWS_COMPILATION
+	{
+		BOOL freeResult = VirtualFree(
+			memoryPntr, //lpAddress
+			reservedSize, //dwSize
+			MEM_RELEASE //dwFreeType
+		);
+		Assert(freeResult != 0); //TODO: Handle errors, call GetLastError and return an OsError_t
+	}
+	// +==============================+
+	// |            Linux             |
+	// +==============================+
+	#elif LINUX_COMPILATION
+	{
+		int unmapResult = munmap(memoryPntr, reservedSize);
+		Assert(unmapResult == 0); //TODO: Handle errors, check errno and return an OsError_t
+	}
+	// +==============================+
+	// |             OSX              |
+	// +==============================+
+	// #elif OSX_COMPILATION
+	// {
+	// 	SetOptionalOutPntr(errorOut, OsError_UnsupportedPlatform);
+	// }
+	#else
+	#error OsReserveMemory does not support the current platform yet!
+	#endif
+}
+
 #endif //  _GY_OS_H
 
 // +--------------------------------------------------------------+
@@ -205,4 +371,5 @@ MyStr_t OsGetWorkingDirectory(MemArena_t* memArena, OsError_t* errorOut = nullpt
 @Functions
 MyStr_t OsGetExecutablePath(MemArena_t* memArena)
 MyStr_t OsGetWorkingDirectory(MemArena_t* memArena)
+u64 OsGetMemoryPageSize()
 */

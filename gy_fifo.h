@@ -416,7 +416,6 @@ char* FifoPopLine(Fifo_t* fifo, MemArena_t* memArena)
 // |                   Autocomplete Dictionary                    |
 // +--------------------------------------------------------------+
 /*
-/*
 @Defines
 FIFO_DYNAMIC_CHUNK_SIZE
 FifoType_StaticDrop

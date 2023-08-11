@@ -68,7 +68,7 @@ MyStr_t ToMyStr(const StringBuilder_t* builder)
 char* ToStr(StringBuilder_t* builder)
 {
 	NotNull(builder);
-	if (builder->length == 0) { return ""; }
+	if (builder->length == 0) { return (char*)""; }
 	NotNull(builder->chars);
 	DebugAssert(builder->chars[builder->length] == '\0');
 	return builder->chars;

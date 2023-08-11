@@ -17,6 +17,48 @@ Date:   05\09\2023
 #define DBG_FILEPATH_AND_FUNCNAME_SEP_CHAR '|'
 
 // +--------------------------------------------------------------+
+// |                         Enumerations                         |
+// +--------------------------------------------------------------+
+//NOTE: We moved the declaration of this enumeration up to this file so the ProcessLog_t could hold a properly types error code for XML parsing
+enum XmlParsingError_t
+{
+	XmlParsingError_None = 0,
+	XmlParsingError_UnexpectedEol,
+	XmlParsingError_ExpectedClosingAngleBracket,
+	XmlParsingError_UnexpectedClosingToken,
+	XmlParsingError_ClosingTokenMismatch,
+	XmlParsingError_InvalidCharacterOutsideToken,
+	XmlParsingError_InvalidUtf8,
+	XmlParsingError_NoTypeFoundForToken,
+	XmlParsingError_InvalidCharInIdentifier,
+	XmlParsingError_NoEqualsForProperty,
+	XmlParsingError_InvalidPropertyFirstChar,
+	XmlParsingError_MissingPropertyValue,
+	XmlParsingError_MissingClosingTokens,
+	XmlParsingError_NumErrors,
+};
+const char* GetXmlParsingErrorStr(XmlParsingError_t error)
+{
+	switch (error)
+	{
+		case XmlParsingError_None:                         return "None";
+		case XmlParsingError_UnexpectedEol:                return "UnexpectedEol";
+		case XmlParsingError_ExpectedClosingAngleBracket:  return "ExpectedClosingAngleBracket";
+		case XmlParsingError_UnexpectedClosingToken:       return "UnexpectedClosingToken";
+		case XmlParsingError_ClosingTokenMismatch:         return "ClosingTokenMismatch";
+		case XmlParsingError_InvalidCharacterOutsideToken: return "InvalidCharacterOutsideToken";
+		case XmlParsingError_InvalidUtf8:                  return "InvalidUtf8";
+		case XmlParsingError_NoTypeFoundForToken:          return "NoTypeFoundForToken";
+		case XmlParsingError_InvalidCharInIdentifier:      return "InvalidCharInIdentifier";
+		case XmlParsingError_NoEqualsForProperty:          return "NoEqualsForProperty";
+		case XmlParsingError_InvalidPropertyFirstChar:     return "InvalidPropertyFirstChar";
+		case XmlParsingError_MissingPropertyValue:         return "MissingPropertyValue";
+		case XmlParsingError_MissingClosingTokens:         return "MissingClosingTokens";
+		default: return "Unknown";
+	}
+}
+
+// +--------------------------------------------------------------+
 // |                            Types                             |
 // +--------------------------------------------------------------+
 struct ProcessLogLine_t
@@ -38,7 +80,7 @@ struct ProcessLog_t
 	bool debugBreakOnWarningsAndErrors;
 	u32 errorCode;
 	TryParseFailureReason_t parseFailureReason;
-	enum XmlParsingError_t xmlParsingError;
+	XmlParsingError_t xmlParsingError;
 	
 	MemArena_t* allocArena;
 	MyStr_t processName;
@@ -333,7 +375,22 @@ void LogExit_(ProcessLog_t* log, bool success, u32 errorCode, const char* filePa
 @Defines
 DEFAULT_PROCESS_LOG_FIFO_SIZE
 DBG_FILEPATH_AND_FUNCNAME_SEP_CHAR
+XmlParsingError_None
+XmlParsingError_UnexpectedEol
+XmlParsingError_ExpectedClosingAngleBracket
+XmlParsingError_UnexpectedClosingToken
+XmlParsingError_ClosingTokenMismatch
+XmlParsingError_InvalidCharacterOutsideToken
+XmlParsingError_InvalidUtf8
+XmlParsingError_NoTypeFoundForToken
+XmlParsingError_InvalidCharInIdentifier
+XmlParsingError_NoEqualsForProperty
+XmlParsingError_InvalidPropertyFirstChar
+XmlParsingError_MissingPropertyValue
+XmlParsingError_MissingClosingTokens
+XmlParsingError_NumErrors
 @Types
+XmlParsingError_t
 ProcessLogLine_t
 ProcessLog_t
 GetPreciseProgramTime_f

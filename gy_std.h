@@ -28,6 +28,8 @@ Date:   09\14\2021
 #include <signal.h>
 #elif LINUX_COMPILATION
 #include <signal.h>
+#include <unistd.h> //needed for getpagesize
+#include <sys/mman.h> //needed for mmap
 #elif WASM_COMPILATION
 //TODO: Is there any wasm specific header files we want to include?
 #endif
@@ -66,11 +68,13 @@ Date:   09\14\2021
 #ifndef MyStrLength64
 #define MyStrLength64(str)                ((u64)strlen(str))
 #endif
-#ifndef MyWideStrLength
-#define MyWideStrLength(str)              wcslen(str)
-#endif
-#ifndef MyWideStrLength32
-#define MyWideStrLength32(str)            ((u32)wcslen(str))
+#if WINDOWS_COMPILATION
+	#ifndef MyWideStrLength
+	#define MyWideStrLength(str)              wcslen(str)
+	#endif
+	#ifndef MyWideStrLength32
+	#define MyWideStrLength32(str)            ((u32)wcslen(str))
+	#endif
 #endif
 #ifndef MyStrStrNt
 #define MyStrStrNt(str1, str2)            strstr(str1, str2)

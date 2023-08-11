@@ -17,6 +17,7 @@ Description:
 #include "gylib/gy_assert.h"
 #include "gylib/gy_types.h"
 #include "gylib/gy_lookup.h"
+#include "gylib/gy_os_defs.h"
 #include "gylib/gy_intrinsics.h"
 #include "gylib/gy_debug.h"
 #include "gylib/gy_random.h"

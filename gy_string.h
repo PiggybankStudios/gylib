@@ -188,6 +188,8 @@ u8 GetCodepointForUtf8Str(MyStr_t str, u64 index, u32* codepointOut = nullptr)
 	return GetCodepointForUtf8(str.length - index, str.pntr + index, codepointOut);
 }
 
+#if WINDOWS_COMPILATION
+
 MyStr_t ConvertUcs2StrToUtf8(MemArena_t* memArena, const wchar_t* wideStrPntr, u64 wideStrLength)
 {
 	Assert(wideStrPntr != nullptr || wideStrLength == 0);
@@ -286,6 +288,8 @@ MyWideStr_t ConvertUtf8StrToUcs2(MemArena_t* memArena, MyStr_t utf8Str)
 	Assert(result.length == numWordsNeeded);
 	return result;
 }
+
+#endif // WINDOWS_COMPILATION
 
 bool DoesStrContainMultibyteUtf8Characters(MyStr_t str)
 {
