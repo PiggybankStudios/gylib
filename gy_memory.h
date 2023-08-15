@@ -34,6 +34,10 @@ Description:
 	@MemArenaType_PagedStack Similar to MarkedStack but this arena manages a linked list of pages
 	and will allocate more pages whenever it runs out of memory
 	
+	@MemArenaType_VirtualStack Similar to MarkedStack but this arena reserves a massive amount of space
+	through VirtualAlloc (or equivalent) and only commits no pages of that space as needed. This allows
+	it to be completely sequential in memory but also grow to a massive size if needed
+	
 	@MemArenaType_Buffer An arena that provides a simple first in last out style allocation structure within
 	a predefined space (usually a buffer from somewhere). When freeing memory you generally have to pass the
 	size of the allocation you are freeing (except for simple single allocation scenarios).
@@ -63,6 +67,7 @@ enum MemArenaType_t
 	MemArenaType_PagedHeap,
 	MemArenaType_MarkedStack,
 	MemArenaType_PagedStack,
+	MemArenaType_VirtualStack,
 	MemArenaType_Buffer,
 	MemArenaType_NumTypes,
 };
@@ -70,15 +75,16 @@ const char* GetMemArenaTypeStr(MemArenaType_t arenaType)
 {
 	switch (arenaType)
 	{
-		case MemArenaType_None:        return "None";
-		case MemArenaType_Redirect:    return "Redirect";
-		case MemArenaType_Alias:       return "Alias";
-		case MemArenaType_StdHeap:     return "StdHeap";
-		case MemArenaType_FixedHeap:   return "FixedHeap";
-		case MemArenaType_PagedHeap:   return "PagedHeap";
-		case MemArenaType_MarkedStack: return "MarkedStack";
-		case MemArenaType_PagedStack:  return "PagedStack";
-		case MemArenaType_Buffer:      return "Buffer";
+		case MemArenaType_None:         return "None";
+		case MemArenaType_Redirect:     return "Redirect";
+		case MemArenaType_Alias:        return "Alias";
+		case MemArenaType_StdHeap:      return "StdHeap";
+		case MemArenaType_FixedHeap:    return "FixedHeap";
+		case MemArenaType_PagedHeap:    return "PagedHeap";
+		case MemArenaType_MarkedStack:  return "MarkedStack";
+		case MemArenaType_PagedStack:   return "PagedStack";
+		case MemArenaType_VirtualStack: return "VirtualStack";
+		case MemArenaType_Buffer:       return "Buffer";
 		default: return "Unknown";
 	}
 }
@@ -146,6 +152,7 @@ struct MemArena_t
 	u64 numPages;
 	u64 numAllocations;
 	u64 highUsedMark;
+	u64 resettableHighUsedMark;
 	u64 highAllocMark;
 	
 	void* headerPntr;
@@ -227,6 +234,7 @@ void InitMemArena_Alias(MemArena_t* arena, MemArena_t* sourceArena)
 	
 	FlagSet(arena->flags, MemArenaFlag_TelemetryEnabled);
 	arena->highUsedMark = arena->used;
+	arena->resettableHighUsedMark = arena->used;
 	arena->highAllocMark = arena->numAllocations;
 }
 void InitMemArena_StdHeap(MemArena_t* arena)
@@ -264,6 +272,7 @@ void InitMemArena_FixedHeap(MemArena_t* arena, u64 size, void* memoryPntr, Alloc
 	
 	FlagSet(arena->flags, MemArenaFlag_TelemetryEnabled);
 	arena->highUsedMark = arena->used;
+	arena->resettableHighUsedMark = arena->used;
 	arena->highAllocMark = arena->numAllocations;
 }
 void InitMemArena_PagedHeapFuncs(MemArena_t* arena, u64 pageSize, AllocationFunction_f* allocFunc, FreeFunction_f* freeFunc, u64 maxNumPages = 0, AllocAlignment_t alignment = AllocAlignment_None)
@@ -287,6 +296,7 @@ void InitMemArena_PagedHeapFuncs(MemArena_t* arena, u64 pageSize, AllocationFunc
 	arena->otherPntr = nullptr;
 	FlagSet(arena->flags, MemArenaFlag_TelemetryEnabled);
 	arena->highUsedMark = 0;
+	arena->resettableHighUsedMark = 0;
 	arena->highAllocMark = 0;
 }
 void InitMemArena_PagedHeapArena(MemArena_t* arena, u64 pageSize, MemArena_t* sourceArena, u64 maxNumPages = 0, AllocAlignment_t alignment = AllocAlignment_None)
@@ -311,6 +321,7 @@ void InitMemArena_PagedHeapArena(MemArena_t* arena, u64 pageSize, MemArena_t* so
 	arena->otherPntr = nullptr;
 	FlagSet(arena->flags, MemArenaFlag_TelemetryEnabled);
 	arena->highUsedMark = 0;
+	arena->resettableHighUsedMark = 0;
 	arena->highAllocMark = 0;
 }
 void InitMemArena_MarkedStack(MemArena_t* arena, u64 size, void* memoryPntr, u64 maxNumMarks, AllocAlignment_t alignment = AllocAlignment_None)
@@ -338,6 +349,7 @@ void InitMemArena_MarkedStack(MemArena_t* arena, u64 size, void* memoryPntr, u64
 	
 	FlagSet(arena->flags, MemArenaFlag_TelemetryEnabled);
 	arena->highUsedMark = 0;
+	arena->resettableHighUsedMark = 0;
 	stackHeader->highMarkCount = 0;
 }
 void InitMemArena_PagedStackArena(MemArena_t* arena, u64 pageSize, MemArena_t* sourceArena, u64 maxNumMarks, AllocAlignment_t alignment = AllocAlignment_None)
@@ -373,6 +385,7 @@ void InitMemArena_PagedStackArena(MemArena_t* arena, u64 pageSize, MemArena_t* s
 	
 	FlagSet(arena->flags, MemArenaFlag_TelemetryEnabled);
 	arena->highUsedMark = 0;
+	arena->resettableHighUsedMark = 0;
 	firstPage->highMarkCount = 0;
 }
 void InitMemArena_PagedStackFuncs(MemArena_t* arena, u64 pageSize, AllocationFunction_f* allocFunc, FreeFunction_f* freeFunc, u64 maxNumMarks, AllocAlignment_t alignment = AllocAlignment_None)
@@ -409,7 +422,42 @@ void InitMemArena_PagedStackFuncs(MemArena_t* arena, u64 pageSize, AllocationFun
 	
 	FlagSet(arena->flags, MemArenaFlag_TelemetryEnabled);
 	arena->highUsedMark = 0;
+	arena->resettableHighUsedMark = 0;
 	firstPage->highMarkCount = 0;
+}
+void InitMemArena_VirtualStack(MemArena_t* arena, u64 maxSize, u64 maxNumMarks, AllocAlignment_t alignment = AllocAlignment_None)
+{
+	NotNull(arena);
+	Assert(maxSize > sizeof(MarkedStackArenaHeader_t) + (maxNumMarks * sizeof(u64)));
+	Assert(maxNumMarks > 0);
+	ClearPointer(arena);
+	arena->type = MemArenaType_VirtualStack;
+	arena->flags = 0x00;
+	arena->alignment = alignment;
+	arena->used = 0;
+	arena->numAllocations = 0;
+	
+	arena->pageSize = OsGetMemoryPageSize();
+	arena->maxSize = RoundUpToU64(maxSize, arena->pageSize);
+	u8* reservedMemPntr = (u8*)OsReserveMemory(arena->maxSize);
+	NotNull(reservedMemPntr);
+	u64 headerAndMarksSize = sizeof(MarkedStackArenaHeader_t) + (maxNumMarks * sizeof(u64));
+	u64 headerAndMarksSizeRoundedUp = RoundUpToU64(headerAndMarksSize, arena->pageSize);
+	OsCommitReservedMemory(reservedMemPntr, headerAndMarksSizeRoundedUp);
+	arena->headerPntr = &reservedMemPntr[0];
+	arena->otherPntr  = &reservedMemPntr[sizeof(MarkedStackArenaHeader_t)];
+	arena->mainPntr   = &reservedMemPntr[headerAndMarksSize];
+	arena->size = headerAndMarksSizeRoundedUp - headerAndMarksSize;
+	
+	MarkedStackArenaHeader_t* stackHeader = (MarkedStackArenaHeader_t*)arena->headerPntr;
+	ClearPointer(stackHeader);
+	stackHeader->maxNumMarks = maxNumMarks;
+	stackHeader->numMarks = 0;
+	
+	FlagSet(arena->flags, MemArenaFlag_TelemetryEnabled);
+	arena->highUsedMark = 0;
+	arena->resettableHighUsedMark = 0;
+	stackHeader->highMarkCount = 0;
 }
 void InitMemArena_Buffer(MemArena_t* arena, u64 bufferSize, void* bufferPntr, bool singleAlloc = false, AllocAlignment_t alignment = AllocAlignment_None)
 {
@@ -426,6 +474,7 @@ void InitMemArena_Buffer(MemArena_t* arena, u64 bufferSize, void* bufferPntr, bo
 	
 	FlagSet(arena->flags, MemArenaFlag_TelemetryEnabled);
 	arena->highUsedMark = arena->used;
+	arena->resettableHighUsedMark = arena->used;
 	arena->highAllocMark = arena->numAllocations;
 }
 
@@ -441,6 +490,12 @@ void UpdateMemArenaFuncPntrs(MemArena_t* arena, AllocationFunction_f* allocFunc,
 // +--------------------------------------------------------------+
 // |                    Information Functions                     |
 // +--------------------------------------------------------------+
+bool IsInitialized(const MemArena_t* arena)
+{
+	NotNull(arena);
+	return (arena->type != MemArenaType_None);
+}
+
 //i.e. Does FreeMem allow me to free allocations in any order
 bool DoesMemArenaSupportFreeing(MemArena_t* arena)
 {
@@ -448,8 +503,9 @@ bool DoesMemArenaSupportFreeing(MemArena_t* arena)
 	switch (arena->type)
 	{
 		case MemArenaType_Alias: return DoesMemArenaSupportFreeing(arena->sourceArena);
+		case MemArenaType_MarkedStack:
 		case MemArenaType_PagedStack:
-		case MemArenaType_MarkedStack: return false; //stacks have a very narrow case that FreeMem actually works but they generally don't support freeing in arbitrary order
+		case MemArenaType_VirtualStack: return false; //stacks have a very narrow case that FreeMem actually works but they generally don't support freeing in arbitrary order
 		default: return true;
 	}
 }
@@ -460,8 +516,9 @@ bool DoesMemArenaSupportPushAndPop(MemArena_t* arena)
 	switch (arena->type)
 	{
 		case MemArenaType_Alias: return DoesMemArenaSupportPushAndPop(arena->sourceArena);
+		case MemArenaType_MarkedStack:
 		case MemArenaType_PagedStack:
-		case MemArenaType_MarkedStack: return true;
+		case MemArenaType_VirtualStack: return true;
 		default: return false;
 	}
 }
@@ -477,33 +534,33 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 	
 	switch (arena->type)
 	{
-		// +==============================+
-		// |    MemArenaType_Redirect     |
-		// +==============================+
+		// +======================================+
+		// | MemArenaType_Redirect MemArenaVerify |
+		// +======================================+
 		// case MemArenaType_Redirect:
 		// {
 		// 	//TODO: Implement me!
 		// } break;
 		
-		// +==============================+
-		// |      MemArenaType_Alias      |
-		// +==============================+
+		// +====================================+
+		// | MemArenaType_Alias MemArenaVerify  |
+		// +====================================+
 		case MemArenaType_Alias:
 		{
 			//TODO: Implement me!
 		} break;
 		
-		// +==============================+
-		// |     MemArenaType_StdHeap     |
-		// +==============================+
+		// +======================================+
+		// | MemArenaType_StdHeap MemArenaVerify  |
+		// +======================================+
 		// case MemArenaType_StdHeap:
 		// {
 		// 	//TODO: Implement me!
 		// } break;
 		
-		// +==============================+
-		// |    MemArenaType_FixedHeap    |
-		// +==============================+
+		// +========================================+
+		// | MemArenaType_FixedHeap MemArenaVerify  |
+		// +========================================+
 		case MemArenaType_FixedHeap:
 		{
 			if (arena->mainPntr == nullptr)
@@ -623,9 +680,9 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 			return true;
 		} break;
 		
-		// +==============================+
-		// |    MemArenaType_PagedHeap    |
-		// +==============================+
+		// +========================================+
+		// | MemArenaType_PagedHeap MemArenaVerify  |
+		// +========================================+
 		case MemArenaType_PagedHeap:
 		{
 			if (arena->headerPntr == nullptr && arena->numPages > 0)
@@ -745,9 +802,9 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 			return true;
 		} break;
 		
-		// +==============================+
-		// |   MemArenaType_MarkedStack   |
-		// +==============================+
+		// +==========================================+
+		// | MemArenaType_MarkedStack MemArenaVerify  |
+		// +==========================================+
 		case MemArenaType_MarkedStack:
 		{
 			if (arena->size == 0)
@@ -791,6 +848,11 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 				if (arena->highUsedMark > arena->size)
 				{
 					AssertIfMsg(assertOnFailure, false, "highUsedMark is greater than arena size");
+					return false;
+				}
+				if (arena->resettableHighUsedMark > arena->size)
+				{
+					AssertIfMsg(assertOnFailure, false, "resettableHighUsedMark is greater than arena size");
 					return false;
 				}
 				if (arena->highUsedMark < arena->used)
@@ -838,9 +900,9 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 			}
 		} break;
 		
-		// +==============================+
-		// |   MemArenaType_PagedStack    |
-		// +==============================+
+		// +========================================+
+		// | MemArenaType_PagedStack MemArenaVerify |
+		// +========================================+
 		case MemArenaType_PagedStack:
 		{
 			if (arena->size == 0)
@@ -889,6 +951,11 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 						AssertIfMsg(assertOnFailure, false, "highUsedMark is greater than arena size");
 						return false;
 					}
+					if (arena->resettableHighUsedMark > arena->size)
+					{
+						AssertIfMsg(assertOnFailure, false, "resettableHighUsedMark is greater than arena size");
+						return false;
+					}
 					if (arena->highUsedMark < arena->used)
 					{
 						AssertIfMsg(assertOnFailure, false, "used is greater than current highUsedMark");
@@ -930,9 +997,107 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 			}
 		} break;
 		
-		// +==============================+
-		// |     MemArenaType_Buffer      |
-		// +==============================+
+		// +==========================================+
+		// | MemArenaType_VirtualStack MemArenaVerify |
+		// +==========================================+
+		case MemArenaType_VirtualStack:
+		{
+			if (arena->size == 0)
+			{
+				AssertIfMsg(assertOnFailure, false, "arena size is 0");
+				return false;
+			}
+			if (arena->used > arena->size)
+			{
+				AssertIfMsg(assertOnFailure, false, "arena used is greater than size");
+				return false;
+			}
+			if (arena->headerPntr == nullptr)
+			{
+				AssertIfMsg(assertOnFailure, false, "headerPntr is nullptr in MarkedStack");
+				return false;
+			}
+			if (arena->otherPntr == nullptr)
+			{
+				AssertIfMsg(assertOnFailure, false, "otherPntr is nullptr in MarkedStack");
+				return false;
+			}
+			if (arena->mainPntr == nullptr)
+			{
+				AssertIfMsg(assertOnFailure, false, "mainPntr is nullptr in MarkedStack");
+				return false;
+			}
+			MarkedStackArenaHeader_t* stackHeader = (MarkedStackArenaHeader_t*)arena->headerPntr;
+			if (stackHeader->maxNumMarks * sizeof(u64) >= arena->size)
+			{
+				AssertIfMsg(assertOnFailure, false, "stackHeader for MarkedStack has invalid value for maxNumMarks (based on size of arena)");
+				return false;
+			}
+			if (stackHeader->numMarks > stackHeader->maxNumMarks)
+			{
+				AssertIfMsg(assertOnFailure, false, "numMarks is greater than maxNumMarks in MarkedStack header");
+				return false;
+			}
+			if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
+			{
+				if (arena->highUsedMark > arena->size)
+				{
+					AssertIfMsg(assertOnFailure, false, "highUsedMark is greater than arena size");
+					return false;
+				}
+				if (arena->resettableHighUsedMark > arena->size)
+				{
+					AssertIfMsg(assertOnFailure, false, "resettableHighUsedMark is greater than arena size");
+					return false;
+				}
+				if (arena->highUsedMark < arena->used)
+				{
+					AssertIfMsg(assertOnFailure, false, "used is greater than current highUsedMark");
+					return false;
+				}
+				if (stackHeader->highMarkCount > stackHeader->maxNumMarks)
+				{
+					AssertIfMsg(assertOnFailure, false, "highMarkCount is greater than maxNumMarks in MarkedStack header");
+					return false;
+				}
+				if (stackHeader->highMarkCount < stackHeader->numMarks)
+				{
+					AssertIfMsg(assertOnFailure, false, "highMarkCount is less than numMarks in MarkedStack header");
+					return false;
+				}
+			}
+			u8* expectedOtherPntr = ((u8*)arena->headerPntr) + sizeof(MarkedStackArenaHeader_t);
+			if (arena->otherPntr != expectedOtherPntr)
+			{
+				AssertIfMsg(assertOnFailure, false, "otherPntr is not where it's supposed to be compared to headerPntr");
+				return false;
+			}
+			u8* expectedMainPntr = expectedOtherPntr + stackHeader->maxNumMarks * sizeof(u64);
+			if (arena->mainPntr != expectedMainPntr)
+			{
+				AssertIfMsg(assertOnFailure, false, "mainPntr is not where it's supposed to be compared to headerPntr/otherPntr");
+				return false;
+			}
+			
+			u64* marksPntr = (u64*)arena->otherPntr;
+			for (u64 mIndex = 0; mIndex < stackHeader->numMarks; mIndex++)
+			{
+				if (marksPntr[mIndex] > arena->size)
+				{
+					AssertIfMsg(assertOnFailure, false, "One of the marks has and invalid value (too big, given the arena->size)");
+					return false;
+				}
+				if (marksPntr[mIndex] > arena->used)
+				{
+					AssertIfMsg(assertOnFailure, false, "One of the marks is above the current used amount!");
+					return false;
+				}
+			}
+		} break;
+		
+		// +====================================+
+		// | MemArenaType_Buffer MemArenaVerify |
+		// +====================================+
 		// case MemArenaType_Buffer:
 		// {
 		// 	//TODO: Implement me!
@@ -951,15 +1116,50 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 	return true;
 }
 
-u64 GetNumMemMarks(MemArena_t* arena)
+u64 GetNumMarks(MemArena_t* arena)
 {
 	NotNull(arena);
-	Assert(arena->type == MemArenaType_MarkedStack);
-	NotNull(arena->headerPntr);
-	MarkedStackArenaHeader_t* stackHeader = (MarkedStackArenaHeader_t*)arena->headerPntr;
-	Assert(stackHeader->maxNumMarks > 0);
-	Assert(stackHeader->numMarks <= stackHeader->maxNumMarks);
-	return stackHeader->numMarks;
+	
+	switch (arena->type)
+	{
+		// +======================================+
+		// | MemArenaType_MarkedStack GetNumMarks |
+		// +======================================+
+		case MemArenaType_MarkedStack:
+		{
+			NotNull(arena->headerPntr);
+			MarkedStackArenaHeader_t* stackHeader = (MarkedStackArenaHeader_t*)arena->headerPntr;
+			Assert(stackHeader->maxNumMarks > 0);
+			Assert(stackHeader->numMarks <= stackHeader->maxNumMarks);
+			return stackHeader->numMarks;
+		} break;
+		
+		// +======================================+
+		// | MemArenaType_PagedStack GetNumMarks  |
+		// +======================================+
+		case MemArenaType_PagedStack:
+		{
+			NotNull(arena->headerPntr);
+			MarkedStackArenaHeader_t* firstPageHeader = (MarkedStackArenaHeader_t*)arena->headerPntr;
+			Assert(firstPageHeader->maxNumMarks > 0);
+			Assert(firstPageHeader->numMarks <= firstPageHeader->maxNumMarks);
+			return firstPageHeader->numMarks;
+		} break;
+		
+		// +========================================+
+		// | MemArenaType_VirtualStack GetNumMarks  |
+		// +========================================+
+		case MemArenaType_VirtualStack:
+		{
+			NotNull(arena->headerPntr);
+			MarkedStackArenaHeader_t* stackHeader = (MarkedStackArenaHeader_t*)arena->headerPntr;
+			Assert(stackHeader->maxNumMarks > 0);
+			Assert(stackHeader->numMarks <= stackHeader->maxNumMarks);
+			return stackHeader->numMarks;
+		} break;
+		
+		default: AssertMsg(false, "Tried to GetNumMarks on arena that doesn't support pushing and popping"); return 0; break;
+	}
 }
 
 // +--------------------------------------------------------------+
@@ -969,6 +1169,8 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride) 
 {
 	NotNull(arena);
 	AssertMsg(arena->type != MemArenaType_None, "Tried to allocate from uninitialized arena");
+	
+	if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled) && arena->resettableHighUsedMark < arena->used) { arena->resettableHighUsedMark = arena->used; }
 	
 	if (IsFlagSet(arena->flags, MemArenaFlag_BreakOnAlloc) && (arena->debugBreakThreshold == 0 || numBytes >= arena->debugBreakThreshold))
 	{
@@ -1017,6 +1219,7 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride) 
 			if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
 			{
 				if (arena->highUsedMark < arena->used) { arena->highUsedMark = arena->used; }
+				if (arena->resettableHighUsedMark < arena->used) { arena->resettableHighUsedMark = arena->used; }
 				if (arena->highAllocMark < arena->numAllocations) { arena->highAllocMark = arena->numAllocations; }
 			}
 		} break;
@@ -1086,6 +1289,7 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride) 
 						if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
 						{
 							if (arena->highUsedMark < arena->used) { arena->highUsedMark = arena->used; }
+							if (arena->resettableHighUsedMark < arena->used) { arena->resettableHighUsedMark = arena->used; }
 							if (arena->highAllocMark < arena->numAllocations) { arena->highAllocMark = arena->numAllocations; }
 						}
 						break;
@@ -1159,6 +1363,7 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride) 
 							if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
 							{
 								if (arena->highUsedMark < arena->used) { arena->highUsedMark = arena->used; }
+								if (arena->resettableHighUsedMark < arena->used) { arena->resettableHighUsedMark = arena->used; }
 								if (arena->highAllocMark < arena->numAllocations) { arena->highAllocMark = arena->numAllocations; }
 							}
 							break;
@@ -1262,6 +1467,7 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride) 
 				if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
 				{
 					if (arena->highUsedMark < arena->used) { arena->highUsedMark = arena->used; }
+					if (arena->resettableHighUsedMark < arena->used) { arena->resettableHighUsedMark = arena->used; }
 					if (arena->highAllocMark < arena->numAllocations) { arena->highAllocMark = arena->numAllocations; }
 				}
 				break;
@@ -1283,6 +1489,7 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride) 
 			if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
 			{
 				if (arena->highUsedMark < arena->used) { arena->highUsedMark = arena->used; }
+				if (arena->resettableHighUsedMark < arena->used) { arena->resettableHighUsedMark = arena->used; }
 			}
 		} break;
 		
@@ -1347,6 +1554,7 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride) 
 							if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
 							{
 								if (arena->highUsedMark < arena->used) { arena->highUsedMark = arena->used; }
+								if (arena->resettableHighUsedMark < arena->used) { arena->resettableHighUsedMark = arena->used; }
 							}
 						}
 					}
@@ -1360,6 +1568,7 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride) 
 						if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
 						{
 							if (arena->highUsedMark < arena->used) { arena->highUsedMark = arena->used; }
+							if (arena->resettableHighUsedMark < arena->used) { arena->resettableHighUsedMark = arena->used; }
 						}
 						
 						break;
@@ -1390,7 +1599,38 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride) 
 			if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
 			{
 				if (arena->highUsedMark < arena->used) { arena->highUsedMark = arena->used; }
+				if (arena->resettableHighUsedMark < arena->used) { arena->resettableHighUsedMark = arena->used; }
 				if (arena->highAllocMark < arena->numAllocations) { arena->highAllocMark = arena->numAllocations; }
+			}
+		} break;
+		
+		// +====================================+
+		// | MemArenaType_VirtualStack AllocMem |
+		// +====================================+
+		case MemArenaType_VirtualStack:
+		{
+			NotNull(arena->headerPntr);
+			NotNull(arena->otherPntr);
+			u8 alignOffset = OffsetToAlign(((u8*)arena->mainPntr) + arena->used, alignment);
+			if (arena->used + alignOffset + numBytes > arena->size)
+			{
+				if (arena->used + alignOffset + numBytes <= arena->maxSize)
+				{
+					u64 numNewBytesNeeded = (arena->used + alignOffset + numBytes) - arena->size;
+					u64 newPagesNeededSize = RoundUpToU64(numNewBytesNeeded, arena->pageSize);
+					OsCommitReservedMemory(((u8*)arena->mainPntr) + arena->size, newPagesNeededSize);
+					arena->size += newPagesNeededSize;
+					DebugAssert(arena->size <= arena->maxSize);
+				}
+				else { return nullptr; }
+			}
+			result = ((u8*)arena->mainPntr) + arena->used + alignOffset;
+			arena->used += alignOffset + numBytes;
+			arena->numAllocations++;
+			if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
+			{
+				if (arena->highUsedMark < arena->used) { arena->highUsedMark = arena->used; }
+				if (arena->resettableHighUsedMark < arena->used) { arena->resettableHighUsedMark = arena->used; }
 			}
 		} break;
 		
@@ -1457,6 +1697,8 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreN
 	AssertMsg(arena->type != MemArenaType_None, "Tried to free from uninitialized arena");
 	Assert(ignoreNullptr || allocPntr != nullptr);
 	if (allocPntr == nullptr) { return false; }
+	
+	if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled) && arena->resettableHighUsedMark < arena->used) { arena->resettableHighUsedMark = arena->used; }
 	
 	if (IsFlagSet(arena->flags, MemArenaFlag_BreakOnFree) && (arena->debugBreakThreshold == 0 || allocSize >= arena->debugBreakThreshold))
 	{
@@ -1787,11 +2029,25 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreN
 					pageIndex++;
 				}
 			}
-			
-			// NOTE: We used to assert here because we were worried we had memory bugs if someone was freeing something that didn't need freeing
-			// Turns out, in almost all cases, we are just freeing to be compliant with any arena type that was passed to us and we had
-			// to start checking if the arena that was passed was a MarkedStack just so we didn't hit this assert. This was not helpful.
-			// AssertMsg(false, "FreeMem is not supported for a MarkedStack. Are you trying to free memory allocated on the TempArena");
+		} break;
+		
+		// +====================================+
+		// | MemArenaType_VirtualStack FreeMem  |
+		// +====================================+
+		case MemArenaType_VirtualStack:
+		{
+			Assert(IsPntrInsideRange(allocPntr, arena->mainPntr, arena->size));
+			Assert(IsPntrInsideRange(((u8*)allocPntr) + allocSize, arena->mainPntr, arena->size));
+			if (allocSize > 0)
+			{
+				// If the allocation is the last one in the stack then we can actually free it by just moving our used amount down.
+				// This is the only scenario where we support freeing
+				u64 allocOffset = (u64)(((u8*)allocPntr) - ((u8*)arena->mainPntr));
+				if (allocOffset + allocSize == arena->used)
+				{
+					arena->used -= allocSize;
+				}
+			}
 		} break;
 		
 		// +==============================+
@@ -1959,6 +2215,7 @@ void* ReallocMem(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 
 			if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
 			{
 				if (arena->highUsedMark < arena->used) { arena->highUsedMark = arena->used; }
+				if (arena->resettableHighUsedMark < arena->used) { arena->resettableHighUsedMark = arena->used; }
 				if (arena->highAllocMark < arena->numAllocations) { arena->highAllocMark = arena->numAllocations; }
 			}
 		} break;
@@ -1982,6 +2239,7 @@ void* ReallocMem(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 
 			if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
 			{
 				if (increasingSize && arena->highUsedMark < arena->used) { arena->highUsedMark = arena->used; }
+				if (increasingSize && arena->resettableHighUsedMark < arena->used) { arena->resettableHighUsedMark = arena->used; }
 			}
 		} break;
 		#endif //GY_CUSTOM_STD_LIB
@@ -2014,6 +2272,14 @@ void* ReallocMem(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 
 		// | MemArenaType_PagedStack ReallocMem |
 		// +====================================+
 		// case MemArenaType_PagedStack:
+		// {
+		// 	//TODO: Implement me!
+		// } break;
+		
+		// +======================================+
+		// | MemArenaType_VirtualStack ReallocMem |
+		// +======================================+
+		// case MemArenaType_VirtualStack:
 		// {
 		// 	//TODO: Implement me!
 		// } break;
@@ -2220,6 +2486,32 @@ u64 GrowMemQuery(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize
 			Unimplemented(); //TODO: Implement me!
 		} break;
 		
+		// +========================================+
+		// | MemArenaType_VirtualStack GrowMemQuery |
+		// +========================================+
+		case MemArenaType_VirtualStack:
+		{
+			//TODO: We could allow for growing memory into the next page maybe? Maybe we just go ahead and allocate a new page if we are near the current committed size?
+			
+			AssertMsg(IsPntrInsideRange(prevAllocPntr, arena->mainPntr, arena->size), "prevAllocPntr passed to GrowMemQuery is not in this VirtualStack arena!");
+			AssertMsg(IsPntrInsideRange(prevAllocPntr, arena->mainPntr, arena->used), "prevAllocPntr passed to GrowMemQuery is not in this VirtualStack arena's used space");
+			AssertMsg(IsPntrInsideRange(((u8*)prevAllocPntr) + prevAllocSize, arena->mainPntr, arena->size, true), "prevAllocPntr+prevAllocSize passed to GrowMemQuery is not in this VirtualStack arena!");
+			AssertMsg(IsPntrInsideRange(((u8*)prevAllocPntr) + prevAllocSize, arena->mainPntr, arena->used, true), "prevAllocPntr+prevAllocSize passed to GrowMemQuery is not in this VirtualStack arena's used space");
+			u8* usedEndPntr = ((u8*)arena->mainPntr) + arena->used;
+			u8* prevAllocEndPntr = ((u8*)prevAllocPntr) + prevAllocSize;
+			if (prevAllocEndPntr == usedEndPntr)
+			{
+				Assert(arena->size >= arena->used);
+				if (tokenOut != nullptr)
+				{
+					tokenOut->memArena = arena;
+					tokenOut->nextSectionPntr = usedEndPntr;
+					tokenOut->nextSectionSize = arena->size - arena->used;
+				}
+				result = arena->size - arena->used;
+			}
+		} break;
+		
 		// +==================================+
 		// | MemArenaType_Buffer GrowMemQuery |
 		// +==================================+
@@ -2255,18 +2547,18 @@ void GrowMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, u6
 		case MemArenaType_StdHeap: Unimplemented(); break; //no support
 		case MemArenaType_Redirect: Unimplemented(); break; //no support
 		
-		// +==================================+
-		// | MemArenaType_Alias GrowMemQuery  |
-		// +==================================+
+		// +==============================+
+		// |  MemArenaType_Alias GrowMem  |
+		// +==============================+
 		case MemArenaType_Alias:
 		{
 			NotNull(arena->sourceArena);
 			GrowMem(arena->sourceArena, prevAllocPntr, prevAllocSize, newAllocSize, token);
 		} break;
 		
-		// +======================================+
-		// | MemArenaType_FixedHeap GrowMemQuery  |
-		// +======================================+
+		// +================================+
+		// | MemArenaType_FixedHeap GrowMem |
+		// +================================+
 		case MemArenaType_FixedHeap:
 		{
 			NotNull(arena->mainPntr);
@@ -2353,6 +2645,7 @@ void GrowMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, u6
 					if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
 					{
 						if (arena->highUsedMark < arena->used) { arena->highUsedMark = arena->used; }
+						if (arena->resettableHighUsedMark < arena->used) { arena->resettableHighUsedMark = arena->used; }
 						if (arena->highAllocMark < arena->numAllocations) { arena->highAllocMark = arena->numAllocations; }
 					}
 					
@@ -2366,9 +2659,9 @@ void GrowMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, u6
 			AssertMsg(foundAllocation, "Tried to grow an allocation from the incorrect arena. Or the prevAllocPntr was misaligned. Maybe the arena is corrupt or the memory pntr was mishandled?");
 		} break;
 		
-		// +======================================+
-		// | MemArenaType_PagedHeap GrowMemQuery  |
-		// +======================================+
+		// +================================+
+		// | MemArenaType_PagedHeap GrowMem |
+		// +================================+
 		case MemArenaType_PagedHeap:
 		{
 			bool foundAllocation = false;
@@ -2458,6 +2751,7 @@ void GrowMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, u6
 						if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
 						{
 							if (arena->highUsedMark < arena->used) { arena->highUsedMark = arena->used; }
+							if (arena->resettableHighUsedMark < arena->used) { arena->resettableHighUsedMark = arena->used; }
 							if (arena->highAllocMark < arena->numAllocations) { arena->highAllocMark = arena->numAllocations; }
 						}
 						
@@ -2475,9 +2769,9 @@ void GrowMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, u6
 			AssertMsg(foundAllocation, "Tried to grow an allocation from the incorrect arena. Or the prevAllocPntr was misaligned. Maybe the arena is corrupt or the memory pntr was mishandled?");
 		} break;
 		
-		// +========================================+
-		// | MemArenaType_MarkedStack GrowMemQuery  |
-		// +========================================+
+		// +==================================+
+		// | MemArenaType_MarkedStack GrowMem |
+		// +==================================+
 		case MemArenaType_MarkedStack:
 		{
 			AssertMsg(IsPntrInsideRange(prevAllocPntr, arena->mainPntr, arena->size), "prevAllocPntr passed to GrowMemQuery is not in this MarkedStack arena!");
@@ -2487,21 +2781,39 @@ void GrowMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, u6
 			if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
 			{
 				if (arena->highUsedMark < arena->used) { arena->highUsedMark = arena->used; }
+				if (arena->resettableHighUsedMark < arena->used) { arena->resettableHighUsedMark = arena->used; }
 			}
 			Assert(arena->used <= arena->size);
 		} break;
 		
-		// +======================================+
-		// | MemArenaType_PagedStack GrowMemQuery |
-		// +======================================+
+		// +==================================+
+		// | MemArenaType_PagedStack GrowMem  |
+		// +==================================+
 		case MemArenaType_PagedStack:
 		{
 			Unimplemented(); //TODO: Implement me!
 		} break;
 		
-		// +==================================+
-		// | MemArenaType_Buffer GrowMemQuery |
-		// +==================================+
+		// +====================================+
+		// | MemArenaType_VirtualStack GrowMem  |
+		// +====================================+
+		case MemArenaType_VirtualStack:
+		{
+			AssertMsg(IsPntrInsideRange(prevAllocPntr, arena->mainPntr, arena->size), "prevAllocPntr passed to GrowMemQuery is not in this VirtualStack arena!");
+			AssertMsg(IsPntrInsideRange(prevAllocPntr, arena->mainPntr, arena->used), "prevAllocPntr passed to GrowMemQuery is not in this VirtualStack arena's used space");
+			AssertMsg((((u8*)prevAllocPntr) + prevAllocSize) == (((u8*)arena->mainPntr) + arena->used), "Something went wrong between GrowMemQuery and GrowMem in MarkedStack. The grown section isn't at the end of the stack!");
+			arena->used += newAllocSize - prevAllocSize;
+			if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
+			{
+				if (arena->highUsedMark < arena->used) { arena->highUsedMark = arena->used; }
+				if (arena->resettableHighUsedMark < arena->used) { arena->resettableHighUsedMark = arena->used; }
+			}
+			Assert(arena->used <= arena->size);
+		} break;
+		
+		// +==============================+
+		// | MemArenaType_Buffer GrowMem  |
+		// +==============================+
 		case MemArenaType_Buffer:
 		{
 			Unimplemented(); //TODO: Implement me!
@@ -2563,6 +2875,22 @@ void ShrinkMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, 
 		case MemArenaType_PagedStack:
 		{
 			Unimplemented(); //TODO: Implement me!
+		} break;
+		
+		// +======================================+
+		// | MemArenaType_VirtualStack ShrinkMem  |
+		// +======================================+
+		case MemArenaType_VirtualStack:
+		{
+			Assert(IsPntrInsideRange(prevAllocPntr, arena->mainPntr, arena->size));
+			u64 prevAllocOffset = (u64)(((u8*)prevAllocPntr) - ((u8*)arena->mainPntr));
+			Assert(prevAllocOffset + prevAllocSize <= arena->used);
+			// If the allocation is the last one in the stack then we can actually shrink it by just moving our used amount down.
+			// This is the only scenario where we support shrinking
+			if (prevAllocOffset + prevAllocSize == arena->used)
+			{
+				arena->used -= (prevAllocSize - newAllocSize);
+			}
 		} break;
 		
 		// +==============================+
@@ -2787,6 +3115,18 @@ void FreeMemArena(MemArena_t* arena)
 			}
 		} break;
 		
+		// +========================================+
+		// | MemArenaType_VirtualStack FreeMemArena |
+		// +========================================+
+		case MemArenaType_VirtualStack:
+		{
+			Assert((arena->mainPntr == nullptr) == (arena->maxSize > 0));
+			if (arena->mainPntr != nullptr)
+			{
+				OsFreeReservedMemory(arena->mainPntr, arena->maxSize);
+			}
+		} break;
+		
 		default: AssertMsg(false, "Tried to FreeMemArena on arena that doesn't know where it got it's memory from"); break;
 	}
 	
@@ -2956,6 +3296,35 @@ u64 PushMemMark(MemArena_t* arena)
 			}
 		} break;
 		
+		// +========================================+
+		// | MemArenaType_VirtualStack PushMemMark  |
+		// +========================================+
+		case MemArenaType_VirtualStack:
+		{
+			NotNull(arena->headerPntr);
+			NotNull(arena->otherPntr);
+			
+			MarkedStackArenaHeader_t* stackHeader = (MarkedStackArenaHeader_t*)arena->headerPntr;
+			Assert(stackHeader->maxNumMarks > 0);
+			Assert(stackHeader->numMarks <= stackHeader->maxNumMarks);
+			if (stackHeader->numMarks >= stackHeader->maxNumMarks)
+			{
+				GyLibPrintLine_E("Tried to push mark %llu onto virtual stack which only has support for %llu marks", stackHeader->numMarks+1, stackHeader->maxNumMarks);
+				AssertMsg(false, "Too many marks pushed onto a VirtualStack");
+				return 0;
+			}
+			
+			u64* marksPntr = (u64*)arena->otherPntr;
+			result = arena->used;
+			marksPntr[stackHeader->numMarks] = result;
+			stackHeader->numMarks++;
+			
+			if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
+			{
+				if (stackHeader->highMarkCount < stackHeader->numMarks) { stackHeader->highMarkCount = stackHeader->numMarks; }
+			}
+		} break;
+		
 		default: AssertMsg(false, "Tried to PushMemMark on arena that doesn't support pushing and popping"); break;
 	}
 	
@@ -3057,41 +3426,33 @@ void PopMemMark(MemArena_t* arena, u64 mark = 0xFFFFFFFFFFFFFFFFULL)
 			}
 		} break;
 		
-		default: AssertMsg(false, "Tried to PopMemMark on arena that doesn't support pushing and popping"); break;
-	}
-}
-
-u64 GetNumMarks(MemArena_t* arena)
-{
-	NotNull(arena);
-	
-	switch (arena->type)
-	{
 		// +======================================+
-		// | MemArenaType_MarkedStack GetNumMarks |
+		// | MemArenaType_VirtualStack PopMemMark |
 		// +======================================+
-		case MemArenaType_MarkedStack:
+		case MemArenaType_VirtualStack:
 		{
 			NotNull(arena->headerPntr);
+			NotNull(arena->otherPntr);
+			
 			MarkedStackArenaHeader_t* stackHeader = (MarkedStackArenaHeader_t*)arena->headerPntr;
 			Assert(stackHeader->maxNumMarks > 0);
 			Assert(stackHeader->numMarks <= stackHeader->maxNumMarks);
-			return stackHeader->numMarks;
+			if (stackHeader->numMarks == 0)
+			{
+				GyLibWriteLine_E("Tried to pop stack mark when no marks were left");
+				AssertMsg(false, "Tried to pop too many times on a VirtualStack");
+				return;
+			}
+			
+			u64* marksPntr = (u64*)arena->otherPntr;
+			Assert(marksPntr[stackHeader->numMarks-1] <= arena->used);
+			Assert(marksPntr[stackHeader->numMarks-1] <= arena->size);
+			AssertIf(mark != 0xFFFFFFFFFFFFFFFFULL, mark == marksPntr[stackHeader->numMarks-1]);
+			arena->used = marksPntr[stackHeader->numMarks-1];
+			stackHeader->numMarks--;
 		} break;
 		
-		// +======================================+
-		// | MemArenaType_PagedStack GetNumMarks  |
-		// +======================================+
-		case MemArenaType_PagedStack:
-		{
-			NotNull(arena->headerPntr);
-			MarkedStackArenaHeader_t* firstPageHeader = (MarkedStackArenaHeader_t*)arena->headerPntr;
-			Assert(firstPageHeader->maxNumMarks > 0);
-			Assert(firstPageHeader->numMarks <= firstPageHeader->maxNumMarks);
-			return firstPageHeader->numMarks;
-		} break;
-		
-		default: AssertMsg(false, "Tried to GetNumMarks on arena that doesn't support pushing and popping"); return 0; break;
+		default: AssertMsg(false, "Tried to PopMemMark on arena that doesn't support pushing and popping"); break;
 	}
 }
 
@@ -3188,6 +3549,8 @@ MemArenaType_StdHeap
 MemArenaType_FixedHeap
 MemArenaType_PagedHeap
 MemArenaType_MarkedStack
+MemArenaType_PagedStack
+MemArenaType_VirtualStack
 MemArenaType_Buffer
 AllocAlignment_None
 AllocAlignment_4Bytes
@@ -3223,10 +3586,11 @@ void InitMemArena_PagedHeapArena(MemArena_t* arena, u64 pageSize, MemArena_t* so
 void InitMemArena_MarkedStack(MemArena_t* arena, u64 size, void* memoryPntr, u64 maxNumMarks, AllocAlignment_t alignment = AllocAlignment_None)
 void InitMemArena_Buffer(MemArena_t* arena, u64 bufferSize, void* bufferPntr, bool singleAlloc = false, AllocAlignment_t alignment = AllocAlignment_None)
 #define CreateStackBufferArena(arenaName, bufferName, size)
+bool IsInitialized(const MemArena_t* arena)
 bool DoesMemArenaSupportFreeing(MemArena_t* arena)
 bool DoesMemArenaSupportPushAndPop(MemArena_t* arena)
 bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
-u64 GetNumMemMarks(MemArena_t* arena)
+u64 GetNumMarks(MemArena_t* arena)
 void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride = AllocAlignment_None)
 #define AllocStruct(arena, structName)
 #define AllocArray(arena, structName, numItems)
@@ -3247,7 +3611,6 @@ void* ReallocMem(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 
 #define SoftReallocMem(arena, allocPntr, newSize)
 u64 PushMemMark(MemArena_t* arena)
 void PopMemMark(MemArena_t* arena, u64 mark = 0xFFFFFFFFFFFFFFFFULL)
-u64 GetNumMarks(MemArena_t* arena)
 char* PrintInArena(MemArena_t* arena, const char* formatString, ...)
 int PrintVa_Measure(const char* formatString, va_list args)
 void PrintVa_Print(const char* formatString, va_list args, char* allocatedSpace, int previousResult)

@@ -32,14 +32,28 @@ void FreeThreadLocalScratchArenas()
 		}
 	}
 }
-void InitThreadLocalScratchArenas(MemArena_t* sourceArena, u64 scratchPageSize, u64 scratchMaxMarks)
+void InitThreadLocalScratchArenasVirtual(u64 maxVirtualSize, u64 scratchMaxMarks, AllocAlignment_t alignment = AllocAlignment_None)
+{
+	for (u64 aIndex = 0; aIndex < ArrayCount(ThreadLocalScratchArenas); aIndex++)
+	{
+		if (maxVirtualSize > 0)
+		{
+			InitMemArena_VirtualStack(&ThreadLocalScratchArenas[aIndex], maxVirtualSize, scratchMaxMarks, alignment);
+		}
+		else
+		{
+			ClearStruct(ThreadLocalScratchArenas[aIndex]);
+		}
+	}
+}
+void InitThreadLocalScratchArenasPaged(MemArena_t* sourceArena, u64 scratchPageSize, u64 scratchMaxMarks, AllocAlignment_t alignment = AllocAlignment_None)
 {
 	AssertIf(scratchPageSize > 0, sourceArena != nullptr);
 	for (u64 aIndex = 0; aIndex < ArrayCount(ThreadLocalScratchArenas); aIndex++)
 	{
 		if (scratchPageSize > 0)
 		{
-			InitMemArena_PagedStackArena(&ThreadLocalScratchArenas[aIndex], scratchPageSize, sourceArena, scratchMaxMarks);
+			InitMemArena_PagedStackArena(&ThreadLocalScratchArenas[aIndex], scratchPageSize, sourceArena, scratchMaxMarks, alignment);
 		}
 		else
 		{
@@ -62,7 +76,7 @@ inline MemArena_t* GetScratchArena(MemArena_t* avoidConflictWith1, MemArena_t* a
 	}
 	Assert(scratchIndex < NUM_SCRATCH_ARENAS_PER_THREAD);
 	MemArena_t* result = &ThreadLocalScratchArenas[scratchIndex];
-	if (result->size == 0) { return nullptr; }
+	if (!IsInitialized(result)) { return nullptr; }
 	PushMemMark(result);
 	return result;
 }
@@ -85,7 +99,8 @@ NUM_SCRATCH_ARENAS_PER_THREAD
 ThreadLocalScratchArenas
 @Functions
 void FreeThreadLocalScratchArenas()
-void InitThreadLocalScratchArenas(MemArena_t* sourceArena, u64 scratchPageSize, u64 scratchMaxMarks)
+void InitThreadLocalScratchArenasVirtual(u64 maxVirtualSize, u64 scratchMaxMarks, AllocAlignment_t alignment = AllocAlignment_None)
+void InitThreadLocalScratchArenasPaged(MemArena_t* sourceArena, u64 scratchPageSize, u64 scratchMaxMarks, AllocAlignment_t alignment = AllocAlignment_None)
 inline MemArena_t* GetScratchArena(MemArena_t* avoidConflictWith1 = nullptr, MemArena_t* avoidConflictWith2 = nullptr)
 inline void FreeScratchArena(MemArena_t* scratchArena)
 */
