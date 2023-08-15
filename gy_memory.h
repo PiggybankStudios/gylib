@@ -935,9 +935,9 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 					return false;
 				}
 				
-				u64 pageSize = pageHeader->thisPageSize - sizeof(MarkedStackArenaHeader_t) - (pageHeader->maxNumMarks * sizeof(u64));
+				// u64 pageSize = pageHeader->thisPageSize - sizeof(MarkedStackArenaHeader_t) - (pageHeader->maxNumMarks * sizeof(u64));
 				u64* pageMarks = (u64*)(((u8*)pageHeader) + sizeof(MarkedStackArenaHeader_t));
-				u8* pageBase = ((u8*)pageHeader) + sizeof(MarkedStackArenaHeader_t) + (pageHeader->maxNumMarks * sizeof(u64));
+				// u8* pageBase = ((u8*)pageHeader) + sizeof(MarkedStackArenaHeader_t) + (pageHeader->maxNumMarks * sizeof(u64));
 				
 				if (pageHeader->numMarks > pageHeader->maxNumMarks)
 				{
@@ -1508,7 +1508,7 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride) 
 				Assert(byteIndex <= arena->size);
 				
 				u64 pageSize = pageHeader->thisPageSize - sizeof(MarkedStackArenaHeader_t) - (pageHeader->maxNumMarks * sizeof(u64));
-				u64* pageMarks = (u64*)(((u8*)pageHeader) + sizeof(MarkedStackArenaHeader_t));
+				// u64* pageMarks = (u64*)(((u8*)pageHeader) + sizeof(MarkedStackArenaHeader_t));
 				u8* pageBase = ((u8*)pageHeader) + sizeof(MarkedStackArenaHeader_t) + (pageHeader->maxNumMarks * sizeof(u64));
 				Assert(byteIndex + pageSize <= arena->size);
 				
@@ -1989,7 +1989,7 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreN
 					Assert(byteIndex <= arena->size);
 					
 					u64 pageSize = pageHeader->thisPageSize - sizeof(MarkedStackArenaHeader_t) - (pageHeader->maxNumMarks * sizeof(u64));
-					u64* pageMarks = (u64*)(((u8*)pageHeader) + sizeof(MarkedStackArenaHeader_t));
+					// u64* pageMarks = (u64*)(((u8*)pageHeader) + sizeof(MarkedStackArenaHeader_t));
 					u8* pageBase = ((u8*)pageHeader) + sizeof(MarkedStackArenaHeader_t) + (pageHeader->maxNumMarks * sizeof(u64));
 					Assert(byteIndex + pageSize <= arena->size);
 					
