@@ -91,6 +91,15 @@ mat4 Mat4Diagonal(r32 r0c0, r32 r1c1, r32 r2c2, r32 r3c3, r32 other = 0.0f)
 	};
 	return result;
 }
+mat4 Mat4FromBasis(v3 basisX, v3 basisY, v3 basisZ)
+{
+	return NewMat4(
+		basisX.x, basisY.x, basisZ.x, 0,
+		basisX.y, basisY.y, basisZ.y, 0,
+		basisX.z, basisY.z, basisZ.z, 0,
+		0,        0,        0,        1
+	);
+}
 
 // +--------------------------------------------------------------+
 // |                     Simple Value Defines                     |
@@ -607,6 +616,7 @@ mat4
 mat4 NewMat4(r32 r0c0, r32 r0c1, r32 r0c2, r32 r0c3, r32 r1c0, r32 r1c1, r32 r1c2, r32 r1c3, r32 r2c0, r32 r2c1, r32 r2c2, r32 r2c3, r32 r3c0, r32 r3c1, r32 r3c2, r32 r3c3)
 mat4 Mat4Fill(r32 all)
 mat4 Mat4Diagonal(r32 r0c0, r32 r1c1, r32 r2c2, r32 r3c3, r32 other = 0.0f)
+mat4 Mat4FromBasis(v3 basisX, v3 basisY, v3 basisZ)
 r32 Mat4Determinant(mat4 matrix)
 mat4 Mat4Transpose(mat4 matrix)
 #define Mat3Determinant(a, b, c, d, e, f, g, h, i)
