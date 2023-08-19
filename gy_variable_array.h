@@ -222,6 +222,16 @@ void VarArrayClear(VarArray_t* array, bool deallocate = false)
 	}
 	array->length = 0;
 }
+void VarArrayClearMyStr(VarArray_t* array, MemArena_t* stringAllocArena)
+{
+	Assert(array->itemSize == sizeof(MyStr_t));
+	for (u64 sIndex = 0; sIndex < array->length; sIndex++)
+	{
+		MyStr_t* str = ((MyStr_t*)array->items) + sIndex;
+		FreeString(stringAllocArena, str);
+	}
+	VarArrayClear(array);
+}
 
 // +--------------------------------------------------------------+
 // |                             Get                              |
