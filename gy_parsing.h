@@ -412,6 +412,17 @@ bool TryParseEnum(MyStr_t str, enum_t* valueOut, enum_t enumCount, const char* (
 	if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_UnknownString; }
 	return false;
 }
+template <class enum_t>
+bool TryParseBitfieldEnum(MyStr_t str, enum_t* valueOut, enum_t enumCount, const char* (*getEnumStrFunc)(enum_t), TryParseFailureReason_t* reasonOut = nullptr)
+{
+	for (u64 eIndex = 0; eIndex < enumCount; eIndex++)
+	{
+		enum_t enumValue = (enum_t)(1 << eIndex);
+		if (StrEqualsIgnoreCase(str, getEnumStrFunc(enumValue))) { if (valueOut != nullptr) { *valueOut = enumValue; } return true; }
+	}
+	if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_UnknownString; }
+	return false;
+}
 
 
 // +--------------------------------------------------------------+
@@ -1017,6 +1028,7 @@ bool TryParseI8(MyStr_t str, i8* valueOut, TryParseFailureReason_t* reasonOut = 
 bool TryParseR64(MyStr_t str, r64* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowInfinity = false)
 bool TryParseR32(MyStr_t str, r32* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowSuffix = true, bool allowInfinity = false)
 bool TryParseEnum(MyStr_t str, enum_t* valueOut, enum_t enumCount, GetEnumStr_f* getEnumStrFunc, TryParseFailureReason_t* reasonOut = nullptr)
+bool TryParseBitfieldEnum(MyStr_t str, enum_t* valueOut, enum_t enumCount, GetEnumStr_f* getEnumStrFunc, TryParseFailureReason_t* reasonOut = nullptr)
 bool TryParseBool(MyStr_t str, bool* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
 bool TryParseDir2(MyStr_t str, Dir2_t* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
 bool TryParseDir3(MyStr_t str, Dir3_t* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
