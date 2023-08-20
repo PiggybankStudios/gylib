@@ -48,6 +48,7 @@ void BinSer_WriteValue_(void* result, u64 resultSize, u64* byteIndexPntr, u64 va
 #define BinSer_WriteI16(result, resultSize, byteIndexPntr, value) BinSer_WriteValue((result), (resultSize), (byteIndexPntr), i16, (value))
 #define BinSer_WriteI32(result, resultSize, byteIndexPntr, value) BinSer_WriteValue((result), (resultSize), (byteIndexPntr), i32, (value))
 #define BinSer_WriteI64(result, resultSize, byteIndexPntr, value) BinSer_WriteValue((result), (resultSize), (byteIndexPntr), i64, (value))
+#define BinSer_WriteBytes(result, resultSize, byteIndexPntr, numBytes, bytesPntr) BinSer_WriteValue_((result), (resultSize), (byteIndexPntr), (numBytes), (bytesPntr))
 
 // +--------------------------------------------------------------+
 // |                Binary Deserialization Helpers                |
@@ -61,6 +62,7 @@ const void* BinDeser_ReadStruct_(const void* dataPntr, u64 dataSize, u64* byteIn
 	return result;
 }
 #define BinDeser_ReadStruct(dataPntr, dataSize, byteIndexPntr, type) (type*)BinDeser_ReadStruct_((dataPntr), (dataSize), (byteIndexPntr), sizeof(type))
+#define BinDeser_ReadBytes(dataPntr, dataSize, byteIndexPntr, numBytes) (u8*)BinDeser_ReadStruct_((dataPntr), (dataSize), (byteIndexPntr), (numBytes))
 
 const void* BinDeser_ReadStructDynamicSize_(const void* dataPntr, u64 dataSize, u64* byteIndexPntr, u64* structSizeOut, u64 sizeMemberOffset, u64 minStructSize, u64 maxStructSize)
 {
@@ -116,8 +118,10 @@ void BinSer_WriteValue_(void* result, u64 resultSize, u64* byteIndexPntr, u64 va
 #define BinSer_WriteI16(result, resultSize, byteIndexPntr, value)
 #define BinSer_WriteI32(result, resultSize, byteIndexPntr, value)
 #define BinSer_WriteI64(result, resultSize, byteIndexPntr, value)
+#define BinSer_WriteBytes(result, resultSize, byteIndexPntr, numBytes, bytesPntr)
 const void* BinDeser_ReadStruct_(const void* dataPntr, u64 dataSize, u64* byteIndexPntr, u64 structureSize)
 #define BinDeser_ReadStruct(dataPntr, dataSize, byteIndexPntr, type)
+#define BinDeser_ReadBytes(dataPntr, dataSize, byteIndexPntr, numBytes)
 const void* BinDeser_ReadStructDynamicSize_(const void* dataPntr, u64 dataSize, u64* byteIndexPntr, u64* structSizeOut, u64 sizeMemberOffset, u64 minStructSize, u64 maxStructSize)
 #define BinDeser_ReadStructDynamicSize(dataPntr, dataSize, byteIndexPntr, structSizeOut, type, sizeMemberName, firstOptionalMemberName)
 #define BinDeser_IsMemberPresent(structSize, type, memberName)
