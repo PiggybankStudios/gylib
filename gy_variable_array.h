@@ -26,6 +26,11 @@ struct VarArray_t
 	u64 allocChunkSize;
 	bool exponentialChunkSize;
 	MyStr_t name;
+	#if GYLIB_MEM_ARENA_DEBUG_ENABLED
+	const char* creationFilePath;
+	u64 creationLineNumber;
+	const char* creationFuncName;
+	#endif
 	
 	u64 length;
 	u64 allocLength;
@@ -53,7 +58,11 @@ void FreeVarArray(VarArray_t* array)
 	ClearPointer(array);
 }
 
-void CreateVarArray(VarArray_t* array, MemArena_t* memArena, u64 itemSize, u64 initialRequiredCapacity = 0, bool exponentialChunkSize = true, u64 allocChunkSize = 8)
+#if GYLIB_SCRATCH_ARENA_AVAILABLE
+void CreateVarArray_(const char* filePath, u64 lineNumber, const char* funcName, VarArray_t* array, MemArena_t* memArena, u64 itemSize, u64 initialRequiredCapacity = 0, bool exponentialChunkSize = true, u64 allocChunkSize = 8)
+#else
+void CreateVarArray_(VarArray_t* array, MemArena_t* memArena, u64 itemSize, u64 initialRequiredCapacity = 0, bool exponentialChunkSize = true, u64 allocChunkSize = 8)
+#endif
 {
 	NotNull(array);
 	NotNull(memArena);
@@ -68,6 +77,11 @@ void CreateVarArray(VarArray_t* array, MemArena_t* memArena, u64 itemSize, u64 i
 	array->length = 0;
 	array->wasExpanded = false;
 	array->numExpansions = 0;
+	#if GYLIB_MEM_ARENA_DEBUG_ENABLED
+	array->creationFilePath = filePath;
+	array->creationLineNumber = lineNumber;
+	array->creationFuncName = funcName;
+	#endif
 	
 	if (exponentialChunkSize)
 	{
@@ -91,7 +105,11 @@ void CreateVarArray(VarArray_t* array, MemArena_t* memArena, u64 itemSize, u64 i
 	}
 	if (array->allocLength > 0)
 	{
+		#if GYLIB_MEM_ARENA_DEBUG_ENABLED
+		array->items = AllocMem_(filePath, lineNumber, funcName, memArena, array->allocLength * itemSize);
+		#else
 		array->items = AllocMem(memArena, array->allocLength * itemSize);
+		#endif
 		if (array->items == nullptr)
 		{
 			AssertMsg(false, "Initial Allocation inside CreateVarArray failed!");
@@ -101,6 +119,12 @@ void CreateVarArray(VarArray_t* array, MemArena_t* memArena, u64 itemSize, u64 i
 	}
 	else { array->items = nullptr; }
 }
+
+#if GYLIB_SCRATCH_ARENA_AVAILABLE
+#define CreateVarArray(array, memArena, itemSize, ...) CreateVarArray_(__FILE__, __LINE__, __func__, (array), (memArena), (itemSize), ##__VA_ARGS__)
+#else
+#define CreateVarArray(array, memArena, itemSize, ...) CreateVarArray_((array), (memArena), (itemSize), ##__VA_ARGS__)
+#endif
 
 bool VarArrayIsCreated(VarArray_t* array)
 {
@@ -155,7 +179,11 @@ bool VarArrayExpand(VarArray_t* array, u64 capacityRequired)
 	Assert(newLength >= capacityRequired);
 	Assert(newLength <= (UINT64_MAX / array->itemSize)); //u64 overflow would be weird
 	
+	#if GYLIB_MEM_ARENA_DEBUG_ENABLED
+	void* newSpace = AllocMem_(array->creationFilePath, array->creationLineNumber, array->creationFuncName, array->allocArena, newLength * array->itemSize);
+	#else
 	void* newSpace = AllocMem(array->allocArena, newLength * array->itemSize);
+	#endif
 	if (newSpace == nullptr)
 	{
 		GyLibPrintLine_E("Failed to expand variable array %s to %llu items at %llu bytes each", (array->name.pntr != nullptr) ? array->name.pntr : "[unnamed]", newLength, array->itemSize);

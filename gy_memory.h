@@ -161,6 +161,9 @@ struct MemArena_t
 	AllocationFunction_f* allocFunc;
 	FreeFunction_f* freeFunc;
 	MemArena_t* sourceArena;
+	#if GYLIB_MEM_ARENA_DEBUG_ENABLED
+	MemArena_t* debugArena;
+	#endif
 };
 
 struct GrowMemToken_t
@@ -170,10 +173,37 @@ struct GrowMemToken_t
 	u64 nextSectionSize;
 };
 
+#if GYLIB_MEM_ARENA_DEBUG_ENABLED
+struct MemArenaAllocInfo_t
+{
+	void* allocPntr;
+	u64 allocSize;
+	const char* filePath;
+	u64 lineNumber;
+	const char* funcName;
+};
+#endif
+
 // +--------------------------------------------------------------+
 // |                    Function Declarations                     |
 // +--------------------------------------------------------------+
-void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride = AllocAlignment_None);
+#if GYLIB_MEM_ARENA_DEBUG_ENABLED
+	void* AllocMem_(const char* filePath, u64 lineNumber, const char* funcName, MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride = AllocAlignment_None);
+	#define AllocMem(arena, numBytes, ...) AllocMem_(__FILE__, __LINE__, __func__, (arena), (numBytes), ##__VA_ARGS__)
+	void* ReallocMem_(const char* filePath, u64 lineNumber, const char* funcName, MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 0, AllocAlignment_t alignOverride = AllocAlignment_None, bool ignoreNullptr = false, u64* oldSizeOut = nullptr);
+	#define ReallocMem(arena, allocPntr, newSize, ...) ReallocMem_(__FILE__, __LINE__, __func__, (arena), (allocPntr), (newSize), ##__VA_ARGS__)
+	#define HardReallocMem(arena, allocPntr, newSize) ReallocMem_(__FILE__, __LINE__, __func__, (arena), (allocPntr), (newSize), 0, AllocAlignment_None, false)
+	#define SoftReallocMem(arena, allocPntr, newSize) ReallocMem_(__FILE__, __LINE__, __func__, (arena), (allocPntr), (newSize), 0, AllocAlignment_None, true)
+#else //!GYLIB_MEM_ARENA_DEBUG_ENABLED
+	void* AllocMem_(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride = AllocAlignment_None);
+	#define AllocMem(arena, numBytes, ...) AllocMem_((arena), (numBytes), ##__VA_ARGS__)
+	void* ReallocMem_(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 0, AllocAlignment_t alignOverride = AllocAlignment_None, bool ignoreNullptr = false, u64* oldSizeOut = nullptr);
+	#define ReallocMem(arena, allocPntr, newSize, ...) ReallocMem_((arena), (allocPntr), (newSize), ##__VA_ARGS__)
+	#define HardReallocMem(arena, allocPntr, newSize) ReallocMem_((arena), (allocPntr), (newSize), 0, AllocAlignment_None, false)
+	#define SoftReallocMem(arena, allocPntr, newSize) ReallocMem_((arena), (allocPntr), (newSize), 0, AllocAlignment_None, true)
+#endif //GYLIB_MEM_ARENA_DEBUG_ENABLED
+
+bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreNullptr = false, u64* oldSizeOut = nullptr);
 
 // +--------------------------------------------------------------+
 // |                       Helper Functions                       |
@@ -523,6 +553,256 @@ bool DoesMemArenaSupportPushAndPop(MemArena_t* arena)
 	}
 }
 
+u64 GetNumMarks(MemArena_t* arena)
+{
+	NotNull(arena);
+	
+	switch (arena->type)
+	{
+		// +======================================+
+		// | MemArenaType_MarkedStack GetNumMarks |
+		// +======================================+
+		case MemArenaType_MarkedStack:
+		{
+			NotNull(arena->headerPntr);
+			MarkedStackArenaHeader_t* stackHeader = (MarkedStackArenaHeader_t*)arena->headerPntr;
+			Assert(stackHeader->maxNumMarks > 0);
+			Assert(stackHeader->numMarks <= stackHeader->maxNumMarks);
+			return stackHeader->numMarks;
+		} break;
+		
+		// +======================================+
+		// | MemArenaType_PagedStack GetNumMarks  |
+		// +======================================+
+		case MemArenaType_PagedStack:
+		{
+			NotNull(arena->headerPntr);
+			MarkedStackArenaHeader_t* firstPageHeader = (MarkedStackArenaHeader_t*)arena->headerPntr;
+			Assert(firstPageHeader->maxNumMarks > 0);
+			Assert(firstPageHeader->numMarks <= firstPageHeader->maxNumMarks);
+			return firstPageHeader->numMarks;
+		} break;
+		
+		// +========================================+
+		// | MemArenaType_VirtualStack GetNumMarks  |
+		// +========================================+
+		case MemArenaType_VirtualStack:
+		{
+			NotNull(arena->headerPntr);
+			MarkedStackArenaHeader_t* stackHeader = (MarkedStackArenaHeader_t*)arena->headerPntr;
+			Assert(stackHeader->maxNumMarks > 0);
+			Assert(stackHeader->numMarks <= stackHeader->maxNumMarks);
+			return stackHeader->numMarks;
+		} break;
+		
+		default: AssertMsg(false, "Tried to GetNumMarks on arena that doesn't support pushing and popping"); return 0; break;
+	}
+}
+
+// +--------------------------------------------------------------+
+// |                       Debug Alloc Info                       |
+// +--------------------------------------------------------------+
+#if GYLIB_MEM_ARENA_DEBUG_ENABLED
+void StoreAllocInfo(const MemArena_t* refArena, MemArena_t* arena, void* allocPntr, u64 allocSize, const char* filePath, u64 lineNumber, const char* funcName)
+{
+	UNUSED(refArena);
+	MemArenaAllocInfo_t* allocInfo = (MemArenaAllocInfo_t*)AllocMem(arena, sizeof(MemArenaAllocInfo_t));
+	if (allocInfo == nullptr) { return; }
+	// ClearPointer(allocInfo);
+	// if (refArena->numAllocations != arena->numAllocations) { MyDebugBreak(); }
+	allocInfo->allocPntr = allocPntr;
+	allocInfo->allocSize = allocSize;
+	allocInfo->filePath = filePath;
+	allocInfo->lineNumber = lineNumber;
+	allocInfo->funcName = funcName;
+}
+MemArenaAllocInfo_t* FindAllocInfoFor(MemArena_t* arena, void* allocPntr)
+{
+	switch (arena->type)
+	{
+		// +======================================+
+		// | MemArenaType_PagedHeap FreeAllocInfo |
+		// +======================================+
+		case MemArenaType_PagedHeap:
+		{
+			HeapPageHeader_t* pageHeader = (HeapPageHeader_t*)arena->headerPntr;
+			u64 pageIndex = 0;
+			while (pageHeader != nullptr)
+			{
+				u64 allocOffset = 0;
+				u8* allocBytePntr = (u8*)(pageHeader + 1);
+				u64 sectionIndex = 0;
+				while (allocOffset < pageHeader->size)
+				{
+					HeapAllocPrefix_t* allocPrefix = (HeapAllocPrefix_t*)allocBytePntr;
+					u8* allocAfterPrefixPntr = (allocBytePntr + sizeof(HeapAllocPrefix_t));
+					bool isAllocFilled = IsAllocPrefixFilled(allocPrefix->size);
+					u64 allocSize = UnpackAllocPrefixSize(allocPrefix->size);
+					AssertMsg(allocSize >= sizeof(HeapAllocPrefix_t), "Found an allocation header that claimed to be smaller than the header itself in Fixed Heap");
+					AssertMsg(allocOffset + allocSize <= pageHeader->size, "Found an allocation header with invalid size. Would extend past the end of a page!");
+					u64 allocAfterPrefixSize = allocSize - sizeof(HeapAllocPrefix_t);
+					if (isAllocFilled && allocAfterPrefixSize == sizeof(MemArenaAllocInfo_t))
+					{
+						MemArenaAllocInfo_t* allocInfo = (MemArenaAllocInfo_t*)allocAfterPrefixPntr;
+						if (allocInfo->allocPntr == allocPntr)
+						{
+							return allocInfo;
+						}
+					}
+					
+					allocBytePntr += allocSize;
+					allocOffset += allocSize;
+					sectionIndex++;
+				}
+				UNUSED(sectionIndex); //used for debug purposes
+				
+				pageHeader = pageHeader->next;
+				pageIndex++;
+			}
+		} break;
+		
+		default:
+		{
+			DebugAssertMsg(false, "Arena type not supported for store debug info! We need to implement a walk where we find allocInfo by reference pntr");
+		} break;
+	}
+	
+	return nullptr;
+}
+MemArenaAllocInfo_t* FindExtraAllocInfoInArena(MemArena_t* arena, MemArena_t* realArena)
+{
+	switch (arena->type)
+	{
+		// +======================================+
+		// | MemArenaType_PagedHeap FreeAllocInfo |
+		// +======================================+
+		case MemArenaType_PagedHeap:
+		{
+			HeapPageHeader_t* pageHeader = (HeapPageHeader_t*)arena->headerPntr;
+			u64 pageIndex = 0;
+			while (pageHeader != nullptr)
+			{
+				u64 allocOffset = 0;
+				u8* allocBytePntr = (u8*)(pageHeader + 1);
+				u64 sectionIndex = 0;
+				while (allocOffset < pageHeader->size)
+				{
+					HeapAllocPrefix_t* allocPrefix = (HeapAllocPrefix_t*)allocBytePntr;
+					u8* allocAfterPrefixPntr = (allocBytePntr + sizeof(HeapAllocPrefix_t));
+					bool isAllocFilled = IsAllocPrefixFilled(allocPrefix->size);
+					u64 allocSize = UnpackAllocPrefixSize(allocPrefix->size);
+					AssertMsg(allocSize >= sizeof(HeapAllocPrefix_t), "Found an allocation header that claimed to be smaller than the header itself in Fixed Heap");
+					AssertMsg(allocOffset + allocSize <= pageHeader->size, "Found an allocation header with invalid size. Would extend past the end of a page!");
+					u64 allocAfterPrefixSize = allocSize - sizeof(HeapAllocPrefix_t);
+					if (isAllocFilled && allocAfterPrefixSize == sizeof(MemArenaAllocInfo_t))
+					{
+						MemArenaAllocInfo_t* allocInfo = (MemArenaAllocInfo_t*)allocAfterPrefixPntr;
+						if (!FreeMem(realArena, allocInfo->allocPntr, allocInfo->allocSize)) { return allocInfo; }
+					}
+					
+					allocBytePntr += allocSize;
+					allocOffset += allocSize;
+					sectionIndex++;
+				}
+				UNUSED(sectionIndex); //used for debug purposes
+				
+				pageHeader = pageHeader->next;
+				pageIndex++;
+			}
+		} break;
+		
+		default:
+		{
+			DebugAssertMsg(false, "Arena type not supported for store debug info! We need to implement a walk where we find allocInfo by reference pntr");
+		} break;
+	}
+	
+	return nullptr;
+}
+void* FindMissingAllocInfoInArena(MemArena_t* arena, u64* allocSizeOut = nullptr)
+{
+	NotNull2(arena, arena->debugArena);
+	switch (arena->type)
+	{
+		// +======================================+
+		// | MemArenaType_PagedHeap FreeAllocInfo |
+		// +======================================+
+		case MemArenaType_PagedHeap:
+		{
+			HeapPageHeader_t* pageHeader = (HeapPageHeader_t*)arena->headerPntr;
+			u64 pageIndex = 0;
+			while (pageHeader != nullptr)
+			{
+				u64 allocOffset = 0;
+				u8* allocBytePntr = (u8*)(pageHeader + 1);
+				u64 sectionIndex = 0;
+				while (allocOffset < pageHeader->size)
+				{
+					HeapAllocPrefix_t* allocPrefix = (HeapAllocPrefix_t*)allocBytePntr;
+					u8* allocAfterPrefixPntr = (allocBytePntr + sizeof(HeapAllocPrefix_t));
+					bool isAllocFilled = IsAllocPrefixFilled(allocPrefix->size);
+					u64 allocSize = UnpackAllocPrefixSize(allocPrefix->size);
+					AssertMsg(allocSize >= sizeof(HeapAllocPrefix_t), "Found an allocation header that claimed to be smaller than the header itself in Fixed Heap");
+					AssertMsg(allocOffset + allocSize <= pageHeader->size, "Found an allocation header with invalid size. Would extend past the end of a page!");
+					u64 allocAfterPrefixSize = allocSize - sizeof(HeapAllocPrefix_t);
+					if (isAllocFilled)
+					{
+						MemArenaAllocInfo_t* allocInfo = FindAllocInfoFor(arena->debugArena, allocAfterPrefixPntr);
+						if (allocInfo == nullptr)
+						{
+							MyDebugBreak();
+							SetOptionalOutPntr(allocSizeOut, allocAfterPrefixSize);
+							return allocAfterPrefixPntr;
+						}
+					}
+					
+					allocBytePntr += allocSize;
+					allocOffset += allocSize;
+					sectionIndex++;
+				}
+				UNUSED(sectionIndex); //used for debug purposes
+				
+				pageHeader = pageHeader->next;
+				pageIndex++;
+			}
+		} break;
+		
+		default:
+		{
+			DebugAssertMsg(false, "Arena type not supported for store debug info! We need to implement a walk where we find allocInfo by reference pntr");
+		} break;
+	}
+	
+	return nullptr;
+}
+//TODO: Add const back to refArena
+void FreeAllocInfo(MemArena_t* refArena, MemArena_t* arena, void* allocPntr)
+{
+	UNUSED(refArena);
+	MemArenaAllocInfo_t* allocInfo = FindAllocInfoFor(arena, allocPntr);
+	if (allocInfo != nullptr)
+	{
+		FreeMem(arena, allocInfo, sizeof(MemArenaAllocInfo_t));
+	}
+	if (refArena->numAllocations != arena->numAllocations)
+	{
+		MyDebugBreak();
+		u64 missingInfoSize = 0;
+		void* missingInfoPntr = FindMissingAllocInfoInArena(refArena, &missingInfoSize);
+		UNUSED(missingInfoSize);
+		UNUSED(missingInfoPntr);
+		refArena->debugArena = nullptr;
+		MemArenaAllocInfo_t* extraAllocInfo = FindExtraAllocInfoInArena(arena, refArena);
+		UNUSED(extraAllocInfo);
+		refArena->debugArena = arena;
+		MyDebugBreak();
+	}
+}
+#endif //GYLIB_MEM_ARENA_DEBUG_ENABLED
+
+// +--------------------------------------------------------------+
+// |                       Verify Function                        |
+// +--------------------------------------------------------------+
 bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 {
 	NotNull(arena);
@@ -718,6 +998,7 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 			
 			u64 numAllocations = 0;
 			u64 totalNumSections = 0;
+			bool missingDebugForAllocation = false;
 			
 			HeapPageHeader_t* pageHeader = (HeapPageHeader_t*)arena->headerPntr;
 			u64 pageIndex = 0;
@@ -757,7 +1038,7 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 				while (allocOffset < pageHeader->size)
 				{
 					HeapAllocPrefix_t* prefixPntr = (HeapAllocPrefix_t*)allocBytePntr;
-					// u8* afterPrefixPntr = (allocBytePntr + sizeof(HeapAllocPrefix_t));
+					u8* afterPrefixPntr = (allocBytePntr + sizeof(HeapAllocPrefix_t));
 					bool isSectionFilled = IsAllocPrefixFilled(prefixPntr->size);
 					u64 sectionSize = UnpackAllocPrefixSize(prefixPntr->size);
 					if (sectionSize < sizeof(HeapAllocPrefix_t))
@@ -779,6 +1060,21 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 					
 					if (isSectionFilled)
 					{
+						#if GYLIB_MEM_ARENA_DEBUG_ENABLED
+						if (arena->debugArena != nullptr)
+						{
+							MemArenaAllocInfo_t* allocInfo = FindAllocInfoFor(arena, afterPrefixPntr);
+							if (allocInfo == nullptr)
+							{
+								AssertIfMsg(assertOnFailure, false, "An allocation does NOT have associated metadata backing it in the debugArena!");
+								MyDebugBreak();
+								missingDebugForAllocation = true;
+							}
+						}
+						#else
+						UNUSED(afterPrefixPntr);
+						#endif
+						
 						numAllocations++;
 					}
 					
@@ -799,7 +1095,7 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 				return false;
 			}
 			
-			return true;
+			return !missingDebugForAllocation;
 		} break;
 		
 		// +==========================================+
@@ -1116,56 +1412,14 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 	return true;
 }
 
-u64 GetNumMarks(MemArena_t* arena)
-{
-	NotNull(arena);
-	
-	switch (arena->type)
-	{
-		// +======================================+
-		// | MemArenaType_MarkedStack GetNumMarks |
-		// +======================================+
-		case MemArenaType_MarkedStack:
-		{
-			NotNull(arena->headerPntr);
-			MarkedStackArenaHeader_t* stackHeader = (MarkedStackArenaHeader_t*)arena->headerPntr;
-			Assert(stackHeader->maxNumMarks > 0);
-			Assert(stackHeader->numMarks <= stackHeader->maxNumMarks);
-			return stackHeader->numMarks;
-		} break;
-		
-		// +======================================+
-		// | MemArenaType_PagedStack GetNumMarks  |
-		// +======================================+
-		case MemArenaType_PagedStack:
-		{
-			NotNull(arena->headerPntr);
-			MarkedStackArenaHeader_t* firstPageHeader = (MarkedStackArenaHeader_t*)arena->headerPntr;
-			Assert(firstPageHeader->maxNumMarks > 0);
-			Assert(firstPageHeader->numMarks <= firstPageHeader->maxNumMarks);
-			return firstPageHeader->numMarks;
-		} break;
-		
-		// +========================================+
-		// | MemArenaType_VirtualStack GetNumMarks  |
-		// +========================================+
-		case MemArenaType_VirtualStack:
-		{
-			NotNull(arena->headerPntr);
-			MarkedStackArenaHeader_t* stackHeader = (MarkedStackArenaHeader_t*)arena->headerPntr;
-			Assert(stackHeader->maxNumMarks > 0);
-			Assert(stackHeader->numMarks <= stackHeader->maxNumMarks);
-			return stackHeader->numMarks;
-		} break;
-		
-		default: AssertMsg(false, "Tried to GetNumMarks on arena that doesn't support pushing and popping"); return 0; break;
-	}
-}
-
 // +--------------------------------------------------------------+
 // |                      Allocate Function                       |
 // +--------------------------------------------------------------+
-void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride) //pre-declared at top of file
+#if GYLIB_MEM_ARENA_DEBUG_ENABLED
+void* AllocMem_(const char* filePath, u64 lineNumber, const char* funcName, MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride) //pre-declared at top of file
+#else
+void* AllocMem_(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride) //pre-declared at top of file
+#endif
 {
 	NotNull(arena);
 	AssertMsg(arena->type != MemArenaType_None, "Tried to allocate from uninitialized arena");
@@ -1211,7 +1465,11 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride) 
 		case MemArenaType_Alias:
 		{
 			NotNull(arena->sourceArena);
+			#if GYLIB_MEM_ARENA_DEBUG_ENABLED
+			result = (u8*)AllocMem_(filePath, lineNumber, funcName, arena->sourceArena, numBytes, alignment);
+			#else
 			result = (u8*)AllocMem(arena->sourceArena, numBytes, alignment);
+			#endif
 			if (result == nullptr) { break; }
 			IncrementU64(arena->numAllocations);
 			arena->size = arena->sourceArena->size;
@@ -1376,6 +1634,7 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride) 
 				}
 				UNUSED(sectionIndex); //used for debug purposes
 				
+				if (result != nullptr) { break; }
 				pageHeader = pageHeader->next;
 				pageIndex++;
 			}
@@ -1644,14 +1903,25 @@ void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride) 
 		} break;
 	}
 	
+	#if GYLIB_MEM_ARENA_DEBUG_ENABLED
+	if (result != nullptr && arena->debugArena != nullptr) { StoreAllocInfo(arena, arena->debugArena, result, numBytes, filePath, lineNumber, funcName); }
+	#endif
+	
 	AssertMsg(IsAlignedTo(result, alignment), "An arena has a bug where it tried to return mis-aligned memory");
 	return (void*)result;
 }
 
-#define AllocStruct(arena, structName)          (structName*)AllocMem((arena), sizeof(structName))
-#define AllocArray(arena, structName, numItems) (structName*)AllocMem((arena), sizeof(structName) * (numItems))
-#define AllocBytes(arena, numBytes)             (u8*)AllocMem((arena), (numBytes))
-#define AllocChars(arena, numBytes)             (char*)AllocMem((arena), (numBytes))
+#if GYLIB_MEM_ARENA_DEBUG_ENABLED
+#define AllocStruct(arena, structName)          (structName*)AllocMem_(__FILE__, __LINE__, __func__, (arena), sizeof(structName))
+#define AllocArray(arena, structName, numItems) (structName*)AllocMem_(__FILE__, __LINE__, __func__, (arena), sizeof(structName) * (numItems))
+#define AllocBytes(arena, numBytes)             (u8*)AllocMem_(__FILE__, __LINE__, __func__, (arena), (numBytes))
+#define AllocChars(arena, numBytes)             (char*)AllocMem_(__FILE__, __LINE__, __func__, (arena), (numBytes))
+#else
+#define AllocStruct(arena, structName)          (structName*)AllocMem_((arena), sizeof(structName))
+#define AllocArray(arena, structName, numItems) (structName*)AllocMem_((arena), sizeof(structName) * (numItems))
+#define AllocBytes(arena, numBytes)             (u8*)AllocMem_((arena), (numBytes))
+#define AllocChars(arena, numBytes)             (char*)AllocMem_((arena), (numBytes))
+#endif
 
 MemArena_t AllocBufferArena(MemArena_t* sourceArena, u64 numBytes, AllocAlignment_t alignOverride = AllocAlignment_None)
 {
@@ -1691,7 +1961,7 @@ char* AllocCharsAndFillNt(MemArena_t* arena, const char* nullTermStr, bool addNu
 // |                        Free Function                         |
 // +--------------------------------------------------------------+
 //NOTE: oldSizeOut may not be written. In some cases it is written to allocSize if provided and no sanity checks are done
-bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreNullptr = false, u64* oldSizeOut = nullptr)
+bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize, bool ignoreNullptr, u64* oldSizeOut) //pre-declared at top of file
 {
 	NotNull(arena);
 	AssertMsg(arena->type != MemArenaType_None, "Tried to free from uninitialized arena");
@@ -2079,6 +2349,10 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreN
 		} break;
 	}
 	
+	#if GYLIB_MEM_ARENA_DEBUG_ENABLED
+	if (result && arena->debugArena != nullptr) { FreeAllocInfo(arena, arena->debugArena, allocPntr); }
+	#endif
+	
 	return result;
 }
 
@@ -2089,7 +2363,11 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreN
 // +--------------------------------------------------------------+
 // |                     Reallocate Function                      |
 // +--------------------------------------------------------------+
-void* ReallocMem(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 0, AllocAlignment_t alignOverride = AllocAlignment_None, bool ignoreNullptr = false, u64* oldSizeOut = nullptr)
+#if GYLIB_MEM_ARENA_DEBUG_ENABLED
+void* ReallocMem_(const char* filePath, u64 lineNumber, const char* funcName, MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize, AllocAlignment_t alignOverride, bool ignoreNullptr, u64* oldSizeOut) //pre-declared at top of file
+#else
+void* ReallocMem_(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize, AllocAlignment_t alignOverride, bool ignoreNullptr, u64* oldSizeOut) //pre-declared at top of file
+#endif
 {
 	NotNull(arena);
 	AssertMsg(arena->type != MemArenaType_None, "Tried to realloc from uninitialized arena");
@@ -2130,7 +2408,11 @@ void* ReallocMem(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 
 		case MemArenaType_PagedHeap:
 		case MemArenaType_Buffer:
 		{
+			#if GYLIB_MEM_ARENA_DEBUG_ENABLED
+			result = (u8*)AllocMem_(filePath, lineNumber, funcName, arena, newSize, alignOverride);
+			#else
 			result = (u8*)AllocMem(arena, newSize, alignOverride);
+			#endif
 			if (result == nullptr)
 			{
 				if (allocPntr != nullptr)
@@ -2302,11 +2584,16 @@ void* ReallocMem(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 
 		} break;
 	}
 	
+	#if GYLIB_MEM_ARENA_DEBUG_ENABLED
+	if (result != allocPntr && arena->debugArena != nullptr)
+	{
+		FreeAllocInfo(arena, arena->debugArena, allocPntr);
+		if (result != nullptr) { StoreAllocInfo(arena, arena->debugArena, result, newSize, filePath, lineNumber, funcName); }
+	}
+	#endif
+	
 	return result;
 }
-
-#define HardReallocMem(arena, allocPntr, newSize) ReallocMem((arena), (allocPntr), (newSize), 0, AllocAlignment_None, false)
-#define SoftReallocMem(arena, allocPntr, newSize) ReallocMem((arena), (allocPntr), (newSize), 0, AllocAlignment_None, true)
 
 // +--------------------------------------------------------------+
 // |                        Grow Function                         |

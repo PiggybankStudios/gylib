@@ -53,6 +53,13 @@ Date:   09\14\2021
 #define GY_WASM_STD_LIB 0
 #endif
 
+#if defined(GYLIB_MEM_ARENA_DEBUG_ENABLED)
+#undef GYLIB_MEM_ARENA_DEBUG_ENABLED
+#define GYLIB_MEM_ARENA_DEBUG_ENABLED 1
+#else
+#define GYLIB_MEM_ARENA_DEBUG_ENABLED 0
+#endif
+
 #endif //  _GY_DEFINES_CHECK_H
 
 // +--------------------------------------------------------------+
