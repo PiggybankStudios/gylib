@@ -81,6 +81,10 @@ void CreateVarArray_(VarArray_t* array, MemArena_t* memArena, u64 itemSize, u64 
 	array->creationFilePath = filePath;
 	array->creationLineNumber = lineNumber;
 	array->creationFuncName = funcName;
+	#else
+	UNUSED(filePath);
+	UNUSED(lineNumber);
+	UNUSED(funcName);
 	#endif
 	
 	if (exponentialChunkSize)
