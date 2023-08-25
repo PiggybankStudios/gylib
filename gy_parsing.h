@@ -44,6 +44,8 @@ enum TryParseFailureReason_t
 	TryParseFailureReason_TooLong,
 	TryParseFailureReason_Nullptr,
 	TryParseFailureReason_InvalidType,
+	TryParseFailureReason_MismatchedParenthesis,
+	TryParseFailureReason_CharactersAfterParenthesis,
 	TryParseFailureReason_NumReasons,
 };
 
@@ -51,23 +53,25 @@ const char* GetTryParseFailureReasonStr(TryParseFailureReason_t reason)
 {
 	switch (reason)
 	{
-		case TryParseFailureReason_None:               return "None";
-		case TryParseFailureReason_InvalidCharacter:   return "InvalidCharacter";
-		case TryParseFailureReason_InvalidUtf8:        return "InvalidUtf8";
-		case TryParseFailureReason_Underflow:          return "Underflow";
-		case TryParseFailureReason_Overflow:           return "Overflow";
-		case TryParseFailureReason_NoNumbers:          return "NoNumbers";
-		case TryParseFailureReason_StringOverflow:     return "StringOverflow";
-		case TryParseFailureReason_Infinity:           return "Infinity";
-		case TryParseFailureReason_FloatParseFailure:  return "FloatParseFailure";
-		case TryParseFailureReason_UnknownString:      return "UnknownString";
-		case TryParseFailureReason_NotEnoughCommas:    return "NotEnoughCommas";
-		case TryParseFailureReason_TooManyCommas:      return "TooManyCommas";
-		case TryParseFailureReason_WrongNumCharacters: return "WrongNumCharacters";
-		case TryParseFailureReason_TooShort:           return "TooShort";
-		case TryParseFailureReason_TooLong:            return "TooLong";
-		case TryParseFailureReason_Nullptr:            return "Nullptr";
-		case TryParseFailureReason_InvalidType:        return "InvalidType";
+		case TryParseFailureReason_None:                       return "None";
+		case TryParseFailureReason_InvalidCharacter:           return "InvalidCharacter";
+		case TryParseFailureReason_InvalidUtf8:                return "InvalidUtf8";
+		case TryParseFailureReason_Underflow:                  return "Underflow";
+		case TryParseFailureReason_Overflow:                   return "Overflow";
+		case TryParseFailureReason_NoNumbers:                  return "NoNumbers";
+		case TryParseFailureReason_StringOverflow:             return "StringOverflow";
+		case TryParseFailureReason_Infinity:                   return "Infinity";
+		case TryParseFailureReason_FloatParseFailure:          return "FloatParseFailure";
+		case TryParseFailureReason_UnknownString:              return "UnknownString";
+		case TryParseFailureReason_NotEnoughCommas:            return "NotEnoughCommas";
+		case TryParseFailureReason_TooManyCommas:              return "TooManyCommas";
+		case TryParseFailureReason_WrongNumCharacters:         return "WrongNumCharacters";
+		case TryParseFailureReason_TooShort:                   return "TooShort";
+		case TryParseFailureReason_TooLong:                    return "TooLong";
+		case TryParseFailureReason_Nullptr:                    return "Nullptr";
+		case TryParseFailureReason_InvalidType:                return "InvalidType";
+		case TryParseFailureReason_MismatchedParenthesis:      return "MismatchedParenthesis";
+		case TryParseFailureReason_CharactersAfterParenthesis: return "CharactersAfterParenthesis";
 		default: return "Unknown";
 	}
 }
@@ -1012,6 +1016,12 @@ TryParseFailureReason_UnknownString
 TryParseFailureReason_NotEnoughCommas
 TryParseFailureReason_TooManyCommas
 TryParseFailureReason_WrongNumCharacters
+TryParseFailureReason_TooShort
+TryParseFailureReason_TooLong
+TryParseFailureReason_Nullptr
+TryParseFailureReason_InvalidType
+TryParseFailureReason_MismatchedParenthesis
+TryParseFailureReason_CharactersAfterParenthesis
 TryParseFailureReason_NumReasons
 @Types
 TryParseFailureReason_t

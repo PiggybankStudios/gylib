@@ -4,6 +4,8 @@ Author: Taylor Robbins
 Date:   01\07\2022
 Description:
 	** Holds functions that help us keep track of and define random number sequence algorithms
+Wikipedia Link: https://en.wikipedia.org/wiki/List_of_random_number_generators
+Other Page: https://peteroupc.github.io/random.html#Existing_RNG_APIs_in_Programming_Languages
 */
 
 #ifndef _GY_RANDOM_H
@@ -14,51 +16,70 @@ Description:
 #include "gy_types.h"
 #include "gy_assert.h"
 
+#ifndef GYLIB_DEFAULT_RANDOM_SERIES_TYPE
+#define GYLIB_DEFAULT_RANDOM_SERIES_TYPE RandomSeriesType_LinearCongruential64
+#endif
+
 #define RAND_FLOAT_PRECISION_R32 8000000UL //8 million
 #define RAND_FLOAT_PRECISION_R64 400000000000000ULL //400 trillion
 
 // +--------------------------------------------------------------+
 // |                  Type/Structure Definitions                  |
 // +--------------------------------------------------------------+
-typedef enum
+enum RandomSeriesType_t
 {
-	RandomSeriesType_Fixed = 0x00,
+	RandomSeriesType_None = 0,
+	RandomSeriesType_Fixed,
 	RandomSeriesType_Incremental,
-	RandomSeriesType_LinearCongruential32,   //LCG
-	RandomSeriesType_LinearCongruential64,   //LCG
-	RandomSeriesType_PermutedCongruential64, //PCG
+	RandomSeriesType_LinearCongruential32,   //LCG32
+	RandomSeriesType_LinearCongruential64,   //LCG64
+	RandomSeriesType_PermutedCongruential64, //PCG64
+	RandomSeriesType_XoroShiro128,           //XS128
 	RandomSeriesType_NumTypes,
-} RandomSeriesType_t;
+};
+const char* GetRandomSeriesTypeStr(RandomSeriesType_t enumValue)
+{
+	switch (enumValue)
+	{
+		case RandomSeriesType_None:                   return "None";
+		case RandomSeriesType_Fixed:                  return "Fixed";
+		case RandomSeriesType_Incremental:            return "Incremental";
+		case RandomSeriesType_LinearCongruential32:   return "LinearCongruential32";
+		case RandomSeriesType_LinearCongruential64:   return "LinearCongruential64";
+		case RandomSeriesType_PermutedCongruential64: return "PermutedCongruential64";
+		case RandomSeriesType_XoroShiro128:           return "XoroShiro128";
+		default: return "Unknown";
+	}
+}
+const char* GetRandomSeriesTypeAcronymStr(RandomSeriesType_t enumValue)
+{
+	switch (enumValue)
+	{
+		case RandomSeriesType_None:                   return "None";
+		case RandomSeriesType_Fixed:                  return "Fixed";
+		case RandomSeriesType_Incremental:            return "Inc";
+		case RandomSeriesType_LinearCongruential32:   return "LCG32";
+		case RandomSeriesType_LinearCongruential64:   return "LCG64";
+		case RandomSeriesType_PermutedCongruential64: return "PGC64";
+		case RandomSeriesType_XoroShiro128:           return "XS128";
+		default: return "Unknown";
+	}
+}
 
 struct RandomSeries_t
 {
 	RandomSeriesType_t type;
 	bool seeded;
 	u64 state;
+	u64 state128[2]; //for 128-bit RNGs
 	u64 defaultIncrement;
 	u64 generationCount; //how many numbers have been generated since the series was seeded
 };
 
 // +--------------------------------------------------------------+
-// |                    Const String Functions                    |
-// +--------------------------------------------------------------+
-const char* GetRandomSeriesTypeStr(RandomSeriesType_t seriesType)
-{
-	switch (seriesType)
-	{
-		case RandomSeriesType_Fixed:                  return "Fixed";
-		case RandomSeriesType_Incremental:            return "Incremental";
-		case RandomSeriesType_LinearCongruential32:   return "LinearCongruential32";
-		case RandomSeriesType_LinearCongruential64:   return "LinearCongruential64";
-		case RandomSeriesType_PermutedCongruential64: return "PermutedCongruential64";
-		default: return "Unknown";
-	}
-}
-
-// +--------------------------------------------------------------+
 // |                           Creation                           |
 // +--------------------------------------------------------------+
-void CreateRandomSeries(RandomSeries_t* series, RandomSeriesType_t type = RandomSeriesType_LinearCongruential64, u64 defaultIncrement = 1)
+void CreateRandomSeries(RandomSeries_t* series, RandomSeriesType_t type = GYLIB_DEFAULT_RANDOM_SERIES_TYPE, u64 defaultIncrement = 1)
 {
 	NotNull_(series);
 	ClearPointer(series);
@@ -76,6 +97,8 @@ void SeedRandomSeriesU32(RandomSeries_t* series, u32 seed)
 {
 	NotNull_(series);
 	series->state = (u64)seed;
+	series->state128[0] = (u64)seed;
+	series->state128[1] = (u64)seed;
 	series->generationCount = 0;
 	series->seeded = true;
 }
@@ -83,8 +106,27 @@ void SeedRandomSeriesU64(RandomSeries_t* series, u64 seed)
 {
 	NotNull_(series);
 	series->state = seed;
+	series->state128[0] = seed;
+	series->state128[1] = seed;
 	series->generationCount = 0;
 	series->seeded = true;
+}
+void SeedRandomSeriesU128(RandomSeries_t* series, u64 seed1, u64 seed2)
+{
+	NotNull_(series);
+	series->state = (seed1 ^ seed2);
+	series->state128[0] = seed1;
+	series->state128[1] = seed2;
+	series->generationCount = 0;
+	series->seeded = true;
+}
+
+// +--------------------------------------------------------------+
+// |                       Helper Functions                       |
+// +--------------------------------------------------------------+
+inline u64 XS128_rotl(const u64 x, int k)
+{
+	return (x << k) | (x >> (64 - k));
 }
 
 // +--------------------------------------------------------------+
@@ -140,6 +182,17 @@ void StepRandomSeries(RandomSeries_t* series, u64 numberOfSteps = 1)
 				series->state = newState;
 			}
 			series->generationCount += numberOfSteps;
+		} break;
+		case RandomSeriesType_XoroShiro128:
+		{
+			// https://xoroshiro.di.unimi.it/xoroshiro128plusplus.c
+			//TODO: There are jump() and long_jump() functions we could use
+			u64 s0 = series->state128[0];
+			u64 s1 = series->state128[1];
+			series->state = XS128_rotl(s0 + s1, 17) + s0;
+			s1 ^= s0;
+			series->state128[0] = XS128_rotl(s0, 49) ^ s1 ^ (s1 << 21); // a, b
+			series->state128[1] = XS128_rotl(s1, 28); // c
 		} break;
 		default: Assert_(false); break;
 	}
@@ -276,6 +329,7 @@ i32 GetRandI32(RandomSeries_t* series, i32 min, i32 max)
 @Defines
 RAND_FLOAT_PRECISION_R32
 RAND_FLOAT_PRECISION_R64
+GYLIB_DEFAULT_RANDOM_SERIES_TYPE
 RandomSeriesType_Fixed
 RandomSeriesType_Incremental
 RandomSeriesType_LinearCongruential32
@@ -285,10 +339,13 @@ RandomSeriesType_NumTypes
 RandomSeriesType_t
 RandomSeries_t
 @Functions
-const char* GetRandomSeriesTypeStr(RandomSeriesType_t seriesType)
+const char* GetRandomSeriesTypeStr(RandomSeriesType_t enumValue)
+const char* GetRandomSeriesTypeAcronymStr(RandomSeriesType_t enumValue)
 void CreateRandomSeries(RandomSeries_t* series, RandomSeriesType_t type = RandomSeriesType_LinearCongruential64, u64 defaultIncrement = 1)
 void SeedRandomSeriesU32(RandomSeries_t* series, u32 seed)
 void SeedRandomSeriesU64(RandomSeries_t* series, u64 seed)
+void SeedRandomSeriesU128(RandomSeries_t* series, u64 seed1, u64 seed2)
+static inline u64 XS128_rotl(const u64 x, int k)
 void StepRandomSeries(RandomSeries_t* series, u64 numberOfSteps = 1)
 u32 GetRandU32(RandomSeries_t* series)
 u32 GetRandU32(RandomSeries_t* series, u32 min, u32 max)
