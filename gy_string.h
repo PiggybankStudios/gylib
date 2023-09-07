@@ -338,6 +338,7 @@ u64 TrimTrailingWhitespace(MyStr_t* target, bool trimNewLines = false)
 	}
 	return result;
 }
+//TODO: We should make a version of this that doesn't take a pointer to a string, but rather just returns the MyStr_t without modifying the input MyStr_t
 u64 TrimWhitespace(MyStr_t* target, bool trimNewLines = false)
 {
 	NotNullStr(target);

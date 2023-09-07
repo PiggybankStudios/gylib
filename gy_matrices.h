@@ -316,7 +316,7 @@ inline bool operator != (mat4 left, mat4 right)
 // +--------------------------------------------------------------+
 mat4 Mat4Translate3(v3 translation)
 {
-	return NewMat4( 
+	return NewMat4(
 		1.0f, 0.0f, 0.0f, translation.x,
 		0.0f, 1.0f, 0.0f, translation.y,
 		0.0f, 0.0f, 1.0f, translation.z,
@@ -325,7 +325,7 @@ mat4 Mat4Translate3(v3 translation)
 }
 mat4 Mat4Translate3(r32 x, r32 y, r32 z)
 {
-	return NewMat4( 
+	return NewMat4(
 		1.0f, 0.0f, 0.0f, x,
 		0.0f, 1.0f, 0.0f, y,
 		0.0f, 0.0f, 1.0f, z,
@@ -335,7 +335,7 @@ mat4 Mat4Translate3(r32 x, r32 y, r32 z)
 
 mat4 Mat4Translate2(v2 translation)
 {
-	return NewMat4( 
+	return NewMat4(
 		1.0f, 0.0f, 0.0f, translation.x,
 		0.0f, 1.0f, 0.0f, translation.y,
 		0.0f, 0.0f, 1.0f, 0.0f,
@@ -344,7 +344,7 @@ mat4 Mat4Translate2(v2 translation)
 }
 mat4 Mat4Translate2(r32 x, r32 y)
 {
-	return NewMat4( 
+	return NewMat4(
 		1.0f, 0.0f, 0.0f, x,
 		0.0f, 1.0f, 0.0f, y,
 		0.0f, 0.0f, 1.0f, 0.0f,
@@ -354,7 +354,7 @@ mat4 Mat4Translate2(r32 x, r32 y)
 
 mat4 Mat4TranslateX(r32 x)
 {
-	return NewMat4( 
+	return NewMat4(
 		1.0f, 0.0f, 0.0f, x,
 		0.0f, 1.0f, 0.0f, 0.0f,
 		0.0f, 0.0f, 1.0f, 0.0f,
@@ -363,7 +363,7 @@ mat4 Mat4TranslateX(r32 x)
 }
 mat4 Mat4TranslateY(r32 y)
 {
-	return NewMat4( 
+	return NewMat4(
 		1.0f, 0.0f, 0.0f, 0.0f,
 		0.0f, 1.0f, 0.0f, y,
 		0.0f, 0.0f, 1.0f, 0.0f,
@@ -372,7 +372,7 @@ mat4 Mat4TranslateY(r32 y)
 }
 mat4 Mat4TranslateZ(r32 z)
 {
-	return NewMat4( 
+	return NewMat4(
 		1.0f, 0.0f, 0.0f, 0.0f,
 		0.0f, 1.0f, 0.0f, 0.0f,
 		0.0f, 0.0f, 1.0f, z,

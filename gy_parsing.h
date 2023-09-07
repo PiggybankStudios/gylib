@@ -713,6 +713,63 @@ bool TryParseReci(MyStr_t str, reci* valueOut, TryParseFailureReason_t* reasonOu
 	return true;
 }
 
+bool TryParseMat4(MyStr_t str, mat4* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allow3x3Matrix = true)
+{
+	NotNullStr(&str);
+	if (StrStartsWith(str, "(") || StrStartsWith(str, "[")) { str = StrSubstring(&str, 1); }
+	if (StrEndsWith(str, ")") || StrEndsWith(str, "]")) { str = StrSubstring(&str, 0, str.length-1); }
+	u8 numCommasFound = 0;
+	u64 commaIndices[15];
+	for (u64 cIndex = 0; cIndex < str.length; cIndex++)
+	{
+		if (str.pntr[cIndex] == ',')
+		{
+			if (numCommasFound >= ArrayCount(commaIndices))
+			{
+				if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_TooManyCommas; }
+				return false;
+			}
+			commaIndices[numCommasFound] = cIndex;
+			numCommasFound++;
+		}
+	}
+	
+	bool is3x3Matrix = (numCommasFound == 8);
+	bool is4x4Matrix = (numCommasFound == 15);
+	if (!(allow3x3Matrix && is3x3Matrix) && !is4x4Matrix)
+	{
+		if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_NotEnoughCommas; }
+		return false;
+	}
+	
+	mat4 matrix = Mat4_Identity;
+	for (u64 cIndex = 0; cIndex <= numCommasFound; cIndex++)
+	{
+		MyStr_t strPart = StrSubstring(&str,
+			((cIndex > 0) ? commaIndices[cIndex-1]+1 : 0),
+			((cIndex < numCommasFound) ? commaIndices[cIndex] : str.length));
+		TrimWhitespace(&strPart, true);
+		
+		r32 valueR32 = 0.0f;
+		if (!TryParseR32(strPart, &valueR32, reasonOut))
+		{
+			return false;
+		}
+		
+		if (is3x3Matrix)
+		{
+			matrix.values[cIndex % 3][cIndex / 3] = valueR32;
+		}
+		else
+		{
+			matrix.values[cIndex % 4][cIndex / 4] = valueR32;
+		}
+	}
+	
+	SetOptionalOutPntr(valueOut, matrix);
+	return true;
+}
+
 bool TryParseColor(MyStr_t str, Color_t* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool alphaAtBeginning = true)
 {
 	NotNullStr(&str);
