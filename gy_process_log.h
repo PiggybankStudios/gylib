@@ -7,15 +7,6 @@ Date:   05\09\2023
 #ifndef _GY_PROCESS_LOG_H
 #define _GY_PROCESS_LOG_H
 
-//NOTE: ProcessLog relies on scratch arenas for print formatting AND for concattenating the file and function names
-#if GYLIB_SCRATCH_ARENA_AVAILABLE
-
-// +--------------------------------------------------------------+
-// |                           Defines                            |
-// +--------------------------------------------------------------+
-#define DEFAULT_PROCESS_LOG_FIFO_SIZE Kilobytes(8)
-#define DBG_FILEPATH_AND_FUNCNAME_SEP_CHAR '|'
-
 // +--------------------------------------------------------------+
 // |                         Enumerations                         |
 // +--------------------------------------------------------------+
@@ -57,6 +48,15 @@ const char* GetXmlParsingErrorStr(XmlParsingError_t error)
 		default: return "Unknown";
 	}
 }
+
+//NOTE: ProcessLog relies on scratch arenas for print formatting AND for concattenating the file and function names
+#if GYLIB_SCRATCH_ARENA_AVAILABLE
+
+// +--------------------------------------------------------------+
+// |                           Defines                            |
+// +--------------------------------------------------------------+
+#define DEFAULT_PROCESS_LOG_FIFO_SIZE Kilobytes(8)
+#define DBG_FILEPATH_AND_FUNCNAME_SEP_CHAR '|'
 
 // +--------------------------------------------------------------+
 // |                            Types                             |
