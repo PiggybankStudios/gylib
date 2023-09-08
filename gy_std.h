@@ -32,12 +32,42 @@ Date:   09\14\2021
 #include <sys/mman.h> //needed for mmap
 #elif WASM_COMPILATION
 //TODO: Is there any wasm specific header files we want to include?
+#elif PLAYDATE_COMPILATION
+#include "pd_api.h"
+#else
+#error Unsupported platform in gy_std.h
 #endif
+
+// +--------------------------------------------------------------+
+// |                      Playdate Reroutes                       |
+// +--------------------------------------------------------------+
+#if PLAYDATE_COMPILATION
+static void* (*pdrealloc)(void* ptr, size_t size);
+#ifndef MyMalloc
+#define MyMalloc(numBytes) pdrealloc(NULL, (numBytes))
+#endif
+#ifndef MyRealloc
+#define MyRealloc(ptr, numBytes) pdrealloc((ptr), (numBytes))
+#endif
+#ifndef MyFree
+#define MyFree(ptr) pdrealloc((ptr), 0)
+#endif
+
+#endif //PLAYDATE_COMPILATION
 
 // +--------------------------------------------------------------+
 // |                    Our Reroute Functions                     |
 // +--------------------------------------------------------------+
 
+#ifndef MyMalloc
+#define MyMalloc(numBytes) malloc(numBytes)
+#endif
+#ifndef MyRealloc
+#define MyRealloc(ptr, numBytes) realloc((ptr), (numBytes))
+#endif
+#ifndef MyFree
+#define MyFree(ptr) free(ptr)
+#endif
 #ifndef MyMemSet
 #define MyMemSet(dest, value, length)     memset(dest, value, length)
 #endif
@@ -111,6 +141,9 @@ Date:   09\14\2021
 @Defines
 @Types
 @Functions
+#define MyMalloc(numBytes)
+#define MyRealloc(ptr, numBytes)
+#define MyFree(ptr)
 #define MyMemSet(dest, value, length)
 #define MyMemCompare(ptr1, ptr2, length)
 #define MyMemCopy(dest, source, length)

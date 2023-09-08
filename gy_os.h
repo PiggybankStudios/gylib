@@ -228,8 +228,8 @@ u64 OsGetMemoryPageSize()
 	// +==============================+
 	#elif PLAYDATE_COMPILATION
 	{
-		//TODO: Is there a real answer to this?
-		return 0;
+		//This is the size of the L1 Cache (Since PlayDate doesn't have virtual memory we'll just use this as a standin)
+		return Kilobytes(8);
 	}
 	#else
 	#error OsGetMemoryPageSize does not support the current platform yet!

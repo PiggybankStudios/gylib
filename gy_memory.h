@@ -1489,7 +1489,7 @@ void* AllocMem_(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride)
 		case MemArenaType_StdHeap:
 		{
 			AssertMsg(alignment == AllocAlignment_None, "Tried to align memory in StdHeap arena type");
-			result = (u8*)malloc(numBytes);
+			result = (u8*)MyMalloc(numBytes);
 			if (result == nullptr) { break; }
 			IncrementU64(arena->numAllocations);
 			arena->used += numBytes;
