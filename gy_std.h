@@ -42,7 +42,11 @@ Date:   09\14\2021
 // |                      Playdate Reroutes                       |
 // +--------------------------------------------------------------+
 #if PLAYDATE_COMPILATION
-static void* (*pdrealloc)(void* ptr, size_t size);
+
+extern PlaydateAPI* pd;
+
+void* (*pdrealloc)(void* ptr, size_t size);
+
 #ifndef MyMalloc
 #define MyMalloc(numBytes) pdrealloc(NULL, (numBytes))
 #endif
