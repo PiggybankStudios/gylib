@@ -55,6 +55,10 @@ Description:
 #define MyBreak() raise(SIGINT)
 #elif WASM_COMPILATION
 #define MyBreak() __builtin_abort()
+#elif PLAYDATE_COMPILATION
+#define MyBreak() //TODO: Nothing?
+#else
+#error Platform not supported in gy_assert.h
 #endif
 
 #if DEBUG_BUILD

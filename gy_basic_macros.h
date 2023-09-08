@@ -90,6 +90,13 @@ Description:
 	#define EXPORT(returnType, functionName, ...) returnType __declspec(dllexport) functionName(__VA_ARGS__)
 	#define IMPORT(returnType, functionName, ...) returnType __declspec(dllimport) functionName(__VA_ARGS__)
 	#define __func__ __FUNCTION__
+#elif PLAYDATE_COMPILATION
+	#define PACKED(class_to_pack) //TODO: Nothing?
+	#define START_PACK()          //TODO: Nothing?
+	#define END_PACK()            //TODO: Nothing?
+	#define ATTR_PACKED           //TODO: Nothing?
+	#define EXPORT(returnType, functionName, ...) //TODO: Nothing?
+	#define IMPORT(returnType, functionName, ...) //TODO: Nothing?
 #else
 	#define PACKED(class_to_pack) class_to_pack __attribute__((__packed__))
 	#define START_PACK()  //nothing

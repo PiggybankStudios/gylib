@@ -17,13 +17,13 @@ Description:
 // |                        Prime Numbers                         |
 // +--------------------------------------------------------------+
 #if defined(GYLIB_LOOKUP_PRIMES_10000)
-const u32 PrimeNumbersU32_Count = 10000;
+#define PrimeNumbersU32_Count 10000
 #elif defined(GYLIB_LOOKUP_PRIMES_1000)
-const u32 PrimeNumbersU32_Count = 1000;
+#define PrimeNumbersU32_Count 1000
 #elif defined(GYLIB_LOOKUP_PRIMES_100)
-const u32 PrimeNumbersU32_Count = 100;
+#define PrimeNumbersU32_Count 100
 #elif defined(GYLIB_LOOKUP_PRIMES_10)
-const u32 PrimeNumbersU32_Count = 10;
+#define PrimeNumbersU32_Count 10
 #else
 #error You must define GYLIB_LOOKUP_PRIMES_[10-10000] before including gy_lookup.h
 #endif

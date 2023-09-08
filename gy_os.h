@@ -95,6 +95,14 @@ MyStr_t OsGetExecutablePath(MemArena_t* memArena, OsError_t* errorOut)
 	// 	SetOptionalOutPntr(errorOut, OsError_UnsupportedPlatform);
 	// }
 	// +==============================+
+	// |           PLAYDATE           |
+	// +==============================+
+	#elif PLAYDATE_COMPILATION
+	{
+		SetOptionalOutPntr(errorOut, OsError_UnsupportedPlatform);
+		return MyStr_Empty;
+	}
+	// +==============================+
 	// |     Unsupported Platform     |
 	// +==============================+
 	#else
@@ -170,6 +178,14 @@ MyStr_t OsGetWorkingDirectory(MemArena_t* memArena, OsError_t* errorOut)
 	// {
 	// 	SetOptionalOutPntr(errorOut, OsError_UnsupportedPlatform);
 	// }
+	// +==============================+
+	// |           PLAYDATE           |
+	// +==============================+
+	#elif PLAYDATE_COMPILATION
+	{
+		SetOptionalOutPntr(errorOut, OsError_UnsupportedPlatform);
+		return MyStr_Empty;
+	}
 	#else
 	#error GetWorkingDirectory does not support the current platform yet!
 	#endif
@@ -207,6 +223,14 @@ u64 OsGetMemoryPageSize()
 	// {
 	// 	SetOptionalOutPntr(errorOut, OsError_UnsupportedPlatform);
 	// }
+	// +==============================+
+	// |           PLAYDATE           |
+	// +==============================+
+	#elif PLAYDATE_COMPILATION
+	{
+		//TODO: Is there a real answer to this?
+		return 0;
+	}
 	#else
 	#error OsGetMemoryPageSize does not support the current platform yet!
 	#endif
@@ -264,6 +288,13 @@ void* OsReserveMemory(u64 numBytes)
 	// {
 	// 	SetOptionalOutPntr(errorOut, OsError_UnsupportedPlatform);
 	// }
+	// +==============================+
+	// |           PLAYDATE           |
+	// +==============================+
+	#elif PLAYDATE_COMPILATION
+	{
+		return nullptr;
+	}
 	#else
 	#error OsReserveMemory does not support the current platform yet!
 	#endif
@@ -313,6 +344,13 @@ void OsCommitReservedMemory(void* memoryPntr, u64 numBytes)
 	// {
 	// 	SetOptionalOutPntr(errorOut, OsError_UnsupportedPlatform);
 	// }
+	// +==============================+
+	// |           PLAYDATE           |
+	// +==============================+
+	#elif PLAYDATE_COMPILATION
+	{
+		AssertMsg(false, "OsCommitReservedMemory is not supported on PLAYDATE");
+	}
 	#else
 	#error OsReserveMemory does not support the current platform yet!
 	#endif
@@ -357,6 +395,13 @@ void OsFreeReservedMemory(void* memoryPntr, u64 reservedSize)
 	// {
 	// 	SetOptionalOutPntr(errorOut, OsError_UnsupportedPlatform);
 	// }
+	// +==============================+
+	// |           PLAYDATE           |
+	// +==============================+
+	#elif PLAYDATE_COMPILATION
+	{
+		AssertMsg(false, "OsFreeReservedMemory is not supported on PLAYDATE");
+	}
 	#else
 	#error OsReserveMemory does not support the current platform yet!
 	#endif

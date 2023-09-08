@@ -77,14 +77,16 @@ void CreateVarArray_(VarArray_t* array, MemArena_t* memArena, u64 itemSize, u64 
 	array->length = 0;
 	array->wasExpanded = false;
 	array->numExpansions = 0;
-	#if GYLIB_MEM_ARENA_DEBUG_ENABLED
-	array->creationFilePath = filePath;
-	array->creationLineNumber = lineNumber;
-	array->creationFuncName = funcName;
-	#else
-	UNUSED(filePath);
-	UNUSED(lineNumber);
-	UNUSED(funcName);
+	#if GYLIB_SCRATCH_ARENA_AVAILABLE
+		#if GYLIB_MEM_ARENA_DEBUG_ENABLED
+		array->creationFilePath = filePath;
+		array->creationLineNumber = lineNumber;
+		array->creationFuncName = funcName;
+		#else
+		UNUSED(filePath);
+		UNUSED(lineNumber);
+		UNUSED(funcName);
+		#endif
 	#endif
 	
 	if (exponentialChunkSize)

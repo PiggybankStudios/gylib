@@ -300,6 +300,7 @@ void FreeXmlParser(XmlParser_t* parser)
 	ClearPointer(parser);
 }
 
+#if GYLIB_SCRATCH_ARENA_AVAILABLE
 bool XmlParserCheckIdentifierHasValidChars(XmlParser_t* parser, MyStr_t identifierStr, XmlParseResult_t* result, ProcessLog_t* log)
 {
 	NotNull(parser);
@@ -660,6 +661,7 @@ bool XmlParserGetToken(XmlParser_t* parser, XmlParseResult_t* result, ProcessLog
 	
 	return false;
 }
+#endif
 
 XmlProperty_t* GetXmlProperty(XmlToken_t* token, MyStr_t propertyKey, bool ignoreCase = false)
 {
