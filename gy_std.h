@@ -73,25 +73,25 @@ void* (*pdrealloc)(void* ptr, size_t size);
 #define MyFree(ptr) free(ptr)
 #endif
 #ifndef MyMemSet
-#define MyMemSet(dest, value, length)     memset(dest, value, length)
+#define MyMemSet(dest, value, length)     memset((dest), (value), (length))
 #endif
 #ifndef MyMemCompare
-#define MyMemCompare(ptr1, ptr2, length)  memcmp(ptr1, ptr2, length)
+#define MyMemCompare(ptr1, ptr2, length)  memcmp((ptr1), (ptr2), (length))
 #endif
 #ifndef MyMemCopy
-#define MyMemCopy(dest, source, length)   memcpy(dest, source, length)
+#define MyMemCopy(dest, source, length)   memcpy((dest), (source), (length))
 #endif
 #ifndef MyMemMove
-#define MyMemMove(dest, source, length)   memmove(dest, source, length)
+#define MyMemMove(dest, source, length)   memmove((dest), (source), (length))
 #endif
 #ifndef MyStrCopyNt
-#define MyStrCopyNt(dest, source)         strcpy(dest, source)
+#define MyStrCopyNt(dest, source)         strcpy((dest), (source))
 #endif
 #ifndef MyStrCompareNt
-#define MyStrCompareNt(str1, str2)        strcmp(str1, str2)
+#define MyStrCompareNt(str1, str2)        strcmp((str1), (str2))
 #endif
 #ifndef MyStrCompare
-#define MyStrCompare(str1, str2, length)  strncmp(str1, str2, length)
+#define MyStrCompare(str1, str2, length)  strncmp((str1), (str2), (length))
 #endif
 #ifndef MyStrLength
 #define MyStrLength(str)                  strlen(str)
@@ -111,16 +111,16 @@ void* (*pdrealloc)(void* ptr, size_t size);
 	#endif
 #endif
 #ifndef MyStrStrNt
-#define MyStrStrNt(str1, str2)            strstr(str1, str2)
+#define MyStrStrNt(str1, str2)            strstr((str1), (str2))
 #endif
 #ifndef MyBufferPrintf
-#define MyBufferPrintf(buffer, bufferSize, formatStr, ...) snprintf(buffer, bufferSize, formatStr, ##__VA_ARGS__)
+#define MyBufferPrintf(buffer, bufferSize, formatStr, ...) snprintf((buffer), (bufferSize), (formatStr), ##__VA_ARGS__)
 #endif
 #ifndef MyVaListPrintf
 	#if 0//TODO: Do we want to default back to vsnprintf in some cases?
 	#define MyVaListPrintf(buffer, bufferSize, formatStr, vaList) vsnprintf_s(buffer, bufferSize, _TRUNCATE, formatStr, vaList)
 	#else
-	#define MyVaListPrintf(buffer, bufferSize, formatStr, vaList) vsnprintf(buffer, bufferSize, formatStr, vaList)
+	#define MyVaListPrintf(buffer, bufferSize, formatStr, vaList) vsnprintf((buffer), (bufferSize), (formatStr), vaList)
 	#endif
 #endif
 #ifndef MyHostToNetworkByteOrderU16
