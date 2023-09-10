@@ -228,7 +228,7 @@ u64 OsGetMemoryPageSize()
 	// +==============================+
 	#elif PLAYDATE_COMPILATION
 	{
-		//This is the size of the L1 Cache (Since PlayDate doesn't have virtual memory we'll just use this as a standin)
+		//This is the size of the L1 Cache (Since Playdate doesn't have virtual memory we'll just use this as a standin)
 		return Kilobytes(8);
 	}
 	#else
