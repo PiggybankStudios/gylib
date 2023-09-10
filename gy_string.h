@@ -91,6 +91,7 @@ MyStr_t NewStr(const char* nullTermStr)
 	return result;
 }
 
+#define MyStr_Empty_Const { 0, nullptr }
 #define MyStr_Empty NewStr((u64)0, (char*)nullptr)
 
 //TODO: Is our idea of an empty string somewhat flawed because I could have a 0 length string that is still allocated?? Like when I go to deallocate a string should I check if it's pntr is nullptr or if it's length is 0??
@@ -1861,6 +1862,7 @@ const char* FormatMillisecondsNt(u64 milliseconds, MemArena_t* memArena)
 // +--------------------------------------------------------------+
 /*
 @Defines
+MyStr_Empty_Const
 MyStr_Empty
 WordBreakCharClass_AlphabeticLower
 WordBreakCharClass_AlphabeticUpper
