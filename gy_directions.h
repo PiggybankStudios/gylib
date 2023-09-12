@@ -156,6 +156,19 @@ v2 ToVec2(Dir2_t dir2)
 	if (IsFlagSet(dir2, Dir2_Up))    { result.y -= 1.0f; }
 	return result;
 }
+v2 ToVec2(Dir2Ex_t dir2ex)
+{
+	v2 result = {};
+	if (IsFlagSet(dir2ex, Dir2Ex_Right)) { result.x += 1.0f; }
+	if (IsFlagSet(dir2ex, Dir2Ex_Left))  { result.x -= 1.0f; }
+	if (IsFlagSet(dir2ex, Dir2Ex_Down))  { result.y += 1.0f; }
+	if (IsFlagSet(dir2ex, Dir2Ex_Up))    { result.y -= 1.0f; }
+	if (IsFlagSet(dir2ex, Dir2Ex_TopLeft))     { result.x -= 1.0f; result.y -= 1.0f; }
+	if (IsFlagSet(dir2ex, Dir2Ex_TopRight))    { result.x += 1.0f; result.y -= 1.0f; }
+	if (IsFlagSet(dir2ex, Dir2Ex_BottomRight)) { result.x += 1.0f; result.y += 1.0f; }
+	if (IsFlagSet(dir2ex, Dir2Ex_BottomLeft))  { result.x -= 1.0f; result.y += 1.0f; }
+	return result;
+}
 v2i ToVec2i(Dir2_t dir2)
 {
 	v2i result = {};
@@ -163,6 +176,19 @@ v2i ToVec2i(Dir2_t dir2)
 	if (IsFlagSet(dir2, Dir2_Left))  { result.x -= 1; }
 	if (IsFlagSet(dir2, Dir2_Down))  { result.y += 1; }
 	if (IsFlagSet(dir2, Dir2_Up))    { result.y -= 1; }
+	return result;
+}
+v2i ToVec2i(Dir2Ex_t dir2ex)
+{
+	v2i result = {};
+	if (IsFlagSet(dir2ex, Dir2Ex_Right)) { result.x += 1; }
+	if (IsFlagSet(dir2ex, Dir2Ex_Left))  { result.x -= 1; }
+	if (IsFlagSet(dir2ex, Dir2Ex_Down))  { result.y += 1; }
+	if (IsFlagSet(dir2ex, Dir2Ex_Up))    { result.y -= 1; }
+	if (IsFlagSet(dir2ex, Dir2Ex_TopLeft))     { result.x -= 1; result.y -= 1; }
+	if (IsFlagSet(dir2ex, Dir2Ex_TopRight))    { result.x += 1; result.y -= 1; }
+	if (IsFlagSet(dir2ex, Dir2Ex_BottomRight)) { result.x += 1; result.y += 1; }
+	if (IsFlagSet(dir2ex, Dir2Ex_BottomLeft))  { result.x -= 1; result.y += 1; }
 	return result;
 }
 
@@ -320,6 +346,37 @@ Axis_t GetDir3Axis(Dir3_t dir3)
 		case Dir3_Forward:  return Axis_Z;
 		case Dir3_Backward: return Axis_Z;
 		default: return Axis_None;
+	}
+}
+
+Dir2Ex_t Dir2ExFromDir2Flags(u8 dirFlags)
+{
+	switch (dirFlags)
+	{
+		case Dir2_Right: return Dir2Ex_Right;
+		case Dir2_Left:  return Dir2Ex_Left;
+		case Dir2_Up:    return Dir2Ex_Up;
+		case Dir2_Down:  return Dir2Ex_Down;
+		case Dir2_Left|Dir2_Up:    return Dir2Ex_TopLeft;
+		case Dir2_Right|Dir2_Up:   return Dir2Ex_TopRight;
+		case Dir2_Right|Dir2_Down: return Dir2Ex_BottomRight;
+		case Dir2_Left|Dir2_Down:  return Dir2Ex_BottomLeft;
+		default: return Dir2Ex_None;
+	}
+}
+u8 Dir2FlagsFromDir2Ex(Dir2Ex_t dir2ex)
+{
+	switch (dir2ex)
+	{
+		case Dir2Ex_Right:       return Dir2_Right;
+		case Dir2Ex_Left:        return Dir2_Left;
+		case Dir2Ex_Up:          return Dir2_Up;
+		case Dir2Ex_Down:        return Dir2_Down;
+		case Dir2Ex_TopLeft:     return Dir2_Left|Dir2_Up;
+		case Dir2Ex_TopRight:    return Dir2_Right|Dir2_Up;
+		case Dir2Ex_BottomRight: return Dir2_Right|Dir2_Down;
+		case Dir2Ex_BottomLeft:  return Dir2_Left|Dir2_Down;
+		default: return 0x00;
 	}
 }
 
@@ -1247,6 +1304,8 @@ Dir3_t ToDir3(v3 vector)
 bool IsToDir3Ambiguous(v3i vector)
 Axis_t GetDir2Axis(Dir2_t dir2)
 Axis_t GetDir3Axis(Dir3_t dir3)
+Dir2Ex_t Dir2ExFromDir2Flags(u8 dirFlags)
+u8 Dir2FlagsFromDir2Ex(Dir2Ex_t dir2ex)
 bool IsSingleDir2(Dir2_t dir2, bool allowNone = false)
 bool IsSingleDir2Ex(Dir2Ex_t dir2ex, bool allowNone = false)
 bool IsCardinalDir2Ex(Dir2Ex_t dir2ex, bool allowNone = false)
