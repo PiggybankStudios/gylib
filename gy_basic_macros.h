@@ -71,6 +71,9 @@ Description:
 #define PluralEx(number, singularSuffix, multipleSuffix) (((number) == 1) ? (singularSuffix) : (multipleSuffix))
 #define Plural(number, multipleSuffix) (((number) == 1) ? "" : (multipleSuffix))
 
+#define TrackMax(isFirst, trackVariable, newValue) do { if ((isFirst) || (trackVariable) < (newValue)) { (trackVariable) = (newValue); } } while(0)
+#define TrackMin(isFirst, trackVariable, newValue) do { if ((isFirst) || (trackVariable) > (newValue)) { (trackVariable) = (newValue); } } while(0)
+
 // +--------------------------------------------------------------+
 // |                  Platform Dependant Macros                   |
 // +--------------------------------------------------------------+
@@ -163,6 +166,8 @@ EXTERN_C_END
 #define SetOptionalOutPntr(outputPntr, value)
 #define PluralEx(number, singularSuffix, multipleSuffix)
 #define Plural(number, multipleSuffix)
+#define TrackMax(isFirst, trackVariable, newValue)
+#define TrackMin(isFirst, trackVariable, newValue)
 #define UNUSED(varName)
 #define UNREFERENCED(varName)
 #define PACKED(class_to_pack)

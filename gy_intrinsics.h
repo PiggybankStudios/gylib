@@ -1117,7 +1117,7 @@ r32 AngleDiffR32(r32 left, r32 right)
 	r32 fixedRight = AngleFixR32(right);
 	if (fixedLeft - fixedRight > Pi32) { fixedLeft -= TwoPi32; }
 	if (fixedLeft - fixedRight < -Pi32) { fixedLeft += TwoPi32; }
-	return left - right;
+	return fixedLeft - fixedRight;
 }
 r64 AngleDiffR64(r64 left, r64 right)
 {
@@ -1125,7 +1125,7 @@ r64 AngleDiffR64(r64 left, r64 right)
 	r64 fixedRight = AngleFixR64(right);
 	if (fixedLeft - fixedRight > Pi32) { fixedLeft -= TwoPi32; }
 	if (fixedLeft - fixedRight < -Pi32) { fixedLeft += TwoPi32; }
-	return left - right;
+	return fixedLeft - fixedRight;
 }
 
 //TODO: Is this actually right??? Should be Pi32 not TwoPi32 right?
