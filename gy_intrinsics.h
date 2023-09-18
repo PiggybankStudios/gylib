@@ -83,31 +83,35 @@ Description:
 	
 	inline r32 MinR32(r32 value1, r32 value2)
 	{
+		#if ORCA_COMPILATION
+		return ((value1 < value2) ? value1 : value2);
+		#else
 		return fminf(value1, value2);
+		#endif
 	}
 	inline r32 MinR32(r32 value1, r32 value2, r32 value3)
 	{
-		return fminf(value1, fminf(value2, value3));
+		return MinR32(value1, MinR32(value2, value3));
 	}
 	inline r32 MinR32(r32 value1, r32 value2, r32 value3, r32 value4)
 	{
-		return fminf(value1, fminf(value2, fminf(value3, value4)));
+		return MinR32(value1, MinR32(value2, MinR32(value3, value4)));
 	}
 	inline r32 MinR32(r32 value1, r32 value2, r32 value3, r32 value4, r32 value5)
 	{
-		return fminf(value1, fminf(value2, fminf(value3, fminf(value4, value5))));
+		return MinR32(value1, MinR32(value2, MinR32(value3, MinR32(value4, value5))));
 	}
 	inline r32 MinR32(r32 value1, r32 value2, r32 value3, r32 value4, r32 value5, r32 value6)
 	{
-		return fminf(value1, fminf(value2, fminf(value3, fminf(value4, fminf(value5, value6)))));
+		return MinR32(value1, MinR32(value2, MinR32(value3, MinR32(value4, MinR32(value5, value6)))));
 	}
 	inline r32 MinR32(r32 value1, r32 value2, r32 value3, r32 value4, r32 value5, r32 value6, r32 value7)
 	{
-		return fminf(value1, fminf(value2, fminf(value3, fminf(value4, fminf(value5, fminf(value6, value7))))));
+		return MinR32(value1, MinR32(value2, MinR32(value3, MinR32(value4, MinR32(value5, MinR32(value6, value7))))));
 	}
 	inline r32 MinR32(r32 value1, r32 value2, r32 value3, r32 value4, r32 value5, r32 value6, r32 value7, r32 value8)
 	{
-		return fminf(value1, fminf(value2, fminf(value3, fminf(value4, fminf(value5, fminf(value6, fminf(value7, value8)))))));
+		return MinR32(value1, MinR32(value2, MinR32(value3, MinR32(value4, MinR32(value5, MinR32(value6, MinR32(value7, value8)))))));
 	}
 	
 	inline u64 MinU64(u64 value1, u64 value2)
@@ -170,31 +174,35 @@ Description:
 	
 	inline r64 MinR64(r64 value1, r64 value2)
 	{
+		#if ORCA_COMPILATION
+		return ((value1 < value2) ? value1 : value2);
+		#else
 		return fmin(value1, value2);
+		#endif
 	}
 	inline r64 MinR64(r64 value1, r64 value2, r64 value3)
 	{
-		return fmin(value1, fmin(value2, value3));
+		return MinR64(value1, MinR64(value2, value3));
 	}
 	inline r64 MinR64(r64 value1, r64 value2, r64 value3, r64 value4)
 	{
-		return fmin(value1, fmin(value2, fmin(value3, value4)));
+		return MinR64(value1, MinR64(value2, MinR64(value3, value4)));
 	}
 	inline r64 MinR64(r64 value1, r64 value2, r64 value3, r64 value4, r64 value5)
 	{
-		return fmin(value1, fmin(value2, fmin(value3, fmin(value4, value5))));
+		return MinR64(value1, MinR64(value2, MinR64(value3, MinR64(value4, value5))));
 	}
 	inline r64 MinR64(r64 value1, r64 value2, r64 value3, r64 value4, r64 value5, r64 value6)
 	{
-		return fmin(value1, fmin(value2, fmin(value3, fmin(value4, fmin(value5, value6)))));
+		return MinR64(value1, MinR64(value2, MinR64(value3, MinR64(value4, MinR64(value5, value6)))));
 	}
 	inline r64 MinR64(r64 value1, r64 value2, r64 value3, r64 value4, r64 value5, r64 value6, r64 value7)
 	{
-		return fmin(value1, fmin(value2, fmin(value3, fmin(value4, fmin(value5, fmin(value6, value7))))));
+		return MinR64(value1, MinR64(value2, MinR64(value3, MinR64(value4, MinR64(value5, MinR64(value6, value7))))));
 	}
 	inline r64 MinR64(r64 value1, r64 value2, r64 value3, r64 value4, r64 value5, r64 value6, r64 value7, r64 value8)
 	{
-		return fmin(value1, fmin(value2, fmin(value3, fmin(value4, fmin(value5, fmin(value6, fmin(value7, value8)))))));
+		return MinR64(value1, MinR64(value2, MinR64(value3, MinR64(value4, MinR64(value5, MinR64(value6, MinR64(value7, value8)))))));
 	}
 // +--------------------------------------------------------------+
 
@@ -261,31 +269,35 @@ Description:
 	
 	inline r32 MaxR32(r32 value1, r32 value2)
 	{
+		#if ORCA_COMPILATION
+		return ((value1 > value2) ? value1 : value2);
+		#else
 		return fmaxf(value1, value2);
+		#endif
 	}
 	inline r32 MaxR32(r32 value1, r32 value2, r32 value3)
 	{
-		return fmaxf(value1, fmaxf(value2, value3));
+		return MaxR32(value1, MaxR32(value2, value3));
 	}
 	inline r32 MaxR32(r32 value1, r32 value2, r32 value3, r32 value4)
 	{
-		return fmaxf(value1, fmaxf(value2, fmaxf(value3, value4)));
+		return MaxR32(value1, MaxR32(value2, MaxR32(value3, value4)));
 	}
 	inline r32 MaxR32(r32 value1, r32 value2, r32 value3, r32 value4, r32 value5)
 	{
-		return fmaxf(value1, fmaxf(value2, fmaxf(value3, fmaxf(value4, value5))));
+		return MaxR32(value1, MaxR32(value2, MaxR32(value3, MaxR32(value4, value5))));
 	}
 	inline r32 MaxR32(r32 value1, r32 value2, r32 value3, r32 value4, r32 value5, r32 value6)
 	{
-		return fmaxf(value1, fmaxf(value2, fmaxf(value3, fmaxf(value4, fmaxf(value5, value6)))));
+		return MaxR32(value1, MaxR32(value2, MaxR32(value3, MaxR32(value4, MaxR32(value5, value6)))));
 	}
 	inline r32 MaxR32(r32 value1, r32 value2, r32 value3, r32 value4, r32 value5, r32 value6, r32 value7)
 	{
-		return fmaxf(value1, fmaxf(value2, fmaxf(value3, fmaxf(value4, fmaxf(value5, fmaxf(value6, value7))))));
+		return MaxR32(value1, MaxR32(value2, MaxR32(value3, MaxR32(value4, MaxR32(value5, MaxR32(value6, value7))))));
 	}
 	inline r32 MaxR32(r32 value1, r32 value2, r32 value3, r32 value4, r32 value5, r32 value6, r32 value7, r32 value8)
 	{
-		return fmaxf(value1, fmaxf(value2, fmaxf(value3, fmaxf(value4, fmaxf(value5, fmaxf(value6, fmaxf(value7, value8)))))));
+		return MaxR32(value1, MaxR32(value2, MaxR32(value3, MaxR32(value4, MaxR32(value5, MaxR32(value6, MaxR32(value7, value8)))))));
 	}
 	
 	inline u64 MaxU64(u64 value1, u64 value2)
@@ -348,31 +360,35 @@ Description:
 	
 	inline r64 MaxR64(r64 value1, r64 value2)
 	{
+		#if ORCA_COMPILATION
+		return ((value1 > value2) ? value1 : value2);
+		#else
 		return fmax(value1, value2);
+		#endif
 	}
 	inline r64 MaxR64(r64 value1, r64 value2, r64 value3)
 	{
-		return fmax(value1, fmax(value2, value3));
+		return MaxR64(value1, MaxR64(value2, value3));
 	}
 	inline r64 MaxR64(r64 value1, r64 value2, r64 value3, r64 value4)
 	{
-		return fmax(value1, fmax(value2, fmax(value3, value4)));
+		return MaxR64(value1, MaxR64(value2, MaxR64(value3, value4)));
 	}
 	inline r64 MaxR64(r64 value1, r64 value2, r64 value3, r64 value4, r64 value5)
 	{
-		return fmax(value1, fmax(value2, fmax(value3, fmax(value4, value5))));
+		return MaxR64(value1, MaxR64(value2, MaxR64(value3, MaxR64(value4, value5))));
 	}
 	inline r64 MaxR64(r64 value1, r64 value2, r64 value3, r64 value4, r64 value5, r64 value6)
 	{
-		return fmax(value1, fmax(value2, fmax(value3, fmax(value4, fmax(value5, value6)))));
+		return MaxR64(value1, MaxR64(value2, MaxR64(value3, MaxR64(value4, MaxR64(value5, value6)))));
 	}
 	inline r64 MaxR64(r64 value1, r64 value2, r64 value3, r64 value4, r64 value5, r64 value6, r64 value7)
 	{
-		return fmax(value1, fmax(value2, fmax(value3, fmax(value4, fmax(value5, fmax(value6, value7))))));
+		return MaxR64(value1, MaxR64(value2, MaxR64(value3, MaxR64(value4, MaxR64(value5, MaxR64(value6, value7))))));
 	}
 	inline r64 MaxR64(r64 value1, r64 value2, r64 value3, r64 value4, r64 value5, r64 value6, r64 value7, r64 value8)
 	{
-		return fmax(value1, fmax(value2, fmax(value3, fmax(value4, fmax(value5, fmax(value6, fmax(value7, value8)))))));
+		return MaxR64(value1, MaxR64(value2, MaxR64(value3, MaxR64(value4, MaxR64(value5, MaxR64(value6, MaxR64(value7, value8)))))));
 	}
 // +--------------------------------------------------------------+
 
@@ -412,19 +428,35 @@ inline i64 AbsI64(i64 value)
 // +==============================+
 inline r32 RoundR32(r32 value)
 {
+	#if ORCA_COMPILATION
+	return (r32)((i32)(value + 0.5f));
+	#else
 	return roundf(value);
+	#endif
 }
 inline i32 RoundR32i(r32 value)
 {
+	#if ORCA_COMPILATION
+	return (i32)(value + 0.5f);
+	#else
 	return (i32)roundf(value);
+	#endif
 }
 inline r64 RoundR64(r64 value)
 {
+	#if ORCA_COMPILATION
+	return (r64)((i64)(value + 0.5));
+	#else
 	return round(value);
+	#endif
 }
 inline i64 RoundR64i(r64 value)
 {
+	#if ORCA_COMPILATION
+	return (i64)(value + 0.5);
+	#else
 	return (i64)round(value);
+	#endif
 }
 
 // +==============================+
@@ -432,11 +464,19 @@ inline i64 RoundR64i(r64 value)
 // +==============================+
 inline r32 FloorR32(r32 value)
 {
+	#if ORCA_COMPILATION
+	return (r32)floor((r64)value);
+	#else
 	return floorf(value);
+	#endif
 }
 inline i32 FloorR32i(r32 value)
 {
+	#if ORCA_COMPILATION
+	return (i32)floor((r64)value);
+	#else
 	return (i32)floorf(value);
+	#endif
 }
 inline r64 FloorR64(r64 value)
 {
@@ -452,11 +492,19 @@ inline i64 FloorR64i(r64 value)
 // +==============================+
 inline r32 CeilR32(r32 value)
 {
+	#if ORCA_COMPILATION
+	return (r32)ceil((r64)value);
+	#else
 	return ceilf(value);
+	#endif
 }
 inline i32 CeilR32i(r32 value)
 {
+	#if ORCA_COMPILATION
+	return (i32)ceil((r64)value);
+	#else
 	return (i32)ceilf(value);
+	#endif
 }
 inline r64 CeilR64(r64 value)
 {
@@ -527,6 +575,7 @@ inline r64 CosR64(r64 angle)
 // +==============================+
 // |             Tan              |
 // +==============================+
+#if !ORCA_COMPILATION
 inline r32 TanR32(r32 angle)
 {
 	return tanf(angle);
@@ -535,10 +584,12 @@ inline r64 TanR64(r64 angle)
 {
 	return tan(angle);
 }
+#endif // !ORCA_COMPILATION
 
 // +==============================+
 // |             Asin             |
 // +==============================+
+#if !ORCA_COMPILATION
 inline r32 AsinR32(r32 value)
 {
 	return asinf(value);
@@ -547,13 +598,18 @@ inline r64 AsinR64(r64 value)
 {
 	return asin(value);
 }
+#endif // !ORCA_COMPILATION
 
 // +==============================+
 // |             Acos             |
 // +==============================+
 inline r32 AcosR32(r32 value)
 {
+	#if ORCA_COMPILATION
+	return (r32)acos((r64)value);
+	#else
 	return acosf(value);
+	#endif
 }
 inline r64 AcosR64(r64 value)
 {
@@ -563,6 +619,7 @@ inline r64 AcosR64(r64 value)
 // +==============================+
 // |             Atan             |
 // +==============================+
+#if !ORCA_COMPILATION
 inline r32 AtanJoinedR32(r32 value)
 {
 	return atanf(value);
@@ -579,6 +636,7 @@ inline r64 AtanR64(r64 y, r64 x)
 {
 	return atan2(y, x);
 }
+#endif // !ORCA_COMPILATION
 
 // +==============================+
 // |             Saw              |
@@ -617,7 +675,11 @@ inline r64 SawR64(r64 angle)
 // +==============================+
 inline r32 PowR32(r32 value, r32 power)
 {
+	#if ORCA_COMPILATION
+	return (r32)pow((r64)value, (r64)power);
+	#else
 	return powf(value, power);
+	#endif
 }
 inline r64 PowR64(r64 value, r64 power)
 {
@@ -627,6 +689,7 @@ inline r64 PowR64(r64 value, r64 power)
 // +==============================+
 // |             Log              |
 // +==============================+
+#if !ORCA_COMPILATION
 inline r32 LnR32(r32 value)
 {
 	return logf(value);
@@ -651,6 +714,7 @@ inline r64 Log10R64(r64 value)
 {
 	return log10(value);
 }
+#endif // !ORCA_COMPILATION
 
 // +==============================+
 // |             Sqrt             |
@@ -667,6 +731,7 @@ inline r64 SqrtR64(r64 value)
 // +==============================+
 // |             Cbrt             |
 // +==============================+
+#if !ORCA_COMPILATION
 inline r32 CbrtR32(r32 value)
 {
 	return cbrtf(value);
@@ -675,6 +740,7 @@ inline r64 CbrtR64(r64 value)
 {
 	return cbrt(value);
 }
+#endif // !ORCA_COMPILATION
 
 // +==============================+
 // |             Sign             |
@@ -720,6 +786,7 @@ inline i64 SignOfI64(i64 value)
 // +==============================+
 // |             Rand             |
 // +==============================+
+#if !ORCA_COMPILATION
 inline void SeedRand(u32 seed)
 {
 	srand((unsigned int)seed);
@@ -750,6 +817,7 @@ inline r64 RandR64(r64 min, r64 max)
 	r64 scaled = (r64)rand() / RAND_MAX;
 	return ((max - min)*scaled) + min;
 }
+#endif // !ORCA_COMPILATION
 
 // +==============================+
 // |            Clamp             |
@@ -856,7 +924,11 @@ inline r64 DecimalPartR64(r64 value)
 // +==============================+
 inline r32 ModR32(r32 numerator, r32 denominator)
 {
+	#if ORCA_COMPILATION
+	return (r32)fmod((r64)numerator, (r64)denominator);
+	#else
 	return fmodf(numerator, denominator);
+	#endif
 }
 inline r64 ModR64(r64 numerator, r64 denominator)
 {

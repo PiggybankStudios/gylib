@@ -269,7 +269,7 @@ void InitMemArena_Alias(MemArena_t* arena, MemArena_t* sourceArena)
 }
 void InitMemArena_StdHeap(MemArena_t* arena)
 {
-	#if !GY_CUSTOM_STD_LIB
+	#if !GY_CUSTOM_STD_LIB && !ORCA_COMPILATION
 	NotNull(arena);
 	ClearPointer(arena);
 	arena->type = MemArenaType_StdHeap;
@@ -280,7 +280,7 @@ void InitMemArena_StdHeap(MemArena_t* arena)
 	arena->highAllocMark = arena->numAllocations;
 	#else
 	AssertMsg_(false, "StdHeap type memory arena is not supported without the standard library being present!");
-	#endif //GY_CUSTOM_STD_LIB
+	#endif //!GY_CUSTOM_STD_LIB && !ORCA_COMPILATION
 }
 void InitMemArena_FixedHeap(MemArena_t* arena, u64 size, void* memoryPntr, AllocAlignment_t alignment = AllocAlignment_None)
 {
@@ -1482,7 +1482,7 @@ void* AllocMem_(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride)
 			}
 		} break;
 		
-		#if !GY_CUSTOM_STD_LIB
+		#if !GY_CUSTOM_STD_LIB && !ORCA_COMPILATION
 		// +===============================+
 		// | MemArenaType_StdHeap AllocMem |
 		// +===============================+
@@ -1498,7 +1498,7 @@ void* AllocMem_(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride)
 				if (arena->highAllocMark < arena->numAllocations) { arena->highAllocMark = arena->numAllocations; }
 			}
 		} break;
-		#endif //GY_CUSTOM_STD_LIB
+		#endif //!GY_CUSTOM_STD_LIB && !ORCA_COMPILATION
 		
 		// +==================================+
 		// | MemArenaType_FixedHeap AllocMem  |
@@ -2003,7 +2003,7 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize, bool ignoreNullp
 			arena->used = arena->sourceArena->used;
 		} break;
 		
-		#if !GY_CUSTOM_STD_LIB
+		#if !GY_CUSTOM_STD_LIB && !ORCA_COMPILATION
 		// +==============================+
 		// | MemArenaType_StdHeap FreeMem |
 		// +==============================+
@@ -2014,7 +2014,7 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize, bool ignoreNullp
 			DecrementBy(arena->used, allocSize);
 			result = true;
 		} break;
-		#endif //GY_CUSTOM_STD_LIB
+		#endif //!GY_CUSTOM_STD_LIB && !ORCA_COMPILATION
 		
 		// +================================+
 		// | MemArenaType_FixedHeap FreeMem |
@@ -2502,7 +2502,7 @@ void* ReallocMem_(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize, 
 			}
 		} break;
 		
-		#if !GY_CUSTOM_STD_LIB
+		#if !GY_CUSTOM_STD_LIB && !ORCA_COMPILATION
 		// +==================================+
 		// | MemArenaType_StdHeap ReallocMem  |
 		// +==================================+
@@ -2524,7 +2524,7 @@ void* ReallocMem_(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize, 
 				if (increasingSize && arena->resettableHighUsedMark < arena->used) { arena->resettableHighUsedMark = arena->used; }
 			}
 		} break;
-		#endif //GY_CUSTOM_STD_LIB
+		#endif //!GY_CUSTOM_STD_LIB && !ORCA_COMPILATION
 		
 		// +====================================+
 		// | MemArenaType_FixedHeap ReallocMem  |

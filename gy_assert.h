@@ -42,7 +42,7 @@ Description:
 // |                Compile-Time Assertion Macros                 |
 // +--------------------------------------------------------------+
 #define CompileAssertMsg(condition, message) static_assert(condition, message)
-#define CompileAssert(condition)             static_assert(condition)
+#define CompileAssert(condition)             static_assert(condition, #condition)
 
 // +--------------------------------------------------------------+
 // |                   MyBreak and MyDebugBreak                   |
@@ -57,6 +57,8 @@ Description:
 #define MyBreak() __builtin_abort()
 #elif PLAYDATE_COMPILATION
 #define MyBreak() pd->system->error("MyBreak()")
+#elif ORCA_COMPILATION
+#define MyBreak() oc_abort_ext(__FILE__, __FUNCTION__, __LINE__, "MyBreak()")
 #else
 #error Platform not supported in gy_assert.h
 #endif
