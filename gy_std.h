@@ -81,6 +81,39 @@ void* (*pdrealloc)(void* ptr, size_t size);
 #define MyFree(ptr) static_assert(false, "basic free is not available in Web Assembly!")
 #endif
 
+#ifndef MyStrToFloat
+float ratof(char* arr)
+{
+	float val = 0;
+	int afterdot=0;
+	float scale=1;
+	int neg = 0; 
+	
+	if (*arr == '-')
+	{
+		arr++;
+		neg = 1;
+	}
+	while (*arr)
+	{
+		if (afterdot)
+		{
+			scale = scale/10;
+			val = val + (*arr-'0')*scale;
+		}
+		else
+		{
+			if (*arr == '.') { afterdot++; }
+			else { val = val * 10.0 + (*arr - '0'); }
+		}
+		arr++;
+	}
+	
+	return ((neg) ? -val : val);
+}
+#define MyStrToFloat(nullTermStr) ratof(nullTermStr)
+#endif
+
 #endif //ORCA_COMPILATION
 
 // +--------------------------------------------------------------+
@@ -158,6 +191,9 @@ void* (*pdrealloc)(void* ptr, size_t size);
 #endif
 #ifndef MyNetworkToHostByteOrderU32
 #define MyNetworkToHostByteOrderU32(integer) ntohl(integer)
+#endif
+#ifndef MyStrToFloat
+#define MyStrToFloat(nullTermStr) atof(nullTermStr)
 #endif
 
 #endif // _GY_STD_H

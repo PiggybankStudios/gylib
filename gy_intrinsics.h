@@ -575,7 +575,6 @@ inline r64 CosR64(r64 angle)
 // +==============================+
 // |             Tan              |
 // +==============================+
-#if !ORCA_COMPILATION
 inline r32 TanR32(r32 angle)
 {
 	return tanf(angle);
@@ -584,12 +583,10 @@ inline r64 TanR64(r64 angle)
 {
 	return tan(angle);
 }
-#endif // !ORCA_COMPILATION
 
 // +==============================+
 // |             Asin             |
 // +==============================+
-#if !ORCA_COMPILATION
 inline r32 AsinR32(r32 value)
 {
 	return asinf(value);
@@ -598,7 +595,6 @@ inline r64 AsinR64(r64 value)
 {
 	return asin(value);
 }
-#endif // !ORCA_COMPILATION
 
 // +==============================+
 // |             Acos             |
@@ -619,7 +615,6 @@ inline r64 AcosR64(r64 value)
 // +==============================+
 // |             Atan             |
 // +==============================+
-#if !ORCA_COMPILATION
 inline r32 AtanJoinedR32(r32 value)
 {
 	return atanf(value);
@@ -636,7 +631,6 @@ inline r64 AtanR64(r64 y, r64 x)
 {
 	return atan2(y, x);
 }
-#endif // !ORCA_COMPILATION
 
 // +==============================+
 // |             Saw              |
@@ -689,7 +683,6 @@ inline r64 PowR64(r64 value, r64 power)
 // +==============================+
 // |             Log              |
 // +==============================+
-#if !ORCA_COMPILATION
 inline r32 LnR32(r32 value)
 {
 	return logf(value);
@@ -706,6 +699,7 @@ inline r64 Log2R64(r64 value)
 {
 	return log2(value);
 }
+#if !ORCA_COMPILATION
 inline r32 Log10R32(r32 value)
 {
 	return log10f(value);
@@ -714,7 +708,7 @@ inline r64 Log10R64(r64 value)
 {
 	return log10(value);
 }
-#endif // !ORCA_COMPILATION
+#endif //!ORCA_COMPILATION
 
 // +==============================+
 // |             Sqrt             |
@@ -731,7 +725,6 @@ inline r64 SqrtR64(r64 value)
 // +==============================+
 // |             Cbrt             |
 // +==============================+
-#if !ORCA_COMPILATION
 inline r32 CbrtR32(r32 value)
 {
 	return cbrtf(value);
@@ -740,7 +733,6 @@ inline r64 CbrtR64(r64 value)
 {
 	return cbrt(value);
 }
-#endif // !ORCA_COMPILATION
 
 // +==============================+
 // |             Sign             |

@@ -95,9 +95,17 @@ MyStr_t OsGetExecutablePath(MemArena_t* memArena, OsError_t* errorOut)
 	// 	SetOptionalOutPntr(errorOut, OsError_UnsupportedPlatform);
 	// }
 	// +==============================+
-	// |           PLAYDATE           |
+	// |           Playdate           |
 	// +==============================+
 	#elif PLAYDATE_COMPILATION
+	{
+		SetOptionalOutPntr(errorOut, OsError_UnsupportedPlatform);
+		return MyStr_Empty;
+	}
+	// +==============================+
+	// |             Orca             |
+	// +==============================+
+	#elif ORCA_COMPILATION
 	{
 		SetOptionalOutPntr(errorOut, OsError_UnsupportedPlatform);
 		return MyStr_Empty;
@@ -179,9 +187,17 @@ MyStr_t OsGetWorkingDirectory(MemArena_t* memArena, OsError_t* errorOut)
 	// 	SetOptionalOutPntr(errorOut, OsError_UnsupportedPlatform);
 	// }
 	// +==============================+
-	// |           PLAYDATE           |
+	// |           Playdate           |
 	// +==============================+
 	#elif PLAYDATE_COMPILATION
+	{
+		SetOptionalOutPntr(errorOut, OsError_UnsupportedPlatform);
+		return MyStr_Empty;
+	}
+	// +==============================+
+	// |             Orca             |
+	// +==============================+
+	#elif ORCA_COMPILATION
 	{
 		SetOptionalOutPntr(errorOut, OsError_UnsupportedPlatform);
 		return MyStr_Empty;
@@ -224,12 +240,20 @@ u64 OsGetMemoryPageSize()
 	// 	SetOptionalOutPntr(errorOut, OsError_UnsupportedPlatform);
 	// }
 	// +==============================+
-	// |           PLAYDATE           |
+	// |           Playdate           |
 	// +==============================+
 	#elif PLAYDATE_COMPILATION
 	{
 		//This is the size of the L1 Cache (Since Playdate doesn't have virtual memory we'll just use this as a standin)
 		return Kilobytes(8);
+	}
+	// +==============================+
+	// |             Orca             |
+	// +==============================+
+	#elif ORCA_COMPILATION
+	{
+		//This is the size of the allocation pages in the WASM memory model, and WASM doesn't support virtual memory afaik
+		return Kilobytes(64);
 	}
 	#else
 	#error OsGetMemoryPageSize does not support the current platform yet!
@@ -289,9 +313,16 @@ void* OsReserveMemory(u64 numBytes)
 	// 	SetOptionalOutPntr(errorOut, OsError_UnsupportedPlatform);
 	// }
 	// +==============================+
-	// |           PLAYDATE           |
+	// |           Playdate           |
 	// +==============================+
 	#elif PLAYDATE_COMPILATION
+	{
+		return nullptr;
+	}
+	// +==============================+
+	// |             Orca             |
+	// +==============================+
+	#elif ORCA_COMPILATION
 	{
 		return nullptr;
 	}
@@ -345,11 +376,18 @@ void OsCommitReservedMemory(void* memoryPntr, u64 numBytes)
 	// 	SetOptionalOutPntr(errorOut, OsError_UnsupportedPlatform);
 	// }
 	// +==============================+
-	// |           PLAYDATE           |
+	// |           Playdate           |
 	// +==============================+
 	#elif PLAYDATE_COMPILATION
 	{
 		AssertMsg(false, "OsCommitReservedMemory is not supported on PLAYDATE");
+	}
+	// +==============================+
+	// |             Orca             |
+	// +==============================+
+	#elif ORCA_COMPILATION
+	{
+		AssertMsg(false, "OsCommitReservedMemory is not supported on ORCA");
 	}
 	#else
 	#error OsReserveMemory does not support the current platform yet!
@@ -396,11 +434,18 @@ void OsFreeReservedMemory(void* memoryPntr, u64 reservedSize)
 	// 	SetOptionalOutPntr(errorOut, OsError_UnsupportedPlatform);
 	// }
 	// +==============================+
-	// |           PLAYDATE           |
+	// |           Playdate           |
 	// +==============================+
 	#elif PLAYDATE_COMPILATION
 	{
 		AssertMsg(false, "OsFreeReservedMemory is not supported on PLAYDATE");
+	}
+	// +==============================+
+	// |             Orca             |
+	// +==============================+
+	#elif ORCA_COMPILATION
+	{
+		AssertMsg(false, "OsFreeReservedMemory is not supported on ORCA");
 	}
 	#else
 	#error OsReserveMemory does not support the current platform yet!
