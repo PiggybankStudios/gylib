@@ -503,6 +503,10 @@ r32 EaseEarlyInOut(r32 p)
 // +==============================+
 // |         LogTwoCustom         |
 // +==============================+
+#if ORCA_COMPILATION
+r32 EaseLogTwoOutCustom(r32 p) { DebugAssert(false); return p; }
+r32 EaseLogTwoInCustom(r32 p) { DebugAssert(false); return p; }
+#else
 r32 EaseLogTwoOutCustom(r32 p)
 {
 	return (1 / 3.16987f) * Log2R32((8.0f * p) + 1.0f);
@@ -511,6 +515,7 @@ r32 EaseLogTwoInCustom(r32 p)
 {
 	return (PowR32(2, (3.16987f * p)) - 1.0f) / 8.0f;
 }
+#endif
 
 // +==============================+
 // |           Generic            |

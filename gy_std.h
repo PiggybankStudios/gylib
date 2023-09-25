@@ -9,6 +9,8 @@ Date:   09\14\2021
 
 #include "gy_defines_check.h"
 
+extern "C" {
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <limits.h>
@@ -17,10 +19,13 @@ Date:   09\14\2021
 #include <string.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#if !ORCA_COMPILATION
 #include <stdio.h>
 #include <new>
+#endif
 //TODO: I don't think we actually need to include algorithm here? fmin and similar functions come from math.h
 // #include <algorithm> //Used for min and max functions
+}
 
 #if WINDOWS_COMPILATION
 #include <intrin.h>
@@ -34,6 +39,8 @@ Date:   09\14\2021
 //TODO: Is there any wasm specific header files we want to include?
 #elif PLAYDATE_COMPILATION
 #include "pd_api.h"
+#elif ORCA_COMPILATION
+#include <orca.h>
 #else
 #error Unsupported platform in gy_std.h
 #endif
@@ -58,6 +65,56 @@ void* (*pdrealloc)(void* ptr, size_t size);
 #endif
 
 #endif //PLAYDATE_COMPILATION
+
+// +--------------------------------------------------------------+
+// |                        Orca Reroutes                         |
+// +--------------------------------------------------------------+
+#if ORCA_COMPILATION
+
+#ifndef MyMalloc
+#define MyMalloc(numBytes) nullptr; static_assert(false, "basic malloc is not available in Web Assembly!")
+#endif
+#ifndef MyRealloc
+#define MyRealloc(ptr, numBytes) nullptr; static_assert(false, "basic realloc is not available in Web Assembly!")
+#endif
+#ifndef MyFree
+#define MyFree(ptr) static_assert(false, "basic free is not available in Web Assembly!")
+#endif
+
+#ifndef MyStrToFloat
+float ratof(char* arr)
+{
+	float val = 0;
+	int afterdot=0;
+	float scale=1;
+	int neg = 0; 
+	
+	if (*arr == '-')
+	{
+		arr++;
+		neg = 1;
+	}
+	while (*arr)
+	{
+		if (afterdot)
+		{
+			scale = scale/10;
+			val = val + (*arr-'0')*scale;
+		}
+		else
+		{
+			if (*arr == '.') { afterdot++; }
+			else { val = val * 10.0 + (*arr - '0'); }
+		}
+		arr++;
+	}
+	
+	return ((neg) ? -val : val);
+}
+#define MyStrToFloat(nullTermStr) ratof(nullTermStr)
+#endif
+
+#endif //ORCA_COMPILATION
 
 // +--------------------------------------------------------------+
 // |                    Our Reroute Functions                     |
@@ -134,6 +191,9 @@ void* (*pdrealloc)(void* ptr, size_t size);
 #endif
 #ifndef MyNetworkToHostByteOrderU32
 #define MyNetworkToHostByteOrderU32(integer) ntohl(integer)
+#endif
+#ifndef MyStrToFloat
+#define MyStrToFloat(nullTermStr) atof(nullTermStr)
 #endif
 
 #endif // _GY_STD_H

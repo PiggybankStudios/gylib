@@ -321,7 +321,7 @@ bool TryParseR64(MyStr_t str, r64* valueOut, TryParseFailureReason_t* reasonOut 
 	localBuffer[str.length] = '\0';
 	MyStr_t tempStr = NewStr(str.length, &localBuffer[0]);
 	
-	r64 result = atof(tempStr.pntr);
+	r64 result = MyStrToFloat(tempStr.pntr);
 	if (!allowInfinity && IsInfiniteR64(result))
 	{
 		if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_Infinity; }
@@ -373,7 +373,7 @@ bool TryParseR32(MyStr_t str, r32* valueOut, TryParseFailureReason_t* reasonOut 
 	localBuffer[str.length] = '\0';
 	MyStr_t tempStr = NewStr(str.length, &localBuffer[0]);
 	
-	r64 resultR64 = atof(tempStr.pntr);
+	r64 resultR64 = MyStrToFloat(tempStr.pntr);
 	if (!allowInfinity && IsInfiniteR64(resultR64))
 	{
 		if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_Infinity; }

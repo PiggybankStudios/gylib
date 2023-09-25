@@ -42,21 +42,29 @@ Description:
 // |                Compile-Time Assertion Macros                 |
 // +--------------------------------------------------------------+
 #define CompileAssertMsg(condition, message) static_assert(condition, message)
-#define CompileAssert(condition)             static_assert(condition)
+#define CompileAssert(condition)             static_assert(condition, #condition)
 
 // +--------------------------------------------------------------+
 // |                   MyBreak and MyDebugBreak                   |
 // +--------------------------------------------------------------+
 #if WINDOWS_COMPILATION
 #define MyBreak() __debugbreak()
+#define MyBreakEx(message) __debugbreak()
 #elif OSX_COMPILATION
 #define MyBreak() raise(SIGINT)
+#define MyBreakEx(message) raise(SIGINT)
 #elif LINUX_COMPILATION
 #define MyBreak() raise(SIGINT)
+#define MyBreakEx(message) raise(SIGINT)
 #elif WASM_COMPILATION
 #define MyBreak() __builtin_abort()
+#define MyBreakEx(message) __builtin_abort()
 #elif PLAYDATE_COMPILATION
 #define MyBreak() pd->system->error("MyBreak()")
+#define MyBreakEx(message) pd->system->error(message)
+#elif ORCA_COMPILATION
+#define MyBreak() oc_abort_ext(__FILE__, __FUNCTION__, __LINE__, "MyBreak()")
+#define MyBreakEx(message) oc_abort_ext(__FILE__, __FUNCTION__, __LINE__, message)
 #else
 #error Platform not supported in gy_assert.h
 #endif
@@ -72,13 +80,13 @@ Description:
 // +--------------------------------------------------------------+
 #if GYLIB_ASSERTIONS_ENABLED
 
-#define AssertMsg_(Expression, message) do { if (!(Expression)) { MyBreak(); } } while(0)
+#define AssertMsg_(Expression, message) do { if (!(Expression)) { MyBreakEx((message != nullptr) ? message : #Expression); } } while(0)
 
 #if GYLIB_USE_ASSERT_FAILURE_FUNC
 extern void GyLibAssertFailure(const char* filePath, int lineNumber, const char* funcName, const char* expressionStr, const char* messageStr);
 #define AssertMsg(Expression, message) do { if (!(Expression)) { GyLibAssertFailure(__FILE__, __LINE__, __func__, #Expression, (message)); } } while(0)
 #else
-#define AssertMsg(Expression, message) do { if (!(Expression)) { MyBreak(); } } while(0)
+#define AssertMsg(Expression, message) do { if (!(Expression)) { MyBreakEx((message != nullptr) ? message : #Expression); } } while(0)
 #endif
 
 #else //!GYLIB_ASSERTIONS_ENABLED
@@ -166,6 +174,7 @@ GYLIB_USE_ASSERT_FAILURE_FUNC
 #define CompileAssertMsg(condition, message)
 #define CompileAssert(condition)
 #define MyBreak()
+#define MyBreakEx(message)
 #define MyDebugBreak()
 void GyLibAssertFailure(const char* filePath, int lineNumber, const char* funcName, const char* expressionStr, const char* messageStr)
 #define AssertMsg_(Expression, message)

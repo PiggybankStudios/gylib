@@ -574,7 +574,7 @@ void* VarArrayMove(VarArray_t* array, u64 fromIndex, u64 toIndex, bool swapWithT
 // |                           Sorting                            |
 // +--------------------------------------------------------------+
 //TODO: If we can get rid of the use of alloca then we can have this, even if we don't have the standard library
-#if defined(_GY_SORTING_H) && !GY_CUSTOM_STD_LIB
+#if defined(_GY_SORTING_H) && !GY_CUSTOM_STD_LIB && !ORCA_COMPILATION
 void VarArraySort(VarArray_t* array, CompareFunc_f* compareFunc, void* contextPntr)
 {
 	NotNull(array);
