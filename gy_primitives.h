@@ -3,7 +3,7 @@ File:   gy_primitives.h
 Author: Taylor Robbins
 Date:   10\09\2021
 Description:
-	** Contains a bunch of 3D primitive structures and related functions
+	** Contains a bunch of 3D, 2D (and even 1D) primitive structures and related functions
 */
 
 #ifndef _GY_PRIMITIVES_H
@@ -257,6 +257,17 @@ struct Hexagon_t
 	r32 rotation;
 };
 
+struct Range_t
+{
+	r32 min;
+	r32 max;
+};
+struct Rangei_t
+{
+	i32 min;
+	i32 max;
+};
+
 // +--------------------------------------------------------------+
 // |                        New Functions                         |
 // +--------------------------------------------------------------+
@@ -492,6 +503,40 @@ Hexagon_t NewHexagon(v2 center, r32 radiusOrSideLength, r32 rotation = 0.0f)
 	result.rotation = rotation;
 	return result;
 }
+Range_t NewRange(r32 min, r32 max)
+{
+	Range_t result;
+	result.min = MinR32(min, max);
+	result.max = MaxR32(min, max);
+	return result;
+}
+Range_t NewEmptyRange(r32 value)
+{
+	Range_t result;
+	result.min = value;
+	result.max = value;
+	return result;
+}
+Rangei_t NewRangei(i32 min, i32 max)
+{
+	Rangei_t result;
+	result.min = MinI32(min, max);
+	result.max = MaxI32(min, max);
+	return result;
+}
+Rangei_t NewEmptyRangei(i32 value)
+{
+	Rangei_t result;
+	result.min = value;
+	result.max = value;
+	return result;
+}
+
+#define Range_Empty NewRange(0, 0)
+#define Range_One   NewRange(0, 1)
+
+#define Rangei_Empty NewRangei(0, 0)
+#define Rangei_One   NewRangei(0, 1)
 
 // +--------------------------------------------------------------+
 // |              Pentagon and Dodecahedron Helpers               |
@@ -644,6 +689,115 @@ v2 GetHexagonVertex(Hexagon_t hexagon, u64 index)
 	result = Vec2FromAngle(vertexDirection, hexagon.radius);
 	result += hexagon.center;
 	return result;
+}
+
+// +--------------------------------------------------------------+
+// |                        Range Helpers                         |
+// +--------------------------------------------------------------+
+void RangeFix(Range_t* range)
+{
+	if (range->min > range->max)
+	{
+		SWAP_VARIABLES(r32, range->min, range->max);
+	}
+}
+
+Range_t RangeShift(Range_t range, r32 shiftAmount)
+{
+	return NewRange(range.min + shiftAmount, range.max + shiftAmount);
+}
+Range_t RangeScale(Range_t range, r32 scalar)
+{
+	return NewRange(range.min * scalar, range.max * scalar);
+}
+
+Range_t RangeBoth(Range_t range1, Range_t range2)
+{
+	r32 minValue = MinR32(range1.min, range1.max, range2.min, range2.max);
+	r32 maxValue = MaxR32(range1.min, range1.max, range2.min, range2.max);
+	return NewRange(minValue, maxValue);
+}
+bool DoesRangeContain(Range_t range, r32 value, bool inclusiveMin = true, bool inclusiveMax = true)
+{
+	return (
+		(value > range.min || (inclusiveMin && value == range.min)) &&
+		(value < range.max || (inclusiveMax && value == range.max))
+	);
+}
+bool DoRangesOverlap(Range_t range1, Range_t range2, bool inclusive = true)
+{
+	if (range1.max < range2.min) { return false; }
+	if (range2.max < range1.min) { return false; }
+	if (range1.max == range2.min && !inclusive) { return false; }
+	if (range2.max == range1.min && !inclusive) { return false; }
+	return true;
+}
+
+Range_t RangeOverlap(Range_t range1, Range_t range2)
+{
+	if (range1.max < range2.min) { return NewEmptyRange((range1.max + range2.min) / 2); }
+	if (range2.max < range1.min) { return NewEmptyRange((range2.max + range1.min) / 2); }
+	return NewRange(
+		MaxR32(range1.min, range2.min),
+		MinR32(range1.max, range2.max)
+	);
+}
+
+r32 InverseLerpRange(Range_t range, r32 value, bool clamp = false)
+{
+	return InverseLerpR32(range.min, range.max, value, clamp);
+}
+
+// +--------------------------------------------------------------+
+// |                        Rangei Helpers                        |
+// +--------------------------------------------------------------+
+void RangeiFix(Rangei_t* range)
+{
+	if (range->min > range->max)
+	{
+		SWAP_VARIABLES(i32, range->min, range->max);
+	}
+}
+
+Rangei_t RangeiShift(Rangei_t range, i32 shiftAmount)
+{
+	return NewRangei(range.min + shiftAmount, range.max + shiftAmount);
+}
+Rangei_t RangeiScale(Rangei_t range, i32 scalar)
+{
+	return NewRangei(range.min * scalar, range.max * scalar);
+}
+
+Rangei_t RangeiBoth(Rangei_t range1, Rangei_t range2)
+{
+	i32 minValue = MinI32(range1.min, range1.max, range2.min, range2.max);
+	i32 maxValue = MaxI32(range1.min, range1.max, range2.min, range2.max);
+	return NewRangei(minValue, maxValue);
+}
+bool DoesRangeiContain(Rangei_t range, i32 value, bool inclusiveMin = true, bool inclusiveMax = true)
+{
+	return (
+		(value > range.min || (inclusiveMin && value == range.min)) &&
+		(value < range.max || (inclusiveMax && value == range.max))
+	);
+}
+bool DoRangeisOverlap(Rangei_t range1, Rangei_t range2, bool inclusive = true)
+{
+	if (range1.max < range2.min) { return false; }
+	if (range2.max < range1.min) { return false; }
+	if (range1.max == range2.min && !inclusive) { return false; }
+	if (range2.max == range1.min && !inclusive) { return false; }
+	return true;
+}
+
+Rangei_t RangeiOverlap(Rangei_t range1, Rangei_t range2)
+{
+	if (range1.max < range2.min) { return NewEmptyRangei((range1.max + range2.min) / 2); }
+	if (range2.max < range1.min) { return NewEmptyRangei((range2.max + range1.min) / 2); }
+	return NewRangei(
+		MaxI32(range1.min, range2.min),
+		MinI32(range1.max, range2.max)
+	);
 }
 
 // +--------------------------------------------------------------+
@@ -1023,6 +1177,10 @@ HEXAGON_NUM_EDGES
 HEXAGON_INNER_ANGLE_DEGREES
 HEXAGON_INNER_ANGLE32
 HEXAGON_INNER_ANGLE64
+Range_Empty
+Range_One
+Rangei_Empty
+Rangei_One
 @Types
 PrimitiveVert3D_t
 PrimitiveIndex3D_t
@@ -1038,6 +1196,10 @@ Cylinder_t
 Cone_t
 Pyramid_t
 Wedge_t
+Pentagon_t
+Dodecahedron_t
+Hexagon_t
+Range_t
 @Functions
 PrimitiveIndex3D_t NewPrimitiveIndex3D(u64 index, u64 faceIndex, v3 normal, v2 texCoord)
 Frustum_t NewFrustum(v3 origin, v3 direction, v3 upVector, v2 fov, r32 zNear, r32 zFar)
@@ -1054,6 +1216,7 @@ Wedge_t NewWedge(v3 bottomLeft, v3 size)
 Pentagon_t NewPentagon(v2 center, r32 sideLength, r32 rotation = 0.0f)
 Dodec_t NewDodec(v3 center, r32 sideLength, quat rotation)
 Hexagon_t NewHexagon(v2 center, r32 radiusOrSideLength, r32 rotation = 0.0f)
+Range_t NewRange(r32 min, r32 max)
 r32 PentagonGetHeight(r32 sideLength)
 r32 PentagonGetHeight(Pentagon_t pentagon)
 r32 PentagonGetRadius(r32 sideLength)
@@ -1066,6 +1229,21 @@ r32 DodecGetVertexRadius(Dodec_t dodec)
 v3 DodecGetVertex(Dodec_t dodec, u64 index)
 u8 GetDiceValueForDodecFace(u64 faceIndex)
 v2 GetHexagonVertex(Hexagon_t hexagon, u64 index)
+void RangeFix(Range_t* range)
+Range_t RangeShift(Range_t range, r32 shiftAmount)
+Range_t RangeScale(Range_t range, r32 scalar)
+Range_t RangeBoth(Range_t range1, Range_t range2)
+bool DoesRangeContain(Range_t range, r32 value, bool inclusiveMin = true, bool inclusiveMax = true)
+bool DoRangesOverlap(Range_t range1, Range_t range2, bool inclusive = true)
+Range_t RangeOverlap(Range_t range1, Range_t range2)
+r32 InverseLerpRange(Range_t range, r32 value, bool clamp = false)
+void RangeiFix(Rangei_t* range)
+Rangei_t RangeiShift(Rangei_t range, i32 shiftAmount)
+Rangei_t RangeiScale(Rangei_t range, i32 scalar)
+Rangei_t RangeiBoth(Rangei_t range1, Rangei_t range2)
+bool DoesRangeiContain(Rangei_t range, i32 value, bool inclusiveMin = true, bool inclusiveMax = true)
+bool DoRangeisOverlap(Rangei_t range1, Rangei_t range2, bool inclusive = true)
+Rangei_t RangeiOverlap(Rangei_t range1, Rangei_t range2)
 void FreePrimitiveIndexedVerts(PrimitiveIndexedVerts_t* indexedVerts)
 void InvertPrimitiveVerts(PrimitiveIndexedVerts_t* indexedVerts)
 PrimitiveIndexedVerts_t GenerateVertsForBox(Box_t box, MemArena_t* memArena)

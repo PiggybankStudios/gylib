@@ -836,6 +836,22 @@ inline r64 LerpClampR64(r64 val1, r64 val2, r64 amount)
 	return ClampR64(val1 + (val2 - val1) * amount, MinR64(val1, val2), MaxR64(val1, val2));
 }
 
+// +==============================+
+// |         InverseLerp          |
+// +==============================+
+inline r32 InverseLerpR32(r32 start, r32 end, r32 value, bool clamp = false)
+{
+	r32 result = (value - start) / (end - start);
+	if (clamp) { result = ClampR32(result, 0.0f, 1.0f); }
+	return result;
+}
+inline r64 InverseLerpR64(r64 start, r64 end, r64 value, bool clamp = false)
+{
+	r64 result = (value - start) / (end - start);
+	if (clamp) { result = ClampR64(result, 0.0f, 1.0f); }
+	return result;
+}
+
 //TODO: Rename to FractionalPart
 // +==============================+
 // |         DecimalPart          |
@@ -953,6 +969,33 @@ inline bool BasicallyEqualR32(r32 value1, r32 value2, r32 tolerance = 0.001f)
 inline bool BasicallyEqualR64(r64 value1, r64 value2, r64 tolerance = 0.001)
 {
 	return (AbsR64(value1 - value2) <= tolerance);
+}
+
+inline bool BasicallyGreaterThanR32(r32 value1, r32 value2, r32 tolerance = 0.001f)
+{
+	return ((value1 > value2) || BasicallyEqualR32(value1, value2, tolerance));
+}
+inline bool BasicallyGreaterThanR64(r64 value1, r64 value2, r64 tolerance = 0.001)
+{
+	return ((value1 > value2) || BasicallyEqualR64(value1, value2, tolerance));
+}
+
+inline bool BasicallyLessThanR32(r32 value1, r32 value2, r32 tolerance = 0.001f)
+{
+	return ((value1 < value2) || BasicallyEqualR32(value1, value2, tolerance));
+}
+inline bool BasicallyLessThanR64(r64 value1, r64 value2, r64 tolerance = 0.001)
+{
+	return ((value1 < value2) || BasicallyEqualR64(value1, value2, tolerance));
+}
+
+inline bool BasicallyBetweenR32(r32 value, r32 min, r32 max, r32 tolerance = 0.001f)
+{
+	return ((value > min && value < max) || BasicallyEqualR32(value, min, tolerance) || BasicallyEqualR32(value, max, tolerance));
+}
+inline bool BasicallyBetweenR64(r64 value, r64 min, r64 max, r64 tolerance = 0.001)
+{
+	return ((value > min && value < max) || BasicallyEqualR64(value, min, tolerance) || BasicallyEqualR64(value, max, tolerance));
 }
 
 // +==============================+
@@ -1295,6 +1338,8 @@ inline r32 LerpR32(r32 val1, r32 val2, r32 amount)
 inline r64 LerpR64(r64 val1, r64 val2, r64 amount)
 inline r32 LerpClampR32(r32 val1, r32 val2, r32 amount)
 inline r64 LerpClampR64(r64 val1, r64 val2, r64 amount)
+inline r32 InverseLerpR32(r32 start, r32 end, r32 value, bool clamp = false)
+inline r64 InverseLerpR64(r64 start, r64 end, r64 value, bool clamp = false)
 inline r32 DecimalPartR32(r32 value)
 inline r64 DecimalPartR64(r64 value)
 inline r32 ModR32(r32 numerator, r32 denominator)
@@ -1314,7 +1359,13 @@ inline r64 ConvertSampleI8ToR64(i8 sampleI8)
 inline r64 ConvertSampleI16ToR64(i16 sampleI16)
 inline r64 ConvertSampleI32ToR64(i32 sampleI32)
 inline bool BasicallyEqualR32(r32 value1, r32 value2, r32 tolerance = 0.001f)
-inline bool BasicallyEqualR64(r64 value1, r64 value2, r64 tolerance = 0.001f)
+inline bool BasicallyEqualR64(r64 value1, r64 value2, r64 tolerance = 0.001)
+inline bool BasicallyGreaterThanR32(r32 value1, r32 value2, r32 tolerance = 0.001f)
+inline bool BasicallyGreaterThanR64(r64 value1, r64 value2, r64 tolerance = 0.001)
+inline bool BasicallyLessThanR32(r32 value1, r32 value2, r32 tolerance = 0.001f)
+inline bool BasicallyLessThanR64(r64 value1, r64 value2, r64 tolerance = 0.001)
+inline bool BasicallyBetweenR32(r32 value, r32 min, r32 max, r32 tolerance = 0.001f)
+inline bool BasicallyBetweenR64(r64 value, r64 min, r64 max, r64 tolerance = 0.001)
 inline u8 FlagsDiffU8(u8 flags1, u8 flags2)
 inline u8 AbsDiffU8(u8 value1, u8 value2)
 inline u16 AbsDiffU16(u16 value1, u16 value2)
