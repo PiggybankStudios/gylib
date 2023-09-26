@@ -9,7 +9,9 @@ Date:   09\14\2021
 
 #include "gy_defines_check.h"
 
+#if ORCA_COMPILATION
 extern "C" {
+#endif // ORCA_COMPILATION
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -25,7 +27,9 @@ extern "C" {
 #endif
 //TODO: I don't think we actually need to include algorithm here? fmin and similar functions come from math.h
 // #include <algorithm> //Used for min and max functions
+#if ORCA_COMPILATION
 }
+#endif // ORCA_COMPILATION
 
 #if WINDOWS_COMPILATION
 #include <intrin.h>
