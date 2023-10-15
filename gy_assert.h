@@ -47,7 +47,7 @@ Description:
 // +--------------------------------------------------------------+
 // |                   MyBreak and MyDebugBreak                   |
 // +--------------------------------------------------------------+
-#if WINDOWS_COMPILATION
+#if WINDOWS_COMPILATION || WASM_NEW_COMPILATION
 #define MyBreak() __debugbreak()
 #define MyBreakEx(message) __debugbreak()
 #elif OSX_COMPILATION

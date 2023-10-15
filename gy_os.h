@@ -202,6 +202,14 @@ MyStr_t OsGetWorkingDirectory(MemArena_t* memArena, OsError_t* errorOut)
 		SetOptionalOutPntr(errorOut, OsError_UnsupportedPlatform);
 		return MyStr_Empty;
 	}
+	// +==============================+
+	// |             WASM             |
+	// +==============================+
+	#elif WASM_NEW_COMPILATION
+	{
+		SetOptionalOutPntr(errorOut, OsError_UnsupportedPlatform);
+		return MyStr_Empty;
+	}
 	#else
 	#error GetWorkingDirectory does not support the current platform yet!
 	#endif
@@ -251,6 +259,14 @@ u64 OsGetMemoryPageSize()
 	// |             Orca             |
 	// +==============================+
 	#elif ORCA_COMPILATION
+	{
+		//This is the size of the allocation pages in the WASM memory model, and WASM doesn't support virtual memory afaik
+		return Kilobytes(64);
+	}
+	// +==============================+
+	// |             WASM             |
+	// +==============================+
+	#elif WASM_NEW_COMPILATION
 	{
 		//This is the size of the allocation pages in the WASM memory model, and WASM doesn't support virtual memory afaik
 		return Kilobytes(64);
@@ -326,6 +342,13 @@ void* OsReserveMemory(u64 numBytes)
 	{
 		return nullptr;
 	}
+	// +==============================+
+	// |             WASM             |
+	// +==============================+
+	#elif WASM_NEW_COMPILATION
+	{
+		return nullptr;
+	}
 	#else
 	#error OsReserveMemory does not support the current platform yet!
 	#endif
@@ -389,6 +412,13 @@ void OsCommitReservedMemory(void* memoryPntr, u64 numBytes)
 	{
 		AssertMsg(false, "OsCommitReservedMemory is not supported on ORCA");
 	}
+	// +==============================+
+	// |             WASM             |
+	// +==============================+
+	#elif WASM_NEW_COMPILATION
+	{
+		AssertMsg(false, "OsCommitReservedMemory is not supported on WASM");
+	}
 	#else
 	#error OsReserveMemory does not support the current platform yet!
 	#endif
@@ -446,6 +476,13 @@ void OsFreeReservedMemory(void* memoryPntr, u64 reservedSize)
 	#elif ORCA_COMPILATION
 	{
 		AssertMsg(false, "OsFreeReservedMemory is not supported on ORCA");
+	}
+	// +==============================+
+	// |             WASM             |
+	// +==============================+
+	#elif WASM_NEW_COMPILATION
+	{
+		AssertMsg(false, "OsFreeReservedMemory is not supported on WASM");
 	}
 	#else
 	#error OsReserveMemory does not support the current platform yet!
