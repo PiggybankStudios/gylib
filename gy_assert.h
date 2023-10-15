@@ -47,7 +47,7 @@ Description:
 // +--------------------------------------------------------------+
 // |                   MyBreak and MyDebugBreak                   |
 // +--------------------------------------------------------------+
-#if WINDOWS_COMPILATION || WASM_NEW_COMPILATION
+#if WINDOWS_COMPILATION || WASM_COMPILATION
 #define MyBreak() __debugbreak()
 #define MyBreakEx(message) __debugbreak()
 #elif OSX_COMPILATION
@@ -56,9 +56,6 @@ Description:
 #elif LINUX_COMPILATION
 #define MyBreak() raise(SIGINT)
 #define MyBreakEx(message) raise(SIGINT)
-#elif WASM_COMPILATION
-#define MyBreak() __builtin_abort()
-#define MyBreakEx(message) __builtin_abort()
 #elif PLAYDATE_COMPILATION
 #define MyBreak() pd->system->error("MyBreak()")
 #define MyBreakEx(message) pd->system->error(message)

@@ -205,7 +205,7 @@ MyStr_t OsGetWorkingDirectory(MemArena_t* memArena, OsError_t* errorOut)
 	// +==============================+
 	// |             WASM             |
 	// +==============================+
-	#elif WASM_NEW_COMPILATION
+	#elif WASM_COMPILATION
 	{
 		SetOptionalOutPntr(errorOut, OsError_UnsupportedPlatform);
 		return MyStr_Empty;
@@ -266,7 +266,7 @@ u64 OsGetMemoryPageSize()
 	// +==============================+
 	// |             WASM             |
 	// +==============================+
-	#elif WASM_NEW_COMPILATION
+	#elif WASM_COMPILATION
 	{
 		//This is the size of the allocation pages in the WASM memory model, and WASM doesn't support virtual memory afaik
 		return Kilobytes(64);
@@ -345,7 +345,7 @@ void* OsReserveMemory(u64 numBytes)
 	// +==============================+
 	// |             WASM             |
 	// +==============================+
-	#elif WASM_NEW_COMPILATION
+	#elif WASM_COMPILATION
 	{
 		return nullptr;
 	}
@@ -415,7 +415,7 @@ void OsCommitReservedMemory(void* memoryPntr, u64 numBytes)
 	// +==============================+
 	// |             WASM             |
 	// +==============================+
-	#elif WASM_NEW_COMPILATION
+	#elif WASM_COMPILATION
 	{
 		AssertMsg(false, "OsCommitReservedMemory is not supported on WASM");
 	}
@@ -480,7 +480,7 @@ void OsFreeReservedMemory(void* memoryPntr, u64 reservedSize)
 	// +==============================+
 	// |             WASM             |
 	// +==============================+
-	#elif WASM_NEW_COMPILATION
+	#elif WASM_COMPILATION
 	{
 		AssertMsg(false, "OsFreeReservedMemory is not supported on WASM");
 	}

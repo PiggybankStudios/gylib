@@ -42,8 +42,6 @@ extern "C" {
 #include <unistd.h> //needed for getpagesize
 #include <sys/mman.h> //needed for mmap
 #elif WASM_COMPILATION
-//TODO: Is there any wasm specific header files we want to include?
-#elif WASM_NEW_COMPILATION
 #include <intrin.h>
 #elif PLAYDATE_COMPILATION
 #include "pd_api.h"
