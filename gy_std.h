@@ -21,6 +21,8 @@ extern "C" {
 #include <string.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <float.h>
+// #include <assert.h> //TODO: Do we want this?
 #if !ORCA_COMPILATION
 #include <stdio.h>
 #include <new>
@@ -41,6 +43,8 @@ extern "C" {
 #include <sys/mman.h> //needed for mmap
 #elif WASM_COMPILATION
 //TODO: Is there any wasm specific header files we want to include?
+#elif WASM_NEW_COMPILATION
+#include <intrin.h>
 #elif PLAYDATE_COMPILATION
 #include "pd_api.h"
 #elif ORCA_COMPILATION
