@@ -111,6 +111,14 @@ MyStr_t OsGetExecutablePath(MemArena_t* memArena, OsError_t* errorOut)
 		return MyStr_Empty;
 	}
 	// +==============================+
+	// |             WASM             |
+	// +==============================+
+	#elif WASM_COMPILATION
+	{
+		SetOptionalOutPntr(errorOut, OsError_UnsupportedPlatform);
+		return MyStr_Empty;
+	}
+	// +==============================+
 	// |     Unsupported Platform     |
 	// +==============================+
 	#else
