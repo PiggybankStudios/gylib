@@ -109,12 +109,8 @@ Description:
 	//TODO: Figure out how to do IMPORT on other platforms
 #endif
 
-#ifndef EXTERN_C_START
 #define EXTERN_C_START extern "C" {
-#endif
-#ifndef EXTERN_C_END
 #define EXTERN_C_END }
-#endif
 
 #endif //  _GY_BASIC_MACROS_H
 
