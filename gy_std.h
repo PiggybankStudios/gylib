@@ -11,7 +11,7 @@ Date:   09\14\2021
 
 #if ORCA_COMPILATION
 extern "C" {
-#endif
+#endif // ORCA_COMPILATION
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -21,18 +21,15 @@ extern "C" {
 #include <string.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include <float.h>
-// #include <assert.h> //TODO: Do we want this?
 #if !ORCA_COMPILATION
 #include <stdio.h>
 #include <new>
 #endif
 //TODO: I don't think we actually need to include algorithm here? fmin and similar functions come from math.h
 // #include <algorithm> //Used for min and max functions
-
 #if ORCA_COMPILATION
 }
-#endif
+#endif // ORCA_COMPILATION
 
 #if WINDOWS_COMPILATION
 #include <intrin.h>
@@ -44,8 +41,6 @@ extern "C" {
 #include <sys/mman.h> //needed for mmap
 #elif WASM_COMPILATION
 //TODO: Is there any wasm specific header files we want to include?
-#elif WASM_NEW_COMPILATION
-#include <intrin.h>
 #elif PLAYDATE_COMPILATION
 #include "pd_api.h"
 #elif ORCA_COMPILATION
