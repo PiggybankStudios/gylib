@@ -88,6 +88,9 @@ void* (*pdrealloc)(void* ptr, size_t size);
 #endif
 
 #ifndef MyStrToFloat
+#ifdef GYLIB_HEADER_ONLY
+float ratof(char* arr);
+#else
 float ratof(char* arr)
 {
 	float val = 0;
@@ -117,6 +120,7 @@ float ratof(char* arr)
 	
 	return ((neg) ? -val : val);
 }
+#endif
 #define MyStrToFloat(nullTermStr) ratof(nullTermStr)
 #endif
 

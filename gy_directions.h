@@ -145,6 +145,79 @@ enum Axis_t
 };
 
 // +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	v2 ToVec2(Dir2_t dir2);
+	v2 ToVec2(Dir2Ex_t dir2ex);
+	v2i ToVec2i(Dir2_t dir2);
+	v2i ToVec2i(Dir2Ex_t dir2ex);
+	v3 ToVec3(Dir3_t dir3);
+	v3i ToVec3i(Dir3_t dir3);
+	v3 ToVec3(Axis_t axis);
+	v3i ToVec3i(Axis_t axis);
+	Dir2_t ToDir2(v2 vector);
+	Dir2_t ToDir2(v2i vector);
+	Dir3_t ToDir3(v3 vector);
+	Dir3_t ToDir3(v3i vector);
+	bool IsToDir3Ambiguous(v3i vector);
+	Axis_t GetDir2Axis(Dir2_t dir2);
+	Axis_t GetDir3Axis(Dir3_t dir3);
+	Dir2Ex_t Dir2ExFromDir2Flags(u8 dirFlags);
+	u8 Dir2FlagsFromDir2Ex(Dir2Ex_t dir2ex);
+	bool IsSingleDir2(Dir2_t dir2, bool allowNone = false);
+	bool IsSingleDir2Ex(Dir2Ex_t dir2ex, bool allowNone = false);
+	bool IsCardinalDir2Ex(Dir2Ex_t dir2ex, bool allowNone = false);
+	bool IsDiagonalDir2Ex(Dir2Ex_t dir2ex, bool allowNone = false);
+	bool IsSingleDir3(Dir3_t dir3, bool allowNone = false);
+	bool IsSingleDir3Ex(Dir3Ex_t dir3ex, bool allowNone = false);
+	bool IsCardinalDir3Ex(Dir3Ex_t dir3ex, bool allowNone = false);
+	bool IsDiagonalDir3Ex(Dir3Ex_t dir3ex, bool allowNone = false);
+	u8 Dir2BitwiseCount(Dir2_t dir2);
+	u8 Dir2ExBitwiseCount(Dir2Ex_t dir2ex);
+	u8 Dir3BitwiseCount(Dir3_t dir3);
+	u8 Dir3ExBitwiseCount(Dir3Ex_t dir3ex);
+	const char* GetDir2String(Dir2_t dir2);
+	const char* GetDir2ExString(Dir2Ex_t dir2ex);
+	const char* GetDir3String(Dir3_t dir3);
+	const char* GetDir3SideString(Dir3_t dir3);
+	const char* GetDir3ExString(Dir3Ex_t dir3ex);
+	u8 GetDir2Index(Dir2_t dir2);
+	u8 GetDir2ExIndex(Dir2Ex_t dir2ex);
+	u8 GetDir3Index(Dir3_t dir3);
+	u8 GetDir3ExIndex(Dir3Ex_t dir3ex);
+	u8 GetAxisIndex(Axis_t axis);
+	Dir2_t Dir2FromIndex(u64 index);
+	Dir2_t Dir2FromCwIndex(u64 index);
+	Dir2_t Dir2FromCwIndexStartingWith(Dir2_t startingDir, u64 index);
+	Dir2_t Dir2FromCcwIndex(u64 index);
+	Dir2_t Dir2FromCcwIndexStartingWith(Dir2_t startingDir, u64 index);
+	Dir2Ex_t Dir2ExFromIndex(u64 index);
+	Dir3_t Dir3FromIndex(u64 index);
+	Dir3Ex_t Dir3ExFromIndex(u64 index);
+	Axis_t AxisFromIndex(u64 index);
+	Dir2_t Dir2Opposite(Dir2_t dir2);
+	Dir2Ex_t Dir2ExOpposite(Dir2Ex_t dir2ex);
+	Dir3_t Dir3Opposite(Dir3_t dir3);
+	Dir3Ex_t Dir3ExOpposite(Dir3Ex_t dir3ex);
+	Dir2_t Dir2Clockwise(Dir2_t dir2, u64 numQuarterTurns = 1);
+	Dir2_t Dir2CounterClockwise(Dir2_t dir2, u64 numQuarterTurns = 1);
+	u8 GetCwTurnsBetweenDir2(Dir2_t start, Dir2_t end);
+	u8 GetCcwTurnsBetweenDir2(Dir2_t start, Dir2_t end);
+	u8 GetTurnsBetweenDir3(Dir3_t start, Dir3_t end);
+	r32 GetDir2AngleR32(Dir2_t dir2);
+	r64 GetDir2AngleR64(Dir2_t dir2);
+	r32 GetDir2ExAngleR32(Dir2Ex_t dir2ex);
+	r64 GetDir2ExAngleR64(Dir2Ex_t dir2ex);
+	char GetDir2Char(Dir2_t dir2);
+	Dir2_t GetCardinalDir2sFromDir2Ex(Dir2Ex_t diagonalDir);
+	v2 RotateVec2NumTurnsClockwise(v2 vector, u64 numQuarterTurns);
+	v2i RotateVec2iNumTurnsClockwise(v2i vector, u64 numQuarterTurns);
+	v2 Get2DCornerVecByIndex(u64 cornerIndex);
+	i32 Vec3iAmountInDir(v3i vector, Dir3_t direction);
+#else
+
+// +--------------------------------------------------------------+
 // |               Casting and Conversion Functions               |
 // +--------------------------------------------------------------+
 v2 ToVec2(Dir2_t dir2)
@@ -1227,6 +1300,8 @@ i32 Vec3iAmountInDir(v3i vector, Dir3_t direction)
 		default: DebugAssert(false); return 0;
 	}
 }
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_DIRECTIONS_H
 

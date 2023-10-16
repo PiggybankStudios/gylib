@@ -25,6 +25,26 @@ Description:
 typedef COMPARE_FUNC_DEFINITION(CompareFunc_f);
 
 // +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	i32 CompareFuncU8(const void* left, const void* right, void* contextPntr);
+	i32 CompareFuncU16(const void* left, const void* right, void* contextPntr);
+	i32 CompareFuncU32(const void* left, const void* right, void* contextPntr);
+	i32 CompareFuncU64(const void* left, const void* right, void* contextPntr);
+	i32 CompareFuncI8(const void* left, const void* right, void* contextPntr);
+	i32 CompareFuncI16(const void* left, const void* right, void* contextPntr);
+	i32 CompareFuncI32(const void* left, const void* right, void* contextPntr);
+	i32 CompareFuncI64(const void* left, const void* right, void* contextPntr);
+	i32 CompareFuncR32(const void* left, const void* right, void* contextPntr);
+	i32 CompareFuncR64(const void* left, const void* right, void* contextPntr);
+	i32 CompareFuncMyStr(const void* left, const void* right, void* contextPntr);
+	i64 QuickSortPartition(void* arrayPntr, u64 numElements, u64 elementSize, void* workingSpace, CompareFunc_f* compareFunc, void* contextPntr = nullptr);
+	void QuickSort(void* arrayPntr, u64 numElements, u64 elementSize, void* workingSpace, CompareFunc_f* compareFunc, void* contextPntr);
+	void QuickSortAlloc(void* arrayPntr, u64 numElements, u64 elementSize, MemArena_t* workingAllocArena, CompareFunc_f* compareFunc, void* contextPntr = nullptr);
+#else
+
+// +--------------------------------------------------------------+
 // |                      Compare Functions                       |
 // +--------------------------------------------------------------+
 i32 CompareFuncU8(const void* left, const void* right, void* contextPntr)
@@ -230,6 +250,8 @@ void QuickSortAlloc(void* arrayPntr, u64 numElements, u64 elementSize, MemArena_
 	QuickSort(arrayPntr, numElements, elementSize, workingSpace, compareFunc, contextPntr);
 	FreeMem(workingAllocArena, workingSpace, elementSize*2);
 }
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_SORTING_H
 

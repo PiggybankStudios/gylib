@@ -71,6 +71,9 @@ enum MemArenaType_t
 	MemArenaType_Buffer,
 	MemArenaType_NumTypes,
 };
+#ifdef GYLIB_HEADER_ONLY
+const char* GetMemArenaTypeStr(MemArenaType_t arenaType);
+#else
 const char* GetMemArenaTypeStr(MemArenaType_t arenaType)
 {
 	switch (arenaType)
@@ -88,6 +91,7 @@ const char* GetMemArenaTypeStr(MemArenaType_t arenaType)
 		default: return "Unknown";
 	}
 }
+#endif
 
 enum AllocAlignment_t
 {
@@ -185,32 +189,135 @@ struct MemArenaAllocInfo_t
 #endif
 
 // +--------------------------------------------------------------+
-// |                    Function Declarations                     |
-// +--------------------------------------------------------------+
-#if GYLIB_MEM_ARENA_DEBUG_ENABLED
-	void* AllocMem_(const char* filePath, u64 lineNumber, const char* funcName, MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride = AllocAlignment_None);
-	#define AllocMem(arena, numBytes, ...) AllocMem_(__FILE__, __LINE__, __func__, (arena), (numBytes), ##__VA_ARGS__)
-	void* ReallocMem_(const char* filePath, u64 lineNumber, const char* funcName, MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 0, AllocAlignment_t alignOverride = AllocAlignment_None, bool ignoreNullptr = false, u64* oldSizeOut = nullptr);
-	#define ReallocMem(arena, allocPntr, newSize, ...) ReallocMem_(__FILE__, __LINE__, __func__, (arena), (allocPntr), (newSize), ##__VA_ARGS__)
-	#define HardReallocMem(arena, allocPntr, newSize) ReallocMem_(__FILE__, __LINE__, __func__, (arena), (allocPntr), (newSize), 0, AllocAlignment_None, false)
-	#define SoftReallocMem(arena, allocPntr, newSize) ReallocMem_(__FILE__, __LINE__, __func__, (arena), (allocPntr), (newSize), 0, AllocAlignment_None, true)
-#else //!GYLIB_MEM_ARENA_DEBUG_ENABLED
-	void* AllocMem_(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride = AllocAlignment_None);
-	#define AllocMem(arena, numBytes, ...) AllocMem_((arena), (numBytes), ##__VA_ARGS__)
-	void* ReallocMem_(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 0, AllocAlignment_t alignOverride = AllocAlignment_None, bool ignoreNullptr = false, u64* oldSizeOut = nullptr);
-	#define ReallocMem(arena, allocPntr, newSize, ...) ReallocMem_((arena), (allocPntr), (newSize), ##__VA_ARGS__)
-	#define HardReallocMem(arena, allocPntr, newSize) ReallocMem_((arena), (allocPntr), (newSize), 0, AllocAlignment_None, false)
-	#define SoftReallocMem(arena, allocPntr, newSize) ReallocMem_((arena), (allocPntr), (newSize), 0, AllocAlignment_None, true)
-#endif //GYLIB_MEM_ARENA_DEBUG_ENABLED
-
-bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreNullptr = false, u64* oldSizeOut = nullptr);
-
-// +--------------------------------------------------------------+
-// |                       Helper Functions                       |
+// |                            Macros                            |
 // +--------------------------------------------------------------+
 #define PackAllocPrefixSize(used, size)   ((used) ? HEAP_ALLOC_FILLED_FLAG : 0ULL) | ((size) & HEAP_ALLOC_SIZE_MASK)
 #define IsAllocPrefixFilled(packedSize)   IsFlagSet((packedSize), HEAP_ALLOC_FILLED_FLAG)
 #define UnpackAllocPrefixSize(packedSize) ((packedSize) & HEAP_ALLOC_SIZE_MASK)
+
+#define PrintInArenaVa(arena, resultName, resultLengthName, formatString)                  \
+char* resultName = nullptr;                                                                \
+int resultLengthName = 0;                                                                  \
+va_list args;                                                                              \
+do                                                                                         \
+{                                                                                          \
+	va_start(args, formatString);                                                          \
+	resultLengthName = PrintVa_Measure((formatString), args);                              \
+	va_end(args);                                                                          \
+	if (resultLengthName >= 0)                                                             \
+	{                                                                                      \
+		resultName = AllocArray((arena), char, resultLengthName+1); /*Allocate*/           \
+		if (resultName == nullptr) { break; }                                              \
+		va_start(args, formatString);                                                      \
+		PrintVa_Print((formatString), args, resultName, resultLengthName);                 \
+		va_end(args);                                                                      \
+	}                                                                                      \
+}                                                                                          \
+while(0)
+
+// +==============================+
+// |      C++ Class Helpers       |
+// +==============================+
+#define InPlaceNew(type, pntrToClass, ...) new (pntrToClass) type(__VA_ARGS__)
+#define ArenaNew(type, pntrToAssign, arena, ...) do  \
+{                                                    \
+	(pntrToAssign) = AllocStruct((arena), type);     \
+	NotNull(pntrToAssign);                           \
+	InPlaceNew(type, (pntrToAssign), ##__VA_ARGS__); \
+} while(0)
+#define ArenaDelete(type, pntr, arena) do   \
+{                                           \
+	(pntr)->~type();                        \
+	FreeMem((arena), (pntr), sizeof(type)); \
+	pntr = nullptr;                         \
+} while(0)
+
+#if GYLIB_MEM_ARENA_DEBUG_ENABLED
+	#define AllocMem(arena, numBytes, ...) AllocMem_(__FILE__, __LINE__, __func__, (arena), (numBytes), ##__VA_ARGS__)
+	#define ReallocMem(arena, allocPntr, newSize, ...) ReallocMem_(__FILE__, __LINE__, __func__, (arena), (allocPntr), (newSize), ##__VA_ARGS__)
+	#define HardReallocMem(arena, allocPntr, newSize) ReallocMem_(__FILE__, __LINE__, __func__, (arena), (allocPntr), (newSize), 0, AllocAlignment_None, false)
+	#define SoftReallocMem(arena, allocPntr, newSize) ReallocMem_(__FILE__, __LINE__, __func__, (arena), (allocPntr), (newSize), 0, AllocAlignment_None, true)
+	#define AllocStruct(arena, structName)          (structName*)AllocMem_(__FILE__, __LINE__, __func__, (arena), sizeof(structName))
+	#define AllocArray(arena, structName, numItems) (structName*)AllocMem_(__FILE__, __LINE__, __func__, (arena), sizeof(structName) * (numItems))
+	#define AllocBytes(arena, numBytes)             (u8*)AllocMem_(__FILE__, __LINE__, __func__, (arena), (numBytes))
+	#define AllocChars(arena, numBytes)             (char*)AllocMem_(__FILE__, __LINE__, __func__, (arena), (numBytes))
+#else //!GYLIB_MEM_ARENA_DEBUG_ENABLED
+	#define AllocMem(arena, numBytes, ...) AllocMem_((arena), (numBytes), ##__VA_ARGS__)
+	#define ReallocMem(arena, allocPntr, newSize, ...) ReallocMem_((arena), (allocPntr), (newSize), ##__VA_ARGS__)
+	#define HardReallocMem(arena, allocPntr, newSize) ReallocMem_((arena), (allocPntr), (newSize), 0, AllocAlignment_None, false)
+	#define SoftReallocMem(arena, allocPntr, newSize) ReallocMem_((arena), (allocPntr), (newSize), 0, AllocAlignment_None, true)
+	#define AllocStruct(arena, structName)          (structName*)AllocMem_((arena), sizeof(structName))
+	#define AllocArray(arena, structName, numItems) (structName*)AllocMem_((arena), sizeof(structName) * (numItems))
+	#define AllocBytes(arena, numBytes)             (u8*)AllocMem_((arena), (numBytes))
+	#define AllocChars(arena, numBytes)             (char*)AllocMem_((arena), (numBytes))
+#endif //GYLIB_MEM_ARENA_DEBUG_ENABLED
+
+#define HardFreeMem(arena, allocPntr) FreeMem((arena), (allocPntr), 0, false)
+#define SoftFreeMem(arena, allocPntr) FreeMem((arena), (allocPntr), 0, true)
+#define FreeBufferArena(bufferArena, sourceArena) FreeMem((sourceArena), (bufferArena)->mainPntr, (bufferArena)->size)
+
+// +--------------------------------------------------------------+
+// |                    Pre-Declared Functions                    |
+// +--------------------------------------------------------------+
+// These are pre-declared because there are somewhat cyclical dependencies within this file
+#if GYLIB_MEM_ARENA_DEBUG_ENABLED
+	void* AllocMem_(const char* filePath, u64 lineNumber, const char* funcName, MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride = AllocAlignment_None);
+	void* ReallocMem_(const char* filePath, u64 lineNumber, const char* funcName, MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 0, AllocAlignment_t alignOverride = AllocAlignment_None, bool ignoreNullptr = false, u64* oldSizeOut = nullptr);
+	bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreNullptr = false, u64* oldSizeOut = nullptr);
+#else //!GYLIB_MEM_ARENA_DEBUG_ENABLED
+	void* AllocMem_(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride = AllocAlignment_None);
+	void* ReallocMem_(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 0, AllocAlignment_t alignOverride = AllocAlignment_None, bool ignoreNullptr = false, u64* oldSizeOut = nullptr);
+	bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreNullptr = false, u64* oldSizeOut = nullptr);
+#endif //GYLIB_MEM_ARENA_DEBUG_ENABLED
+
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	bool IsAlignedTo(const void* memoryPntr, AllocAlignment_t alignment);
+	u8 OffsetToAlign(const void* memoryPntr, AllocAlignment_t alignment);
+	bool IsPntrInsideRange(const void* testPntr, const void* rangeBase, u64 rangeSize, bool inclusive = false);
+	void InitMemArena_Redirect(MemArena_t* arena, AllocationFunction_f* allocFunc, FreeFunction_f* freeFunc);
+	void InitMemArena_Alias(MemArena_t* arena, MemArena_t* sourceArena);
+	void InitMemArena_StdHeap(MemArena_t* arena);
+	void InitMemArena_FixedHeap(MemArena_t* arena, u64 size, void* memoryPntr, AllocAlignment_t alignment = AllocAlignment_None);
+	void InitMemArena_PagedHeapFuncs(MemArena_t* arena, u64 pageSize, AllocationFunction_f* allocFunc, FreeFunction_f* freeFunc, u64 maxNumPages = 0, AllocAlignment_t alignment = AllocAlignment_None);
+	void InitMemArena_MarkedStack(MemArena_t* arena, u64 size, void* memoryPntr, u64 maxNumMarks, AllocAlignment_t alignment = AllocAlignment_None);
+	void InitMemArena_PagedStackArena(MemArena_t* arena, u64 pageSize, MemArena_t* sourceArena, u64 maxNumMarks, AllocAlignment_t alignment = AllocAlignment_None);
+	void InitMemArena_PagedStackFuncs(MemArena_t* arena, u64 pageSize, AllocationFunction_f* allocFunc, FreeFunction_f* freeFunc, u64 maxNumMarks, AllocAlignment_t alignment = AllocAlignment_None);
+	void InitMemArena_VirtualStack(MemArena_t* arena, u64 maxSize, u64 maxNumMarks, AllocAlignment_t alignment = AllocAlignment_None);
+	void InitMemArena_Buffer(MemArena_t* arena, u64 bufferSize, void* bufferPntr, bool singleAlloc = false, AllocAlignment_t alignment = AllocAlignment_None);
+	void UpdateMemArenaFuncPntrs(MemArena_t* arena, AllocationFunction_f* allocFunc, FreeFunction_f* freeFunc);
+	bool IsInitialized(const MemArena_t* arena);
+	bool DoesMemArenaSupportFreeing(MemArena_t* arena);
+	bool DoesMemArenaSupportPushAndPop(MemArena_t* arena);
+	u64 GetNumMarks(MemArena_t* arena);
+	#if GYLIB_MEM_ARENA_DEBUG_ENABLED
+	void StoreAllocInfo(const MemArena_t* refArena, MemArena_t* arena, void* allocPntr, u64 allocSize, const char* filePath, u64 lineNumber, const char* funcName);
+	MemArenaAllocInfo_t* FindAllocInfoFor(MemArena_t* arena, void* allocPntr);
+	MemArenaAllocInfo_t* FindExtraAllocInfoInArena(MemArena_t* arena, MemArena_t* realArena);
+	void* FindMissingAllocInfoInArena(MemArena_t* arena, u64* allocSizeOut = nullptr);
+	void FreeAllocInfo(MemArena_t* refArena, MemArena_t* arena, void* allocPntr);
+	#endif
+	bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false);
+	MemArena_t AllocBufferArena(MemArena_t* sourceArena, u64 numBytes, AllocAlignment_t alignOverride = AllocAlignment_None);
+	char* AllocCharsAndFill(MemArena_t* arena, u64 numChars, const char* dataForFill, bool addNullTerm = true);
+	char* AllocCharsAndFillNt(MemArena_t* arena, const char* nullTermStr, bool addNullTerm = true);
+	u64 GrowMemQuery(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, GrowMemToken_t* tokenOut = nullptr);
+	void GrowMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, u64 newAllocSize, const GrowMemToken_t* token);
+	void ShrinkMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, u64 newAllocSize);
+	void FreeMemArena(MemArena_t* arena);
+	void ClearMemArena(MemArena_t* arena);
+	u64 PushMemMark(MemArena_t* arena);
+	void PopMemMark(MemArena_t* arena, u64 mark = 0xFFFFFFFFFFFFFFFFULL);
+	char* PrintInArena(MemArena_t* arena, const char* formatString, ...);
+	int PrintVa_Measure(const char* formatString, va_list args);
+	void PrintVa_Print(const char* formatString, va_list args, char* allocatedSpace, int previousResult);
+#else
+
+// +--------------------------------------------------------------+
+// |                       Helper Functions                       |
+// +--------------------------------------------------------------+
 
 bool IsAlignedTo(const void* memoryPntr, AllocAlignment_t alignment)
 {
@@ -1911,18 +2018,6 @@ void* AllocMem_(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride)
 	return (void*)result;
 }
 
-#if GYLIB_MEM_ARENA_DEBUG_ENABLED
-#define AllocStruct(arena, structName)          (structName*)AllocMem_(__FILE__, __LINE__, __func__, (arena), sizeof(structName))
-#define AllocArray(arena, structName, numItems) (structName*)AllocMem_(__FILE__, __LINE__, __func__, (arena), sizeof(structName) * (numItems))
-#define AllocBytes(arena, numBytes)             (u8*)AllocMem_(__FILE__, __LINE__, __func__, (arena), (numBytes))
-#define AllocChars(arena, numBytes)             (char*)AllocMem_(__FILE__, __LINE__, __func__, (arena), (numBytes))
-#else
-#define AllocStruct(arena, structName)          (structName*)AllocMem_((arena), sizeof(structName))
-#define AllocArray(arena, structName, numItems) (structName*)AllocMem_((arena), sizeof(structName) * (numItems))
-#define AllocBytes(arena, numBytes)             (u8*)AllocMem_((arena), (numBytes))
-#define AllocChars(arena, numBytes)             (char*)AllocMem_((arena), (numBytes))
-#endif
-
 MemArena_t AllocBufferArena(MemArena_t* sourceArena, u64 numBytes, AllocAlignment_t alignOverride = AllocAlignment_None)
 {
 	MemArena_t result;
@@ -2355,10 +2450,6 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize, bool ignoreNullp
 	
 	return result;
 }
-
-#define HardFreeMem(arena, allocPntr) FreeMem((arena), (allocPntr), 0, false)
-#define SoftFreeMem(arena, allocPntr) FreeMem((arena), (allocPntr), 0, true)
-#define FreeBufferArena(bufferArena, sourceArena) FreeMem((sourceArena), (bufferArena)->mainPntr, (bufferArena)->size)
 
 // +--------------------------------------------------------------+
 // |                     Reallocate Function                      |
@@ -3785,42 +3876,7 @@ void PrintVa_Print(const char* formatString, va_list args, char* allocatedSpace,
 	allocatedSpace[previousResult] = '\0';
 }
 
-#define PrintInArenaVa(arena, resultName, resultLengthName, formatString)                  \
-char* resultName = nullptr;                                                                \
-int resultLengthName = 0;                                                                  \
-va_list args;                                                                              \
-do                                                                                         \
-{                                                                                          \
-	va_start(args, formatString);                                                          \
-	resultLengthName = PrintVa_Measure((formatString), args);                              \
-	va_end(args);                                                                          \
-	if (resultLengthName >= 0)                                                             \
-	{                                                                                      \
-		resultName = AllocArray((arena), char, resultLengthName+1); /*Allocate*/           \
-		if (resultName == nullptr) { break; }                                              \
-		va_start(args, formatString);                                                      \
-		PrintVa_Print((formatString), args, resultName, resultLengthName);                 \
-		va_end(args);                                                                      \
-	}                                                                                      \
-}                                                                                          \
-while(0)
-
-// +--------------------------------------------------------------+
-// |                      C++ Class Helpers                       |
-// +--------------------------------------------------------------+
-#define InPlaceNew(type, pntrToClass, ...) new (pntrToClass) type(__VA_ARGS__)
-#define ArenaNew(type, pntrToAssign, arena, ...) do  \
-{                                                    \
-	(pntrToAssign) = AllocStruct((arena), type);     \
-	NotNull(pntrToAssign);                           \
-	InPlaceNew(type, (pntrToAssign), ##__VA_ARGS__); \
-} while(0)
-#define ArenaDelete(type, pntr, arena) do   \
-{                                           \
-	(pntr)->~type();                        \
-	FreeMem((arena), (pntr), sizeof(type)); \
-	pntr = nullptr;                         \
-} while(0)
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_MEMORY_H
 

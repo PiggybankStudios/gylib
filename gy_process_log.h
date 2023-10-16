@@ -28,6 +28,9 @@ enum XmlParsingError_t
 	XmlParsingError_MissingClosingTokens,
 	XmlParsingError_NumErrors,
 };
+#ifdef GYLIB_HEADER_ONLY
+const char* GetXmlParsingErrorStr(XmlParsingError_t error);
+#else
 const char* GetXmlParsingErrorStr(XmlParsingError_t error)
 {
 	switch (error)
@@ -48,6 +51,7 @@ const char* GetXmlParsingErrorStr(XmlParsingError_t error)
 		default: return "Unknown";
 	}
 }
+#endif
 
 //NOTE: ProcessLog relies on scratch arenas for print formatting AND for concattenating the file and function names
 #if GYLIB_SCRATCH_ARENA_AVAILABLE
@@ -104,7 +108,26 @@ struct LogGlobals_t
 
 //The global variable "logGlobals" is how ProcessLogs (and any other log who wants to)
 //can get implicit information to shove into the metadata of every logged line
+#ifdef GYLIB_HEADER_ONLY
+extern LogGlobals_t* logGlobals;
+#else
 LogGlobals_t* logGlobals = nullptr;
+#endif
+
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	bool IsInitialized(const ProcessLog_t* log);
+	void FreeProcessLog(ProcessLog_t* log);
+	void CreateProcessLog(ProcessLog_t* logOut, u64 fifoSize, MemArena_t* fifoArena, MemArena_t* logArena);
+	void CreateProcessLogStub(ProcessLog_t* logOut);
+	void SetProcessLogFilePath(ProcessLog_t* log, MyStr_t filePath);
+	void SetProcessLogName(ProcessLog_t* log, MyStr_t processName);
+	void LogOutput_(ProcessLog_t* log, u8 flags, const char* filePath, u32 lineNumber, const char* funcName, DbgLevel_t dbgLevel, bool addNewLine, const char* message);
+	void LogPrint_(ProcessLog_t* log, u8 flags, const char* filePath, u32 lineNumber, const char* funcName, DbgLevel_t dbgLevel, bool addNewLine, const char* formatString, ...);
+	void LogExit_(ProcessLog_t* log, bool success, u32 errorCode, const char* filePath, u32 lineNumber, const char* funcName);
+#else
 
 // +--------------------------------------------------------------+
 // |                       Create and Free                        |
@@ -285,6 +308,8 @@ void LogExit_(ProcessLog_t* log, bool success, u32 errorCode, const char* filePa
 		
 	}
 }
+
+#endif //GYLIB_HEADER_ONLY
 
 // +--------------------------------------------------------------+
 // |                            Macros                            |

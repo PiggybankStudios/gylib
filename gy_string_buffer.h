@@ -55,6 +55,43 @@ struct StringBuffer_t
 typedef StringBuffer_t<TEMP_STRING_LENGTH> TempString_t;
 
 // +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	template<int LENGTH> void InitStringBuffer(StringBuffer_t<LENGTH>* stringBufferPntr);
+	template<int LENGTH> void InitStringBuffer(StringBuffer_t<LENGTH>* stringBufferPntr, MyStr_t initialValue);
+	template<int LENGTH> void InitStringBuffer(StringBuffer_t<LENGTH>* stringBufferPntr, const char* initialValueNullTerm);
+	bool IsInitialized(const StringBufferGeneric_t* stringBuffer);
+	bool IsNullTerminated(StringBufferGeneric_t* stringBuffer);
+	void StringBufferSet(StringBufferGeneric_t* stringBuffer, MyStr_t str);
+	void StringBufferSet(StringBufferGeneric_t* stringBuffer, const char* nullTermStr);
+	bool StringBufferTrySet(StringBufferGeneric_t* stringBuffer, MyStr_t str, bool appendWhatYouCan = true);
+	bool StringBufferTrySet(StringBufferGeneric_t* stringBuffer, const char* nullTermStr);
+	void StringBufferClear(StringBufferGeneric_t* stringBuffer, bool zeroMemory = false);
+	template<int LENGTH> StringBufferGeneric_t* ToGeneric(StringBuffer_t<LENGTH>* stringBuffer);
+	template<int LENGTH> StringBuffer_t<LENGTH>* ToStringBuffer(StringBufferGeneric_t* stringBuffer);
+	TempString_t* ToTempString(StringBufferGeneric_t* stringBuffer);
+	MyStr_t ToMyStr(StringBufferGeneric_t* stringBuffer);
+	char* ToStr(StringBufferGeneric_t* stringBuffer);
+	const char* ToStr(const StringBufferGeneric_t* stringBuffer);
+	MyStr_t StringBufferSubstring(StringBufferGeneric_t* stringBuffer, u64 startIndex, u64 endIndex);
+	MyStr_t StringBufferSubstring(StringBufferGeneric_t* stringBuffer, u64 startIndex);
+	MyStr_t StringBufferSubstringFromEnd(StringBufferGeneric_t* stringBuffer, u64 startIndexFromEnd);
+	void StringBufferPrint(StringBufferGeneric_t* stringBuffer, const char* formatString, ...);
+	bool StringBufferTryPrint(StringBufferGeneric_t* stringBuffer, const char* formatString, ...);
+	void StringBufferAppendPrint(StringBufferGeneric_t* stringBuffer, const char* formatString, ...);
+	bool StringBufferTryAppendPrint(StringBufferGeneric_t* stringBuffer, const char* formatString, ...);
+	void StringBufferAppend(StringBufferGeneric_t* stringBuffer, MyStr_t str);
+	void StringBufferAppend(StringBufferGeneric_t* stringBuffer, const char* nullTermStr);
+	bool StringBufferTryAppend(StringBufferGeneric_t* stringBuffer, MyStr_t str, bool appendWhatYouCan = true);
+	bool StringBufferTryAppend(StringBufferGeneric_t* stringBuffer, const char* nullTermStr, bool appendWhatYouCan = true);
+	u64 StringBufferReplace(StringBufferGeneric_t* stringBuffer, MyStr_t targetStr, MyStr_t replacementStr, bool ignoreCase = false);
+	u64 StringBufferReplace(StringBufferGeneric_t* stringBuffer, const char* targetNullTermStr, MyStr_t replacementStr, bool ignoreCase = false);
+	u64 StringBufferReplace(StringBufferGeneric_t* stringBuffer, MyStr_t targetStr, const char* replacementNullTermStr, bool ignoreCase = false);
+	u64 StringBufferReplace(StringBufferGeneric_t* stringBuffer, const char* targetNullTermStr, const char* replacementNullTermStr, bool ignoreCase = false);
+#else
+
+// +--------------------------------------------------------------+
 // |                        Initialization                        |
 // +--------------------------------------------------------------+
 template<int LENGTH>
@@ -364,6 +401,8 @@ u64 StringBufferReplace(StringBufferGeneric_t* stringBuffer, const char* targetN
 //TODO: Add StringBufferEscapeQuotedString
 //TODO: Add StringBufferPathNormalize?
 //TODO: Add StringBufferPathAppend
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_STRING_BUFFER_H
 

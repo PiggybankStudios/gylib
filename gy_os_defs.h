@@ -23,6 +23,9 @@ enum OsError_t
 	OsError_ExePathTooLong,
 	OsError_NumErrors,
 };
+#ifdef GYLIB_HEADER_ONLY
+const char* GetOsErrorStr(OsError_t enumValue);
+#else
 const char* GetOsErrorStr(OsError_t enumValue)
 {
 	switch (enumValue)
@@ -35,6 +38,7 @@ const char* GetOsErrorStr(OsError_t enumValue)
 		default: return "Unknown";
 	}
 }
+#endif
 
 // +--------------------------------------------------------------+
 // |                    Function Declarations                     |

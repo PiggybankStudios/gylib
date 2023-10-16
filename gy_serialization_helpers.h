@@ -11,29 +11,10 @@ Description:
 #define _GY_SERIALIZATION_HELPERS_H
 
 // +--------------------------------------------------------------+
-// |                 Binary Serialization Headers                 |
+// |                            Macros                            |
 // +--------------------------------------------------------------+
-void* BinSer_WriteStructure_(void* result, u64 resultSize, u64* byteIndexPntr, u64 structureSize)
-{
-	NotNull(byteIndexPntr);
-	AssertIf(result != nullptr, (*byteIndexPntr) + structureSize <= resultSize);
-	void* structPntr = (result != nullptr) ? (((u8*)result) + (*byteIndexPntr)) : nullptr;
-	*byteIndexPntr = (*byteIndexPntr) + structureSize;
-	return structPntr;
-}
 #define BinSer_WriteStructure(result, resultSize, byteIndexPntr, type) (type*)BinSer_WriteStructure_((result), (resultSize), (byteIndexPntr), sizeof(type))
 
-void BinSer_WriteValue_(void* result, u64 resultSize, u64* byteIndexPntr, u64 valueSize, const void* valuePntr)
-{
-	NotNull2(byteIndexPntr, valuePntr);
-	if (result != nullptr)
-	{
-		Assert((*byteIndexPntr) + valueSize <= resultSize);
-		void* valueWritePntr = ((u8*)result) + (*byteIndexPntr);
-		MyMemCopy(valueWritePntr, valuePntr, valueSize);
-	}
-	*byteIndexPntr = (*byteIndexPntr) + valueSize;
-}
 #define BinSer_WriteValue(result, resultSize, byteIndexPntr, type, value) do                           \
 {                                                                                                      \
 	type localVariableForValue = (value);                                                              \
@@ -50,6 +31,57 @@ void BinSer_WriteValue_(void* result, u64 resultSize, u64* byteIndexPntr, u64 va
 #define BinSer_WriteI64(result, resultSize, byteIndexPntr, value) BinSer_WriteValue((result), (resultSize), (byteIndexPntr), i64, (value))
 #define BinSer_WriteBytes(result, resultSize, byteIndexPntr, numBytes, bytesPntr) BinSer_WriteValue_((result), (resultSize), (byteIndexPntr), (numBytes), (bytesPntr))
 
+#define BinDeser_ReadStruct(dataPntr, dataSize, byteIndexPntr, type) (type*)BinDeser_ReadStruct_((dataPntr), (dataSize), (byteIndexPntr), sizeof(type))
+#define BinDeser_ReadBytes(dataPntr, dataSize, byteIndexPntr, numBytes) (u8*)BinDeser_ReadStruct_((dataPntr), (dataSize), (byteIndexPntr), (numBytes))
+
+#define BinDeser_ReadStructDynamicSize(dataPntr, dataSize, byteIndexPntr, structSizeOut, type, sizeMemberName, firstOptionalMemberName) (type*)BinDeser_ReadStructDynamicSize_((dataPntr), (dataSize), (byteIndexPntr), (structSizeOut), STRUCT_VAR_OFFSET(type, sizeMemberName), STRUCT_VAR_OFFSET(type, firstOptionalMemberName), sizeof(type))
+
+#define BinDeser_IsMemberPresent(structSize, type, memberName) (structSize >= (STRUCT_VAR_OFFSET(type, memberName) + sizeof(((type*)0)->memberName)))
+
+#define BinDeser_ReadU8(dataPntr, dataSize, byteIndexPntr, variableOut)  BinDeser_ReadVariable_((dataPntr), (dataSize), (byteIndexPntr), sizeof(u8),  (void*)(variableOut))
+#define BinDeser_ReadU16(dataPntr, dataSize, byteIndexPntr, variableOut) BinDeser_ReadVariable_((dataPntr), (dataSize), (byteIndexPntr), sizeof(u16), (void*)(variableOut))
+#define BinDeser_ReadU32(dataPntr, dataSize, byteIndexPntr, variableOut) BinDeser_ReadVariable_((dataPntr), (dataSize), (byteIndexPntr), sizeof(u32), (void*)(variableOut))
+#define BinDeser_ReadU64(dataPntr, dataSize, byteIndexPntr, variableOut) BinDeser_ReadVariable_((dataPntr), (dataSize), (byteIndexPntr), sizeof(u64), (void*)(variableOut))
+#define BinDeser_ReadI8(dataPntr, dataSize, byteIndexPntr, variableOut)  BinDeser_ReadVariable_((dataPntr), (dataSize), (byteIndexPntr), sizeof(i8),  (void*)(variableOut))
+#define BinDeser_ReadI16(dataPntr, dataSize, byteIndexPntr, variableOut) BinDeser_ReadVariable_((dataPntr), (dataSize), (byteIndexPntr), sizeof(i16), (void*)(variableOut))
+#define BinDeser_ReadI32(dataPntr, dataSize, byteIndexPntr, variableOut) BinDeser_ReadVariable_((dataPntr), (dataSize), (byteIndexPntr), sizeof(i32), (void*)(variableOut))
+#define BinDeser_ReadI64(dataPntr, dataSize, byteIndexPntr, variableOut) BinDeser_ReadVariable_((dataPntr), (dataSize), (byteIndexPntr), sizeof(i64), (void*)(variableOut))
+
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	void* BinSer_WriteStructure_(void* result, u64 resultSize, u64* byteIndexPntr, u64 structureSize);
+	void BinSer_WriteValue_(void* result, u64 resultSize, u64* byteIndexPntr, u64 valueSize, const void* valuePntr);
+	const void* BinDeser_ReadStruct_(const void* dataPntr, u64 dataSize, u64* byteIndexPntr, u64 structureSize);
+	const void* BinDeser_ReadStructDynamicSize_(const void* dataPntr, u64 dataSize, u64* byteIndexPntr, u64* structSizeOut, u64 sizeMemberOffset, u64 minStructSize, u64 maxStructSize);
+	bool BinDeser_ReadVariable_(const void* dataPntr, u64 dataSize, u64* byteIndexPntr, u64 valueSize, void* valueOutPntr);
+#else
+
+// +--------------------------------------------------------------+
+// |                 Binary Serialization Headers                 |
+// +--------------------------------------------------------------+
+void* BinSer_WriteStructure_(void* result, u64 resultSize, u64* byteIndexPntr, u64 structureSize)
+{
+	NotNull(byteIndexPntr);
+	AssertIf(result != nullptr, (*byteIndexPntr) + structureSize <= resultSize);
+	void* structPntr = (result != nullptr) ? (((u8*)result) + (*byteIndexPntr)) : nullptr;
+	*byteIndexPntr = (*byteIndexPntr) + structureSize;
+	return structPntr;
+}
+
+void BinSer_WriteValue_(void* result, u64 resultSize, u64* byteIndexPntr, u64 valueSize, const void* valuePntr)
+{
+	NotNull2(byteIndexPntr, valuePntr);
+	if (result != nullptr)
+	{
+		Assert((*byteIndexPntr) + valueSize <= resultSize);
+		void* valueWritePntr = ((u8*)result) + (*byteIndexPntr);
+		MyMemCopy(valueWritePntr, valuePntr, valueSize);
+	}
+	*byteIndexPntr = (*byteIndexPntr) + valueSize;
+}
+
 // +--------------------------------------------------------------+
 // |                Binary Deserialization Helpers                |
 // +--------------------------------------------------------------+
@@ -61,8 +93,6 @@ const void* BinDeser_ReadStruct_(const void* dataPntr, u64 dataSize, u64* byteIn
 	*byteIndexPntr = (*byteIndexPntr) + structureSize;
 	return result;
 }
-#define BinDeser_ReadStruct(dataPntr, dataSize, byteIndexPntr, type) (type*)BinDeser_ReadStruct_((dataPntr), (dataSize), (byteIndexPntr), sizeof(type))
-#define BinDeser_ReadBytes(dataPntr, dataSize, byteIndexPntr, numBytes) (u8*)BinDeser_ReadStruct_((dataPntr), (dataSize), (byteIndexPntr), (numBytes))
 
 const void* BinDeser_ReadStructDynamicSize_(const void* dataPntr, u64 dataSize, u64* byteIndexPntr, u64* structSizeOut, u64 sizeMemberOffset, u64 minStructSize, u64 maxStructSize)
 {
@@ -77,9 +107,6 @@ const void* BinDeser_ReadStructDynamicSize_(const void* dataPntr, u64 dataSize, 
 	*byteIndexPntr = (*byteIndexPntr) + (*sizePntr);
 	return result;
 }
-#define BinDeser_ReadStructDynamicSize(dataPntr, dataSize, byteIndexPntr, structSizeOut, type, sizeMemberName, firstOptionalMemberName) (type*)BinDeser_ReadStructDynamicSize_((dataPntr), (dataSize), (byteIndexPntr), (structSizeOut), STRUCT_VAR_OFFSET(type, sizeMemberName), STRUCT_VAR_OFFSET(type, firstOptionalMemberName), sizeof(type))
-
-#define BinDeser_IsMemberPresent(structSize, type, memberName) (structSize >= (STRUCT_VAR_OFFSET(type, memberName) + sizeof(((type*)0)->memberName)))
 
 bool BinDeser_ReadVariable_(const void* dataPntr, u64 dataSize, u64* byteIndexPntr, u64 valueSize, void* valueOutPntr)
 {
@@ -90,14 +117,8 @@ bool BinDeser_ReadVariable_(const void* dataPntr, u64 dataSize, u64* byteIndexPn
 	*byteIndexPntr = (*byteIndexPntr) + valueSize;
 	return true;
 }
-#define BinDeser_ReadU8(dataPntr, dataSize, byteIndexPntr, variableOut)  BinDeser_ReadVariable_((dataPntr), (dataSize), (byteIndexPntr), sizeof(u8),  (void*)(variableOut))
-#define BinDeser_ReadU16(dataPntr, dataSize, byteIndexPntr, variableOut) BinDeser_ReadVariable_((dataPntr), (dataSize), (byteIndexPntr), sizeof(u16), (void*)(variableOut))
-#define BinDeser_ReadU32(dataPntr, dataSize, byteIndexPntr, variableOut) BinDeser_ReadVariable_((dataPntr), (dataSize), (byteIndexPntr), sizeof(u32), (void*)(variableOut))
-#define BinDeser_ReadU64(dataPntr, dataSize, byteIndexPntr, variableOut) BinDeser_ReadVariable_((dataPntr), (dataSize), (byteIndexPntr), sizeof(u64), (void*)(variableOut))
-#define BinDeser_ReadI8(dataPntr, dataSize, byteIndexPntr, variableOut)  BinDeser_ReadVariable_((dataPntr), (dataSize), (byteIndexPntr), sizeof(i8),  (void*)(variableOut))
-#define BinDeser_ReadI16(dataPntr, dataSize, byteIndexPntr, variableOut) BinDeser_ReadVariable_((dataPntr), (dataSize), (byteIndexPntr), sizeof(i16), (void*)(variableOut))
-#define BinDeser_ReadI32(dataPntr, dataSize, byteIndexPntr, variableOut) BinDeser_ReadVariable_((dataPntr), (dataSize), (byteIndexPntr), sizeof(i32), (void*)(variableOut))
-#define BinDeser_ReadI64(dataPntr, dataSize, byteIndexPntr, variableOut) BinDeser_ReadVariable_((dataPntr), (dataSize), (byteIndexPntr), sizeof(i64), (void*)(variableOut))
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_SERIALIZATION_HELPERS_H
 

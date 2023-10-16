@@ -21,6 +21,17 @@ Description:
 #include "gy_rectangles.h"
 #include "gy_random.h"
 
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	v2 GetBlueNoisePosInRec(u64 seed, rec bounds, u64 numOfPositions, u64 index);
+	void TwoPassPrint(char* resultPntr, u64 resultLength, u64* currentByteIndex, const char* formatString, ...);
+#else
+
+// +--------------------------------------------------------------+
+// |                          Functions                           |
+// +--------------------------------------------------------------+
 v2 GetBlueNoisePosInRec(u64 seed, rec bounds, u64 numOfPositions, u64 index)
 {
 	Assert(numOfPositions > 0);
@@ -119,6 +130,8 @@ void TwoPassPrint(char* resultPntr, u64 resultLength, u64* currentByteIndex, con
 	
 	*currentByteIndex += printSize;
 }
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_EXTRAS_H
 

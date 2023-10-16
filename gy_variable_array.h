@@ -40,6 +40,87 @@ struct VarArray_t
 };
 
 // +--------------------------------------------------------------+
+// |                            Macros                            |
+// +--------------------------------------------------------------+
+#if GYLIB_SCRATCH_ARENA_AVAILABLE
+#define CreateVarArray(array, memArena, itemSize, ...) CreateVarArray_(__FILE__, __LINE__, __func__, (array), (memArena), (itemSize), ##__VA_ARGS__)
+#else
+#define CreateVarArray(array, memArena, itemSize, ...) CreateVarArray_((array), (memArena), (itemSize), ##__VA_ARGS__)
+#endif
+
+#define VarArrayContains(array, itemPntr) VarArrayContains_((array), (itemPntr), sizeof(*(itemPntr)))
+#define VarArrayContainsTyped(array, itemPntr, type) VarArrayContains_((array), (itemPntr), sizeof(type))
+
+#define VarArrayGetIndexOf(array, itemPntr, indexOutPntr, type) VarArrayGetIndexOf_((array), (itemPntr), (indexOutPntr), sizeof(type))
+
+#define VarArrayGetHard(array, index, type) ((type*)VarArrayGet_((array), (index), sizeof(type), true))
+#define VarArrayGetSoft(array, index, type) ((type*)VarArrayGet_((array), (index), sizeof(type), false))
+#define VarArrayGet(array, index, type) VarArrayGetHard((array), (index), type)
+
+#define VarArrayGetFirstHard(array, type) VarArrayGetHard((array), 0, type)
+#define VarArrayGetFirstSoft(array, type) (((array)->length > 0) ? VarArrayGetSoft((array), 0, type) : nullptr)
+#define VarArrayGetFirst(array, type) VarArrayGetFirstHard((array), type) 
+
+#define VarArrayGetLastHard(array, type) VarArrayGetHard((array), (array)->length - 1, type)
+#define VarArrayGetLastSoft(array, type) (((array)->length > 0) ? VarArrayGetSoft((array), (array)->length - 1, type) : nullptr)
+#define VarArrayGetLast(array, type) VarArrayGetLastHard((array), type) 
+
+#define VarArrayLoop(arrayPntr, indexName) for (u64 indexName = 0; indexName < (arrayPntr)->length; indexName++)
+#define VarArrayLoopGet(type, varName, arrayPntr, index) type* varName = VarArrayGet((arrayPntr), (index), type)
+
+#define VarArrayAdd(array, type) (type*)VarArrayAdd_((array), sizeof(type))
+#define VarArrayPush(array, type) VarArrayAdd((array), (type))
+
+#define VarArrayInsert(array, index, type) (type*)VarArrayInsert_((array), (index), sizeof(type))
+#define VarArrayPushFront(array, type) (type*)VarArrayInsert_((array), 0, sizeof(type))
+
+#define VarArrayRemove(array, index, type) VarArrayRemove_((array), (index), sizeof(type))
+#define VarArrayPop(array, type) VarArrayRemove_((array), (array)->length - 1, sizeof(type))
+#define VarArrayPopFront(array, type) VarArrayRemove_((array), 0, sizeof(type))
+
+#define VarArrayRemoveByPntr(array, itemToRemove) VarArrayRemoveByPntr_((array), (itemToRemove), sizeof(*(itemToRemove)))
+#define VarArrayRemoveByPntrTyped(array, itemToRemove, type) VarArrayRemoveByPntr_((array), (itemToRemove), sizeof(type))
+
+#define VarArrayAddRange(array, index, newItemsCount, type) (type*)VarArrayAddRange_((array), (index), (newItemsCount), sizeof(type))
+
+#define VarArrayMerge(destArray, sourceArray) VarArrayAddVarArray((destArray), (sourceArray), (destArray)->length, 0, (sourceArray)->length)
+
+#define VarArrayRemoveRange(array, index, numItemsToRemove, type) VarArrayRemoveRange_((array), (index), (numItemsToRemove), sizeof(type))
+
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	void FreeVarArray(VarArray_t* array);
+	#if GYLIB_SCRATCH_ARENA_AVAILABLE
+	void CreateVarArray_(const char* filePath, u64 lineNumber, const char* funcName, VarArray_t* array, MemArena_t* memArena, u64 itemSize, u64 initialRequiredCapacity = 0, bool exponentialChunkSize = true, u64 allocChunkSize = 8);
+	#else
+	void CreateVarArray_(VarArray_t* array, MemArena_t* memArena, u64 itemSize, u64 initialRequiredCapacity = 0, bool exponentialChunkSize = true, u64 allocChunkSize = 8);
+	#endif
+	bool VarArrayIsCreated(VarArray_t* array);
+	void VarArrayName(VarArray_t* array, MyStr_t newName);
+	bool VarArrayExpand(VarArray_t* array, u64 capacityRequired);
+	bool VarArrayContains_(VarArray_t* array, const void* itemInQuestion, u64 itemSize);
+	bool VarArrayGetIndexOf_(VarArray_t* array, const void* itemInQuestion, u64* indexOut, u64 itemSize);
+	void VarArrayClear(VarArray_t* array, bool deallocate = false);
+	void VarArrayClearMyStr(VarArray_t* array, MemArena_t* stringAllocArena);
+	void* VarArrayGet_(VarArray_t* array, u64 index, u64 itemSize, bool assertOnFailure);
+	const void* VarArrayGet_(const VarArray_t* array, u64 index, u64 itemSize, bool assertOnFailure);
+	void* VarArrayAdd_(VarArray_t* array, u64 itemSize);
+	void* VarArrayInsert_(VarArray_t* array, u64 index, u64 itemSize);
+	void VarArrayRemove_(VarArray_t* array, u64 index, u64 itemSize);
+	void VarArrayRemoveByPntr_(VarArray_t* array, const void* itemToRemove, u64 itemSize);
+	void* VarArrayAddRange_(VarArray_t* array, u64 index, u64 newItemsCount, u64 itemSize);
+	void VarArrayAddVarArray(VarArray_t* destArray, const VarArray_t* sourceArray, u64 destIndex, u64 sourceIndex = 0, u64 sourceCount = UINT64_MAX);
+	void VarArrayRemoveRange_(VarArray_t* array, u64 index, u64 numItemsToRemove, u64 itemSize);
+	void VarArrayCopy(VarArray_t* destArray, const VarArray_t* sourceArray, MemArena_t* memArena);
+	void* VarArrayMove(VarArray_t* array, u64 fromIndex, u64 toIndex, bool swapWithTarget = true);
+	#if defined(_GY_SORTING_H) && !ORCA_COMPILATION
+	void VarArraySort(VarArray_t* array, CompareFunc_f* compareFunc, void* contextPntr);
+	#endif
+#else
+
+// +--------------------------------------------------------------+
 // |                       Create and Free                        |
 // +--------------------------------------------------------------+
 void FreeVarArray(VarArray_t* array)
@@ -125,12 +206,6 @@ void CreateVarArray_(VarArray_t* array, MemArena_t* memArena, u64 itemSize, u64 
 	}
 	else { array->items = nullptr; }
 }
-
-#if GYLIB_SCRATCH_ARENA_AVAILABLE
-#define CreateVarArray(array, memArena, itemSize, ...) CreateVarArray_(__FILE__, __LINE__, __func__, (array), (memArena), (itemSize), ##__VA_ARGS__)
-#else
-#define CreateVarArray(array, memArena, itemSize, ...) CreateVarArray_((array), (memArena), (itemSize), ##__VA_ARGS__)
-#endif
 
 bool VarArrayIsCreated(VarArray_t* array)
 {
@@ -229,8 +304,6 @@ bool VarArrayContains_(VarArray_t* array, const void* itemInQuestion, u64 itemSi
 	#endif
 	return true;
 }
-#define VarArrayContains(array, itemPntr) VarArrayContains_((array), (itemPntr), sizeof(*(itemPntr)))
-#define VarArrayContainsTyped(array, itemPntr, type) VarArrayContains_((array), (itemPntr), sizeof(type))
 
 bool VarArrayGetIndexOf_(VarArray_t* array, const void* itemInQuestion, u64* indexOut, u64 itemSize)
 {
@@ -241,8 +314,6 @@ bool VarArrayGetIndexOf_(VarArray_t* array, const void* itemInQuestion, u64* ind
 	*indexOut = (offsetFromBase / array->itemSize);
 	return true;
 }
-
-#define VarArrayGetIndexOf(array, itemPntr, indexOutPntr, type) VarArrayGetIndexOf_((array), (itemPntr), (indexOutPntr), sizeof(type))
 
 void VarArrayClear(VarArray_t* array, bool deallocate = false)
 {
@@ -296,21 +367,6 @@ const void* VarArrayGet_(const VarArray_t* array, u64 index, u64 itemSize, bool 
 	return (const void*)VarArrayGet_((VarArray_t*)array, index, itemSize, assertOnFailure);
 }
 
-#define VarArrayGetHard(array, index, type) ((type*)VarArrayGet_((array), (index), sizeof(type), true))
-#define VarArrayGetSoft(array, index, type) ((type*)VarArrayGet_((array), (index), sizeof(type), false))
-#define VarArrayGet(array, index, type) VarArrayGetHard((array), (index), type)
-
-#define VarArrayGetFirstHard(array, type) VarArrayGetHard((array), 0, type)
-#define VarArrayGetFirstSoft(array, type) (((array)->length > 0) ? VarArrayGetSoft((array), 0, type) : nullptr)
-#define VarArrayGetFirst(array, type) VarArrayGetFirstHard((array), type) 
-
-#define VarArrayGetLastHard(array, type) VarArrayGetHard((array), (array)->length - 1, type)
-#define VarArrayGetLastSoft(array, type) (((array)->length > 0) ? VarArrayGetSoft((array), (array)->length - 1, type) : nullptr)
-#define VarArrayGetLast(array, type) VarArrayGetLastHard((array), type) 
-
-#define VarArrayLoop(arrayPntr, indexName) for (u64 indexName = 0; indexName < (arrayPntr)->length; indexName++)
-#define VarArrayLoopGet(type, varName, arrayPntr, index) type* varName = VarArrayGet((arrayPntr), (index), type)
-
 // +--------------------------------------------------------------+
 // |                             Add                              |
 // +--------------------------------------------------------------+
@@ -333,8 +389,6 @@ void* VarArrayAdd_(VarArray_t* array, u64 itemSize)
 	
 	return result;
 }
-#define VarArrayAdd(array, type) (type*)VarArrayAdd_((array), sizeof(type))
-#define VarArrayPush(array, type) VarArrayAdd((array), (type))
 
 // +--------------------------------------------------------------+
 // |                            Insert                            |
@@ -369,9 +423,6 @@ void* VarArrayInsert_(VarArray_t* array, u64 index, u64 itemSize)
 	return result;
 }
 
-#define VarArrayInsert(array, index, type) (type*)VarArrayInsert_((array), (index), sizeof(type))
-#define VarArrayPushFront(array, type) (type*)VarArrayInsert_((array), 0, sizeof(type))
-
 // +--------------------------------------------------------------+
 // |                            Remove                            |
 // +--------------------------------------------------------------+
@@ -397,10 +448,6 @@ void VarArrayRemove_(VarArray_t* array, u64 index, u64 itemSize)
 	array->length--;
 }
 
-#define VarArrayRemove(array, index, type) VarArrayRemove_((array), (index), sizeof(type))
-#define VarArrayPop(array, type) VarArrayRemove_((array), (array)->length - 1, sizeof(type))
-#define VarArrayPopFront(array, type) VarArrayRemove_((array), 0, sizeof(type))
-
 // +--------------------------------------------------------------+
 // |                         RemoveByPntr                         |
 // +--------------------------------------------------------------+
@@ -411,9 +458,6 @@ void VarArrayRemoveByPntr_(VarArray_t* array, const void* itemToRemove, u64 item
 	Assert(itemInArray);
 	VarArrayRemove_(array, itemIndex, itemSize);
 }
-
-#define VarArrayRemoveByPntr(array, itemToRemove) VarArrayRemoveByPntr_((array), (itemToRemove), sizeof(*(itemToRemove)))
-#define VarArrayRemoveByPntrTyped(array, itemToRemove, type) VarArrayRemoveByPntr_((array), (itemToRemove), sizeof(type))
 
 // +--------------------------------------------------------------+
 // |                           AddRange                           |
@@ -449,8 +493,6 @@ void* VarArrayAddRange_(VarArray_t* array, u64 index, u64 newItemsCount, u64 ite
 	return result;
 }
 
-#define VarArrayAddRange(array, index, newItemsCount, type) (type*)VarArrayAddRange_((array), (index), (newItemsCount), sizeof(type))
-
 // +--------------------------------------------------------------+
 // |                         AddVarArray                          |
 // +--------------------------------------------------------------+
@@ -470,8 +512,6 @@ void VarArrayAddVarArray(VarArray_t* destArray, const VarArray_t* sourceArray, u
 	NotNull(newSpace);
 	MyMemCopy(newSpace, VarArrayGet_(sourceArray, sourceIndex, sourceArray->itemSize, true), sourceCount * destArray->itemSize);
 }
-
-#define VarArrayMerge(destArray, sourceArray) VarArrayAddVarArray((destArray), (sourceArray), (destArray)->length, 0, (sourceArray)->length)
 
 // +--------------------------------------------------------------+
 // |                         RemoveRange                          |
@@ -499,8 +539,6 @@ void VarArrayRemoveRange_(VarArray_t* array, u64 index, u64 numItemsToRemove, u6
 	}
 	array->length -= numItemsToRemove;
 }
-
-#define VarArrayRemoveRange(array, index, numItemsToRemove, type) VarArrayRemoveRange_((array), (index), (numItemsToRemove), sizeof(type))
 
 // +--------------------------------------------------------------+
 // |                             Copy                             |
@@ -587,6 +625,8 @@ void VarArraySort(VarArray_t* array, CompareFunc_f* compareFunc, void* contextPn
 #endif
 
 //TODO: Add VarArraySort if gy_sorting.h is included?
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_VARIABLE_ARRAY_H
 

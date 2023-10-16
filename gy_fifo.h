@@ -25,6 +25,9 @@ enum FifoType_t
 	FifoType_Dynamic,
 	FifoType_NumTypes,
 };
+#ifdef GYLIB_HEADER_ONLY
+const char* GetFifoTypeStr(FifoType_t enumValue);
+#else
 const char* GetFifoTypeStr(FifoType_t enumValue)
 {
 	switch (enumValue)
@@ -35,6 +38,7 @@ const char* GetFifoTypeStr(FifoType_t enumValue)
 		default: return "Unknown";
 	}
 }
+#endif
 
 struct Fifo_t
 {
@@ -45,6 +49,22 @@ struct Fifo_t
 	u64 size;
 	u8* buffer;
 };
+
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	void FreeFifo(Fifo_t* fifo);
+	void CreateFifo(Fifo_t* fifo, MemArena_t* memArena, u64 size, FifoType_t type);
+	u64 FifoLength(const Fifo_t* fifo);
+	u8 FifoGetU8(const Fifo_t* fifo, u64 index = 0);
+	u8 FifoGetLastU8(const Fifo_t* fifo);
+	bool FifoGetMulti(const Fifo_t* fifo, u64 numBytes, u8* arrayPntr);
+	bool FifoPushU8(Fifo_t* fifo, u8 newByte);
+	bool FifoPushMulti(Fifo_t* fifo, u64 arraySize, const u8* arrayPntr);
+	u8 FifoPopU8(Fifo_t* fifo);
+	u8* FifoUnwrap(const Fifo_t* fifo, MemArena_t* memArena, bool addNullTerm = false);
+#else
 
 // +--------------------------------------------------------------+
 // |                       Create and Free                        |
@@ -409,6 +429,8 @@ char* FifoPopLine(Fifo_t* fifo, MemArena_t* memArena)
 	return result;
 }
 #endif
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_FIFO_H
 

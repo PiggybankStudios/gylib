@@ -29,6 +29,9 @@ enum SocketProtocol_t
 	SocketProtocol_Tcp,
 	SocketProtocol_NumProtocols,
 };
+#ifdef GYLIB_HEADER_ONLY
+const char* GetSocketProtocolStr(SocketProtocol_t enumValue);
+#else
 const char* GetSocketProtocolStr(SocketProtocol_t enumValue)
 {
 	switch (enumValue)
@@ -39,6 +42,7 @@ const char* GetSocketProtocolStr(SocketProtocol_t enumValue)
 		default: return "Unknown";
 	}
 }
+#endif
 
 enum SocketType_t
 {
@@ -47,6 +51,9 @@ enum SocketType_t
 	SocketType_MultiDestination, //aka server, multiple destinations
 	SocketType_NumTypes,
 };
+#ifdef GYLIB_HEADER_ONLY
+const char* GetSocketTypeStr(SocketType_t enumValue);
+#else
 const char* GetSocketTypeStr(SocketType_t enumValue)
 {
 	switch (enumValue)
@@ -57,6 +64,7 @@ const char* GetSocketTypeStr(SocketType_t enumValue)
 		default: return "Unknown";
 	}
 }
+#endif
 
 enum SocketError_t
 {
@@ -69,6 +77,9 @@ enum SocketError_t
 	SocketError_WriteError,
 	SocketError_NumErrors,
 };
+#ifdef GYLIB_HEADER_ONLY
+const char* GetSocketErrorStr(SocketError_t enumValue);
+#else
 const char* GetSocketErrorStr(SocketError_t enumValue)
 {
 	switch (enumValue)
@@ -83,6 +94,7 @@ const char* GetSocketErrorStr(SocketError_t enumValue)
 		default: return "Unknown";
 	}
 }
+#endif
 
 enum SocketWarning_t
 {
@@ -92,6 +104,9 @@ enum SocketWarning_t
 	SocketWarning_BufferIsFull,
 	SocketWarning_NumWarnings,
 };
+#ifdef GYLIB_HEADER_ONLY
+const char* GetSocketWarningStr(SocketWarning_t enumValue);
+#else
 const char* GetSocketWarningStr(SocketWarning_t enumValue)
 {
 	switch (enumValue)
@@ -103,6 +118,7 @@ const char* GetSocketWarningStr(SocketWarning_t enumValue)
 		default: return "Unknown";
 	}
 }
+#endif
 
 enum BufferedSocketBufferType_t
 {
@@ -112,6 +128,9 @@ enum BufferedSocketBufferType_t
 	BufferedSocketBufferType_Routing,
 	BufferedSocketBufferType_NumTypes,
 };
+#ifdef GYLIB_HEADER_ONLY
+const char* GetBufferedSocketBufferTypeStr(BufferedSocketBufferType_t enumValue);
+#else
 const char* GetBufferedSocketBufferTypeStr(BufferedSocketBufferType_t enumValue)
 {
 	switch (enumValue)
@@ -123,6 +142,7 @@ const char* GetBufferedSocketBufferTypeStr(BufferedSocketBufferType_t enumValue)
 		default: return "Unknown";
 	}
 }
+#endif
 
 // +--------------------------------------------------------------+
 // |                          Structures                          |
@@ -165,6 +185,47 @@ struct BufferedSocket_t
 	BufferedSocketBuffer_t buffers[BUFFERED_SOCKET_MAX_NUM_BUFFERS];
 	OpenSocket_t socket;
 };
+
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	#if WINDOWS_COMPILATION
+	const char* Win32_GetWsaErrorStr(int wsaErrorCode);
+	sockaddr_in Win32_GetSockAddrFromIpAddressAndPort(IpAddressAndPort_t addressAndPort);
+	IpAddressAndPort_t Win32_GetIpAddressAndPortFromSockAddr(sockaddr_in sockAddr);
+	#endif //WINDOWS_COMPILATION
+	SocketError_t PrintSocketError(int errorCode, const char* message, const char* functionName);
+	inline bool IsSocketOpen(const OpenSocket_t* socket);
+	inline bool IsSocketOpen(const BufferedSocket_t* socket);
+	inline bool DoesSocketHaveErrors(const OpenSocket_t* socket);
+	inline bool DoesSocketHaveErrors(const BufferedSocket_t* socket);
+	BufferedSocketBuffer_t* FindBufferForAddress(BufferedSocket_t* socket, IpAddress_t address, BufferedSocketBufferType_t type = BufferedSocketBufferType_Rx, bool findFreeBufferIfNeeded = true);
+	BufferedSocketBuffer_t* FindBufferForAddressAndPort(BufferedSocket_t* socket, IpAddressAndPort_t address, BufferedSocketBufferType_t type = BufferedSocketBufferType_Rx, bool findFreeBufferIfNeeded = true);
+	void BufferedSocketBufferPop(BufferedSocketBuffer_t* buffer, u64 numBytesToPop);
+	bool InitializeSockets();
+	void CloseOpenSocket(OpenSocket_t* socket);
+	SocketError_t CloseOpenSocketIfErrors(OpenSocket_t* socket, bool printOutError = false);
+	void FreeBufferedSocketBuffer(BufferedSocket_t* socket, BufferedSocketBuffer_t* buffer);
+	void DestroyBufferedSocket(BufferedSocket_t* socket);
+	SocketError_t DestroyBufferedSocketIfErrors(BufferedSocket_t* socket, bool printOutError = false);
+	bool TryOpenNewSocket(SocketProtocol_t protocol, IpAddressAndPort_t destAddress, OpenSocket_t* socketOut);
+	bool TryOpenNewMultiSocket(SocketProtocol_t protocol, IpPort_t port, OpenSocket_t* socketOut);
+	bool TryOpenNewBufferedSocket(SocketProtocol_t protocol, IpAddressAndPort_t destAddress, BufferedSocket_t* socketOut, MemArena_t* memArena, u64 bufferSize);
+	bool TryOpenNewBufferedMultiSocket(SocketProtocol_t protocol, IpPort_t port, BufferedSocket_t* socketOut, MemArena_t* memArena, u64 mainRxBufferSize, u64 connectionBufferSize);
+	bool SocketWriteTo(OpenSocket_t* socket, IpAddressAndPort_t destAddress, u64 dataSize, const void* dataPntr, u64* numBytesSentOut = nullptr);
+	bool SocketWriteToStr(OpenSocket_t* socket, IpAddressAndPort_t destAddress, MyStr_t messageStr, u64* numBytesSentOut = nullptr);
+	bool SocketWrite(OpenSocket_t* socket, u64 dataSize, const void* dataPntr, u64* numBytesSentOut = nullptr);
+	bool SocketWriteStr(OpenSocket_t* socket, MyStr_t messageStr, u64* numBytesSentOut = nullptr);
+	bool BufferedSocketWriteTo(BufferedSocket_t* socket, BufferedSocketBuffer_t* buffer, u64 dataSize, const void* dataPntr, u64* numBytesSentOut = nullptr);
+	bool BufferedSocketWriteTo(BufferedSocket_t* socket, IpAddressAndPort_t destAddress, u64 dataSize, const void* dataPntr, u64* numBytesSentOut = nullptr);
+	bool BufferedSocketWrite(BufferedSocket_t* socket, u64 dataSize, const void* dataPntr, u64* numBytesSentOut = nullptr);
+	bool SocketReadFromAny(OpenSocket_t* socket, void* outBufferPntr, u64 outBufferSize, u64* outReceivedNumBytes, IpAddressAndPort_t* addressOut = nullptr);
+	MyStr_t SocketReadFromAnyStr(OpenSocket_t* socket, MemArena_t* memArena, u64 maxReadSize, IpAddressAndPort_t* addressOut = nullptr);
+	bool SocketRead(OpenSocket_t* socket, void* outBufferPntr, u64 outBufferSize, u64* outReceivedNumBytes);
+	MyStr_t SocketReadStr(OpenSocket_t* socket, MemArena_t* memArena, u64 maxReadSize);
+	void UpdateBufferedSocket(BufferedSocket_t* socket, u64 programTime);
+#else
 
 // +--------------------------------------------------------------+
 // |                       Helper Functions                       |
@@ -1119,6 +1180,8 @@ void UpdateBufferedSocket(BufferedSocket_t* socket, u64 programTime)
 		}
 	}
 }
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif // SOCKETS_SUPPORTED
 

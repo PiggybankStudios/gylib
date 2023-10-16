@@ -34,6 +34,9 @@ enum ParsingTokenType_t
 	ParsingTokenType_Comment, //anything after a // on any line
 	ParsingTokenType_NumTypes,
 };
+#ifdef GYLIB_HEADER_ONLY
+const char* GetParsingTokenTypeStr(ParsingTokenType_t enumValue);
+#else
 const char* GetParsingTokenTypeStr(ParsingTokenType_t enumValue)
 {
 	switch (enumValue)
@@ -46,6 +49,7 @@ const char* GetParsingTokenTypeStr(ParsingTokenType_t enumValue)
 		default: return "Unknown";
 	}
 }
+#endif
 
 struct ParsingToken_t
 {
@@ -74,6 +78,9 @@ enum XmlParseResultType_t
 	XmlParseResultType_Error,
 	XmlParseResultType_NumTypes,
 };
+#ifdef GYLIB_HEADER_ONLY
+const char* GetXmlParseResultTypeStr(XmlParseResultType_t enumValue);
+#else
 const char* GetXmlParseResultTypeStr(XmlParseResultType_t enumValue)
 {
 	switch (enumValue)
@@ -88,6 +95,7 @@ const char* GetXmlParseResultTypeStr(XmlParseResultType_t enumValue)
 		default: return "Unknown";
 	}
 }
+#endif
 
 struct XmlProperty_t
 {
@@ -122,6 +130,23 @@ struct XmlParseResult_t
 	MyStr_t string;
 	XmlParsingError_t error;
 };
+
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	LineParser_t NewLineParser(MyStr_t fileContents);
+	bool LineParserGetLine(LineParser_t* parser, MyStr_t* lineOut);
+	TextParser_t NewTextParser(MyStr_t fileContents);
+	bool TextParserGetToken(TextParser_t* parser, ParsingToken_t* tokenOut);
+	XmlParser_t NewXmlParser(MemArena_t* arenaForLists, MyStr_t fileContents);
+	void FreeXmlParser(XmlParser_t* parser);
+	#if GYLIB_SCRATCH_ARENA_AVAILABLE
+	bool XmlParserCheckIdentifierHasValidChars(XmlParser_t* parser, MyStr_t identifierStr, XmlParseResult_t* result, ProcessLog_t* log);
+	bool XmlParserGetToken(XmlParser_t* parser, XmlParseResult_t* result, ProcessLog_t* log);
+	#endif
+	XmlProperty_t* GetXmlProperty(XmlToken_t* token, MyStr_t propertyKey, bool ignoreCase = false);
+#else
 
 // +--------------------------------------------------------------+
 // |                     LineParser Functions                     |
@@ -677,6 +702,8 @@ XmlProperty_t* GetXmlProperty(XmlToken_t* token, MyStr_t propertyKey, bool ignor
 	}
 	return nullptr;
 }
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_SIMPLE_PARSERS_H
 

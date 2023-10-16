@@ -20,12 +20,18 @@ Description:
 #include "gy_string.h"
 #include "gy_variable_array.h"
 
+// +--------------------------------------------------------------+
+// |                           Defines                            |
+// +--------------------------------------------------------------+
 #define WORD_TREE_CHILD_COUNT 26
 #define WORD_TREE_FIRST_CHAR  'a' //'a' through 'z'
 
 #define ASCII_TREE_CHILD_COUNT 95
 #define ASCII_TREE_FIRST_CHAR  ' ' //space through '~'
 
+// +--------------------------------------------------------------+
+// |                            Types                             |
+// +--------------------------------------------------------------+
 struct WordTreeNode_t
 {
 	WordTreeNode_t* children[WORD_TREE_CHILD_COUNT];
@@ -50,6 +56,24 @@ struct AsciiTree_t
 };
 #endif
 
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	void FreeWordTree(WordTree_t* tree);
+	void CreateWordTree(WordTree_t* tree, MemArena_t* memArena, u64 initialRequiredCapacity = 0, bool exponentialChunkSize = true, u64 allocChunkSize = 8);
+	WordTreeNode_t* WordTreeAddNode(WordTree_t* tree, WordTreeNode_t* node, char childChar, WordTreeLeaf_t** leafOut);
+	WordTreeLeaf_t* WordTreeAddLeaf(WordTree_t* tree, MyStr_t word);
+	WordTreeLeaf_t* WordTreeAddU64(WordTree_t* tree, MyStr_t word, u64 value64);
+	WordTreeLeaf_t* WordTreeAddPntr(WordTree_t* tree, MyStr_t word, void* valuePntr);
+	WordTreeLeaf_t* WordTreeGetLeaf(WordTree_t* tree, MyStr_t word);
+	u64 WordTreeGetU64(WordTree_t* tree, MyStr_t word);
+	void* WordTreeGetPntr(WordTree_t* tree, MyStr_t word);
+#else
+
+// +--------------------------------------------------------------+
+// |                          Functions                           |
+// +--------------------------------------------------------------+
 void FreeWordTree(WordTree_t* tree)
 {
 	NotNull(tree);
@@ -196,6 +220,8 @@ void* WordTreeGetPntr(WordTree_t* tree, MyStr_t word)
 	NotNull(leaf);
 	return leaf->valuePntr;
 }
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_WORD_TREE_H
 

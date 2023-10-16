@@ -54,6 +54,187 @@ union ColorLAB_t
 };
 
 // +--------------------------------------------------------------+
+// |                Illuminant/Observer Constants                 |
+// +--------------------------------------------------------------+
+//NOTE: These values are copied from https://www.easyrgb.com/en/math.php
+enum ColorObserver_t
+{
+	ColorObserver_TwoDegree = 0x00, //CIE 1931
+	ColorObserver_TenDegree,        //CIE 1964
+	ColorObserver_NumOptions,
+};
+#ifdef GYLIB_HEADER_ONLY
+const char* GetColorObserverStr(ColorObserver_t enumValue);
+#else
+const char* GetColorObserverStr(ColorObserver_t enumValue)
+{
+	switch (enumValue)
+	{
+		case ColorObserver_TwoDegree: return "TwoDegree";
+		case ColorObserver_TenDegree: return "TenDegree";
+		default: return "Unknown";
+	}
+}
+#endif
+
+enum ColorIlluminant_t
+{
+	ColorIlluminant_A = 0x00, //Incandescent/tungsten
+	ColorIlluminant_B,        //Old direct sunlight at noon
+	ColorIlluminant_C,        //Old daylight
+	ColorIlluminant_D50,      //ICC profile PCS
+	ColorIlluminant_D55,      //Mid-morning daylight
+	ColorIlluminant_D65,      //Daylight, sRGB, Adobe-RGB
+	ColorIlluminant_D75,      //North sky daylight
+	ColorIlluminant_E,        //Equal energy
+	ColorIlluminant_F1,       //Daylight Fluorescent
+	ColorIlluminant_F2,       //Cool fluorescent
+	ColorIlluminant_F3,       //White Fluorescent
+	ColorIlluminant_F4,       //Warm White Fluorescent
+	ColorIlluminant_F5,       //Daylight Fluorescent
+	ColorIlluminant_F6,       //Lite White Fluorescent
+	ColorIlluminant_F7,       //Daylight fluorescent, D65 simulator
+	ColorIlluminant_F8,       //Sylvania F40, D50 simulator
+	ColorIlluminant_F9,       //Cool White Fluorescent
+	ColorIlluminant_F10,      //Ultralume 50, Philips TL85
+	ColorIlluminant_F11,      //Ultralume 40, Philips TL84
+	ColorIlluminant_F12,      //Ultralume 30, Philips TL83
+	ColorIlluminant_NumOptions,
+};
+#ifdef GYLIB_HEADER_ONLY
+const char* GetColorIlluminantStr(ColorIlluminant_t enumValue);
+#else
+const char* GetColorIlluminantStr(ColorIlluminant_t enumValue)
+{
+	switch (enumValue)
+	{
+		case ColorIlluminant_A:   return "A";
+		case ColorIlluminant_B:   return "B";
+		case ColorIlluminant_C:   return "C";
+		case ColorIlluminant_D50: return "D50";
+		case ColorIlluminant_D55: return "D55";
+		case ColorIlluminant_D65: return "D65";
+		case ColorIlluminant_D75: return "D75";
+		case ColorIlluminant_E:   return "E";
+		case ColorIlluminant_F1:  return "F1";
+		case ColorIlluminant_F2:  return "F2";
+		case ColorIlluminant_F3:  return "F3";
+		case ColorIlluminant_F4:  return "F4";
+		case ColorIlluminant_F5:  return "F5";
+		case ColorIlluminant_F6:  return "F6";
+		case ColorIlluminant_F7:  return "F7";
+		case ColorIlluminant_F8:  return "F8";
+		case ColorIlluminant_F9:  return "F9";
+		case ColorIlluminant_F10: return "F10";
+		case ColorIlluminant_F11: return "F11";
+		case ColorIlluminant_F12: return "F12";
+		default: return "Unknown";
+	}
+}
+#endif
+
+#ifdef GYLIB_HEADER_ONLY
+extern const r64 ColorIllumValues[ColorIlluminant_NumOptions][ColorObserver_NumOptions][3];
+#else
+const r64 ColorIllumValues[ColorIlluminant_NumOptions][ColorObserver_NumOptions][3] = {
+	{ { 109.850, 100.000, 35.585  }, { 111.144, 100.000, 35.200  } },
+	{ { 99.0927, 100.000, 85.313  }, { 99.178,  100.000, 84.3493 } },
+	{ { 98.074,  100.000, 118.232 }, { 97.285,  100.000, 116.145 } },
+	{ { 96.422,  100.000, 82.521  }, { 96.720,  100.000, 81.427  } },
+	{ { 95.682,  100.000, 92.149  }, { 95.799,  100.000, 90.926  } },
+	{ { 95.047,  100.000, 108.883 }, { 94.811,  100.000, 107.304 } },
+	{ { 94.972,  100.000, 122.638 }, { 94.416,  100.000, 120.641 } },
+	{ { 100.000, 100.000, 100.000 }, { 100.000, 100.000, 100.000 } },
+	{ { 92.834,  100.000, 103.665 }, { 94.791,  100.000, 103.191 } },
+	{ { 99.187,  100.000, 67.395  }, { 103.280, 100.000, 69.026  } },
+	{ { 103.754, 100.000, 49.861  }, { 108.968, 100.000, 51.965  } },
+	{ { 109.147, 100.000, 38.813  }, { 114.961, 100.000, 40.963  } },
+	{ { 90.872,  100.000, 98.723  }, { 93.369,  100.000, 98.636  } },
+	{ { 97.309,  100.000, 60.191  }, { 102.148, 100.000, 62.074  } },
+	{ { 95.044,  100.000, 108.755 }, { 95.792,  100.000, 107.687 } },
+	{ { 96.413,  100.000, 82.333  }, { 97.115,  100.000, 81.135  } },
+	{ { 100.365, 100.000, 67.868  }, { 102.116, 100.000, 67.826  } },
+	{ { 96.174,  100.000, 81.712  }, { 99.001,  100.000, 83.134  } },
+	{ { 100.966, 100.000, 64.370  }, { 103.866, 100.000, 65.627  } },
+	{ { 108.046, 100.000, 39.228  }, { 111.428, 100.000, 40.353  } }
+};
+#endif
+
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	Color_t NewColor(u32 value, bool rgbaOrder = false);
+	Color_t NewColor(u8 r, u8 g, u8 b, u8 a, bool rgbaOrder = false);
+	Color_t NewColor(u8 r, u8 g, u8 b);
+	Colorf_t NewColorf(r32 r, r32 g, r32 b);
+	Colorf_t NewColorf(r32 r, r32 g, r32 b, r32 a);
+	ColorHSV_t NewColorHsv(r32 hue, r32 saturation, r32 value);
+	ColorHSV_t NewColorHsv(r32 hue, r32 saturation, r32 value, r32 alpha);
+	u8 ColorChannelToU8(r32 valueR32);
+	r32 ColorChannelToR32(u8 valueU8);
+	u8 MultiplyColorChannelU8(u8 left, u8 right);
+	u8 MultiplyColorChannelR32(u8 left, r32 rightR32);
+	Color_t ToColor(Colorf_t colorf);
+	Color_t ToColor(v3 vector3);
+	Color_t ToColor(v4 vector4);
+	Color_t ColorTransparent(r32 alpha);
+	Color_t ColorTransparent(Color_t color, r32 alpha);
+	Colorf_t ToColorf(Color_t color);
+	Colorf_t ToColorf(v3 vector3);
+	Colorf_t ToColorf(v4 vector4);
+	ColorHSV_t ToColorHsv(v3 vector3);
+	ColorHSV_t ToColorHsv(v4 vector4);
+	v3 ToVec3(Color_t color);
+	v3 ToVec3(Colorf_t color);
+	v4 ToVec4(Color_t color);
+	v4 ToVec4(Colorf_t color);
+	Color_t ColorLerp(Color_t start, Color_t end, r32 amount);
+	Color_t ColorDarken(Color_t color, u8 amount);
+	Color_t ColorLighten(Color_t color, u8 amount);
+	Color_t ColorMultiply(Color_t color1, Color_t color2);
+	Color_t ColorMultiplyAlpha(Color_t color, u8 alphaValue);
+	Color_t ColorMultiplyAlphaR32(Color_t color, r32 amount);
+	Color_t ColorOpposite(Color_t color);
+	bool BasicallyEqualColorf(Colorf_t left, Colorf_t right, r32 tolerance = 0.001f);
+	Colorf_t ColorfLerp(Colorf_t start, Colorf_t end, r32 amount);
+	Colorf_t ColorfDarken(Colorf_t color, r32 amount);
+	Colorf_t ColorfLighten(Colorf_t color, r32 amount);
+	Colorf_t ColorfMultiply(Colorf_t color1, Colorf_t color2);
+	Colorf_t ColorfMultiplyAlpha(Colorf_t color, r32 alphaValue);
+	Colorf_t ColorfOpposite(Colorf_t color);
+	Color_t ColorRGBFromHSV(ColorHSV_t colorHsv);
+	ColorHSV_t ColorHSVFromRGB(Color_t color);
+	r64 ExpandNonLinearSrgb(r64 nonlinearValue);
+	r64 CompressLinearSrgb(r64 linearValue);
+	ColorXYZ_t ColorXyzFromSrgb(Color_t color);
+	Color_t ColorSrgbFromXyz(ColorXYZ_t colorXyz, bool* isValidColorOut = nullptr);
+	r64 DoSpecialThing(r64 xyzValue);
+	r64 UndoSpecialThing(r64 specialValue);
+	ColorLAB_t ColorLabFromXyz(ColorXYZ_t colorXyz, ColorObserver_t observer = ColorObserver_TwoDegree, ColorIlluminant_t illuminant = ColorIlluminant_D65);
+	ColorXYZ_t ColorXyzFromLab(ColorLAB_t colorLab, ColorObserver_t observer = ColorObserver_TwoDegree, ColorIlluminant_t illuminant = ColorIlluminant_D65);
+	ColorLCH_t ColorLchFromLab(ColorLAB_t colorLab);
+	ColorLAB_t ColorLabFromLch(ColorLCH_t colorLch);
+	Color_t ColorComplementary(Color_t color);
+	Color_t ColorComplementaryOld(Color_t color);
+	Color_t ColorDesaturate(Color_t color, r32 saturation);
+	Colorf_t ColorfComplementary(Colorf_t color);
+	Colorf_t ColorfDesaturate(Colorf_t color, r32 saturation);
+	bool operator == (Color_t left, Color_t right);
+	bool operator != (Color_t left, Color_t right);
+	bool operator == (Colorf_t left, Colorf_t right);
+	bool operator != (Colorf_t left, Colorf_t right);
+	bool operator == (ColorHSV_t left, ColorHSV_t right);
+	bool operator != (ColorHSV_t left, ColorHSV_t right);
+	bool operator == (ColorXYZ_t left, ColorXYZ_t right);
+	bool operator != (ColorXYZ_t left, ColorXYZ_t right);
+	bool operator == (ColorLCH_t left, ColorLCH_t right);
+	bool operator != (ColorLCH_t left, ColorLCH_t right);
+	bool operator == (ColorLAB_t left, ColorLAB_t right);
+	bool operator != (ColorLAB_t left, ColorLAB_t right);
+#else
+
+// +--------------------------------------------------------------+
 // |                        New Functions                         |
 // +--------------------------------------------------------------+
 Color_t NewColor(u32 value, bool rgbaOrder = false) //default is argb order
@@ -79,7 +260,7 @@ Color_t NewColor(u8 r, u8 g, u8 b)
 	return result;
 }
 
-inline Colorf_t NewColorf(r32 r, r32 g, r32 b)
+Colorf_t NewColorf(r32 r, r32 g, r32 b)
 {
 	Colorf_t result = {};
 	result.r = r;
@@ -88,7 +269,7 @@ inline Colorf_t NewColorf(r32 r, r32 g, r32 b)
 	result.a = 1.0f;
 	return result;
 }
-inline Colorf_t NewColorf(r32 r, r32 g, r32 b, r32 a)
+Colorf_t NewColorf(r32 r, r32 g, r32 b, r32 a)
 {
 	Colorf_t result = {};
 	result.r = r;
@@ -98,7 +279,7 @@ inline Colorf_t NewColorf(r32 r, r32 g, r32 b, r32 a)
 	return result;
 }
 
-inline ColorHSV_t NewColorHsv(r32 hue, r32 saturation, r32 value)
+ColorHSV_t NewColorHsv(r32 hue, r32 saturation, r32 value)
 {
 	ColorHSV_t result = {};
 	result.hue = hue;
@@ -107,7 +288,7 @@ inline ColorHSV_t NewColorHsv(r32 hue, r32 saturation, r32 value)
 	result.alpha = 1.0f;
 	return result;
 }
-inline ColorHSV_t NewColorHsv(r32 hue, r32 saturation, r32 value, r32 alpha)
+ColorHSV_t NewColorHsv(r32 hue, r32 saturation, r32 value, r32 alpha)
 {
 	ColorHSV_t result = {};
 	result.hue = hue;
@@ -167,16 +348,16 @@ Color_t ToColor(v4 vector4)
 	result.a = ClampI32toU8(RoundR32i(vector4.a * 255.0f));
 	return result;
 }
-inline Color_t ColorTransparent(r32 alpha)
+Color_t ColorTransparent(r32 alpha)
 {
 	return NewColor(255, 255, 255, ColorChannelToU8(alpha));
 }
-inline Color_t ColorTransparent(Color_t color, r32 alpha)
+Color_t ColorTransparent(Color_t color, r32 alpha)
 {
 	return NewColor(color.r, color.g, color.b, ColorChannelToU8(alpha));
 }
 
-inline Colorf_t ToColorf(Color_t color)
+Colorf_t ToColorf(Color_t color)
 {
 	Colorf_t result = {};
 	result.r = ((r32)color.r / 255.0f);
@@ -185,7 +366,7 @@ inline Colorf_t ToColorf(Color_t color)
 	result.a = ((r32)color.a / 255.0f);
 	return result;
 }
-inline Colorf_t ToColorf(v3 vector3)
+Colorf_t ToColorf(v3 vector3)
 {
 	Colorf_t result = {};
 	result.r = vector3.r;
@@ -194,7 +375,7 @@ inline Colorf_t ToColorf(v3 vector3)
 	result.a = 1.0f;
 	return result;
 }
-inline Colorf_t ToColorf(v4 vector4)
+Colorf_t ToColorf(v4 vector4)
 {
 	Colorf_t result = {};
 	result.r = vector4.r;
@@ -204,7 +385,7 @@ inline Colorf_t ToColorf(v4 vector4)
 	return result;
 }
 
-inline ColorHSV_t ToColorHsv(v3 vector3)
+ColorHSV_t ToColorHsv(v3 vector3)
 {
 	ColorHSV_t result = {};
 	result.hue = vector3.x;
@@ -213,7 +394,7 @@ inline ColorHSV_t ToColorHsv(v3 vector3)
 	result.alpha = 1.0f;
 	return result;
 }
-inline ColorHSV_t ToColorHsv(v4 vector4)
+ColorHSV_t ToColorHsv(v4 vector4)
 {
 	ColorHSV_t result = {};
 	result.hue = vector4.x;
@@ -396,65 +577,6 @@ Colorf_t ColorfOpposite(Colorf_t color)
 	result.a = 1.0f - color.a;
 	return result;
 }
-
-// +--------------------------------------------------------------+
-// |                Illuminant/Observer Constants                 |
-// +--------------------------------------------------------------+
-//NOTE: These values are copied from https://www.easyrgb.com/en/math.php
-typedef enum
-{
-	ColorObserver_TwoDegree = 0x00, //CIE 1931
-	ColorObserver_TenDegree,        //CIE 1964
-	ColorObserver_NumOptions,
-} ColorObserver_t;
-
-typedef enum
-{
-	ColorIlluminant_A = 0x00, //Incandescent/tungsten
-	ColorIlluminant_B,        //Old direct sunlight at noon
-	ColorIlluminant_C,        //Old daylight
-	ColorIlluminant_D50,      //ICC profile PCS
-	ColorIlluminant_D55,      //Mid-morning daylight
-	ColorIlluminant_D65,      //Daylight, sRGB, Adobe-RGB
-	ColorIlluminant_D75,      //North sky daylight
-	ColorIlluminant_E,        //Equal energy
-	ColorIlluminant_F1,       //Daylight Fluorescent
-	ColorIlluminant_F2,       //Cool fluorescent
-	ColorIlluminant_F3,       //White Fluorescent
-	ColorIlluminant_F4,       //Warm White Fluorescent
-	ColorIlluminant_F5,       //Daylight Fluorescent
-	ColorIlluminant_F6,       //Lite White Fluorescent
-	ColorIlluminant_F7,       //Daylight fluorescent, D65 simulator
-	ColorIlluminant_F8,       //Sylvania F40, D50 simulator
-	ColorIlluminant_F9,       //Cool White Fluorescent
-	ColorIlluminant_F10,      //Ultralume 50, Philips TL85
-	ColorIlluminant_F11,      //Ultralume 40, Philips TL84
-	ColorIlluminant_F12,      //Ultralume 30, Philips TL83
-	ColorIlluminant_NumOptions,
-} ColorIlluminant_t;
-
-const r64 ColorIllumValues[ColorIlluminant_NumOptions][ColorObserver_NumOptions][3] = {
-	{ { 109.850, 100.000, 35.585  }, { 111.144, 100.000, 35.200  } },
-	{ { 99.0927, 100.000, 85.313  }, { 99.178,  100.000, 84.3493 } },
-	{ { 98.074,  100.000, 118.232 }, { 97.285,  100.000, 116.145 } },
-	{ { 96.422,  100.000, 82.521  }, { 96.720,  100.000, 81.427  } },
-	{ { 95.682,  100.000, 92.149  }, { 95.799,  100.000, 90.926  } },
-	{ { 95.047,  100.000, 108.883 }, { 94.811,  100.000, 107.304 } },
-	{ { 94.972,  100.000, 122.638 }, { 94.416,  100.000, 120.641 } },
-	{ { 100.000, 100.000, 100.000 }, { 100.000, 100.000, 100.000 } },
-	{ { 92.834,  100.000, 103.665 }, { 94.791,  100.000, 103.191 } },
-	{ { 99.187,  100.000, 67.395  }, { 103.280, 100.000, 69.026  } },
-	{ { 103.754, 100.000, 49.861  }, { 108.968, 100.000, 51.965  } },
-	{ { 109.147, 100.000, 38.813  }, { 114.961, 100.000, 40.963  } },
-	{ { 90.872,  100.000, 98.723  }, { 93.369,  100.000, 98.636  } },
-	{ { 97.309,  100.000, 60.191  }, { 102.148, 100.000, 62.074  } },
-	{ { 95.044,  100.000, 108.755 }, { 95.792,  100.000, 107.687 } },
-	{ { 96.413,  100.000, 82.333  }, { 97.115,  100.000, 81.135  } },
-	{ { 100.365, 100.000, 67.868  }, { 102.116, 100.000, 67.826  } },
-	{ { 96.174,  100.000, 81.712  }, { 99.001,  100.000, 83.134  } },
-	{ { 100.966, 100.000, 64.370  }, { 103.866, 100.000, 65.627  } },
-	{ { 108.046, 100.000, 39.228  }, { 111.428, 100.000, 40.353  } }
-};
 
 // +--------------------------------------------------------------+
 // |                   Color Space Conversions                    |
@@ -739,23 +861,25 @@ Colorf_t ColorfDesaturate(Colorf_t color, r32 saturation)
 // +--------------------------------------------------------------+
 // |                      Operator Overloads                      |
 // +--------------------------------------------------------------+
-inline bool operator == (Color_t left, Color_t right) { return  (left.r == right.r && left.g == right.g && left.b == right.b && left.a == right.a); }
-inline bool operator != (Color_t left, Color_t right) { return !(left.r == right.r && left.g == right.g && left.b == right.b && left.a == right.a); }
+bool operator == (Color_t left, Color_t right) { return  (left.r == right.r && left.g == right.g && left.b == right.b && left.a == right.a); }
+bool operator != (Color_t left, Color_t right) { return !(left.r == right.r && left.g == right.g && left.b == right.b && left.a == right.a); }
 
-inline bool operator == (Colorf_t left, Colorf_t right) { return  (left.r == right.r && left.g == right.g && left.b == right.b && left.a == right.a); }
-inline bool operator != (Colorf_t left, Colorf_t right) { return !(left.r == right.r && left.g == right.g && left.b == right.b && left.a == right.a); }
+bool operator == (Colorf_t left, Colorf_t right) { return  (left.r == right.r && left.g == right.g && left.b == right.b && left.a == right.a); }
+bool operator != (Colorf_t left, Colorf_t right) { return !(left.r == right.r && left.g == right.g && left.b == right.b && left.a == right.a); }
 
-inline bool operator == (ColorHSV_t left, ColorHSV_t right) { return  (left.h == right.h && left.s == right.s && left.v == right.v && left.a == right.a); }
-inline bool operator != (ColorHSV_t left, ColorHSV_t right) { return !(left.h == right.h && left.s == right.s && left.v == right.v && left.a == right.a); }
+bool operator == (ColorHSV_t left, ColorHSV_t right) { return  (left.h == right.h && left.s == right.s && left.v == right.v && left.a == right.a); }
+bool operator != (ColorHSV_t left, ColorHSV_t right) { return !(left.h == right.h && left.s == right.s && left.v == right.v && left.a == right.a); }
 
-inline bool operator == (ColorXYZ_t left, ColorXYZ_t right) { return  (left.x == right.x && left.y == right.y && left.z == right.z && left.a == right.a); }
-inline bool operator != (ColorXYZ_t left, ColorXYZ_t right) { return !(left.x == right.x && left.y == right.y && left.z == right.z && left.a == right.a); }
+bool operator == (ColorXYZ_t left, ColorXYZ_t right) { return  (left.x == right.x && left.y == right.y && left.z == right.z && left.a == right.a); }
+bool operator != (ColorXYZ_t left, ColorXYZ_t right) { return !(left.x == right.x && left.y == right.y && left.z == right.z && left.a == right.a); }
 
-inline bool operator == (ColorLCH_t left, ColorLCH_t right) { return  (left.l == right.l && left.c == right.c && left.h == right.h && left.a == right.a); }
-inline bool operator != (ColorLCH_t left, ColorLCH_t right) { return !(left.l == right.l && left.c == right.c && left.h == right.h && left.a == right.a); }
+bool operator == (ColorLCH_t left, ColorLCH_t right) { return  (left.l == right.l && left.c == right.c && left.h == right.h && left.a == right.a); }
+bool operator != (ColorLCH_t left, ColorLCH_t right) { return !(left.l == right.l && left.c == right.c && left.h == right.h && left.a == right.a); }
 
-inline bool operator == (ColorLAB_t left, ColorLAB_t right) { return  (left.l == right.l && left.a == right.a && left.b == right.b && left.b == right.b); }
-inline bool operator != (ColorLAB_t left, ColorLAB_t right) { return !(left.l == right.l && left.a == right.a && left.b == right.b && left.b == right.b); }
+bool operator == (ColorLAB_t left, ColorLAB_t right) { return  (left.l == right.l && left.a == right.a && left.b == right.b && left.b == right.b); }
+bool operator != (ColorLAB_t left, ColorLAB_t right) { return !(left.l == right.l && left.a == right.a && left.b == right.b && left.b == right.b); }
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_COLORS_H
 
@@ -771,14 +895,20 @@ ColorHSV_t
 ColorXYZ_t
 ColorLCH_t
 ColorLAB_t
+ColorObserver_t
+ColorIlluminant_t
+@Globals
+ColorIllumValues
 @Functions
+const char* GetColorObserverStr(ColorObserver_t enumValue);
+const char* GetColorIlluminantStr(ColorIlluminant_t enumValue);
 Color_t NewColor(u8 r, u8 g, u8 b)
-inline Colorf_t NewColorf(r32 r, r32 g, r32 b)
-inline ColorHSV_t NewColorHsv(r32 hue, r32 saturation, r32 value)
+Colorf_t NewColorf(r32 r, r32 g, r32 b)
+ColorHSV_t NewColorHsv(r32 hue, r32 saturation, r32 value)
 Color_t ToColor(Colorf_t colorf)
-inline Color_t ColorTransparent(Color_t color, r32 alpha)
-inline Colorf_t ToColorf(Color_t color)
-inline ColorHSV_t ToColorHsv(v3 vector3)
+Color_t ColorTransparent(Color_t color, r32 alpha)
+Colorf_t ToColorf(Color_t color)
+ColorHSV_t ToColorHsv(v3 vector3)
 u8 ColorChannelToU8(r32 valueR32)
 r32 ColorChannelToR32(u8 valueU8)
 u8 MultiplyColorChannelU8(u8 left, u8 right)

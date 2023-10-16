@@ -55,6 +55,67 @@ union Matrix4x4_t
 typedef Matrix4x4_t mat4;
 
 // +--------------------------------------------------------------+
+// |                            Macros                            |
+// +--------------------------------------------------------------+
+#define Matrix4x4_Identity NewMat4(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f)
+#define Mat4_Identity Matrix4x4_Identity
+
+#define Mat3Determinant(a, b, c, d, e, f, g, h, i) (((a) * ((e)*(i) - (h)*(f))) - ((b) * ((d)*(i) - (g)*(f))) + ((c) * ((d)*(h) - (g)*(e))))
+
+#define Mat4ApplyLeft(matrix, transformation) (matrix) = Mat4Multiply((transformation), (matrix))
+#define Mat4Transform(matrix, transformation) Mat4ApplyLeft((matrix), (transformation))
+
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	mat4 NewMat4(
+		r32 r0c0, r32 r0c1, r32 r0c2, r32 r0c3,
+		r32 r1c0, r32 r1c1, r32 r1c2, r32 r1c3,
+		r32 r2c0, r32 r2c1, r32 r2c2, r32 r2c3,
+		r32 r3c0, r32 r3c1, r32 r3c2, r32 r3c3);
+	mat4 Mat4Fill(r32 all);
+	mat4 Mat4Diagonal(r32 r0c0, r32 r1c1, r32 r2c2, r32 r3c3, r32 other = 0.0f);
+	mat4 Mat4FromBasis(v3 basisX, v3 basisY, v3 basisZ);
+	r32 Mat4Determinant(mat4 matrix);
+	mat4 Mat4Transpose(mat4 matrix);
+	mat4 Mat4Cofactor(mat4 matrix);
+	mat4 Mat4Adjoint(mat4 matrix);
+	mat4 Mat4Inverse(mat4 matrix, bool* successOut = nullptr);
+	mat4 Mat4Multiply(mat4 left, mat4 right);
+	mat4 Mat4Multiply(mat4 outer, mat4 left, mat4 right);
+	v2 Mat4MultiplyVec2(mat4 matrix, v2 vector, bool includeTranslation = true);
+	v3 Mat4MultiplyVec3(mat4 matrix, v3 vector, bool includeTranslation = true, r32* wOut = nullptr);
+	v3 Mat4MultiplyRightVec3(v3 vector, mat4 matrix, r32* wOut = nullptr);
+	v4 Mat4MultiplyVec4(mat4 matrix, v4 vector, bool divideByW = true);
+	mat4 operator * (const mat4& left, const mat4& right);
+	bool operator == (mat4 left, mat4 right);
+	bool operator != (mat4 left, mat4 right);
+	mat4 Mat4Translate3(v3 translation);
+	mat4 Mat4Translate3(r32 x, r32 y, r32 z);
+	mat4 Mat4Translate2(v2 translation);
+	mat4 Mat4Translate2(r32 x, r32 y);
+	mat4 Mat4TranslateX(r32 x);
+	mat4 Mat4TranslateY(r32 y);
+	mat4 Mat4TranslateZ(r32 z);
+	mat4 Mat4ScaleX(r32 scale);
+	mat4 Mat4ScaleY(r32 scale);
+	mat4 Mat4ScaleZ(r32 scale);
+	mat4 Mat4ScaleW(r32 scale);
+	mat4 Mat4Scale3(v3 scale);
+	mat4 Mat4Scale3(r32 x, r32 y, r32 z);
+	mat4 Mat4Scale2(v2 scale);
+	mat4 Mat4Scale2(r32 x, r32 y);
+	mat4 Mat4RotateX(r32 angle);
+	mat4 Mat4RotateY(r32 angle);
+	mat4 Mat4RotateZ(r32 angle);
+	mat4 Mat4Rotate(v3 axis, r32 angle);
+	mat4 Mat4LookAt(v3 position, v3 lookAt, v3 upVector, bool rightHanded = false);
+	mat4 Mat4Perspective(r32 fovy, r32 aspectRatio, r32 zNear, r32 zFar, bool rightHanded = false);
+	mat4 Mat4Orthographic(r32 left, r32 right, r32 top, r32 bottom, r32 zNear, r32 zFar);
+#else
+
+// +--------------------------------------------------------------+
 // |                        New Functions                         |
 // +--------------------------------------------------------------+
 mat4 NewMat4(
@@ -102,12 +163,6 @@ mat4 Mat4FromBasis(v3 basisX, v3 basisY, v3 basisZ)
 }
 
 // +--------------------------------------------------------------+
-// |                     Simple Value Defines                     |
-// +--------------------------------------------------------------+
-#define Matrix4x4_Identity NewMat4(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f)
-#define Mat4_Identity Matrix4x4_Identity
-
-// +--------------------------------------------------------------+
 // |                    Transpose and Inverse                     |
 // +--------------------------------------------------------------+
 r32 Mat4Determinant(mat4 matrix)
@@ -129,8 +184,6 @@ mat4 Mat4Transpose(mat4 matrix)
 	result.r0c3 = matrix.r3c0; result.r1c3 = matrix.r3c1; result.r2c3 = matrix.r3c2; result.r3c3 = matrix.r3c3;
 	return result;
 }
-
-#define Mat3Determinant(a, b, c, d, e, f, g, h, i) (((a) * ((e)*(i) - (h)*(f))) - ((b) * ((d)*(i) - (g)*(f))) + ((c) * ((d)*(h) - (g)*(e))))
 
 mat4 Mat4Cofactor(mat4 matrix)
 {
@@ -284,15 +337,12 @@ v4 Mat4MultiplyVec4(mat4 matrix, v4 vector, bool divideByW = true)
 	return  result;
 }
 
-#define Mat4ApplyLeft(matrix, transformation) (matrix) = Mat4Multiply((transformation), (matrix))
-#define Mat4Transform(matrix, transformation) Mat4ApplyLeft((matrix), (transformation))
-
 // +--------------------------------------------------------------+
 // |                      Operator Overloads                      |
 // +--------------------------------------------------------------+
 mat4 operator * (const mat4& left, const mat4& right) { return Mat4Multiply(left, right); }
 
-inline bool operator == (mat4 left, mat4 right)
+bool operator == (mat4 left, mat4 right)
 {
 	return (
 		left.r0c0 == right.r0c0 && left.r0c1 == right.r0c1 && left.r0c2 == right.r0c2 && left.r0c3 == right.r0c3 &&
@@ -301,7 +351,7 @@ inline bool operator == (mat4 left, mat4 right)
 		left.r3c0 == right.r3c0 && left.r3c1 == right.r3c1 && left.r3c2 == right.r3c2 && left.r3c3 == right.r3c3
 	);
 }
-inline bool operator != (mat4 left, mat4 right)
+bool operator != (mat4 left, mat4 right)
 {
 	return (
 		left.r0c0 != right.r0c0 || left.r0c1 != right.r0c1 || left.r0c2 != right.r0c2 || left.r0c3 != right.r0c3 ||
@@ -599,6 +649,8 @@ mat4 Mat4Orthographic(r32 left, r32 right, r32 top, r32 bottom, r32 zNear, r32 z
 }
 
 //TODO: Add support for quaternion conversion to matrix
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_MATRICES_H
 

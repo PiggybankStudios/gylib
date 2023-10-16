@@ -45,6 +45,24 @@ struct TriangulatePart_t
 	u64 numHoles;
 };
 
+struct TriangulateVert_t
+{
+	bool removed;
+	u64 index;
+	v2 pos;
+};
+
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	bool IsPolygonClockwise(u64 numVertices, v2* vertices);
+	u64 RemoveColinearAndDuplicateVertices(u64 numVertices, v2* vertices);
+	TriangulateVert_t* GetPrevTriangulateVert(TriangulateVert_t* vertices, u64 totalNumVertices, u64 startIndex);
+	TriangulateVert_t* GetNextTriangulateVert(TriangulateVert_t* vertices, u64 totalNumVertices, u64 startIndex);
+	u64* Triangulate2DEarClip(MemArena_t* memArena, MemArena_t* tempArena, u64 numVertices, const v2* vertices, u64* numIndicesOut = nullptr, bool debugDontDeallocate = false);
+#else
+
 // +--------------------------------------------------------------+
 // |                   Clockwise Polygon Check                    |
 // +--------------------------------------------------------------+
@@ -107,12 +125,6 @@ u64 RemoveColinearAndDuplicateVertices(u64 numVertices, v2* vertices)
 // +--------------------------------------------------------------+
 // |                     Ear-Clipping Method                      |
 // +--------------------------------------------------------------+
-struct TriangulateVert_t
-{
-	bool removed;
-	u64 index;
-	v2 pos;
-};
 TriangulateVert_t* GetPrevTriangulateVert(TriangulateVert_t* vertices, u64 totalNumVertices, u64 startIndex)
 {
 	Assert(totalNumVertices > 0);
@@ -261,7 +273,7 @@ u64* Triangulate2DEarClip(MemArena_t* memArena, MemArena_t* tempArena, u64 numVe
 }
 
 // +--------------------------------------------------------------+
-// |            Polyong With Multiple Pieces and Holes            |
+// |            Polygon With Multiple Pieces and Holes            |
 // +--------------------------------------------------------------+
 #if 0
 struct TriangulateWithHolesPart_t
@@ -404,6 +416,8 @@ bool Triangulate2DMultiPolygonWithHoles(MemArena_t* memArena, MemArena_t* tempAr
 	return true;
 }
 #endif
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_TRIANGULATION_H
 

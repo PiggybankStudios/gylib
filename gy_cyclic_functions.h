@@ -39,6 +39,10 @@ enum CyclicFuncType_t
 	CyclicFuncType_Square,
 	CyclicFuncType_NumTypes,
 };
+
+#ifdef GYLIB_HEADER_ONLY
+const char* GetCyclicFuncTypeStr(CyclicFuncType_t funcType);
+#else
 const char* GetCyclicFuncTypeStr(CyclicFuncType_t funcType)
 {
 	switch (funcType)
@@ -54,6 +58,7 @@ const char* GetCyclicFuncTypeStr(CyclicFuncType_t funcType)
 		default: return "Unknown";
 	}
 }
+#endif
 
 struct CyclicFunc_t
 {
@@ -74,6 +79,52 @@ struct CyclicFunc2D_t
 	union { v2 offset;    v2 translateX; };
 	union { v2 constant;  v2 translateY; };
 };
+
+// +--------------------------------------------------------------+
+// |                            Macros                            |
+// +--------------------------------------------------------------+
+#define CyclicFunc_Default       NewCyclicFunc(CyclicFuncType_Constant)
+#define CyclicFunc_NormalSine    NewCyclicFunc(CyclicFuncType_Sine)
+#define CyclicFunc_NormalCosine  NewCyclicFunc(CyclicFuncType_Cosine)
+#define CyclicFunc_NormalTangent NewCyclicFunc(CyclicFuncType_Tangent)
+#define CyclicFunc_NormalSaw     NewCyclicFunc(CyclicFuncType_Saw)
+#define CyclicFunc_NormalSquare  NewCyclicFunc(CyclicFuncType_Square)
+
+#define CyclicFunc2D_Default       NewCyclicFunc2D(CyclicFuncType_Constant)
+#define CyclicFunc2D_NormalSine    NewCyclicFunc2D(CyclicFuncType_Sine)
+#define CyclicFunc2D_NormalCosine  NewCyclicFunc2D(CyclicFuncType_Cosine)
+#define CyclicFunc2D_NormalTangent NewCyclicFunc2D(CyclicFuncType_Tangent)
+#define CyclicFunc2D_NormalSaw     NewCyclicFunc2D(CyclicFuncType_Saw)
+#define CyclicFunc2D_NormalSquare  NewCyclicFunc2D(CyclicFuncType_Square)
+
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	CyclicFunc_t NewCyclicFunc(CyclicFuncType_t type, r32 period = 1.0f, r32 amplitude = 1.0f, r32 offset = 0.0f, r32 constant = 0.0f);
+	CyclicFunc_t NewCyclicFunc(CyclicFuncType_t type, v4 values);
+	CyclicFunc_t NewCyclicFuncCustom(CyclicFuncCallback_f* callback);
+	CyclicFunc_t NewCyclicFuncConstant(r32 constant = 0.0f);
+	CyclicFunc_t NewCyclicFuncSine(r32 period = 1.0f, r32 amplitude = 1.0f, r32 offset = 0.0f, r32 constant = 0.0f);
+	CyclicFunc_t NewCyclicFuncCosine(r32 period = 1.0f, r32 amplitude = 1.0f, r32 offset = 0.0f, r32 constant = 0.0f);
+	CyclicFunc_t NewCyclicFuncTangent(r32 period = 1.0f, r32 amplitude = 1.0f, r32 offset = 0.0f, r32 constant = 0.0f);
+	CyclicFunc_t NewCyclicFuncSaw(r32 period = 1.0f, r32 amplitude = 1.0f, r32 offset = 0.0f, r32 constant = 0.0f);
+	CyclicFunc_t NewCyclicFuncSquare(r32 period = 1.0f, r32 amplitude = 1.0f, r32 offset = 0.0f, r32 constant = 0.0f);
+	CyclicFunc2D_t NewCyclicFunc2D(CyclicFuncType_t type, v2 period, v2 amplitude, v2 offset, v2 constant);
+	CyclicFunc2D_t NewCyclicFunc2D(CyclicFuncType_t type, v2 period, v2 amplitude, v2 offset);
+	CyclicFunc2D_t NewCyclicFunc2D(CyclicFuncType_t type, v2 period, v2 amplitude);
+	CyclicFunc2D_t NewCyclicFunc2D(CyclicFuncType_t type, v2 period);
+	CyclicFunc2D_t NewCyclicFunc2D(CyclicFuncType_t type);
+	CyclicFunc2D_t NewCyclicFunc2DCustom(CyclicFunc2DCallback_f* callback);
+	CyclicFunc2D_t NewCyclicFunc2DConstant(v2 constant);
+	CyclicFunc2D_t NewCyclicFunc2DSine(v2 period, v2 amplitude, v2 offset, v2 constant);
+	CyclicFunc2D_t NewCyclicFunc2DCosine(v2 period, v2 amplitude, v2 offset, v2 constant);
+	CyclicFunc2D_t NewCyclicFunc2DTangent(v2 period, v2 amplitude, v2 offset, v2 constant);
+	CyclicFunc2D_t NewCyclicFunc2DSaw(v2 period, v2 amplitude, v2 offset, v2 constant);
+	CyclicFunc2D_t NewCyclicFunc2DSquare(v2 period, v2 amplitude, v2 offset, v2 constant);
+	r32 CyclicFuncGetValue(CyclicFunc_t func, r32 t);
+	r32 CyclicFunc2DGetValue(CyclicFunc2D_t func, v2 t);
+#else
 
 // +--------------------------------------------------------------+
 // |                             New                              |
@@ -170,13 +221,6 @@ CyclicFunc_t NewCyclicFuncSquare(r32 period = 1.0f, r32 amplitude = 1.0f, r32 of
 	result.constant  = constant;
 	return result;
 }
-
-#define CyclicFunc_Default       NewCyclicFunc(CyclicFuncType_Constant)
-#define CyclicFunc_NormalSine    NewCyclicFunc(CyclicFuncType_Sine)
-#define CyclicFunc_NormalCosine  NewCyclicFunc(CyclicFuncType_Cosine)
-#define CyclicFunc_NormalTangent NewCyclicFunc(CyclicFuncType_Tangent)
-#define CyclicFunc_NormalSaw     NewCyclicFunc(CyclicFuncType_Saw)
-#define CyclicFunc_NormalSquare  NewCyclicFunc(CyclicFuncType_Square)
 
 CyclicFunc2D_t NewCyclicFunc2D(CyclicFuncType_t type, v2 period, v2 amplitude, v2 offset, v2 constant)
 {
@@ -284,13 +328,6 @@ CyclicFunc2D_t NewCyclicFunc2DSquare(v2 period, v2 amplitude, v2 offset, v2 cons
 	return result;
 }
 
-#define CyclicFunc2D_Default       NewCyclicFunc2D(CyclicFuncType_Constant)
-#define CyclicFunc2D_NormalSine    NewCyclicFunc2D(CyclicFuncType_Sine)
-#define CyclicFunc2D_NormalCosine  NewCyclicFunc2D(CyclicFuncType_Cosine)
-#define CyclicFunc2D_NormalTangent NewCyclicFunc2D(CyclicFuncType_Tangent)
-#define CyclicFunc2D_NormalSaw     NewCyclicFunc2D(CyclicFuncType_Saw)
-#define CyclicFunc2D_NormalSquare  NewCyclicFunc2D(CyclicFuncType_Square)
-
 // +--------------------------------------------------------------+
 // |                          Functions                           |
 // +--------------------------------------------------------------+
@@ -347,6 +384,8 @@ r32 CyclicFunc2DGetValue(CyclicFunc2D_t func, v2 t)
 		return CyclicFuncGetValue(xFunc, t.x) + CyclicFuncGetValue(yFunc, t.y);
 	}
 }
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_CYCLIC_FUNCTIONS_H
 

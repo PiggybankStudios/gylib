@@ -45,6 +45,25 @@ END_PACK()
 CompileAssert(sizeof(Uuid_t) == UUID_BYTE_LENGTH); //make sure packing is working right
 
 // +--------------------------------------------------------------+
+// |                            Macros                            |
+// +--------------------------------------------------------------+
+#define Uuid_Zero NewUuid(0x00000000, 0x0000, 0x0000, 0x0000, 0x000000000000)
+#define Uuid_Full NewUuid(0xFFFFFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFFFFFFFFFF)
+
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	Uuid_t NewUuid(u32 block0, u16 block1, u16 block2, u16 block3, u64 block4);
+	bool operator == (Uuid_t left, Uuid_t right);
+	bool operator != (Uuid_t left, Uuid_t right);
+	bool UuidEquals(const Uuid_t* left, const Uuid_t* right);
+	bool UuidEquals(const Uuid_t& left, const Uuid_t& right);
+	void UuidToStr(const Uuid_t* uuid, char* buffer, bool addHyphens = true);
+	MyStr_t UuidToStrArena(const Uuid_t* uuid, MemArena_t* memArena, bool addHyphens = true);
+#else
+
+// +--------------------------------------------------------------+
 // |               New Functions and Simple Values                |
 // +--------------------------------------------------------------+
 Uuid_t NewUuid(u32 block0, u16 block1, u16 block2, u16 block3, u64 block4)
@@ -60,14 +79,11 @@ Uuid_t NewUuid(u32 block0, u16 block1, u16 block2, u16 block3, u64 block4)
 	return result;
 }
 
-#define Uuid_Zero NewUuid(0x00000000, 0x0000, 0x0000, 0x0000, 0x000000000000)
-#define Uuid_Full NewUuid(0xFFFFFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFFFFFFFFFF)
-
 // +--------------------------------------------------------------+
 // |                      Operator Overloads                      |
 // +--------------------------------------------------------------+
-inline bool operator == (Uuid_t left, Uuid_t right) { return (left.block0 == right.block0 && left.block1 == right.block1 && left.block2 == right.block2 && left.block3 == right.block3 && left.block4_High == right.block4_High && left.block4_Low == right.block4_Low); }
-inline bool operator != (Uuid_t left, Uuid_t right) { return (left.block0 != right.block0 || left.block1 != right.block1 || left.block2 != right.block2 || left.block3 != right.block3 || left.block4_High != right.block4_High || left.block4_Low != right.block4_Low); }
+bool operator == (Uuid_t left, Uuid_t right) { return (left.block0 == right.block0 && left.block1 == right.block1 && left.block2 == right.block2 && left.block3 == right.block3 && left.block4_High == right.block4_High && left.block4_Low == right.block4_Low); }
+bool operator != (Uuid_t left, Uuid_t right) { return (left.block0 != right.block0 || left.block1 != right.block1 || left.block2 != right.block2 || left.block3 != right.block3 || left.block4_High != right.block4_High || left.block4_Low != right.block4_Low); }
 
 // +--------------------------------------------------------------+
 // |                Operator Overload Equivalents                 |
@@ -149,6 +165,8 @@ MyStr_t UuidToStrArena(const Uuid_t* uuid, MemArena_t* memArena, bool addHyphens
 	UuidToStr(uuid, result.chars, addHyphens);
 	return result;
 }
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_UUID_H
 

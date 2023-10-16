@@ -53,6 +53,41 @@ struct BktArray_t
 };
 
 // +--------------------------------------------------------------+
+// |                            Macros                            |
+// +--------------------------------------------------------------+
+#define BktArrayGetSoft(array, type, index) ((type*)BktArrayGet_((array), sizeof(type), (index), false))
+#define BktArrayGetHard(array, type, index) ((type*)BktArrayGet_((array), sizeof(type), (index), true))
+#define BktArrayGet(array, type, index) BktArrayGetHard((array), type, (index));
+
+#define BktArrayAdd(array, type) ((type*)BktArrayAdd_((array), sizeof(type)))
+
+#define BktArrayAddBulk(array, type, numItems, mustBeConsecutive) ((type*)BktArrayAddBulk_((array), sizeof(type), (numItems), (mustBeConsecutive)))
+
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	void FreeBktArray(BktArray_t* array);
+	void CreateBktArray(BktArray_t* array, MemArena_t* memArena, u64 itemSize, u64 minBucketSize = 64, u64 initialSizeRequirement = 0);
+	BktArrayBucket_t* BktArrayGetLastUsedBucket(BktArray_t* array);
+	void BktArrayRefreshLastUsedBucket(BktArray_t* array);
+	void BktArrayMoveEmptyBucketToEnd(BktArray_t* array, u64 bucketIndex);
+	void BktArrayExpand(BktArray_t* array, u64 numNewItemsRequired);
+	bool IsPntrInBktArray(const BktArray_t* array, const void* item, u64* indexOut = nullptr, bool lenient = false);
+	void BktArrayClear(BktArray_t* array, bool reduceToSingleBucket = false);
+	void* BktArrayGet_(BktArray_t* array, u64 itemSize, u64 index, bool assertOnFailure);
+	const void* BktArrayGet_(const BktArray_t* array, u64 itemSize, u64 index, bool assertOnFailure);
+	void* BktArrayAdd_(BktArray_t* array, u64 itemSize);
+	void* BktArrayAddBulk_(BktArray_t* array, u64 itemSize, u64 numItems, bool mustBeConsecutive);
+	void BktArrayRemoveAt(BktArray_t* array, u64 index);
+	void BktArrayRemoveLast(BktArray_t* array);
+	void BktArraySolidify(BktArray_t* array, bool deallocateEmptyBuckets = false, bool singleBucket = false);
+	#if defined(_GY_SORTING_H) && !ORCA_COMPILATION
+	void BktArraySort(BktArray_t* array, CompareFunc_f* compareFunc, void* contextPntr);
+	#endif
+#else
+
+// +--------------------------------------------------------------+
 // |                       Create and Free                        |
 // +--------------------------------------------------------------+
 void FreeBktArray(BktArray_t* array)
@@ -329,9 +364,6 @@ const void* BktArrayGet_(const BktArray_t* array, u64 itemSize, u64 index, bool 
 {
 	return (const void*)BktArrayGet_((BktArray_t*)array, itemSize, index, assertOnFailure);
 }
-#define BktArrayGetSoft(array, type, index) ((type*)BktArrayGet_((array), sizeof(type), (index), false))
-#define BktArrayGetHard(array, type, index) ((type*)BktArrayGet_((array), sizeof(type), (index), true))
-#define BktArrayGet(array, type, index) BktArrayGetHard((array), type, (index));
 
 // +--------------------------------------------------------------+
 // |                             Add                              |
@@ -360,7 +392,6 @@ void* BktArrayAdd_(BktArray_t* array, u64 itemSize)
 	array->length += 1;
 	return result;
 }
-#define BktArrayAdd(array, type) ((type*)BktArrayAdd_((array), sizeof(type)))
 
 //TODO: Implement BktArrayInsert
 #if 0
@@ -458,7 +489,6 @@ void* BktArrayAddBulk_(BktArray_t* array, u64 itemSize, u64 numItems, bool mustB
 		return result;
 	}
 }
-#define BktArrayAddBulk(array, type, numItems, mustBeConsecutive) ((type*)BktArrayAddBulk_((array), sizeof(type), (numItems), (mustBeConsecutive)))
 
 //TODO: Implement BktArrayInsertBulk
 #if 0
@@ -682,6 +712,8 @@ void BktArraySort(BktArray_t* array, CompareFunc_f* compareFunc, void* contextPn
 	QuickSort(array->firstBucket->items, array->firstBucket->numItems, array->itemSize, workingSpace, compareFunc, contextPntr);
 }
 #endif
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_BUCKET_ARRAY_H
 

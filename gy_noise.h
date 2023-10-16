@@ -14,8 +14,11 @@ Description:
 #include "gy_std.h"
 #include "gy_types.h"
 
+#ifdef GYLIB_HEADER_ONLY
+extern const uint8_t SimplexPerm[256];
+#else
 //TODO: Regenerate random numbers for this array
-static const uint8_t SimplexPerm[256] = {
+const uint8_t SimplexPerm[256] = {
     151, 160, 137,  91,  90,  15, 131,  13, 201,  95,  96,  53, 194, 233,   7, 225,
     140,  36, 103,  30,  69, 142,   8,  99,  37, 240,  21,  10,  23, 190,   6, 148,
     247, 120, 234,  75,   0,  26, 197,  62,  94, 252, 219, 203, 117,  35,  11,  32,
@@ -33,6 +36,20 @@ static const uint8_t SimplexPerm[256] = {
     184,  84, 204, 176, 115, 121,  50,  45, 127,   4, 150, 254, 138, 236, 205,  93,
     222, 114,  67,  29,  24,  72, 243, 141, 128, 195,  78,  66, 215,  61, 156, 180
 };
+#endif
+
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	u8 SimplexHash(i32 input);
+	r32 SimplexGradient1D(i32 hash, r32 x);
+	r32 SimplexGradient2D(i32 hash, r32 x, r32 y);
+	r32 SimplexGradient3D(i32 hash, r32 x, r32 y, r32 z);
+	r32 SimplexNoise1D(r32 x);
+	r32 SimplexNoise2D(r32 x, r32 y);
+	r32 SimplexNoise2DIter(r32 x, r32 y, u64 numIterations, r32 scale = 1.0f);
+#else
 
 u8 SimplexHash(i32 input)
 {
@@ -144,6 +161,8 @@ r32 SimplexNoise2DIter(r32 x, r32 y, u64 numIterations, r32 scale = 1.0f)
 	}
 	return result;
 }
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_NOISE_H
 

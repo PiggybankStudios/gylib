@@ -26,6 +26,9 @@ enum DbgLevel_t
 	DbgLevel_Error,
 	DbgLevel_NumLevels,
 };
+#ifdef GYLIB_HEADER_ONLY
+const char* GetDbgLevelStr(DbgLevel_t enumValue);
+#else
 const char* GetDbgLevelStr(DbgLevel_t enumValue)
 {
 	switch (enumValue)
@@ -41,12 +44,19 @@ const char* GetDbgLevelStr(DbgLevel_t enumValue)
 		default: return "Unknown";
 	}
 }
+#endif
 
 #define GYLIB_DEBUG_OUTPUT_HANDLER_DEF(functionName) void functionName(const char* filePath, u32 lineNumber, const char* funcName, DbgLevel_t level, bool newLine, const char* message)
 typedef GYLIB_DEBUG_OUTPUT_HANDLER_DEF(GyLibDebugOutput_f);
 #define GYLIB_DEBUG_PRINT_HANDLER_DEF(functionName) void functionName(const char* filePath, u32 lineNumber, const char* funcName, DbgLevel_t level, bool newLine, const char* formatString, ...)
 typedef GYLIB_DEBUG_PRINT_HANDLER_DEF(GyLibDebugPrint_f);
 
+#ifdef GYLIB_HEADER_ONLY
+GYLIB_DEBUG_OUTPUT_HANDLER_DEF(GyLibDebugOutputHandler_Stub);
+GYLIB_DEBUG_PRINT_HANDLER_DEF(GyLibDebugPrintHandler_Stub);
+extern GyLibDebugOutput_f* GyLibDebugOutputFunc;
+extern GyLibDebugPrint_f*  GyLibDebugPrintFunc;
+#else
 GYLIB_DEBUG_OUTPUT_HANDLER_DEF(GyLibDebugOutputHandler_Stub)
 {
 	UNUSED(filePath);
@@ -67,8 +77,9 @@ GYLIB_DEBUG_PRINT_HANDLER_DEF(GyLibDebugPrintHandler_Stub)
 	UNUSED(formatString);
 	//do nothing
 }
-static GyLibDebugOutput_f* GyLibDebugOutputFunc = GyLibDebugOutputHandler_Stub;
-static GyLibDebugPrint_f*  GyLibDebugPrintFunc  = GyLibDebugPrintHandler_Stub;
+GyLibDebugOutput_f* GyLibDebugOutputFunc = GyLibDebugOutputHandler_Stub;
+GyLibDebugPrint_f*  GyLibDebugPrintFunc  = GyLibDebugPrintHandler_Stub;
+#endif
 
 #define GyLibWriteAt(level, message)               GyLibDebugOutputFunc(__FILE__, __LINE__, __func__, (level),          false, (message))
 #define GyLibWriteLineAt(level, message)           GyLibDebugOutputFunc(__FILE__, __LINE__, __func__, (level),          true,  (message))

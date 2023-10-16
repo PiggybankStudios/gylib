@@ -47,7 +47,7 @@ Description:
 // +--------------------------------------------------------------+
 // |                       Structures/Types                       |
 // +--------------------------------------------------------------+
-typedef enum
+enum Month_t
 {
 	Month_January = 0,
 	Month_February,
@@ -62,9 +62,9 @@ typedef enum
 	Month_November,
 	Month_December,
 	Month_NumMonths,
-} Month_t;
+};
 
-typedef enum
+enum DayOfWeek_t
 {
 	DayOfWeek_Sunday = 0,
 	DayOfWeek_Monday,
@@ -74,9 +74,9 @@ typedef enum
 	DayOfWeek_Friday,
 	DayOfWeek_Saturday,
 	DayOfWeek_NumDays,
-} DayOfWeek_t;
+};
 
-typedef enum
+enum TimeUnit_t
 {
 	TimeUnit_Milliseconds = 0,
 	TimeUnit_Seconds,
@@ -86,7 +86,7 @@ typedef enum
 	TimeUnit_Months,
 	TimeUnit_Years,
 	TimeUnit_NumUnits,
-} TimeUnit_t;
+};
 
 struct RealTime_t
 {
@@ -105,6 +105,21 @@ struct RealTime_t
 	u16 dayOfYear;
 	u16 minuteOfDay;
 };
+
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	bool IsPostMeridian(u16 twentyFourHourValue);
+	u16 Convert24HourTo12Hour(u16 twentyFourHourValue);
+	u8 NumDaysInMonth(Month_t month, bool isLeapYear);
+	const char* GetMonthStr(Month_t month);
+	const char* GetDayOfWeekStr(DayOfWeek_t dayOfWeek, bool shortened = false);
+	const char* GetTimeUnitStr(TimeUnit_t timeUnit, bool shortened = false);
+	const char* GetDayOfMonthString(u16 dayOfMonth);
+	bool IsDstActive(Month_t month, u8 day, u8 hour, DayOfWeek_t dayOfWeek);
+	void ConvertTimestampToRealTime(u64 timestamp, RealTime_t* realTimeOut, bool applyDst = true);
+#else
 
 // +--------------------------------------------------------------+
 // |                       Helper Functions                       |
@@ -421,6 +436,8 @@ void ConvertTimestampToRealTime(u64 timestamp, RealTime_t* realTimeOut, bool app
 }
 
 //TODO: Make a function that takes a year, moth, day, hour, minute, second and produces a timestamp
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_TIME_H
 

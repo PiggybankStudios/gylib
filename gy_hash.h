@@ -16,6 +16,16 @@ Description:
 #define FNV_HASH_BASE_U64   0xcbf29ce484222325ULL
 #define FNV_HASH_PRIME_U64  0x100000001b3ULL
 
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	u64 FnvHashU64(const void* bufferPntr, u64 numBytes, u64 startingState = FNV_HASH_BASE_U64);
+	u32 FnvHashU32(const void* bufferPntr, u64 numBytes);
+	u16 FnvHashU16(const void* bufferPntr, u64 numBytes);
+	u8 FnvHashU8(const void* bufferPntr, u64 numBytes);
+#else
+
 u64 FnvHashU64(const void* bufferPntr, u64 numBytes, u64 startingState = FNV_HASH_BASE_U64)
 {
 	const u8* bytePntr = (const u8*)bufferPntr;
@@ -39,6 +49,8 @@ u8 FnvHashU8(const void* bufferPntr, u64 numBytes)
 {
 	return (u8)FnvHashU64(bufferPntr, numBytes);
 }
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_HASH_H
 

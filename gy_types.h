@@ -57,6 +57,9 @@ enum Tribool_t
 	Tribool_True  =  1,
 	Tribool_NumValues = 3,
 };
+#ifdef GYLIB_HEADER_ONLY
+const char* GetTriboolStr(Tribool_t enumValue);
+#else
 const char* GetTriboolStr(Tribool_t enumValue)
 {
 	switch (enumValue)
@@ -67,6 +70,7 @@ const char* GetTriboolStr(Tribool_t enumValue)
 		default: return "Unknown";
 	}
 }
+#endif
 
 // +--------------------------------------------------------------+
 // |                        General Macros                        |

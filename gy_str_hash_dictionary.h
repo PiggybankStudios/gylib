@@ -49,6 +49,53 @@ struct StrHashDictIter_t
 };
 
 // +--------------------------------------------------------------+
+// |                            Macros                            |
+// +--------------------------------------------------------------+
+#define StrHashDictGetIter(dict, type) StrHashDictGetIter_((dict), sizeof(type))
+
+#define StrHashDictIter(iter, type, itemPntrOut) StrHashDictIter_((iter), sizeof(type), (void**)(itemPntrOut))
+
+#define StrHashDictAddHard(dict, key, type) (type*)StrHashDictAdd_((dict), (key), sizeof(type), true)
+#define StrHashDictAddSoft(dict, key, type) (type*)StrHashDictAdd_((dict), (key), sizeof(type), false)
+#define StrHashDictAdd(dict, key, type)     StrHashDictAddHard(dict, key, type)
+#define StrHashDictAddSoftEx(dict, key, isNewEntryOut, type) (type*)StrHashDictAdd_((dict), (key), sizeof(type), false, (isNewEntryOut))
+#define StrHashDictAddEmptyHard(dict, key)  StrHashDictAdd_((dict), (key), 0, true)
+#define StrHashDictAddEmptySoft(dict, key)  StrHashDictAdd_((dict), (key), 0, false)
+#define StrHashDictAddEmpty(dict, key)      StrHashDictAddEmptyHard(dict, key)
+
+#define StrHashDictRemoveHard(dict, key, type) StrHashDictRemove_((dict), (key), sizeof(type), true)
+#define StrHashDictRemoveSoft(dict, key, type) StrHashDictRemove_((dict), (key), sizeof(type), false)
+#define StrHashDictRemove(dict, key, type)     StrHashDictRemoveHard(dict, key, type)
+#define StrHashDictRemoveEmptyHard(dict, key)  StrHashDictRemove_((dict), (key), 0, true)
+#define StrHashDictRemoveEmptySoft(dict, key)  StrHashDictRemove_((dict), (key), 0, false)
+#define StrHashDictRemoveEmpty(dict, key)      StrHashDictRemoveEmptyHard(dict, key)
+
+#define StrHashDictGetHard(dict, key, type)  (type*)StrHashDictGet_((dict), (key), sizeof(type), true)
+#define StrHashDictGetSoft(dict, key, type)  (type*)StrHashDictGet_((dict), (key), sizeof(type), false)
+#define StrHashDictGet(dict, key, type)      StrHashDictGetHard(dict, key, type)
+#define StrHashDictContains(dict, key, type) (StrHashDictGet_((dict), (key), sizeof(type), false) != nullptr)
+#define StrHashDictContainsEmpty(dict, key)  (StrHashDictGet_((dict), (key), 0, false) != nullptr)
+
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	void FreeStrHashDict(StrHashDict_t* dict);
+	void CreateStrHashDict(StrHashDict_t* dict, MemArena_t* memArena, u64 itemSize, u64 initialRequiredCapacity = 0);
+	bool StrHashExpand(StrHashDict_t* dict, u64 numItemsRequired);
+	StrHashDictIter_t StrHashDictGetIter_(const StrHashDict_t* dict, u64 itemSize);
+	bool StrHashDictIter_(StrHashDictIter_t* iter, u64 itemSize, void** itemPntrOut);
+	void* StrHashDictAdd_(StrHashDict_t* dict, MyStr_t key, u64 itemSize, bool assertOnDuplicate, bool* isNewEntryOut = nullptr);
+	void* StrHashDictAdd_(StrHashDict_t* dict, const char* nullTermStr, u64 itemSize, bool assertOnFailure, bool* isNewEntryOut = nullptr);
+	bool StrHashDictRemove_(StrHashDict_t* dict, MyStr_t key, u64 itemSize, bool assertOnFailure);
+	bool StrHashDictRemove_(StrHashDict_t* dict, const char* nullTermStr, u64 itemSize, bool assertOnFailure);
+	void* StrHashDictGet_(StrHashDict_t* dict, MyStr_t key, u64 itemSize, bool assertOnFailure);
+	void* StrHashDictGet_(StrHashDict_t* dict, const char* nullTermStr, u64 itemSize, bool assertOnFailure);
+	const void* StrHashDictGet_(const StrHashDict_t* dict, MyStr_t key, u64 itemSize, bool assertOnFailure);
+	const void* StrHashDictGet_(const StrHashDict_t* dict, const char* nullTermStr, u64 itemSize, bool assertOnFailure);
+#else
+
+// +--------------------------------------------------------------+
 // |                       Create and Free                        |
 // +--------------------------------------------------------------+
 void FreeStrHashDict(StrHashDict_t* dict)
@@ -149,8 +196,6 @@ StrHashDictIter_t StrHashDictGetIter_(const StrHashDict_t* dict, u64 itemSize)
 	return result;
 }
 
-#define StrHashDictGetIter(dict, type) StrHashDictGetIter_((dict), sizeof(type))
-
 bool StrHashDictIter_(StrHashDictIter_t* iter, u64 itemSize, void** itemPntrOut)
 {
 	NotNull(iter);
@@ -185,8 +230,6 @@ bool StrHashDictIter_(StrHashDictIter_t* iter, u64 itemSize, void** itemPntrOut)
 	}
 	return false;
 }
-
-#define StrHashDictIter(iter, type, itemPntrOut) StrHashDictIter_((iter), sizeof(type), (void**)(itemPntrOut))
 
 // +--------------------------------------------------------------+
 // |                             Add                              |
@@ -238,14 +281,6 @@ void* StrHashDictAdd_(StrHashDict_t* dict, const char* nullTermStr, u64 itemSize
 	return StrHashDictAdd_(dict, NewStr(nullTermStr), itemSize, assertOnFailure, isNewEntryOut);
 }
 
-#define StrHashDictAddHard(dict, key, type) (type*)StrHashDictAdd_((dict), (key), sizeof(type), true)
-#define StrHashDictAddSoft(dict, key, type) (type*)StrHashDictAdd_((dict), (key), sizeof(type), false)
-#define StrHashDictAdd(dict, key, type)     StrHashDictAddHard(dict, key, type)
-#define StrHashDictAddSoftEx(dict, key, isNewEntryOut, type) (type*)StrHashDictAdd_((dict), (key), sizeof(type), false, (isNewEntryOut))
-#define StrHashDictAddEmptyHard(dict, key)  StrHashDictAdd_((dict), (key), 0, true)
-#define StrHashDictAddEmptySoft(dict, key)  StrHashDictAdd_((dict), (key), 0, false)
-#define StrHashDictAddEmpty(dict, key)      StrHashDictAddEmptyHard(dict, key)
-
 // +--------------------------------------------------------------+
 // |                            Remove                            |
 // +--------------------------------------------------------------+
@@ -283,13 +318,6 @@ bool StrHashDictRemove_(StrHashDict_t* dict, const char* nullTermStr, u64 itemSi
 {
 	return StrHashDictRemove_(dict, NewStr(nullTermStr), itemSize, assertOnFailure);
 }
-
-#define StrHashDictRemoveHard(dict, key, type) StrHashDictRemove_((dict), (key), sizeof(type), true)
-#define StrHashDictRemoveSoft(dict, key, type) StrHashDictRemove_((dict), (key), sizeof(type), false)
-#define StrHashDictRemove(dict, key, type)     StrHashDictRemoveHard(dict, key, type)
-#define StrHashDictRemoveEmptyHard(dict, key)  StrHashDictRemove_((dict), (key), 0, true)
-#define StrHashDictRemoveEmptySoft(dict, key)  StrHashDictRemove_((dict), (key), 0, false)
-#define StrHashDictRemoveEmpty(dict, key)      StrHashDictRemoveEmptyHard(dict, key)
 
 // +--------------------------------------------------------------+
 // |                             Get                              |
@@ -335,11 +363,7 @@ const void* StrHashDictGet_(const StrHashDict_t* dict, const char* nullTermStr, 
 	return (const void*)StrHashDictGet_((StrHashDict_t*)dict, nullTermStr, itemSize, assertOnFailure);
 }
 
-#define StrHashDictGetHard(dict, key, type)  (type*)StrHashDictGet_((dict), (key), sizeof(type), true)
-#define StrHashDictGetSoft(dict, key, type)  (type*)StrHashDictGet_((dict), (key), sizeof(type), false)
-#define StrHashDictGet(dict, key, type)      StrHashDictGetHard(dict, key, type)
-#define StrHashDictContains(dict, key, type) (StrHashDictGet_((dict), (key), sizeof(type), false) != nullptr)
-#define StrHashDictContainsEmpty(dict, key)  (StrHashDictGet_((dict), (key), 0, false) != nullptr)
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_STR_HASH_DICTIONARY_H
 

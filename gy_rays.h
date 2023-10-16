@@ -46,6 +46,15 @@ struct Ray3_t
 };
 
 // +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	Ray2_t NewRay2(v2 origin, v2 direction);
+	Ray2_t NewRay2(v2 origin, r32 angle);
+	Ray3_t NewRay3(v3 origin, v3 direction);
+#else
+
+// +--------------------------------------------------------------+
 // |                        New Functions                         |
 // +--------------------------------------------------------------+
 Ray2_t NewRay2(v2 origin, v2 direction)
@@ -69,6 +78,8 @@ Ray3_t NewRay3(v3 origin, v3 direction)
 	result.direction = direction;
 	return result;
 }
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_RAYS_H
 

@@ -60,12 +60,42 @@ enum BezierPathPartType_t
 	BezierPathPartType_EllipseArc,
 	BezierPathPartType_NumTypes,
 };
+#ifdef GYLIB_HEADER_ONLY
+const char* GetBezierPathPartTypeStr(BezierPathPartType_t enumValue);
+#else
+const char* GetBezierPathPartTypeStr(BezierPathPartType_t enumValue)
+{
+	switch (enumValue)
+	{
+		case BezierPathPartType_None:       return "None";
+		case BezierPathPartType_Line:       return "Line";
+		case BezierPathPartType_Curve3:     return "Curve3";
+		case BezierPathPartType_Curve4:     return "Curve4";
+		case BezierPathPartType_EllipseArc: return "EllipseArc";
+		default: return "Unknown";
+	}
+}
+#endif
 enum BezierPathPartArcFlag_t
 {
 	BezierPathPartArcFlag_None  = 0x00,
 	BezierPathPartArcFlag_Large = 0x01,
 	BezierPathPartArcFlag_Sweep = 0x02,
 };
+#ifdef GYLIB_HEADER_ONLY
+const char* GetBezierPathPartArcFlagStr(BezierPathPartArcFlag_t enumValue);
+#else
+const char* GetBezierPathPartArcFlagStr(BezierPathPartArcFlag_t enumValue)
+{
+	switch (enumValue)
+	{
+		case BezierPathPartArcFlag_None:  return "None";
+		case BezierPathPartArcFlag_Large: return "Large";
+		case BezierPathPartArcFlag_Sweep: return "Sweep";
+		default: return "Unknown";
+	}
+}
+#endif
 struct BezierPathPart_t
 {
 	BezierPathPartType_t type;
@@ -83,6 +113,48 @@ struct BezierPath_t
 	bool isClosedLoop;
 	VarArray_t parts; //BezierPathPart_t
 };
+
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	v2 ParametricLine(v2 start, v2 end, r32 time);
+	v2 BezierCurve3(v2 start, v2 control, v2 end, r32 time);
+	v2 BezierCurve4(v2 start, v2 control1, v2 control2, v2 end, r32 time);
+	v2 EllipseArcCurve(v2 center, v2 radius, r32 axisAngle, r32 startAngle, r32 angleDelta, r32 time);
+	bool GetEllipseArcCurveCenterAndAngles(v2 start, v2 radius, r32 axisAngle, u8 arcFlags, v2 end, v2* centerOut = nullptr, r32* startAngleOut = nullptr, r32* angleDeltaOut = nullptr);
+	v2 EllipseArcCurveStartEnd(v2 start, v2 radius, r32 axisAngle, u8 arcFlags, v2 end, r32 time);
+	Bezier3_t NewBezier3(v2 start, v2 control, v2 end);
+	Bezier4_t NewBezier4(v2 start, v2 control1, v2 control2, v2 end);
+	BezierPathPart_t NewBezierPathPartLine(v2 endPos);
+	BezierPathPart_t NewBezierPathPartCurve3(v2 control, v2 endPos);
+	BezierPathPart_t NewBezierPathPartCurve4(v2 control1, v2 control2, v2 endPos);
+	Bezier3_t ToBezier3(v2 startPos, BezierPathPart_t pathPart);
+	Bezier4_t ToBezier4(v2 startPos, BezierPathPart_t pathPart);
+	Bezier3_t Bezier3RotateAround(Bezier3_t curve, r32 rotation, v2 rotationOrigin);
+	Bezier3_t Bezier3Rotate(Bezier3_t curve, r32 rotation);
+	Bezier4_t Bezier4RotateAround(Bezier4_t curve, r32 rotation, v2 rotationOrigin);
+	Bezier4_t Bezier4Rotate(Bezier4_t curve, r32 rotation);
+	void FreeBezierPath(BezierPath_t* path);
+	void CreateBezierPath(BezierPath_t* pathOut, MemArena_t* memArena, u64 numPartsExpected = 0);
+	u64 GetNumSubPathsInBezierPath(const BezierPath_t* path);
+	u64 GetNumVerticesInBezierPath(const BezierPath_t* path);
+	v2 GetPointOnBezierPathPart(v2 currentPos, const BezierPathPart_t* part, r32 time);
+	rec GetBoundsForBezierPathPart(v2 currentPos, const BezierPathPart_t* part);
+	rec GetBoundsForBezierPath(const BezierPath_t* path);
+	BezierPathPart_t* AddBezierPathPartDetachedLine(BezierPath_t* path, v2 startPos, v2 endPos);
+	BezierPathPart_t* AddBezierPathPartDetachedCurve3(BezierPath_t* path, v2 startPos, v2 control, v2 endPos);
+	BezierPathPart_t* AddBezierPathPartDetachedCurve4(BezierPath_t* path, v2 startPos, v2 control1, v2 control2, v2 endPos);
+	BezierPathPart_t* AddBezierPathPartLine(BezierPath_t* path, v2 endPos);
+	BezierPathPart_t* AddBezierPathPartCurve3(BezierPath_t* path, v2 control, v2 endPos);
+	BezierPathPart_t* AddBezierPathPartCurve4(BezierPath_t* path, v2 control1, v2 control2, v2 endPos);
+	Bezier4_t GetBezierCurveForQuarterCircle(v2 center, r32 radius, u8 dir = Dir2_Right|Dir2_Down);
+	void GenerateBezierPathForCircle(MemArena_t* arena, v2 center, r32 radius, BezierPath_t* pathOut);
+	void GenerateBezierPathForRectangle(MemArena_t* arena, rec rectangle, BezierPath_t* pathOut);
+	void GenerateBezierPathForObb2(MemArena_t* arena, obb2 boundingBox, BezierPath_t* pathOut);
+	void GenerateBezierPathForRoundedRectangle(MemArena_t* arena, rec rectangle, r32 cornerRadius, BezierPath_t* pathOut);
+	void GenerateBezierPathForRoundedObb2(MemArena_t* arena, obb2 boundingBox, r32 cornerRadius, BezierPath_t* pathOut);
+#else
 
 // +--------------------------------------------------------------+
 // |                     Curve Math Functions                     |
@@ -567,6 +639,8 @@ void GenerateBezierPathForRoundedObb2(MemArena_t* arena, obb2 boundingBox, r32 c
 		GenerateBezierPathForObb2(arena, boundingBox, pathOut);
 	}
 }
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_BEZIER_H
 

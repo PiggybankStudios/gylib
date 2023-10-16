@@ -74,6 +74,39 @@ struct IpAddressAndPort_t
 };
 
 // +--------------------------------------------------------------+
+// |                            Macros                            |
+// +--------------------------------------------------------------+
+#define IpAddress_Zero      NewIpAddress(0, 0, 0, 0)
+#define IpAddress_LocalHost NewIpAddress(127, 0, 0, 1)
+
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	IpAddress4_t NewIpAddress4(u8 part0, u8 part1, u8 part2, u8 part3);
+	IpAddress6_t NewIpAddress6(u16 part0, u16 part1, u16 part2, u16 part3, u16 part4, u16 part5, u16 part6, u16 part7);
+	IpAddress_t NewIpAddress(u8 part0, u8 part1, u8 part2, u8 part3);
+	IpAddress_t NewIpAddress(u16 part0, u16 part1, u16 part2, u16 part3, u16 part4, u16 part5, u16 part6, u16 part7);
+	IpAddressAndPort_t NewIpAddress4AndPort(u8 part0, u8 part1, u8 part2, u8 part3, IpPort_t port);
+	IpAddressAndPort_t NewIpAddress6AndPort(u16 part0, u16 part1, u16 part2, u16 part3, u16 part4, u16 part5, u16 part6, u16 part7, IpPort_t port);
+	IpAddressAndPort_t NewIpAddressAndPort(IpAddress_t address, IpPort_t port);
+	inline bool AreIpAddress4sEqual(IpAddress4_t left, IpAddress4_t right);
+	inline bool AreIpAddress6sEqual(IpAddress6_t left, IpAddress6_t right);
+	inline bool AreIpAddressesEqual(IpAddress_t left, IpAddress_t right);
+	inline bool IsZero(IpAddress_t address);
+	inline bool AreIpAddressAndPortsEqual(IpAddressAndPort_t left, IpAddressAndPort_t right);
+	MyStr_t GetIpAddress4String(IpAddress4_t address, MemArena_t* memArena);
+	MyStr_t GetIpAddress6String(IpAddress6_t address, MemArena_t* memArena);
+	MyStr_t GetIpAddressString(IpAddress_t address, MemArena_t* memArena);
+	bool TryParseIpAddress4(MyStr_t str, IpAddress4_t* valueOut = nullptr, TryParseFailureReason_t* reasonOut = nullptr);
+	bool TryParseIpAddress6(MyStr_t str, IpAddress6_t* valueOut = nullptr, TryParseFailureReason_t* reasonOut = nullptr);
+	bool TryParseIpAddress(MyStr_t str, IpAddress_t* valueOut = nullptr, TryParseFailureReason_t* reasonOut = nullptr);
+	void SplitUrlHostAndPath(MyStr_t* fullUrl, MyStr_t* hostNameOut = nullptr, MyStr_t* pathNameOut = nullptr);
+	MyStr_t GetUrlHostNamePart(MyStr_t* fullUrl);
+	MyStr_t GetUrlPathPart(MyStr_t* fullUrl);
+#else
+
+// +--------------------------------------------------------------+
 // |                        New Functions                         |
 // +--------------------------------------------------------------+
 IpAddress4_t NewIpAddress4(u8 part0, u8 part1, u8 part2, u8 part3)
@@ -138,9 +171,6 @@ IpAddressAndPort_t NewIpAddressAndPort(IpAddress_t address, IpPort_t port)
 	result.port = port;
 	return result;
 }
-
-#define IpAddress_Zero      NewIpAddress(0, 0, 0, 0)
-#define IpAddress_LocalHost NewIpAddress(127, 0, 0, 1)
 
 // +--------------------------------------------------------------+
 // |                Operator Overload Equivalents                 |
@@ -358,6 +388,8 @@ MyStr_t GetUrlPathPart(MyStr_t* fullUrl)
 	SplitUrlHostAndPath(fullUrl, nullptr, &pathStr);
 	return pathStr;
 }
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_IP_H
 

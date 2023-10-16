@@ -60,6 +60,49 @@ struct InDblLinkedList_t
 };
 
 // +--------------------------------------------------------------+
+// |                            Macros                            |
+// +--------------------------------------------------------------+
+#define CreateLinkedList(list, memArena, type) CreateLinkedList_((list), (memArena), sizeof(type))
+#define LinkedListFirst(list, type)            (type*)LinkedListFirst_((list), sizeof(type))
+#define LinkedListLast(list, type)             (type*)LinkedListLast_((list), sizeof(type))
+#define LinkedListNext(list, type, itemPntr)   (type*)LinkedListNext_((list), sizeof(type), (itemPntr))
+#define LinkedListPrev(list, type, itemPntr)   (type*)LinkedListPrev_((list), sizeof(type), (itemPntr))
+#define LinkedListAdd(list, type)              (type*)LinkedListAdd_((list), sizeof(type))
+#define LinkedListRemove(list, type, itemPntr) LinkedListRemove_((list), sizeof(type), (itemPntr), false)
+#define LinkedListUnlist(list, type, itemPntr) LinkedListRemove_((list), sizeof(type), (itemPntr), true)
+#define LinkedListGet(list, type, index)       (type*)LinkedListGet_((list), sizeof(type), (index))
+#define LinkedListInsert(list, type, index)    (type*)LinkedListInsert_((list), sizeof(type), (index))
+#define LinkedListClear(list, type)            LinkedListClear_((list), sizeof(type))
+
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	void CreateLinkedList_(LinkedList_t* list, MemArena_t* memArena, u64 itemSize);
+	void CreateLinkedList_(InLinkedList_t* list, MemArena_t* memArena, u64 itemSize);
+	void CreateLinkedList_(InDblLinkedList_t* list, MemArena_t* memArena, u64 itemSize);
+	void FreeLinkedList(LinkedList_t* list);
+	void FreeLinkedList(InLinkedList_t* list);
+	void FreeLinkedList(InDblLinkedList_t* list);
+	bool IsItemInLinkedList(const LinkedList_t* list, const void* itemPntr, u64* indexOut = nullptr);
+	u64 GetItemIndexInLinkedList(const LinkedList_t* list, const void* itemPntr);
+	void* LinkedListFirst_(LinkedList_t* list, u64 itemSize);
+	const void* LinkedListFirst_(const LinkedList_t* list, u64 itemSize);
+	void* LinkedListLast_(LinkedList_t* list, u64 itemSize);
+	const void* LinkedListLast_(const LinkedList_t* list, u64 itemSize);
+	void* LinkedListNext_(LinkedList_t* list, u64 itemSize, void* itemPntr);
+	const void* LinkedListNext_(const LinkedList_t* list, u64 itemSize, const void* itemPntr);
+	void* LinkedListPrev_(LinkedList_t* list, u64 itemSize, void* itemPntr);
+	const void* LinkedListPrev_(const LinkedList_t* list, u64 itemSize, const void* itemPntr);
+	void* LinkedListAdd_(LinkedList_t* list, u64 itemSize);
+	void LinkedListRemove_(LinkedList_t* list, u64 itemSize, void* itemPntr, bool skipDealloc = false);
+	void* LinkedListGet_(LinkedList_t* list, u64 itemSize, u64 index);
+	const void* LinkedListGet_(const LinkedList_t* list, u64 itemSize, u64 index);
+	void* LinkedListInsert_(LinkedList_t* list, u64 itemSize, u64 index);
+	void LinkedListClear_(LinkedList_t* list, u64 itemSize);
+#else
+
+// +--------------------------------------------------------------+
 // |                      Create and Destroy                      |
 // +--------------------------------------------------------------+
 void CreateLinkedList_(LinkedList_t* list, MemArena_t* memArena, u64 itemSize)
@@ -104,8 +147,6 @@ void CreateLinkedList_(InDblLinkedList_t* list, MemArena_t* memArena, u64 itemSi
 	list->firstItem = nullptr;
 	list->lastItem = nullptr;
 }
-
-#define CreateLinkedList(list, memArena, type) CreateLinkedList_((list), (memArena), sizeof(type))
 
 void FreeLinkedList(LinkedList_t* list)
 {
@@ -204,7 +245,6 @@ const void* LinkedListFirst_(const LinkedList_t* list, u64 itemSize)
 	return (const void*)LinkedListFirst_((LinkedList_t*)list, itemSize);
 }
 //TODO: Implement intrusive variants
-#define LinkedListFirst(list, type) (type*)LinkedListFirst_((list), sizeof(type))
 
 void* LinkedListLast_(LinkedList_t* list, u64 itemSize)
 {
@@ -218,7 +258,6 @@ const void* LinkedListLast_(const LinkedList_t* list, u64 itemSize)
 	return (const void*)LinkedListFirst_((LinkedList_t*)list, itemSize);
 }
 //TODO: Implement intrusive variants
-#define LinkedListLast(list, type) (type*)LinkedListLast_((list), sizeof(type))
 
 void* LinkedListNext_(LinkedList_t* list, u64 itemSize, void* itemPntr)
 {
@@ -236,7 +275,6 @@ const void* LinkedListNext_(const LinkedList_t* list, u64 itemSize, const void* 
 	return (const void*)LinkedListNext_((LinkedList_t*)list, itemSize, (void*)itemPntr);
 }
 //TODO: Implement intrusive variants
-#define LinkedListNext(list, type, itemPntr) (type*)LinkedListNext_((list), sizeof(type), (itemPntr))
 
 void* LinkedListPrev_(LinkedList_t* list, u64 itemSize, void* itemPntr)
 {
@@ -254,7 +292,6 @@ const void* LinkedListPrev_(const LinkedList_t* list, u64 itemSize, const void* 
 	return (const void*)LinkedListPrev_((LinkedList_t*)list, itemSize, (void*)itemPntr);
 }
 //TODO: Implement intrusive variants
-#define LinkedListPrev(list, type, itemPntr) (type*)LinkedListPrev_((list), sizeof(type), (itemPntr))
 
 void* LinkedListAdd_(LinkedList_t* list, u64 itemSize)
 {
@@ -293,7 +330,6 @@ void* LinkedListAdd_(LinkedList_t* list, u64 itemSize)
 	return result;
 }
 //TODO: Implement intrusive variants
-#define LinkedListAdd(list, type) (type*)LinkedListAdd_((list), sizeof(type))
 
 void LinkedListRemove_(LinkedList_t* list, u64 itemSize, void* itemPntr, bool skipDealloc = false)
 {
@@ -330,8 +366,6 @@ void LinkedListRemove_(LinkedList_t* list, u64 itemSize, void* itemPntr, bool sk
 	}
 }
 //TODO: Implement intrusive variants
-#define LinkedListRemove(list, type, itemPntr) LinkedListRemove_((list), sizeof(type), (itemPntr), false)
-#define LinkedListUnlist(list, type, itemPntr) LinkedListRemove_((list), sizeof(type), (itemPntr), true)
 
 void* LinkedListGet_(LinkedList_t* list, u64 itemSize, u64 index)
 {
@@ -368,7 +402,6 @@ const void* LinkedListGet_(const LinkedList_t* list, u64 itemSize, u64 index)
 	return (const void*)LinkedListGet_((LinkedList_t*)list, itemSize, index);
 }
 //TODO: Implement intrusive variants
-#define LinkedListGet(list, type, index) (type*)LinkedListGet_((list), sizeof(type), (index))
 
 void* LinkedListInsert_(LinkedList_t* list, u64 itemSize, u64 index)
 {
@@ -438,7 +471,6 @@ void* LinkedListInsert_(LinkedList_t* list, u64 itemSize, u64 index)
 	return result;
 }
 //TODO: Implement intrusive variants
-#define LinkedListInsert(list, type, index) (type*)LinkedListInsert_((list), sizeof(type), (index))
 
 void LinkedListClear_(LinkedList_t* list, u64 itemSize)
 {
@@ -456,7 +488,8 @@ void LinkedListClear_(LinkedList_t* list, u64 itemSize)
 	list->lastItem = nullptr;
 }
 //TODO: Implement intrusive variants
-#define LinkedListClear(list, type) LinkedListClear_((list), sizeof(type))
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_LINKED_LIST_H
 

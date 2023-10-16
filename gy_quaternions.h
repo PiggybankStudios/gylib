@@ -46,6 +46,9 @@ enum EulerOrder_t
 	EulerOrder_YZX,
 	EulerOrder_NumOrders,
 };
+#ifdef GYLIB_HEADER_ONLY
+const char* GetEulerOrderStr(EulerOrder_t order);
+#else
 const char* GetEulerOrderStr(EulerOrder_t order)
 {
 	switch (order)
@@ -59,6 +62,40 @@ const char* GetEulerOrderStr(EulerOrder_t order)
 		default: return "Unknown";
 	}
 }
+#endif
+
+// +--------------------------------------------------------------+
+// |                            Macros                            |
+// +--------------------------------------------------------------+
+#define Quat_Identity NewQuat(0, 0, 0, 1, false)
+
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	quat QuatNormalize(const quat& quaternion);
+	quat NewQuat(v3 axis, r32 angle, bool normalize = true);
+	quat NewQuat(v4 vec4, bool normalize = true);
+	quat NewQuat(r32 x, r32 y, r32 z, r32 w, bool normalize = true);
+	quat ToQuat(mat4 matrix, bool assertOnFailure = true);
+	quat ToQuat(Basis_t basis, bool assertOnFailure = true);
+	r32 QuatGetAngle(const quat& quaternion);
+	v3 QuatGetAxis(const quat& quaternion);
+	quat QuatEquivalent(const quat& quaternion);
+	quat QuatOpposite(const quat& quaternion);
+	quat QuatLerp(const quat& start, const quat& end, r32 amount, bool linearly = true, bool normalizeResult = true);
+	quat QuatMult(const quat& left, const quat& right, bool normalize = true);
+	mat4 Mat4Quaternion(quat q);
+	quat QuatLocalRot(quat quaternion, v3 axis, r32 angle);
+	quat QuatGlobalRot(quat quaternion, v3 axis, r32 angle);
+	quat NewQuatFromEuler(v3 eulerAngles, EulerOrder_t order = EulerOrder_XYZ);
+	quat NewQuatFromEuler(r32 eulerX, r32 eulerY, r32 eulerZ, EulerOrder_t order = EulerOrder_XYZ);
+	v3 QuatGetRightVec(quat quaternion);
+	v3 QuatGetUpVec(quat quaternion);
+	v3 QuatGetForwardVec(quat quaternion);
+	v3 QuatGetAxisVec(quat quaternion, Axis_t axis);
+	Basis_t QuatGetBasis(quat quaternion);
+#else
 
 // +--------------------------------------------------------------+
 // |                        New Functions                         |
@@ -159,11 +196,6 @@ quat ToQuat(Basis_t basis, bool assertOnFailure = true)
 	);
 	return ToQuat(basisMat, assertOnFailure);
 }
-
-// +--------------------------------------------------------------+
-// |                   Simple Value Definitions                   |
-// +--------------------------------------------------------------+
-#define Quat_Identity NewQuat(0, 0, 0, 1, false)
 
 // +--------------------------------------------------------------+
 // |                    Basic Math Operations                     |
@@ -328,6 +360,8 @@ Basis_t QuatGetBasis(quat quaternion)
 {
 	return NewBasis(QuatGetRightVec(quaternion), QuatGetUpVec(quaternion), QuatGetForwardVec(quaternion), false);
 }
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_QUATERNIONS_H
 

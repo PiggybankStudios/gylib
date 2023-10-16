@@ -37,6 +37,10 @@ enum RandomSeriesType_t
 	RandomSeriesType_XoroShiro128,           //XS128
 	RandomSeriesType_NumTypes,
 };
+#ifdef GYLIB_HEADER_ONLY
+const char* GetRandomSeriesTypeStr(RandomSeriesType_t enumValue);
+const char* GetRandomSeriesTypeAcronymStr(RandomSeriesType_t enumValue);
+#else
 const char* GetRandomSeriesTypeStr(RandomSeriesType_t enumValue)
 {
 	switch (enumValue)
@@ -65,6 +69,7 @@ const char* GetRandomSeriesTypeAcronymStr(RandomSeriesType_t enumValue)
 		default: return "Unknown";
 	}
 }
+#endif
 
 struct RandomSeries_t
 {
@@ -75,6 +80,33 @@ struct RandomSeries_t
 	u64 defaultIncrement;
 	u64 generationCount; //how many numbers have been generated since the series was seeded
 };
+
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	void CreateRandomSeries(RandomSeries_t* series, RandomSeriesType_t type = GYLIB_DEFAULT_RANDOM_SERIES_TYPE, u64 defaultIncrement = 1);
+	void SeedRandomSeriesU32(RandomSeries_t* series, u32 seed);
+	void SeedRandomSeriesU64(RandomSeries_t* series, u64 seed);
+	void SeedRandomSeriesU128(RandomSeries_t* series, u64 seed1, u64 seed2);
+	void StepRandomSeries(RandomSeries_t* series, u64 numberOfSteps = 1);
+	u32 GetRandU32(RandomSeries_t* series);
+	u32 GetRandU32(RandomSeries_t* series, u32 min, u32 max);
+	u64 GetRandU64(RandomSeries_t* series);
+	u64 GetRandU64(RandomSeries_t* series, u64 min, u64 max);
+	r32 GetRandR32(RandomSeries_t* series);
+	r32 GetRandR32(RandomSeries_t* series, r32 min, r32 max);
+	r64 GetRandR64(RandomSeries_t* series);
+	r64 GetRandR64(RandomSeries_t* series, r64 min, r64 max);
+	u8 GetRandU8(RandomSeries_t* series);
+	u8 GetRandU8(RandomSeries_t* series, u8 min, u8 max);
+	u16 GetRandU16(RandomSeries_t* series);
+	u16 GetRandU16(RandomSeries_t* series, u16 min, u16 max);
+	i8 GetRandI8(RandomSeries_t* series);
+	i8 GetRandI8(RandomSeries_t* series, i8 min, i8 max);
+	i32 GetRandI32(RandomSeries_t* series);
+	i32 GetRandI32(RandomSeries_t* series, i32 min, i32 max);
+#else
 
 // +--------------------------------------------------------------+
 // |                           Creation                           |
@@ -319,6 +351,8 @@ i32 GetRandI32(RandomSeries_t* series, i32 min, i32 max)
 }
 
 //TODO: If we can find a better way to do the signed modulos that don't require a larger number space to accomplish then we should implement GetRandI64
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_RANDOM_H
 

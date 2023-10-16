@@ -36,6 +36,45 @@ Description:
 #define UNICODE_KATAKANA_END   (UNICODE_KATAKANA_START + UNICODE_KATAKANA_COUNT)
 
 // +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	char GetLowercaseAnsiiChar(char c);
+	char GetUppercaseAnsiiChar(char c);
+	u32 GetLowercaseCodepoint(u32 codepoint);
+	u32 GetUppercaseCodepoint(u32 codepoint);
+	u8 CharToU8(char c);
+	u32 CharToU32(char c);
+	char GetHexChar(u8 hexValue, bool upperCase = true);
+	u8 GetUpperNibble(u8 value);
+	u8 GetLowerNibble(u8 value);
+	u8 GetHexCharValue(char hexChar);
+	bool IsCharNumeric(u32 codepoint);
+	bool IsCharHexadecimal(u32 codepoint);
+	bool AreCharsHexidecimal(u64 numChars, char* charsPntr);
+	bool IsCharAlphabetic(u32 codepoint);
+	bool IsCharLowercaseAlphabet(u32 codepoint);
+	bool IsCharUppercaseAlphabet(u32 codepoint);
+	bool IsCharWhitespace(u32 codepoint, bool includeNewLines = false);
+	bool IsCharAnsii(u32 codepoint);
+	bool IsCharRenderableAnsii(u32 codepoint);
+	bool IsCharExtendedAnsii(u32 codepoint);
+	bool IsCharAlphaNumeric(u32 codepoint);
+	bool IsCharSyntax(u32 codepoint);
+	bool IsCharPunctuationStart(u32 codepoint);
+	bool IsCharPunctuationEnd(u32 codepoint);
+	u8 GetUtf8BytesForCode(u32 codepoint, u8* byteBufferOut = nullptr, bool doAssertions = true);
+	u8 GetCodepointForUtf8(u64 maxNumBytes, const char* strPntr, u32* codepointOut = nullptr);
+	u8 GetCodepointBeforeIndex(const char* strPntr, u64 startIndex, u32* codepointOut = nullptr);
+	i32 CompareCodepoints(u32 codepoint1, u32 codepoint2);
+	u8 GetUcs2WordsForCode(u32 codepoint, u16* wordBufferOut, bool doAssertions = true);
+	u8 GetCodepointForUcs2(u64 maxNumWords, const u16* strPntr, u32* codepointOut = nullptr);
+	bool IsStringValidIdentifier(u64 strLength, const char* strPntr, bool allowUnderscores = true, bool allowNumbers = true, bool allowLeadingNumbers = false, bool allowEmpty = false, bool allowSpaces = false);
+	u32 GetMonospaceCodepointFor(u32 codepoint);
+	u32 GetRegularCodepointForMonospace(u32 monospaceCodepoint);
+#else
+
+// +--------------------------------------------------------------+
 // |                   Simple Char Manipulation                   |
 // +--------------------------------------------------------------+
 char GetLowercaseAnsiiChar(char c)
@@ -475,6 +514,8 @@ u32 GetRegularCodepointForMonospace(u32 monospaceCodepoint)
 	if (monospaceCodepoint >= 0x1D7F6 && monospaceCodepoint <= 0x1D7FF) { return CharToU32('0') + (monospaceCodepoint - 0x1D7F6); }
 	return 0;
 }
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_UNICODE_H
 

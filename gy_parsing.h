@@ -49,6 +49,9 @@ enum TryParseFailureReason_t
 	TryParseFailureReason_NumReasons,
 };
 
+#ifdef GYLIB_HEADER_ONLY
+const char* GetTryParseFailureReasonStr(TryParseFailureReason_t reason);
+#else
 const char* GetTryParseFailureReasonStr(TryParseFailureReason_t reason)
 {
 	switch (reason)
@@ -75,6 +78,38 @@ const char* GetTryParseFailureReasonStr(TryParseFailureReason_t reason)
 		default: return "Unknown";
 	}
 }
+#endif
+
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	bool TryParseU64(MyStr_t str, u64* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true, bool allowDecimal = true);
+	bool TryParseU32(MyStr_t str, u32* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true, bool allowDecimal = true);
+	bool TryParseU16(MyStr_t str, u16* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true, bool allowDecimal = true);
+	bool TryParseU8(MyStr_t str, u8* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true, bool allowDecimal = true);
+	bool TryParseI64(MyStr_t str, i64* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true, bool allowDecimal = true);
+	bool TryParseI32(MyStr_t str, i32* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true, bool allowDecimal = true);
+	bool TryParseI16(MyStr_t str, i16* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true, bool allowDecimal = true);
+	bool TryParseI8(MyStr_t str, i8* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowHex = true, bool allowBinary = true, bool allowDecimal = true);
+	bool TryParseR64(MyStr_t str, r64* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowInfinity = false);
+	bool TryParseR32(MyStr_t str, r32* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowSuffix = true, bool allowInfinity = false);
+	template <class enum_t> bool TryParseEnum(MyStr_t str, enum_t* valueOut, enum_t enumCount, const char* (*getEnumStrFunc)(enum_t), TryParseFailureReason_t* reasonOut = nullptr);
+	template <class enum_t> bool TryParseBitfieldEnum(MyStr_t str, enum_t* valueOut, enum_t enumCount, const char* (*getEnumStrFunc)(enum_t), TryParseFailureReason_t* reasonOut = nullptr);
+	bool TryParseBool(MyStr_t str, bool* valueOut, TryParseFailureReason_t* reasonOut = nullptr);
+	bool TryParseDir2(MyStr_t str, Dir2_t* valueOut, TryParseFailureReason_t* reasonOut = nullptr);
+	bool TryParseDir3(MyStr_t str, Dir3_t* valueOut, TryParseFailureReason_t* reasonOut = nullptr);
+	bool TryParseV2i(MyStr_t str, v2i* valueOut, TryParseFailureReason_t* reasonOut = nullptr);
+	bool TryParseV2(MyStr_t str, v2* valueOut, TryParseFailureReason_t* reasonOut = nullptr);
+	bool TryParseV3i(MyStr_t str, v3i* valueOut, TryParseFailureReason_t* reasonOut = nullptr);
+	bool TryParseV3(MyStr_t str, v3* valueOut, TryParseFailureReason_t* reasonOut = nullptr);
+	bool TryParseReci(MyStr_t str, reci* valueOut, TryParseFailureReason_t* reasonOut = nullptr);
+	bool TryParseMat4(MyStr_t str, mat4* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allow3x3Matrix = true);
+	bool TryParseColor(MyStr_t str, Color_t* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool alphaAtBeginning = true);
+	bool TryParseUuid(MyStr_t str, Uuid_t* valueOut, TryParseFailureReason_t* reasonOut = nullptr);
+	Uuid_t ParseUuid(MyStr_t str);
+	Uuid_t ParseUuid(const char* nullTermStr);
+#else
 
 // +--------------------------------------------------------------+
 // |                        Parse Integer                         |
@@ -866,6 +901,8 @@ Uuid_t ParseUuid(const char* nullTermStr)
 	Assert(parseSuccess);
 	return result;
 }
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_PARSING_H
 

@@ -17,12 +17,9 @@ Description:
 #include "gy_intrinsics.h"
 #include "gy_vectors.h"
 
-#if defined(_GY_PRIMITIVES_H) && defined(_GY_RECTANGLES_H)
-// TODO: bool FrustumVsAABB(Frustum_t frustum, AABB3_t aabb)
-#endif
-
-// TODO: bool SeperatingAxisCheck(u32 numNormals, const v2* normals, u32 numVerts1, const v2* verts1, u32 numVerts2, const v2* verts2, r32* depthOut = nullptr, v2* sepAxisOut = nullptr, r32* sepOffsetOut = nullptr)
-
+// +--------------------------------------------------------------+
+// |                            Types                             |
+// +--------------------------------------------------------------+
 struct RayVsRectangle2DResult_t
 {
 	bool intersects;
@@ -33,6 +30,49 @@ struct RayVsRectangle2DResult_t
 	Dir2_t enterSide;
 	Dir2_t exitSide;
 };
+
+struct RayVsObb2DResult_t
+{
+	bool intersects;
+	r32 enterTime;
+	r32 exitTime;
+	v2 enterPos;
+	v2 exitPos;
+	Dir2_t enterSide;
+	Dir2_t exitSide;
+	v2 enterSideNormal;
+	v2 exitSideNormal;
+};
+
+struct RayVsBoxResult_t
+{
+	bool intersects;
+	r32 enterTime;
+	r32 exitTime;
+	v3 enterPos;
+	v3 exitPos;
+	Dir3_t enterSide;
+	Dir3_t exitSide;
+};
+
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	bool RayVsRectangle2D(Ray2_t ray, rec rectangle, RayVsRectangle2DResult_t* result, bool giveNegativeTimes = false);
+	bool RayVsObb2D(Ray2_t ray, obb2 boundingBox, RayVsObb2DResult_t* result, bool giveNegativeTimes = false);
+	bool RayVsBox(Ray3_t ray, box boundingBox, RayVsBoxResult_t* result, bool giveNegativeTimes = false, bool inclusive = true);
+#else
+
+// +--------------------------------------------------------------+
+// |                          Functions                           |
+// +--------------------------------------------------------------+
+#if defined(_GY_PRIMITIVES_H) && defined(_GY_RECTANGLES_H)
+// TODO: bool FrustumVsAABB(Frustum_t frustum, AABB3_t aabb)
+#endif
+
+// TODO: bool SeperatingAxisCheck(u32 numNormals, const v2* normals, u32 numVerts1, const v2* verts1, u32 numVerts2, const v2* verts2, r32* depthOut = nullptr, v2* sepAxisOut = nullptr, r32* sepOffsetOut = nullptr)
+
 bool RayVsRectangle2D(Ray2_t ray, rec rectangle, RayVsRectangle2DResult_t* result, bool giveNegativeTimes = false)
 {
 	NotNull(result);
@@ -165,18 +205,6 @@ bool RayVsRectangle2D(Ray2_t ray, rec rectangle, RayVsRectangle2DResult_t* resul
 	return result->intersects;
 }
 
-struct RayVsObb2DResult_t
-{
-	bool intersects;
-	r32 enterTime;
-	r32 exitTime;
-	v2 enterPos;
-	v2 exitPos;
-	Dir2_t enterSide;
-	Dir2_t exitSide;
-	v2 enterSideNormal;
-	v2 exitSideNormal;
-};
 bool RayVsObb2D(Ray2_t ray, obb2 boundingBox, RayVsObb2DResult_t* result, bool giveNegativeTimes = false)
 {
 	NotNull(result);
@@ -207,16 +235,6 @@ bool RayVsObb2D(Ray2_t ray, obb2 boundingBox, RayVsObb2DResult_t* result, bool g
 	}
 }
 
-struct RayVsBoxResult_t
-{
-	bool intersects;
-	r32 enterTime;
-	r32 exitTime;
-	v3 enterPos;
-	v3 exitPos;
-	Dir3_t enterSide;
-	Dir3_t exitSide;
-};
 bool RayVsBox(Ray3_t ray, box boundingBox, RayVsBoxResult_t* result, bool giveNegativeTimes = false, bool inclusive = true)
 {
 	NotNull(result);
@@ -322,6 +340,8 @@ bool RayVsBox(Ray3_t ray, box boundingBox, RayVsBoxResult_t* result, bool giveNe
 	result->exitSide = endSide;
 	return true;
 }
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_COLLISION_H
 

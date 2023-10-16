@@ -10,6 +10,45 @@ Description:
 #define _GY_COMMON_SERIALIZABLES_H
 
 // +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	SERIALIZE_FUNC_DEFINITION(Serialize_BinaryCopy);
+	DESERIALIZE_FUNC_DEFINITION(Deserialize_BinaryCopy);
+	extern SerializableFuncs_t SzFuncs_BinaryCopy;
+	Serializable_t NewSerializable_U8(u8*      u8Pntr);
+	Serializable_t NewSerializable_U16(u16*    u16Pntr);
+	Serializable_t NewSerializable_U32(u32*    u32Pntr);
+	Serializable_t NewSerializable_U64(u64*    u64Pntr);
+	Serializable_t NewSerializable_I8(i8*      i8Pntr);
+	Serializable_t NewSerializable_I16(i16*    i16Pntr);
+	Serializable_t NewSerializable_I32(i32*    i32Pntr);
+	Serializable_t NewSerializable_I64(i64*    i64Pntr);
+	Serializable_t NewSerializable_V2i(v2i*    v2iPntr);
+	Serializable_t NewSerializable_V3i(v3i*    v3iPntr);
+	Serializable_t NewSerializable_V4i(v4i*    v4iPntr);
+	Serializable_t NewSerializable_Reci(reci*  reciPntr);
+	Serializable_t NewSerializable_Boxi(boxi*  boxiPntr);
+	Serializable_t NewSerializable_R32(r32*    r32Pntr);
+	Serializable_t NewSerializable_R64(r64*    r64Pntr);
+	Serializable_t NewSerializable_V2(v2*      v2Pntr);
+	Serializable_t NewSerializable_V3(v3*      v3Pntr);
+	Serializable_t NewSerializable_V4(v4*      v4Pntr);
+	Serializable_t NewSerializable_Rec(rec*    recPntr);
+	Serializable_t NewSerializable_Box(box*    boxPntr);
+	Serializable_t NewSerializable_Obb2D(obb2* obb2Pntr);
+	Serializable_t NewSerializable_Obb3D(obb3* obb3Pntr);
+	SERIALIZE_FUNC_DEFINITION(Serialize_MyStr);
+	DESERIALIZE_FUNC_DEFINITION(Deserialize_MyStr);
+	extern SerializableFuncs_t SzFuncs_MyStr;
+	Serializable_t NewSerializable_MyStr(MyStr_t* strPntr);
+	SERIALIZE_FUNC_DEFINITION(Serialize_VarArrayBinaryCopy);
+	DESERIALIZE_FUNC_DEFINITION(Deserialize_VarArrayBinaryCopy);
+	extern SerializableFuncs_t SzFuncs_VarArrayBinaryCopy;
+	Serializable_t NewSerializable_VarArrayBinaryCopy(VarArray_t* arrayPntr);
+#else
+
+// +--------------------------------------------------------------+
 // |                BinaryCopy Serializable Funcs                 |
 // +--------------------------------------------------------------+
 // +==============================+
@@ -42,29 +81,29 @@ DESERIALIZE_FUNC_DEFINITION(Deserialize_BinaryCopy)
 }
 
 SerializableFuncs_t SzFuncs_BinaryCopy = { Serialize_BinaryCopy, Deserialize_BinaryCopy };
-inline Serializable_t NewSerializable_U8(u8*      u8Pntr)   { return NewSerializable(SzFuncs_BinaryCopy, u8Pntr);   }
-inline Serializable_t NewSerializable_U16(u16*    u16Pntr)  { return NewSerializable(SzFuncs_BinaryCopy, u16Pntr);  }
-inline Serializable_t NewSerializable_U32(u32*    u32Pntr)  { return NewSerializable(SzFuncs_BinaryCopy, u32Pntr);  }
-inline Serializable_t NewSerializable_U64(u64*    u64Pntr)  { return NewSerializable(SzFuncs_BinaryCopy, u64Pntr);  }
-inline Serializable_t NewSerializable_I8(i8*      i8Pntr)   { return NewSerializable(SzFuncs_BinaryCopy, i8Pntr);   }
-inline Serializable_t NewSerializable_I16(i16*    i16Pntr)  { return NewSerializable(SzFuncs_BinaryCopy, i16Pntr);  }
-inline Serializable_t NewSerializable_I32(i32*    i32Pntr)  { return NewSerializable(SzFuncs_BinaryCopy, i32Pntr);  }
-inline Serializable_t NewSerializable_I64(i64*    i64Pntr)  { return NewSerializable(SzFuncs_BinaryCopy, i64Pntr);  }
-inline Serializable_t NewSerializable_V2i(v2i*    v2iPntr)  { return NewSerializable(SzFuncs_BinaryCopy, v2iPntr);  }
-inline Serializable_t NewSerializable_V3i(v3i*    v3iPntr)  { return NewSerializable(SzFuncs_BinaryCopy, v3iPntr);  }
-inline Serializable_t NewSerializable_V4i(v4i*    v4iPntr)  { return NewSerializable(SzFuncs_BinaryCopy, v4iPntr);  }
-inline Serializable_t NewSerializable_Reci(reci*  reciPntr) { return NewSerializable(SzFuncs_BinaryCopy, reciPntr); }
-inline Serializable_t NewSerializable_Boxi(boxi*  boxiPntr) { return NewSerializable(SzFuncs_BinaryCopy, boxiPntr); }
+Serializable_t NewSerializable_U8(u8*      u8Pntr)   { return NewSerializable(SzFuncs_BinaryCopy, u8Pntr);   }
+Serializable_t NewSerializable_U16(u16*    u16Pntr)  { return NewSerializable(SzFuncs_BinaryCopy, u16Pntr);  }
+Serializable_t NewSerializable_U32(u32*    u32Pntr)  { return NewSerializable(SzFuncs_BinaryCopy, u32Pntr);  }
+Serializable_t NewSerializable_U64(u64*    u64Pntr)  { return NewSerializable(SzFuncs_BinaryCopy, u64Pntr);  }
+Serializable_t NewSerializable_I8(i8*      i8Pntr)   { return NewSerializable(SzFuncs_BinaryCopy, i8Pntr);   }
+Serializable_t NewSerializable_I16(i16*    i16Pntr)  { return NewSerializable(SzFuncs_BinaryCopy, i16Pntr);  }
+Serializable_t NewSerializable_I32(i32*    i32Pntr)  { return NewSerializable(SzFuncs_BinaryCopy, i32Pntr);  }
+Serializable_t NewSerializable_I64(i64*    i64Pntr)  { return NewSerializable(SzFuncs_BinaryCopy, i64Pntr);  }
+Serializable_t NewSerializable_V2i(v2i*    v2iPntr)  { return NewSerializable(SzFuncs_BinaryCopy, v2iPntr);  }
+Serializable_t NewSerializable_V3i(v3i*    v3iPntr)  { return NewSerializable(SzFuncs_BinaryCopy, v3iPntr);  }
+Serializable_t NewSerializable_V4i(v4i*    v4iPntr)  { return NewSerializable(SzFuncs_BinaryCopy, v4iPntr);  }
+Serializable_t NewSerializable_Reci(reci*  reciPntr) { return NewSerializable(SzFuncs_BinaryCopy, reciPntr); }
+Serializable_t NewSerializable_Boxi(boxi*  boxiPntr) { return NewSerializable(SzFuncs_BinaryCopy, boxiPntr); }
 //	TODO: Do floating point numbers work with BinaryCopy when sending between computers? (i.e. over the network) Do any computers that we want to run on not support IEEE 754? Maybe floating point calculations differ on CPUs and determinism of simulation could be broken but serialization/deserialization isn't the problem?
-inline Serializable_t NewSerializable_R32(r32*    r32Pntr)  { return NewSerializable(SzFuncs_BinaryCopy, r32Pntr);  }
-inline Serializable_t NewSerializable_R64(r64*    r64Pntr)  { return NewSerializable(SzFuncs_BinaryCopy, r64Pntr);  }
-inline Serializable_t NewSerializable_V2(v2*      v2Pntr)   { return NewSerializable(SzFuncs_BinaryCopy, v2Pntr);   }
-inline Serializable_t NewSerializable_V3(v3*      v3Pntr)   { return NewSerializable(SzFuncs_BinaryCopy, v3Pntr);   }
-inline Serializable_t NewSerializable_V4(v4*      v4Pntr)   { return NewSerializable(SzFuncs_BinaryCopy, v4Pntr);   }
-inline Serializable_t NewSerializable_Rec(rec*    recPntr)  { return NewSerializable(SzFuncs_BinaryCopy, recPntr);  }
-inline Serializable_t NewSerializable_Box(box*    boxPntr)  { return NewSerializable(SzFuncs_BinaryCopy, boxPntr);  }
-inline Serializable_t NewSerializable_Obb2D(obb2* obb2Pntr) { return NewSerializable(SzFuncs_BinaryCopy, obb2Pntr); }
-inline Serializable_t NewSerializable_Obb3D(obb3* obb3Pntr) { return NewSerializable(SzFuncs_BinaryCopy, obb3Pntr); }
+Serializable_t NewSerializable_R32(r32*    r32Pntr)  { return NewSerializable(SzFuncs_BinaryCopy, r32Pntr);  }
+Serializable_t NewSerializable_R64(r64*    r64Pntr)  { return NewSerializable(SzFuncs_BinaryCopy, r64Pntr);  }
+Serializable_t NewSerializable_V2(v2*      v2Pntr)   { return NewSerializable(SzFuncs_BinaryCopy, v2Pntr);   }
+Serializable_t NewSerializable_V3(v3*      v3Pntr)   { return NewSerializable(SzFuncs_BinaryCopy, v3Pntr);   }
+Serializable_t NewSerializable_V4(v4*      v4Pntr)   { return NewSerializable(SzFuncs_BinaryCopy, v4Pntr);   }
+Serializable_t NewSerializable_Rec(rec*    recPntr)  { return NewSerializable(SzFuncs_BinaryCopy, recPntr);  }
+Serializable_t NewSerializable_Box(box*    boxPntr)  { return NewSerializable(SzFuncs_BinaryCopy, boxPntr);  }
+Serializable_t NewSerializable_Obb2D(obb2* obb2Pntr) { return NewSerializable(SzFuncs_BinaryCopy, obb2Pntr); }
+Serializable_t NewSerializable_Obb3D(obb3* obb3Pntr) { return NewSerializable(SzFuncs_BinaryCopy, obb3Pntr); }
 
 // +--------------------------------------------------------------+
 // |                  MyStr_t Serializable Funcs                  |
@@ -109,7 +148,7 @@ DESERIALIZE_FUNC_DEFINITION(Deserialize_MyStr)
 }
 
 SerializableFuncs_t SzFuncs_MyStr = { Serialize_MyStr, Deserialize_MyStr };
-inline Serializable_t NewSerializable_MyStr(MyStr_t* strPntr) { return NewSerializable(SzFuncs_MyStr, strPntr); }
+Serializable_t NewSerializable_MyStr(MyStr_t* strPntr) { return NewSerializable(SzFuncs_MyStr, strPntr); }
 
 // +--------------------------------------------------------------+
 // |                VarArray_t Serializable Funcs                 |
@@ -165,7 +204,9 @@ DESERIALIZE_FUNC_DEFINITION(Deserialize_VarArrayBinaryCopy)
 }
 
 SerializableFuncs_t SzFuncs_VarArrayBinaryCopy = { Serialize_VarArrayBinaryCopy, Deserialize_VarArrayBinaryCopy };
-inline Serializable_t NewSerializable_VarArrayBinaryCopy(VarArray_t* arrayPntr) { return NewSerializable(SzFuncs_VarArrayBinaryCopy, arrayPntr); }
+Serializable_t NewSerializable_VarArrayBinaryCopy(VarArray_t* arrayPntr) { return NewSerializable(SzFuncs_VarArrayBinaryCopy, arrayPntr); }
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_COMMON_SERIALIZABLES_H
 

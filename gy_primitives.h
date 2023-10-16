@@ -269,6 +269,84 @@ struct Rangei_t
 };
 
 // +--------------------------------------------------------------+
+// |                            Macros                            |
+// +--------------------------------------------------------------+
+#define Range_Empty NewRange(0, 0)
+#define Range_One   NewRange(0, 1)
+
+#define Rangei_Empty NewRangei(0, 0)
+#define Rangei_One   NewRangei(0, 1)
+
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	PrimitiveIndex3D_t NewPrimitiveIndex3D(u64 index, u64 faceIndex, v3 normal, v2 texCoord);
+	Frustum_t NewFrustum(v3 origin, v3 direction, v3 upVector, v2 fov, r32 zNear, r32 zFar);
+	Plane_t NewPlane(v3 normal, r32 distance);
+	Plane_t NewPlane(r32 nX, r32 nY, r32 nZ, r32 distance);
+	Triangle2D_t NewTriangle2D(v2 vert0, v2 vert1, v2 vert2);
+	Triangle3D_t NewTriangle3D(v3 vert0, v3 vert1, v3 vert2);
+	Simplex_t NewSimplex(v3 vert0, v3 vert1, v3 vert2, v3 vert3);
+	Circle_t NewCircle(v2 center, r32 radius);
+	Circle_t NewCircle(r32 x, r32 y, r32 radius);
+	Sphere_t NewSphere(v3 center, r32 radius);
+	Sphere_t NewSphere(r32 x, r32 y, r32 z, r32 radius);
+	Cylinder_t NewCylinder(v3 base, r32 height, r32 radius);
+	Cylinder_t NewCylinder(r32 x, r32 y, r32 z, r32 height, r32 radius);
+	Cone_t NewCone(v3 base, r32 height, r32 radius);
+	Cone_t NewCone(r32 x, r32 y, r32 z, r32 height, r32 radius);
+	Pyramid_t NewPyramid(v3 base, r32 height, v2 baseSize);
+	Pyramid_t NewPyramid(r32 x, r32 y, r32 z, r32 height, v2 baseSize);
+	Pyramid_t NewPyramid(r32 x, r32 y, r32 z, r32 height, r32 baseWidth, r32 baseDepth);
+	Pyramid_t NewPyramid(v3 base, r32 height, r32 baseWidth, r32 baseDepth);
+	Wedge_t NewWedge(box bounds);
+	Wedge_t NewWedge(v3 bottomLeft, v3 size);
+	Wedge_t NewWedge(v3 bottomLeft, r32 width, r32 height, r32 depth);
+	Wedge_t NewWedge(r32 x, r32 y, r32 z, v3 size);
+	Wedge_t NewWedge(r32 x, r32 y, r32 z, r32 width, r32 height, r32 depth);
+	Pentagon_t NewPentagon(v2 center, r32 sideLength, r32 rotation = 0.0f);
+	Dodec_t NewDodec(v3 center, r32 sideLength, quat rotation);
+	Hexagon_t NewHexagon(v2 center, r32 radiusOrSideLength, r32 rotation = 0.0f);
+	Range_t NewRange(r32 min, r32 max);
+	Range_t NewEmptyRange(r32 value);
+	Rangei_t NewRangei(i32 min, i32 max);
+	Rangei_t NewEmptyRangei(i32 value);
+	r32 PentagonGetHeight(r32 sideLength);
+	r32 PentagonGetHeight(Pentagon_t pentagon);
+	r32 PentagonGetRadius(r32 sideLength);
+	r32 PentagonGetRadius(Pentagon_t pentagon);
+	v2 PentagonGetVertex(Pentagon_t pentagon, u64 index);
+	v2 PentagonGetEdgeCenter(Pentagon_t pentagon, u64 index);
+	v2 PentagonGetDrawCenter(Pentagon_t pentagon);
+	r32 DodecGetFaceRadius(Dodec_t dodec);
+	r32 DodecGetVertexRadius(Dodec_t dodec);
+	v3 DodecGetVertex(Dodec_t dodec, u64 index);
+	u8 GetDiceValueForDodecFace(u64 faceIndex);
+	v2 GetHexagonVertex(Hexagon_t hexagon, u64 index);
+	void RangeFix(Range_t* range);
+	Range_t RangeShift(Range_t range, r32 shiftAmount);
+	Range_t RangeScale(Range_t range, r32 scalar);
+	Range_t RangeBoth(Range_t range1, Range_t range2);
+	bool DoesRangeContain(Range_t range, r32 value, bool inclusiveMin = true, bool inclusiveMax = true);
+	bool DoRangesOverlap(Range_t range1, Range_t range2, bool inclusive = true);
+	Range_t RangeOverlap(Range_t range1, Range_t range2);
+	r32 InverseLerpRange(Range_t range, r32 value, bool clamp = false);
+	void RangeiFix(Rangei_t* range);
+	Rangei_t RangeiShift(Rangei_t range, i32 shiftAmount);
+	Rangei_t RangeiScale(Rangei_t range, i32 scalar);
+	Rangei_t RangeiBoth(Rangei_t range1, Rangei_t range2);
+	bool DoesRangeiContain(Rangei_t range, i32 value, bool inclusiveMin = true, bool inclusiveMax = true);
+	bool DoRangeisOverlap(Rangei_t range1, Rangei_t range2, bool inclusive = true);
+	Rangei_t RangeiOverlap(Rangei_t range1, Rangei_t range2);
+	void FreePrimitiveIndexedVerts(PrimitiveIndexedVerts_t* indexedVerts);
+	void InvertPrimitiveVerts(PrimitiveIndexedVerts_t* indexedVerts);
+	PrimitiveIndexedVerts_t GenerateVertsForBox(Box_t boundingBox, MemArena_t* memArena);
+	PrimitiveIndexedVerts_t GenerateVertsForSphere(Sphere_t sphere, u64 numRings, u64 numSegments, bool smoothShading, MemArena_t* memArena);
+	PrimitiveIndexedVerts_t GenerateVertsForDodecohedron(Dodec_t dodec, MemArena_t* memArena);
+#else
+
+// +--------------------------------------------------------------+
 // |                        New Functions                         |
 // +--------------------------------------------------------------+
 PrimitiveIndex3D_t NewPrimitiveIndex3D(u64 index, u64 faceIndex, v3 normal, v2 texCoord)
@@ -531,12 +609,6 @@ Rangei_t NewEmptyRangei(i32 value)
 	result.max = value;
 	return result;
 }
-
-#define Range_Empty NewRange(0, 0)
-#define Range_One   NewRange(0, 1)
-
-#define Rangei_Empty NewRangei(0, 0)
-#define Rangei_One   NewRangei(0, 1)
 
 // +--------------------------------------------------------------+
 // |              Pentagon and Dodecahedron Helpers               |
@@ -1153,6 +1225,8 @@ PrimitiveIndexedVerts_t GenerateVertsForDodecohedron(Dodec_t dodec, MemArena_t* 
 	
 	return result;
 }
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_PRIMITIVES_H
 

@@ -77,6 +77,9 @@ typedef enum
 	EasingStyle_NumStyles,
 } EasingStyle_t;
 
+#ifdef GYLIB_HEADER_ONLY
+const char* GetEasingStyleStr(EasingStyle_t style);
+#else
 const char* GetEasingStyleStr(EasingStyle_t style)
 {
 	switch (style)
@@ -119,6 +122,53 @@ const char* GetEasingStyleStr(EasingStyle_t style)
 		default:                           return "Unknown";
 	}
 }
+#endif
+
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	r32 EaseLinear(r32 p);
+	r32 InverseEaseLinear(r32 y);
+	r32 EaseQuadraticIn(r32 p);
+	r32 InverseEaseQuadraticIn(r32 y);
+	r32 EaseQuadraticOut(r32 p);
+	r32 InverseEaseQuadraticOut(r32 y);
+	r32 EaseQuadraticInOut(r32 p);
+	r32 InverseEaseQuadraticInOut(r32 y);
+	r32 EaseCubicIn(r32 p);
+	r32 EaseCubicOut(r32 p);
+	r32 EaseCubicInOut(r32 p);
+	r32 EaseQuarticIn(r32 p);
+	r32 EaseQuarticOut(r32 p);
+	r32 EaseQuarticInOut(r32 p) ;
+	r32 EaseQuinticIn(r32 p) ;
+	r32 EaseQuinticOut(r32 p) ;
+	r32 EaseQuinticInOut(r32 p) ;
+	r32 EaseSineIn(r32 p);
+	r32 EaseSineOut(r32 p);
+	r32 EaseSineInOut(r32 p);
+	r32 EaseCircularIn(r32 p);
+	r32 EaseCircularOut(r32 p);
+	r32 EaseCircularInOut(r32 p);
+	r32 EaseExponentialIn(r32 p);
+	r32 EaseExponentialOut(r32 p);
+	r32 EaseExponentialInOut(r32 p);
+	r32 EaseElasticIn(r32 p);
+	r32 EaseElasticOut(r32 p);
+	r32 EaseElasticInOut(r32 p);
+	r32 EaseBackIn(r32 p);
+	r32 EaseBackOut(r32 p);
+	r32 EaseBackInOut(r32 p);
+	r32 EaseBounceOut(r32 p);
+	r32 EaseBounceIn(r32 p);
+	r32 EaseBounceInOut(r32 p);
+	r32 EaseEarlyInOut(r32 p);
+	r32 EaseLogTwoOutCustom(r32 p);
+	r32 EaseLogTwoInCustom(r32 p);
+	r32 Ease(EasingStyle_t style, r32 p);
+	r32 InverseEase(EasingStyle_t style, r32 y);
+#else
 
 // +==============================+
 // |            Linear            |
@@ -603,6 +653,8 @@ r32 InverseEase(EasingStyle_t style, r32 y)
 		default: Assert(false); return y;
 	};
 }
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_EASING_H
 

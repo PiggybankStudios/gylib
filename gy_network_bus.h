@@ -57,6 +57,9 @@ enum NetworkBusCmd_t
 };
 CompileAssert(NetworkBusCmd_Last <= NETWORK_BUS_SERVER_TO_CLIENT_BASE_CMD);
 CompileAssert(NetworkBusRsp_Last <= NETWORK_BUS_UNRESERVED_BASE_CMD);
+#ifdef GYLIB_HEADER_ONLY
+const char* GetNetworkBusCmdStr(NetworkBusCmd_t cmd);
+#else
 const char* GetNetworkBusCmdStr(NetworkBusCmd_t cmd)
 {
 	switch (cmd)
@@ -79,6 +82,7 @@ const char* GetNetworkBusCmdStr(NetworkBusCmd_t cmd)
 		default: return "Unknown";
 	}
 }
+#endif
 
 enum NetworkBusState_t
 {
@@ -89,6 +93,9 @@ enum NetworkBusState_t
 	NetworkBusState_Connected,
 	NetworkBusState_NumStates,
 };
+#ifdef GYLIB_HEADER_ONLY
+const char* GetNetworkBusStateStr(NetworkBusState_t enumValue);
+#else
 const char* GetNetworkBusStateStr(NetworkBusState_t enumValue)
 {
 	switch (enumValue)
@@ -100,6 +107,7 @@ const char* GetNetworkBusStateStr(NetworkBusState_t enumValue)
 		default: return "Unknown";
 	}
 }
+#endif
 
 enum ResponseCheckResult_t
 {
@@ -108,6 +116,9 @@ enum ResponseCheckResult_t
 	ResponseCheckResult_Success,
 	ResponseCheckResult_NumResults,
 };
+#ifdef GYLIB_HEADER_ONLY
+const char* GetResponseCheckResultStr(ResponseCheckResult_t enumValue);
+#else
 const char* GetResponseCheckResultStr(ResponseCheckResult_t enumValue)
 {
 	switch (enumValue)
@@ -118,6 +129,7 @@ const char* GetResponseCheckResultStr(ResponseCheckResult_t enumValue)
 		default: return "Unknown";
 	}
 }
+#endif
 
 enum NbPacketHandleFlags_t
 {
@@ -126,6 +138,21 @@ enum NbPacketHandleFlags_t
 	NbPacketHandleFlags_RetryPacket = 0x02,
 	NbPacketHandleFlags_All         = (NbPacketHandleFlags_NbInternal | NbPacketHandleFlags_RetryPacket),
 };
+#ifdef GYLIB_HEADER_ONLY
+const char* GetNbPacketHandleFlagsStr(NbPacketHandleFlags_t enumValue);
+#else
+const char* GetNbPacketHandleFlagsStr(NbPacketHandleFlags_t enumValue)
+{
+	switch (enumValue)
+	{
+		case NbPacketHandleFlags_None:        return "None";
+		case NbPacketHandleFlags_NbInternal:  return "NbInternal";
+		case NbPacketHandleFlags_RetryPacket: return "RetryPacket";
+		case NbPacketHandleFlags_All:         return "All";
+		default: return "Unknown";
+	}
+}
+#endif
 
 // +--------------------------------------------------------------+
 // |                    Function Pointer Types                    |
@@ -230,7 +257,39 @@ struct ATTR_PACKED NetworkBusStandardPayload_t
 };
 END_PACK();
 
+#ifdef GYLIB_HEADER_ONLY
+Serializable_t NewSerializable_NetworkBusStandardPayload(NetworkBusStandardPayload_t* successOrFailurePayload);
+#else
 Serializable_t NewSerializable_NetworkBusStandardPayload(NetworkBusStandardPayload_t* successOrFailurePayload) { return NewSerializable(SzFuncs_BinaryCopy, successOrFailurePayload); }
+#endif
+
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	void FreeRetryPacket(NetworkBus_t* bus, RetryPacket_t* packet);
+	void FreeNetworkBus(NetworkBus_t* bus);
+	void CreateNetworkBus(NetworkBus_t* busOut, BufferedSocket_t* socket, MemArena_t* memArena, MemArena_t* tempArena);
+	void NetworkBusSetCallbacks(NetworkBus_t* bus, void* contextPntr, NbGetProgramTime_f* getProgramTimeFunc, NbHandleCommand_f* handleCommandFunc, NbResponseCheck_f* responseCheckFunc, NbRetryPacketFinished_f* retryPacketFinishedFunc, NbClientConnectedOrDisconnected_f* clientConnectedOrDisconnectedFunc);
+	bool NetworkBusSendCmdWithPayload(NetworkBus_t* bus, NetworkBusClient_t* client, u64 packetId, u32 cmd, u64 payloadLength, const void* payloadPntr);
+	bool NetworkBusSendCmdStandardPayload(NetworkBus_t* bus, NetworkBusClient_t* client, u64 packetId, u32 cmd, u64 sentPacketId, u32 sentCmd);
+	bool NetworkBusSendCmd(NetworkBus_t* bus, NetworkBusClient_t* client, u64 packetId, u32 cmd, Serializable_t payloadSerializable = Serializable_Empty);
+	bool NetworkBusSendSuccess(NetworkBus_t* bus, NetworkBusClient_t* client, u64 packetId, u64 sentPacketId, u32 sentCmd);
+	bool NetworkBusSendFailure(NetworkBus_t* bus, NetworkBusClient_t* client, u64 packetId, u64 sentPacketId, u32 sentCmd);
+	u64 NetworkBusSendRetryPacketWithPayload(NetworkBus_t* bus, NetworkBusClient_t* client, u32 cmd, u32 expectedRspCmd, u32 failureRspCmd, u64 payloadLength, const void* payloadPntr, u64 maxNumTries = NETWORK_BUS_DEFAULT_MAX_NUM_TRIES);
+	u64 NetworkBusSendRetryPacket(NetworkBus_t* bus, NetworkBusClient_t* client, u32 cmd, u32 expectedRspCmd, u32 failureRspCmd, Serializable_t payloadSerializable = Serializable_Empty, u64 maxNumTries = NETWORK_BUS_DEFAULT_MAX_NUM_TRIES);
+	NetworkBusClient_t* FindNetworkBusClientById(NetworkBus_t* bus, u64 clientId);
+	NetworkBusClient_t* FindNetworkBusClientByAddress(NetworkBus_t* bus, IpAddressAndPort_t address);
+	bool TryFindCmdInBuffer(BufferedSocketBuffer_t* buffer, u64 programTime, NetworkCmdHeader_t* headerOut, u8** payloadPntrOut);
+	void PopCmdInBuffer(BufferedSocketBuffer_t* buffer, NetworkCmdHeader_t* header, u8* payloadPntr);
+	void NetworkBusChangeState(NetworkBus_t* bus, NetworkBusState_t newState);
+	void NetworkBusStartConnection(NetworkBus_t* bus);
+	void NetworkUpdateConnectionProcess(NetworkBus_t* bus, u64 programTime);
+	void NetworkBusFinishRetryPacket(NetworkBus_t* bus, RetryPacket_t* retryPacket, u64 retryPacketIndex, bool success, NetworkCmdHeader_t header, u8* payloadPntr);
+	void NetworkBusHandleCmd(NetworkBus_t* bus, BufferedSocketBuffer_t* buffer, NetworkCmdHeader_t header, u8* payloadPntr);
+	bool NetworkBusServiceBuffer(NetworkBus_t* bus, u64 programTime, BufferedSocketBuffer_t* buffer);
+	void UpdateNetworkBus(NetworkBus_t* bus);
+#else
 
 // +--------------------------------------------------------------+
 // |                  Create and Free Functions                   |
@@ -826,6 +885,8 @@ void UpdateNetworkBus(NetworkBus_t* bus)
 		NetworkUpdateConnectionProcess(bus, programTime);
 	}
 }
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif // SOCKETS_SUPPORTED
 

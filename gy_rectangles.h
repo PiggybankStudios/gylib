@@ -196,6 +196,297 @@ typedef Obb3D_t       obb3;
 #endif
 
 // +--------------------------------------------------------------+
+// |                   Simple Value Definitions                   |
+// +--------------------------------------------------------------+
+#define Rec_Zero    NewRec(0, 0, 0, 0)
+#define Rec_Default NewRec(0, 0, 1, 1)
+#define Reci_Zero   NewReci(0, 0, 0, 0)
+#define Box_Zero    NewBox(0, 0, 0, 0, 0, 0)
+#define Boxi_Zero   NewBoxi(0, 0, 0, 0, 0, 0)
+#define Obb2_Zero   NewObb2D(0, 0, 0, 0, 0)
+#if OBB3D_AVAILABLE
+#define Obb3_Zero   NewObb3D(0, 0, 0, 0, 0, 0, Quat_Identity)
+#endif
+
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	rec NewRec(r32 left, r32 top, r32 width, r32 height);
+	rec NewRec(v2 topLeft, r32 width, r32 height);
+	rec NewRec(r32 left, r32 top, v2 size);
+	rec NewRec(v2 topLeft, v2 size);
+	rec NewRecCentered(r32 centerX, r32 centerY, r32 width, r32 height);
+	rec NewRecCentered(v2 center, r32 width, r32 height);
+	rec NewRecCentered(r32 centerX, r32 centerY, v2 size);
+	rec NewRecCentered(v2 center, v2 size);
+	rec NewRecBetween(r32 point1X, r32 point1Y, r32 point2X, r32 point2Y);
+	rec NewRecBetween(r32 point1X, r32 point1Y, v2 point2);
+	rec NewRecBetween(v2 point1, r32 point2X, r32 point2Y);
+	rec NewRecBetween(v2 point1, v2 point2);
+	reci NewReci(i32 left, i32 top, i32 width, i32 height);
+	reci NewReci(v2i topLeft, i32 width, i32 height);
+	reci NewReci(i32 left, i32 top, v2i size);
+	reci NewReci(v2i topLeft, v2i size);
+	reci NewReciBetween(i32 point1X, i32 point1Y, i32 point2X, i32 point2Y);
+	reci NewReciBetween(i32 point1X, i32 point1Y, v2i point2);
+	reci NewReciBetween(v2i point1, i32 point2X, i32 point2Y);
+	reci NewReciBetween(v2i point1, v2i point2);
+	box NewBox(r32 x, r32 y, r32 z, r32 width, r32 height, r32 depth);
+	box NewBox(v3 bottomLeft, r32 width, r32 height, r32 depth);
+	box NewBox(r32 x, r32 y, r32 z, v3 size);
+	box NewBox(v3 bottomLeft, v3 size);
+	box NewBoxCentered(r32 centerX, r32 centerY, r32 centerZ, r32 width, r32 height, r32 depth);
+	box NewBoxCentered(v3 center, r32 width, r32 height, r32 depth);
+	box NewBoxCentered(r32 centerX, r32 centerY, r32 centerZ, v3 size);
+	box NewBoxCentered(v3 center, v3 size);
+	box NewBoxBetween(r32 point1X, r32 point1Y, r32 point1Z, r32 point2X, r32 point2Y, r32 point2Z);
+	box NewBoxBetween(r32 point1X, r32 point1Y, r32 point1Z, v3 point2);
+	box NewBoxBetween(v3 point1, r32 point2X, r32 point2Y, r32 point2Z);
+	box NewBoxBetween(v3 point1, v3 point2);
+	boxi NewBoxi(i32 x, i32 y, i32 z, i32 width, i32 height, i32 depth);
+	boxi NewBoxi(v3i bottomLeft, i32 width, i32 height, i32 depth);
+	boxi NewBoxi(i32 x, i32 y, i32 z, v3i size);
+	boxi NewBoxi(v3i bottomLeft, v3i size);
+	boxi NewBoxiBetween(i32 point1X, i32 point1Y, i32 point1Z, i32 point2X, i32 point2Y, i32 point2Z);
+	boxi NewBoxiBetween(i32 point1X, i32 point1Y, i32 point1Z, v3i point2);
+	boxi NewBoxiBetween(v3i point1, i32 point2X, i32 point2Y, i32 point2Z);
+	boxi NewBoxiBetween(v3i point1, v3i point2);
+	obb2 NewObb2D(r32 centerX, r32 centerY, r32 width, r32 height, r32 rotation);
+	obb2 NewObb2D(v2 center, r32 width, r32 height, r32 rotation);
+	obb2 NewObb2D(r32 centerX, r32 centerY, v2 size, r32 rotation);
+	obb2 NewObb2D(v2 center, v2 size, r32 rotation);
+	#if OBB3D_AVAILABLE
+	obb3 NewObb3D(r32 centerX, r32 centerY, r32 centerZ, r32 width, r32 height, r32 depth, quat rotation);
+	obb3 NewObb3D(r32 centerX, r32 centerY, r32 centerZ, v3 size, quat rotation);
+	obb3 NewObb3D(v3 center, r32 width, r32 height, r32 depth, quat rotation);
+	obb3 NewObb3D(v3 center, v3 size, quat rotation);
+	#endif
+	rec ToRec(reci rectangle);
+	obb2 ToObb2D(rec rectangle);
+	box ToBox(boxi boundingBox);
+	#if OBB3D_AVAILABLE
+	obb3 ToObb3D(box boundingBox);
+	#endif
+	v2 GetObb2DRelativePos(obb2 boundingBox, v2 point);
+	v2 GetObb2DWorldPoint(obb2 boundingBox, v2 relativeOffset);
+	v2 GetObb2DRightVec(obb2 boundingBox);
+	v2 GetObb2DDownVec(obb2 boundingBox);
+	v2 GetObb2DLeftVec(obb2 boundingBox);
+	v2 GetObb2DUpVec(obb2 boundingBox);
+	v2 GetObb2DTopLeft(obb2 boundingBox);
+	v2 GetObb2DTopRight(obb2 boundingBox);
+	v2 GetObb2DBottomLeft(obb2 boundingBox);
+	v2 GetObb2DBottomRight(obb2 boundingBox);
+	rec RecShift(rec rectangle, r32 amountX, r32 amountY);
+	rec RecShift(rec rectangle, v2 amount);
+	rec RecScale(rec rectangle, r32 scalar);
+	rec RecScale2(rec rectangle, r32 scaleX, r32 scaleY);
+	rec RecScale2(rec rectangle, v2 scale);
+	bool RecBasicallyEqual(rec left, rec right, r32 tolerance = 0.001f);
+	reci ReciShift(reci rectangle, i32 amountX, i32 amountY);
+	reci ReciShift(reci rectangle, v2i amount);
+	reci ReciScale(reci rectangle, i32 scalar);
+	reci ReciScale2(reci rectangle, i32 scaleX, i32 scaleY);
+	reci ReciScale2(reci rectangle, v2i scale);
+	bool ReciEqual(reci left, reci right);
+	box BoxShift(box boundingBox, r32 amountX, r32 amountY, r32 amountZ);
+	box BoxShift(box boundingBox, v3 amount);
+	box BoxScale(box boundingBox, r32 scalar);
+	box BoxScale3(box boundingBox, r32 scaleX, r32 scaleY, r32 scaleZ);
+	box BoxScale3(box boundingBox, v3 scale);
+	bool BoxBasicallyEqual(box left, box right, r32 tolerance = 0.001f);
+	boxi BoxiShift(boxi boundingBox, i32 amountX, i32 amountY, i32 amountZ);
+	boxi BoxiShift(boxi boundingBox, v3i amount);
+	boxi BoxiScale(boxi boundingBox, i32 scalar);
+	boxi BoxiScale3(boxi boundingBox, i32 scaleX, i32 scaleY, i32 scaleZ);
+	boxi BoxiScale3(boxi boundingBox, v3i scale);
+	bool BoxiEqual(boxi left, boxi right);
+	obb2 Obb2DShift(obb2 boundingBox, r32 amountX, r32 amountY);
+	obb2 Obb2DShift(obb2 boundingBox, v2 amount);
+	obb2 Obb2DScale(obb2 boundingBox, r32 scalar);
+	bool Obb2DBasicallyEqual(obb2 left, obb2 right, r32 tolerance = 0.001f);
+	rec RecExpand(rec rectangle, r32 extraWidth, r32 extraHeight);
+	rec RecExpand(rec rectangle, v2 extraSize);
+	rec RecExpandX(rec rectangle, r32 extraWidth);
+	rec RecExpandY(rec rectangle, r32 extraHeight);
+	rec RecExpandLeft(rec rectangle, r32 extraLeft);
+	rec RecExpandRight(rec rectangle, r32 extraRight);
+	rec RecExpandUp(rec rectangle, r32 extraUp);
+	rec RecExpandDown(rec rectangle, r32 extraDown);
+	rec RecRetract(rec rectangle, r32 subWidth, r32 subHeight);
+	rec RecRetract(rec rectangle, v2 subSize);
+	rec RecRetractX(rec rectangle, r32 subWidth);
+	rec RecRetractY(rec rectangle, r32 subHeight);
+	rec RecInflate(rec rectangle, r32 extraWidth, r32 extraHeight);
+	rec RecInflate(rec rectangle, v2 extraSize);
+	rec RecInflateX(rec rectangle, r32 extraWidth);
+	rec RecInflateY(rec rectangle, r32 extraHeight);
+	rec RecDeflate(rec rectangle, r32 subWidth, r32 subHeight);
+	rec RecDeflate(rec rectangle, v2 extraSize);
+	rec RecDeflateX(rec rectangle, r32 subWidth);
+	rec RecDeflateY(rec rectangle, r32 subHeight);
+	reci ReciExpand(reci rectangle, i32 extraWidth, i32 extraHeight);
+	reci ReciExpand(reci rectangle, v2i extraSize);
+	reci ReciExpandX(reci rectangle, i32 extraWidth);
+	reci ReciExpandY(reci rectangle, i32 extraHeight);
+	reci ReciExpandLeft(reci rectangle, i32 extraLeft);
+	reci ReciExpandRight(reci rectangle, i32 extraRight);
+	reci ReciExpandUp(reci rectangle, i32 extraUp);
+	reci ReciExpandDown(reci rectangle, i32 extraDown);
+	reci ReciRetract(reci rectangle, i32 subWidth, i32 subHeight);
+	reci ReciRetract(reci rectangle, v2i subSize);
+	reci ReciRetractX(reci rectangle, i32 subWidth);
+	reci ReciRetractY(reci rectangle, i32 subHeight);
+	reci ReciInflate(reci rectangle, i32 extraWidth, i32 extraHeight);
+	reci ReciInflate(reci rectangle, v2i extraSize);
+	reci ReciInflateX(reci rectangle, i32 extraWidth);
+	reci ReciInflateY(reci rectangle, i32 extraHeight);
+	reci ReciDeflate(reci rectangle, i32 subWidth, i32 subHeight);
+	reci ReciDeflate(reci rectangle, v2i extraSize);
+	reci ReciDeflateX(reci rectangle, i32 subWidth);
+	reci ReciDeflateY(reci rectangle, i32 subHeight);
+	box BoxExpand(box boundingBox, r32 extraWidth, r32 extraHeight, r32 extraDepth);
+	box BoxExpand(box boundingBox, v3 extraSize);
+	box BoxExpandX(box boundingBox, r32 extraWidth);
+	box BoxExpandY(box boundingBox, r32 extraHeight);
+	box BoxExpandZ(box boundingBox, r32 extraDepth);
+	box BoxRetract(box boundingBox, r32 subWidth, r32 subHeight, r32 subDepth);
+	box BoxRetract(box boundingBox, v3 subSize);
+	box BoxRetractX(box boundingBox, r32 subWidth);
+	box BoxRetractY(box boundingBox, r32 subHeight);
+	box BoxRetractZ(box boundingBox, r32 subDepth);
+	box BoxInflate(box boundingBox, r32 extraWidth, r32 extraHeight, r32 extraDepth);
+	box BoxInflate(box boundingBox, v3 extraSize);
+	box BoxInflateX(box boundingBox, r32 extraWidth);
+	box BoxInflateY(box boundingBox, r32 extraHeight);
+	box BoxInflateZ(box boundingBox, r32 extraDepth);
+	box BoxDeflate(box boundingBox, r32 subWidth, r32 subHeight, r32 subDepth);
+	box BoxDeflate(box boundingBox, v3 extraSize);
+	box BoxDeflateX(box boundingBox, r32 subWidth);
+	box BoxDeflateY(box boundingBox, r32 subHeight);
+	box BoxDeflateZ(box boundingBox, r32 subDepth);
+	boxi BoxiExpand(boxi boundingBox, i32 extraWidth, i32 extraHeight, i32 extraDepth);
+	boxi BoxiExpand(boxi boundingBox, v3i extraSize);
+	boxi BoxiExpandX(boxi boundingBox, i32 extraWidth);
+	boxi BoxiExpandY(boxi boundingBox, i32 extraHeight);
+	boxi BoxiExpandZ(boxi boundingBox, i32 extraDepth);
+	boxi BoxiRetract(boxi boundingBox, i32 subWidth, i32 subHeight, i32 subDepth);
+	boxi BoxiRetract(boxi boundingBox, v3i subSize);
+	boxi BoxiRetractX(boxi boundingBox, i32 subWidth);
+	boxi BoxiRetractY(boxi boundingBox, i32 subHeight);
+	boxi BoxiRetractZ(boxi boundingBox, i32 subDepth);
+	boxi BoxiInflate(boxi boundingBox, i32 extraWidth, i32 extraHeight, i32 extraDepth);
+	boxi BoxiInflate(boxi boundingBox, v3i extraSize);
+	boxi BoxiInflateX(boxi boundingBox, i32 extraWidth);
+	boxi BoxiInflateY(boxi boundingBox, i32 extraHeight);
+	boxi BoxiInflateZ(boxi boundingBox, i32 extraDepth);
+	boxi BoxiDeflate(boxi boundingBox, i32 subWidth, i32 subHeight, i32 subDepth);
+	boxi BoxiDeflate(boxi boundingBox, v3i extraSize);
+	boxi BoxiDeflateX(boxi boundingBox, i32 subWidth);
+	boxi BoxiDeflateY(boxi boundingBox, i32 subHeight);
+	boxi BoxiDeflateZ(boxi boundingBox, i32 subDepth);
+	obb2 Obb2DInflate(obb2 rectangle, r32 extraWidth, r32 extraHeight);
+	obb2 Obb2DInflate(obb2 rectangle, v2 extraSize);
+	obb2 Obb2DInflateX(obb2 rectangle, r32 extraWidth);
+	obb2 Obb2DInflateY(obb2 rectangle, r32 extraHeight);
+	obb2 Obb2DDeflate(obb2 rectangle, r32 subWidth, r32 subHeight);
+	obb2 Obb2DDeflate(obb2 rectangle, v2 extraSize);
+	obb2 Obb2DDeflateX(obb2 rectangle, r32 subWidth);
+	obb2 Obb2DDeflateY(obb2 rectangle, r32 subHeight);
+	rec RecSquarify(rec rectangle, bool makeLarger = true, bool center = true);
+	rec RecInvert(rec rectangle);
+	rec RecInvertX(rec rectangle);
+	rec RecInvertY(rec rectangle);
+	rec RecUninvert(rec rectangle);
+	rec RecBoth(rec rectangle1, rec rectangle2);
+	rec RecExpandToVec2(rec rectangle, v2 newPoint);
+	rec RecOverlap(rec rectangle1, rec rectangle2);
+	reci ReciSquarify(reci rectangle, bool makeLarger = true);
+	reci ReciInvert(reci rectangle);
+	reci ReciInvertX(reci rectangle);
+	reci ReciInvertY(reci rectangle);
+	reci ReciUninvert(reci rectangle);
+	reci ReciBoth(reci rectangle1, reci rectangle2);
+	reci ReciExpandToVec2i(reci rectangle, v2i newPoint);
+	reci ReciOverlap(reci rectangle1, reci rectangle2);
+	box BoxCubify(box boundingBox, bool makeLarger = true, bool center = true);
+	box BoxInvert(box boundingBox);
+	box BoxInvertX(box boundingBox);
+	box BoxInvertY(box boundingBox);
+	box BoxInvertZ(box boundingBox);
+	box BoxUninvert(box boundingBox);
+	boxi BoxiCubify(boxi boundingBox, bool makeLarger = true);
+	boxi BoxiInvert(boxi boundingBox);
+	boxi BoxiInvertX(boxi boundingBox);
+	boxi BoxiInvertY(boxi boundingBox);
+	boxi BoxiInvertZ(boxi boundingBox);
+	boxi BoxiUninvert(boxi boundingBox);
+	boxi BoxiExpandToVec3i(boxi boundingBox, v3i newPoint);
+	boxi BoxiBoth(boxi boundingBox1, boxi boundingBox2);
+	obb2 Obb2DSquarify(obb2 rectangle, bool makeLarger = true);
+	obb2 Obb2DInvert(obb2 rectangle);
+	obb2 Obb2DInvertX(obb2 rectangle);
+	obb2 Obb2DInvertY(obb2 rectangle);
+	obb2 Obb2DUninvert(obb2 rectangle);
+	rec GetObb2DAlignedBounds(obb2 boundingBox);
+	bool IsInsideRec(rec rectangle, v2 point);
+	bool IsInsideRec(rec rectangle, v2i point);
+	bool RecsIntersect(rec rectangle1, rec rectangle2, bool inclusive = true);
+	bool IsInsideReci(reci rectangle, v2i point, bool includePositiveEdges = false);
+	bool IsInsideBox(box boundingBox, v3 point);
+	bool IsInsideBox(box boundingBox, v3i point);
+	bool BoxesIntersect(box boundingBox1, box boundingBox2, bool inclusive = true);
+	bool IsInsideBoxi(boxi boundingBox, v3i point, bool includePositiveEdges = false);
+	bool BoxisIntersect(boxi boundingBox1, boxi boundingBox2, bool inclusive = true);
+	bool IsInsideObb2D(obb2 rectangle, v2 point);
+	void RecAlign(rec* rectangleOut, r32 alignmentScale = 1.0f);
+	void RecAlignTopLeft(rec* rectangleOut, r32 alignmentScale = 1.0f);
+	void RecAlignSize(rec* rectangleOut, r32 alignmentScale = 1.0f);
+	void RecLayoutLeftOf(rec* rectangleOut, r32 posOfThingToRight, r32 rightPadding = 0.0f);
+	void RecLayoutTopOf(rec* rectangleOut, r32 posOfThingDownwards, r32 bottomPadding = 0.0f);
+	void RecLayoutRightOf(rec* rectangleOut, r32 posOfThingToLeft, r32 leftPadding = 0.0f);
+	void RecLayoutRightOf(rec* rectangleOut, rec recToLeft, r32 leftPadding = 0.0f);
+	void RecLayoutBottomOf(rec* rectangleOut, r32 posOfThingUpwards, r32 topPadding = 0.0f);
+	void RecLayoutBottomOf(rec* rectangleOut, rec recUpwards, r32 topPadding = 0.0f);
+	void RecLayoutBetweenX(rec* rectangleOut, r32 leftSide, r32 rightSide, r32 leftMargin = 0, r32 rightMargin = 0, r32 minWidth = 0);
+	void RecLayoutBetweenY(rec* rectangleOut, r32 topSide, r32 bottomSide, r32 topMargin = 0, r32 bottomMargin = 0, r32 minHeight = 0);
+	void RecLayoutLeftPortionOf(rec* rectangleOut, rec* otherRectangle, r32 portionWidth, bool shrinkOtherRec = false, r32 offsetAmount = 0);
+	void RecLayoutRightPortionOf(rec* rectangleOut, rec* otherRectangle, r32 portionWidth, bool shrinkOtherRec = false, r32 offsetAmount = 0);
+	void RecLayoutTopPortionOf(rec* rectangleOut, rec* otherRectangle, r32 portionHeight, bool shrinkOtherRec = false, r32 offsetAmount = 0);
+	void RecLayoutBottomPortionOf(rec* rectangleOut, rec* otherRectangle, r32 portionHeight, bool shrinkOtherRec = false, r32 offsetAmount = 0);
+	void RecLayoutVerticalCenter(rec* rectangleOut, r32 posToCenterTo, r32 percentage = 0.5f);
+	void RecLayoutVerticalCenter(rec* rectangleOut, rec otherRectangle, r32 percentage = 0.5f);
+	void RecLayoutHorizontalCenter(rec* rectangleOut, r32 posToCenterTo, r32 percentage = 0.5f);
+	void RecLayoutHorizontalCenter(rec* rectangleOut, rec otherRectangle, r32 percentage = 0.5f);
+	obb2 Obb2Line(v2 start, v2 end, r32 thickness);
+	rec operator + (rec rectangle, v2 vector);
+	rec operator - (rec rectangle, v2 vector);
+	rec operator * (rec rectangle, r32 scale);
+	rec operator / (rec rectangle, r32 scale);
+	reci operator + (reci rectangle, v2i vector);
+	reci operator - (reci rectangle, v2i vector);
+	reci operator * (reci rectangle, i32 scale);
+	reci operator / (reci rectangle, i32 scale);
+	bool operator == (reci left, reci right);
+	bool operator != (reci left, reci right);
+	box operator + (box boundingBox, v3 vector);
+	box operator - (box boundingBox, v3 vector);
+	box operator * (box boundingBox, r32 scale);
+	box operator / (box boundingBox, r32 scale);
+	boxi operator + (boxi boundingBox, v3i vector);
+	boxi operator - (boxi boundingBox, v3i vector);
+	boxi operator * (boxi boundingBox, i32 scale);
+	boxi operator / (boxi boundingBox, i32 scale);
+	bool operator == (boxi left, boxi right);
+	bool operator != (boxi left, boxi right);
+	obb2 operator + (obb2 box, v2 vector);
+	obb2 operator - (obb2 box, v2 vector);
+	obb2 operator * (obb2 box, r32 scale);
+	obb2 operator / (obb2 box, r32 scale);
+#else
+
+// +--------------------------------------------------------------+
 // |                        New Functions                         |
 // +--------------------------------------------------------------+
 rec NewRec(r32 left, r32 top, r32 width, r32 height)
@@ -650,19 +941,6 @@ obb3 NewObb3D(v3 center, v3 size, quat rotation)
 	result.rotation = rotation;
 	return result;
 }
-#endif
-
-// +--------------------------------------------------------------+
-// |                   Simple Value Definitions                   |
-// +--------------------------------------------------------------+
-#define Rec_Zero    NewRec(0, 0, 0, 0)
-#define Rec_Default NewRec(0, 0, 1, 1)
-#define Reci_Zero   NewReci(0, 0, 0, 0)
-#define Box_Zero    NewBox(0, 0, 0, 0, 0, 0)
-#define Boxi_Zero   NewBoxi(0, 0, 0, 0, 0, 0)
-#define Obb2_Zero   NewObb2D(0, 0, 0, 0, 0)
-#if OBB3D_AVAILABLE
-#define Obb3_Zero   NewObb3D(0, 0, 0, 0, 0, 0, Quat_Identity)
 #endif
 
 // +--------------------------------------------------------------+
@@ -2699,36 +2977,38 @@ obb2 Obb2Line(v2 start, v2 end, r32 thickness)
 // +--------------------------------------------------------------+
 // |                      Operator Overloads                      |
 // +--------------------------------------------------------------+
-inline rec operator + (rec rectangle, v2 vector) { return RecShift(rectangle, vector); }
-inline rec operator - (rec rectangle, v2 vector) { return RecShift(rectangle, -vector); }
-inline rec operator * (rec rectangle, r32 scale) { return RecScale(rectangle, scale); }
-inline rec operator / (rec rectangle, r32 scale) { return RecScale(rectangle, 1/scale); }
+rec operator + (rec rectangle, v2 vector) { return RecShift(rectangle, vector); }
+rec operator - (rec rectangle, v2 vector) { return RecShift(rectangle, -vector); }
+rec operator * (rec rectangle, r32 scale) { return RecScale(rectangle, scale); }
+rec operator / (rec rectangle, r32 scale) { return RecScale(rectangle, 1/scale); }
 
-inline reci operator + (reci rectangle, v2i vector) { return ReciShift(rectangle, vector); }
-inline reci operator - (reci rectangle, v2i vector) { return ReciShift(rectangle, -vector); }
-inline reci operator * (reci rectangle, i32 scale)  { return ReciScale(rectangle, scale); }
-inline reci operator / (reci rectangle, i32 scale)  { return ReciScale(rectangle, 1/scale); }
-inline bool operator == (reci left, reci right) { return  (left.x == right.x && left.y == right.y && left.width == right.width && left.height == right.height); }
-inline bool operator != (reci left, reci right) { return !(left.x == right.x && left.y == right.y && left.width == right.width && left.height == right.height); }
+reci operator + (reci rectangle, v2i vector) { return ReciShift(rectangle, vector); }
+reci operator - (reci rectangle, v2i vector) { return ReciShift(rectangle, -vector); }
+reci operator * (reci rectangle, i32 scale)  { return ReciScale(rectangle, scale); }
+reci operator / (reci rectangle, i32 scale)  { return ReciScale(rectangle, 1/scale); }
+bool operator == (reci left, reci right) { return  (left.x == right.x && left.y == right.y && left.width == right.width && left.height == right.height); }
+bool operator != (reci left, reci right) { return !(left.x == right.x && left.y == right.y && left.width == right.width && left.height == right.height); }
 
-inline box operator + (box boundingBox, v3 vector) { return BoxShift(boundingBox, vector); }
-inline box operator - (box boundingBox, v3 vector) { return BoxShift(boundingBox, -vector); }
-inline box operator * (box boundingBox, r32 scale) { return BoxScale(boundingBox, scale); }
-inline box operator / (box boundingBox, r32 scale) { return BoxScale(boundingBox, 1/scale); }
+box operator + (box boundingBox, v3 vector) { return BoxShift(boundingBox, vector); }
+box operator - (box boundingBox, v3 vector) { return BoxShift(boundingBox, -vector); }
+box operator * (box boundingBox, r32 scale) { return BoxScale(boundingBox, scale); }
+box operator / (box boundingBox, r32 scale) { return BoxScale(boundingBox, 1/scale); }
 
-inline boxi operator + (boxi boundingBox, v3i vector) { return BoxiShift(boundingBox, vector); }
-inline boxi operator - (boxi boundingBox, v3i vector) { return BoxiShift(boundingBox, -vector); }
-inline boxi operator * (boxi boundingBox, i32 scale)  { return BoxiScale(boundingBox, scale); }
-inline boxi operator / (boxi boundingBox, i32 scale)  { return BoxiScale(boundingBox, 1/scale); }
-inline bool operator == (boxi left, boxi right) { return  (left.x == right.x && left.y == right.y && left.z == right.z && left.width == right.width && left.height == right.height && left.depth == right.depth); }
-inline bool operator != (boxi left, boxi right) { return !(left.x == right.x && left.y == right.y && left.z == right.z && left.width == right.width && left.height == right.height && left.depth == right.depth); }
+boxi operator + (boxi boundingBox, v3i vector) { return BoxiShift(boundingBox, vector); }
+boxi operator - (boxi boundingBox, v3i vector) { return BoxiShift(boundingBox, -vector); }
+boxi operator * (boxi boundingBox, i32 scale)  { return BoxiScale(boundingBox, scale); }
+boxi operator / (boxi boundingBox, i32 scale)  { return BoxiScale(boundingBox, 1/scale); }
+bool operator == (boxi left, boxi right) { return  (left.x == right.x && left.y == right.y && left.z == right.z && left.width == right.width && left.height == right.height && left.depth == right.depth); }
+bool operator != (boxi left, boxi right) { return !(left.x == right.x && left.y == right.y && left.z == right.z && left.width == right.width && left.height == right.height && left.depth == right.depth); }
 
-inline obb2 operator + (obb2 box, v2 vector) { return Obb2DShift(box, vector); }
-inline obb2 operator - (obb2 box, v2 vector) { return Obb2DShift(box, -vector); }
-inline obb2 operator * (obb2 box, r32 scale) { return Obb2DScale(box, scale); }
-inline obb2 operator / (obb2 box, r32 scale) { return Obb2DScale(box, 1/scale); }
+obb2 operator + (obb2 box, v2 vector) { return Obb2DShift(box, vector); }
+obb2 operator - (obb2 box, v2 vector) { return Obb2DShift(box, -vector); }
+obb2 operator * (obb2 box, r32 scale) { return Obb2DScale(box, scale); }
+obb2 operator / (obb2 box, r32 scale) { return Obb2DScale(box, 1/scale); }
 
 //TODO: Add operator overloads for obb3
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_RECTANGLES_H
 

@@ -73,6 +73,14 @@ Description:
 	#define PureBlue                NewColor(PureBlue_Value)
 	#define PurePurple              NewColor(PurePurple_Value)
 	
+	#ifdef GYLIB_HEADER_ONLY
+		Color_t GetPureColorByIndex(u64 index);
+		Color_t GetGreyscaleColorByIndex(u64 index);
+		u64 GetPureColorIndex(u64 colorValue);
+		u64 GetPureColorIndex(Color_t color);
+		u64 GetGreyscaleColorIndex(u64 colorValue);
+		u64 GetGreyscaleColorIndex(Color_t color);
+	#else
 	Color_t GetPureColorByIndex(u64 index)
 	{
 		switch (index % NUM_PREDEF_PURE_COLORS)
@@ -153,6 +161,7 @@ Description:
 	{
 		return GetGreyscaleColorIndex(color.value);
 	}
+	#endif
 // +--------------------------------------------------------------+
 
 // +--------------------------------------------------------------+
@@ -324,6 +333,11 @@ Description:
 	#define PalBlackLight           NewColor(PalBlackLight_Value)
 	#define PalBlackLighter         NewColor(PalBlackLighter_Value)
 
+	#ifdef GYLIB_HEADER_ONLY
+		Color_t GetPredefPalColorByIndex(u64 index);
+		u64 GetPredefPalColorIndex(u64 colorValue);
+		u64 GetPredefPalColorIndex(Color_t color);
+	#else
 	Color_t GetPredefPalColorByIndex(u64 index)
 	{
 		switch (index % NUM_PREDEF_PAL_COLORS)
@@ -492,6 +506,7 @@ Description:
 	{
 		return GetPredefPalColorIndex(color.value);
 	}
+	#endif
 // +--------------------------------------------------------------+
 
 // +--------------------------------------------------------------+
@@ -540,13 +555,15 @@ Description:
 	#define MonokaiGray1                    NewColor(MonokaiGray1_Value)
 	#define MonokaiGray2                    NewColor(MonokaiGray2_Value)
 	#define MonokaiDarkGray                 NewColor(MonokaiDarkGray_Value)
-	
 // +--------------------------------------------------------------+
 
 // +--------------------------------------------------------------+
 // |                       Other Functions                        |
 // +--------------------------------------------------------------+
 #ifdef _GY_DEBUG_H
+#ifdef GYLIB_HEADER_ONLY
+Color_t GetDbgLevelTextColor(DbgLevel_t dbgLevel);
+#else
 Color_t GetDbgLevelTextColor(DbgLevel_t dbgLevel)
 {
 	switch (dbgLevel)
@@ -561,6 +578,7 @@ Color_t GetDbgLevelTextColor(DbgLevel_t dbgLevel)
 		default: return MonokaiWhite; break;
 	}
 }
+#endif
 #endif //_GY_DEBUG_H
 
 #endif //  _GY_STANDARD_COLORS_H

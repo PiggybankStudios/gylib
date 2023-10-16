@@ -34,6 +34,27 @@ union Basis_t
 };
 
 // +--------------------------------------------------------------+
+// |                            Macros                            |
+// +--------------------------------------------------------------+
+#define Basis_Default NewBasis(Vec3_Right, Vec3_Up, Vec3_Forward, false)
+
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	Basis_t BasisNormalize(Basis_t basis);
+	void BasisNormalize(Basis_t* basisPntr);
+	Basis_t NewBasis(v3 right, v3 up, v3 forward, bool normalize = true);
+	Basis_t NewBasisForwardUp(v3 forward, v3 up, bool normalize = true);
+	Basis_t NewBasisRightUp(v3 right, v3 up, bool normalize = true);
+	bool IsBasisLinearIndependent(Basis_t basis, r32 tolerance = 0.001f);
+	bool AreBasisEqual(Basis_t left, Basis_t right, r32 tolerance = 0.001f);
+	v3 ApplyBasis(Basis_t toBasis, v3 vector);
+	v3 RemoveBasis(Basis_t fromBasis, v3 vector);
+	v3 ChangeBasis(Basis_t fromBasis, Basis_t toBasis, v3 vector);
+#else
+
+// +--------------------------------------------------------------+
 // |                        New Functions                         |
 // +--------------------------------------------------------------+
 Basis_t BasisNormalize(Basis_t basis)
@@ -78,11 +99,6 @@ Basis_t NewBasisRightUp(v3 right, v3 up, bool normalize = true)
 	v3 forward = Vec3Cross(up, right);
 	return NewBasis(right, up, forward, false);
 }
-
-// +--------------------------------------------------------------+
-// |                   Simple Value Definitions                   |
-// +--------------------------------------------------------------+
-#define Basis_Default NewBasis(Vec3_Right, Vec3_Up, Vec3_Forward, false)
 
 // +--------------------------------------------------------------+
 // |                    Information Functions                     |
@@ -130,6 +146,8 @@ v3 ChangeBasis(Basis_t fromBasis, Basis_t toBasis, v3 vector)
 	result = ApplyBasis(toBasis, vector);
 	return result;
 }
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_BASIS_VECTORS_H
 

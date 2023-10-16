@@ -27,6 +27,9 @@ Description:
 #include "gy_scratch_arenas.h"
 #include "gy_string.h"
 
+// +--------------------------------------------------------------+
+// |                            Types                             |
+// +--------------------------------------------------------------+
 struct StringFifoLine_t
 {
 	StringFifoLine_t* prev;
@@ -67,6 +70,57 @@ struct StringFifo_t
 	u8* buildBuff;
 };
 
+//NOTE: If you modify the size of metaStructSize then the new requested size will be allocated but not automatically filled.
+//      It will be up to the after callback to fill the new space.
+#define GY_STRING_FIFO_PUSH_LINES_BEFORE_CALLBACK_DEF(functionName) bool functionName(StringFifo_t* fifo, const StringFifo_t* srcFifo, const StringFifoLine_t* srcLine, u64* metaStructSize, void* userPntr)
+typedef GY_STRING_FIFO_PUSH_LINES_BEFORE_CALLBACK_DEF(StringFifoPushLineBefore_f);
+
+#define GY_STRING_FIFO_PUSH_LINES_AFTER_CALLBACK_DEF(functionName) void functionName(StringFifo_t* fifo, const StringFifo_t* srcFifo, const StringFifoLine_t* srcLine, StringFifoLine_t* newLine, void* userPntr)
+typedef GY_STRING_FIFO_PUSH_LINES_AFTER_CALLBACK_DEF(StringFifoPushLineAfter_f);
+
+//NOTE: fifoLine may come from EITHER fifo or srcFifo
+#define GY_STRING_FIFO_PUSH_LINES_SORT_CALLBACK_DEF(functionName) u64 functionName(StringFifo_t* fifo, const StringFifo_t* srcFifo, const StringFifoLine_t* fifoLine, void* userPntr)
+typedef GY_STRING_FIFO_PUSH_LINES_SORT_CALLBACK_DEF(StringFifoPushLineSort_f);
+
+// +--------------------------------------------------------------+
+// |                            Macros                            |
+// +--------------------------------------------------------------+
+//TODO: This define technically throws away const correctness because of the non-const type* cast
+#define GetFifoLineMetaStruct(linePntr, type) (type*)GetFifoLineMetaStruct_((linePntr), sizeof(type))
+
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	bool IsInitialized(const StringFifo_t* stringFifo);
+	u64 GetFifoLineMetaSize(const StringFifoLine_t* line);
+	u64 GetFifoLineTotalSize(const StringFifoLine_t* line);
+	void* GetFifoLineMetaStruct_(StringFifoLine_t* line, u64 expectedStructSize);
+	const void* GetFifoLineMetaStruct_(const StringFifoLine_t* line, u64 expectedStructSize);
+	MyStr_t GetFifoLineMetaString(const StringFifoLine_t* line);
+	MyStr_t GetFifoLineText(const StringFifoLine_t* line);
+	const void* GetFifoLineEndPntr(const StringFifoLine_t* line);
+	u64 GetStringFifoPntrIndex(const StringFifo_t* fifo, const void* pntr);
+	u64 GetStringFifoTailIndex(const StringFifo_t* fifo);
+	u64 GetStringFifoHeadIndex(const StringFifo_t* fifo);
+	void DestroyStringFifo(StringFifo_t* fifo);
+	void CreateStringFifo(StringFifo_t* fifo, u64 bufferSize, u8* bufferPntr);
+	void CreateStringFifoInArena(StringFifo_t* fifo, MemArena_t* memArena, u64 bufferSize);
+	void StringFifoAddBuildBufferInArena(StringFifo_t* fifo, u64 buildBufferSize, MemArena_t* memArena);
+	void StringFifoAddBuildBuffer(StringFifo_t* fifo, u64 buildBufferSize, u8* buildSpace);
+	void ClearStringFifo(StringFifo_t* fifo);
+	void StringFifoPopLine(StringFifo_t* fifo);
+	StringFifoLine_t* StringFifoPushLineExt(StringFifo_t* fifo, MyStr_t text, u64 metaStructSize, const void* metaStructPntr, MyStr_t metaString);
+	StringFifoLine_t* StringFifoPushLine(StringFifo_t* fifo, MyStr_t text);
+	void StringFifoBuildEx(StringFifo_t* fifo, MyStr_t text, u64 metaStructSize, const void* metaStructPntr, MyStr_t metaString);
+	void StringFifoBuild(StringFifo_t* fifo, MyStr_t text, u64 metaStructSize, const void* metaStructPntr, MyStr_t metaString);
+	void CopyStringFifo(StringFifo_t* destFifo, const StringFifo_t* srcFifo, MemArena_t* memArena, bool shrinkBufferToMatchContents);
+	void StringFifoPushLinesFromFifo(StringFifo_t* fifo, const StringFifo_t* srcFifo, bool includeMetaStructs = true, bool includeMetaStrings = true, StringFifoPushLineBefore_f* beforeCallback = nullptr, StringFifoPushLineAfter_f* afterCallback = nullptr, void* userPntr = nullptr);
+	#if GYLIB_SCRATCH_ARENA_AVAILABLE
+	void StringFifoInsertLinesFromFifo(StringFifo_t* fifo, const StringFifo_t* srcFifo, StringFifoPushLineSort_f* sortCallback, bool includeMetaStructs = true, bool includeMetaStrings = true, StringFifoPushLineBefore_f* beforeCallback = nullptr, StringFifoPushLineAfter_f* afterCallback = nullptr, void* userPntr = nullptr);
+	#endif // GYLIB_SCRATCH_ARENA_AVAILABLE
+#else
+
 // +--------------------------------------------------------------+
 // |                       Helper Functions                       |
 // +--------------------------------------------------------------+
@@ -96,8 +150,6 @@ const void* GetFifoLineMetaStruct_(const StringFifoLine_t* line, u64 expectedStr
 {
 	return (const void*)GetFifoLineMetaStruct_((StringFifoLine_t*)line, expectedStructSize);
 }
-//TODO: This define technically throws away const correctness because of the non-const type* cast
-#define GetFifoLineMetaStruct(linePntr, type) (type*)GetFifoLineMetaStruct_((linePntr), sizeof(type))
 MyStr_t GetFifoLineMetaString(const StringFifoLine_t* line)
 {
 	NotNull_(line);
@@ -555,14 +607,6 @@ void CopyStringFifo(StringFifo_t* destFifo, const StringFifo_t* srcFifo, MemAren
 // +--------------------------------------------------------------+
 // |                      Push another Fifo                       |
 // +--------------------------------------------------------------+
-//NOTE: If you modify the size of metaStructSize then the new requested size will be allocated but not automatically filled.
-//      It will be up to the after callback to fill the new space.
-#define GY_STRING_FIFO_PUSH_LINES_BEFORE_CALLBACK_DEF(functionName) bool functionName(StringFifo_t* fifo, const StringFifo_t* srcFifo, const StringFifoLine_t* srcLine, u64* metaStructSize, void* userPntr)
-typedef GY_STRING_FIFO_PUSH_LINES_BEFORE_CALLBACK_DEF(StringFifoPushLineBefore_f);
-
-#define GY_STRING_FIFO_PUSH_LINES_AFTER_CALLBACK_DEF(functionName) void functionName(StringFifo_t* fifo, const StringFifo_t* srcFifo, const StringFifoLine_t* srcLine, StringFifoLine_t* newLine, void* userPntr)
-typedef GY_STRING_FIFO_PUSH_LINES_AFTER_CALLBACK_DEF(StringFifoPushLineAfter_f);
-
 void StringFifoPushLinesFromFifo(StringFifo_t* fifo, const StringFifo_t* srcFifo,
 	bool includeMetaStructs = true, bool includeMetaStrings = true,
 	StringFifoPushLineBefore_f* beforeCallback = nullptr, StringFifoPushLineAfter_f* afterCallback = nullptr, void* userPntr = nullptr)
@@ -596,10 +640,6 @@ void StringFifoPushLinesFromFifo(StringFifo_t* fifo, const StringFifo_t* srcFifo
 		srcLine = srcLine->next;
 	}
 }
-
-//NOTE: fifoLine may come from EITHER fifo or srcFifo
-#define GY_STRING_FIFO_PUSH_LINES_SORT_CALLBACK_DEF(functionName) u64 functionName(StringFifo_t* fifo, const StringFifo_t* srcFifo, const StringFifoLine_t* fifoLine, void* userPntr)
-typedef GY_STRING_FIFO_PUSH_LINES_SORT_CALLBACK_DEF(StringFifoPushLineSort_f);
 
 #if GYLIB_SCRATCH_ARENA_AVAILABLE
 //TODO: We probably need to take into account the lineNumber and update nextLineNumber in the fifo
@@ -762,6 +802,8 @@ void StringFifoInsertLinesFromFifo(StringFifo_t* fifo, const StringFifo_t* srcFi
 	FreeScratchArena(scratchArena);
 }
 #endif // GYLIB_SCRATCH_ARENA_AVAILABLE
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_STRING_FIFO_H
 

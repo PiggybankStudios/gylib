@@ -20,12 +20,28 @@ Description:
 #define _GY_OS_H
 
 // +--------------------------------------------------------------+
+// |                           Defines                            |
+// +--------------------------------------------------------------+
+#define MAX_EXECUTABLE_PATH_LENGTH 1024
+
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	#if GYLIB_SCRATCH_ARENA_AVAILABLE
+	MyStr_t OsGetExecutablePath(MemArena_t* memArena, OsError_t* errorOut);
+	#endif // GYLIB_SCRATCH_ARENA_AVAILABLE
+	MyStr_t OsGetWorkingDirectory(MemArena_t* memArena, OsError_t* errorOut);
+	u64 OsGetMemoryPageSize();
+	void* OsReserveMemory(u64 numBytes);
+	void OsCommitReservedMemory(void* memoryPntr, u64 numBytes);
+	void OsFreeReservedMemory(void* memoryPntr, u64 reservedSize);
+#else
+
+// +--------------------------------------------------------------+
 // |                      GetExecutablePath                       |
 // +--------------------------------------------------------------+
 #if GYLIB_SCRATCH_ARENA_AVAILABLE
-
-#define MAX_EXECUTABLE_PATH_LENGTH 1024
-
 // Always returns path with forward slashes: /
 MyStr_t OsGetExecutablePath(MemArena_t* memArena, OsError_t* errorOut)
 {
@@ -125,7 +141,6 @@ MyStr_t OsGetExecutablePath(MemArena_t* memArena, OsError_t* errorOut)
 	#error GetExecutablePath does not support the current platform yet!
 	#endif
 }
-
 #endif // GYLIB_SCRATCH_ARENA_AVAILABLE
 
 // +--------------------------------------------------------------+
@@ -496,6 +511,8 @@ void OsFreeReservedMemory(void* memoryPntr, u64 reservedSize)
 	#error OsReserveMemory does not support the current platform yet!
 	#endif
 }
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_OS_H
 

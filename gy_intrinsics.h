@@ -21,6 +21,294 @@ Description:
 #define Cube(value)   ((value) * (value) * (value))
 
 // +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	u32 MinU32(u32 value1, u32 value2);
+	u32 MinU32(u32 value1, u32 value2, u32 value3);
+	u32 MinU32(u32 value1, u32 value2, u32 value3, u32 value4);
+	u32 MinU32(u32 value1, u32 value2, u32 value3, u32 value4, u32 value5);
+	u32 MinU32(u32 value1, u32 value2, u32 value3, u32 value4, u32 value5, u32 value6);
+	u32 MinU32(u32 value1, u32 value2, u32 value3, u32 value4, u32 value5, u32 value6, u32 value7);
+	u32 MinU32(u32 value1, u32 value2, u32 value3, u32 value4, u32 value5, u32 value6, u32 value7, u32 value8);
+
+	i32 MinI32(i32 value1, i32 value2);
+	i32 MinI32(i32 value1, i32 value2, i32 value3);
+	i32 MinI32(i32 value1, i32 value2, i32 value3, i32 value4);
+	i32 MinI32(i32 value1, i32 value2, i32 value3, i32 value4, i32 value5);
+	i32 MinI32(i32 value1, i32 value2, i32 value3, i32 value4, i32 value5, i32 value6);
+	i32 MinI32(i32 value1, i32 value2, i32 value3, i32 value4, i32 value5, i32 value6, i32 value7);
+	i32 MinI32(i32 value1, i32 value2, i32 value3, i32 value4, i32 value5, i32 value6, i32 value7, i32 value8);
+
+	r32 MinR32(r32 value1, r32 value2);
+	r32 MinR32(r32 value1, r32 value2, r32 value3);
+	r32 MinR32(r32 value1, r32 value2, r32 value3, r32 value4);
+	r32 MinR32(r32 value1, r32 value2, r32 value3, r32 value4, r32 value5);
+	r32 MinR32(r32 value1, r32 value2, r32 value3, r32 value4, r32 value5, r32 value6);
+	r32 MinR32(r32 value1, r32 value2, r32 value3, r32 value4, r32 value5, r32 value6, r32 value7);
+	r32 MinR32(r32 value1, r32 value2, r32 value3, r32 value4, r32 value5, r32 value6, r32 value7, r32 value8);
+
+	u64 MinU64(u64 value1, u64 value2);
+	u64 MinU64(u64 value1, u64 value2, u64 value3);
+	u64 MinU64(u64 value1, u64 value2, u64 value3, u64 value4);
+	u64 MinU64(u64 value1, u64 value2, u64 value3, u64 value4, u64 value5);
+	u64 MinU64(u64 value1, u64 value2, u64 value3, u64 value4, u64 value5, u64 value6);
+	u64 MinU64(u64 value1, u64 value2, u64 value3, u64 value4, u64 value5, u64 value6, u64 value7);
+	u64 MinU64(u64 value1, u64 value2, u64 value3, u64 value4, u64 value5, u64 value6, u64 value7, u64 value8);
+
+	i64 MinI64(i64 value1, i64 value2);
+	i64 MinI64(i64 value1, i64 value2, i64 value3);
+	i64 MinI64(i64 value1, i64 value2, i64 value3, i64 value4);
+	i64 MinI64(i64 value1, i64 value2, i64 value3, i64 value4, i64 value5);
+	i64 MinI64(i64 value1, i64 value2, i64 value3, i64 value4, i64 value5, i64 value6);
+	i64 MinI64(i64 value1, i64 value2, i64 value3, i64 value4, i64 value5, i64 value6, i64 value7);
+	i64 MinI64(i64 value1, i64 value2, i64 value3, i64 value4, i64 value5, i64 value6, i64 value7, i64 value8);
+
+	r64 MinR64(r64 value1, r64 value2);
+	r64 MinR64(r64 value1, r64 value2, r64 value3);
+	r64 MinR64(r64 value1, r64 value2, r64 value3, r64 value4);
+	r64 MinR64(r64 value1, r64 value2, r64 value3, r64 value4, r64 value5);
+	r64 MinR64(r64 value1, r64 value2, r64 value3, r64 value4, r64 value5, r64 value6);
+	r64 MinR64(r64 value1, r64 value2, r64 value3, r64 value4, r64 value5, r64 value6, r64 value7);
+	r64 MinR64(r64 value1, r64 value2, r64 value3, r64 value4, r64 value5, r64 value6, r64 value7, r64 value8);
+	
+	u32 MaxU32(u32 value1, u32 value2);
+	u32 MaxU32(u32 value1, u32 value2, u32 value3);
+	u32 MaxU32(u32 value1, u32 value2, u32 value3, u32 value4);
+	u32 MaxU32(u32 value1, u32 value2, u32 value3, u32 value4, u32 value5);
+	u32 MaxU32(u32 value1, u32 value2, u32 value3, u32 value4, u32 value5, u32 value6);
+	u32 MaxU32(u32 value1, u32 value2, u32 value3, u32 value4, u32 value5, u32 value6, u32 value7);
+	u32 MaxU32(u32 value1, u32 value2, u32 value3, u32 value4, u32 value5, u32 value6, u32 value7, u32 value8);
+	
+	i32 MaxI32(i32 value1, i32 value2);
+	i32 MaxI32(i32 value1, i32 value2, i32 value3);
+	i32 MaxI32(i32 value1, i32 value2, i32 value3, i32 value4);
+	i32 MaxI32(i32 value1, i32 value2, i32 value3, i32 value4, i32 value5);
+	i32 MaxI32(i32 value1, i32 value2, i32 value3, i32 value4, i32 value5, i32 value6);
+	i32 MaxI32(i32 value1, i32 value2, i32 value3, i32 value4, i32 value5, i32 value6, i32 value7);
+	i32 MaxI32(i32 value1, i32 value2, i32 value3, i32 value4, i32 value5, i32 value6, i32 value7, i32 value8);
+	
+	r32 MaxR32(r32 value1, r32 value2);
+	r32 MaxR32(r32 value1, r32 value2, r32 value3);
+	r32 MaxR32(r32 value1, r32 value2, r32 value3, r32 value4);
+	r32 MaxR32(r32 value1, r32 value2, r32 value3, r32 value4, r32 value5);
+	r32 MaxR32(r32 value1, r32 value2, r32 value3, r32 value4, r32 value5, r32 value6);
+	r32 MaxR32(r32 value1, r32 value2, r32 value3, r32 value4, r32 value5, r32 value6, r32 value7);
+	r32 MaxR32(r32 value1, r32 value2, r32 value3, r32 value4, r32 value5, r32 value6, r32 value7, r32 value8);
+	
+	u64 MaxU64(u64 value1, u64 value2);
+	u64 MaxU64(u64 value1, u64 value2, u64 value3);
+	u64 MaxU64(u64 value1, u64 value2, u64 value3, u64 value4);
+	u64 MaxU64(u64 value1, u64 value2, u64 value3, u64 value4, u64 value5);
+	u64 MaxU64(u64 value1, u64 value2, u64 value3, u64 value4, u64 value5, u64 value6);
+	u64 MaxU64(u64 value1, u64 value2, u64 value3, u64 value4, u64 value5, u64 value6, u64 value7);
+	u64 MaxU64(u64 value1, u64 value2, u64 value3, u64 value4, u64 value5, u64 value6, u64 value7, u64 value8);
+	
+	i64 MaxI64(i64 value1, i64 value2);
+	i64 MaxI64(i64 value1, i64 value2, i64 value3);
+	i64 MaxI64(i64 value1, i64 value2, i64 value3, i64 value4);
+	i64 MaxI64(i64 value1, i64 value2, i64 value3, i64 value4, i64 value5);
+	i64 MaxI64(i64 value1, i64 value2, i64 value3, i64 value4, i64 value5, i64 value6);
+	i64 MaxI64(i64 value1, i64 value2, i64 value3, i64 value4, i64 value5, i64 value6, i64 value7);
+	i64 MaxI64(i64 value1, i64 value2, i64 value3, i64 value4, i64 value5, i64 value6, i64 value7, i64 value8);
+	
+	r64 MaxR64(r64 value1, r64 value2);
+	r64 MaxR64(r64 value1, r64 value2, r64 value3);
+	r64 MaxR64(r64 value1, r64 value2, r64 value3, r64 value4);
+	r64 MaxR64(r64 value1, r64 value2, r64 value3, r64 value4, r64 value5);
+	r64 MaxR64(r64 value1, r64 value2, r64 value3, r64 value4, r64 value5, r64 value6);
+	r64 MaxR64(r64 value1, r64 value2, r64 value3, r64 value4, r64 value5, r64 value6, r64 value7);
+	r64 MaxR64(r64 value1, r64 value2, r64 value3, r64 value4, r64 value5, r64 value6, r64 value7, r64 value8);
+	
+	r32 AbsR32(r32 value);
+	r64 AbsR64(r64 value);
+	i8 AbsI8(i8 value);
+	i16 AbsI16(i16 value);
+	i32 AbsI32(i32 value);
+	i64 AbsI64(i64 value);
+	
+	r32 RoundR32(r32 value);
+	i32 RoundR32i(r32 value);
+	r64 RoundR64(r64 value);
+	i64 RoundR64i(r64 value);
+	
+	r32 FloorR32(r32 value);
+	i32 FloorR32i(r32 value);
+	r64 FloorR64(r64 value);
+	i64 FloorR64i(r64 value);
+	
+	r32 CeilR32(r32 value);
+	i32 CeilR32i(r32 value);
+	r64 CeilR64(r64 value);
+	i64 CeilR64i(r64 value);
+	
+	i32 CeilToI32(i32 value, i32 chunkSize);
+	u32 CeilToU32(u32 value, u32 chunkSize);
+	
+	i32 CeilDivI32(i32 dividend, i32 divisor);
+	u32 CeilDivU32(u32 dividend, u32 divisor);
+	u64 CeilDivU64(u64 dividend, u64 divisor);
+	
+	r32 SinR32(r32 angle);
+	r64 SinR64(r64 angle);
+	
+	r32 CosR32(r32 angle);
+	r64 CosR64(r64 angle);
+	
+	r32 TanR32(r32 angle);
+	r64 TanR64(r64 angle);
+	
+	r32 AsinR32(r32 value);
+	r64 AsinR64(r64 value);
+	
+	r32 AcosR32(r32 value);
+	r64 AcosR64(r64 value);
+	
+	r32 AtanJoinedR32(r32 value);
+	r64 AtanJoinedR64(r64 value);
+	
+	r32 AtanR32(r32 y, r32 x);
+	r64 AtanR64(r64 y, r64 x);
+	
+	r32 SawR32(r32 angle);
+	r64 SawR64(r64 angle);
+	
+	r32 PowR32(r32 value, r32 power);
+	r64 PowR64(r64 value, r64 power);
+	
+	r32 LnR32(r32 value);
+	r64 LnR64(r64 value);
+	
+	r32 Log2R32(r32 value);
+	r64 Log2R64(r64 value);
+	
+	#if !ORCA_COMPILATION
+	r32 Log10R32(r32 value);
+	r64 Log10R64(r64 value);
+	#endif
+	
+	r32 SqrtR32(r32 value);
+	r64 SqrtR64(r64 value);
+	
+	r32 CbrtR32(r32 value);
+	r64 CbrtR64(r64 value);
+	
+	r32 SignOfR32(r32 value);
+	r64 SignOfR64(r64 value);
+	i8 SignOfI8(i8 value);
+	i16 SignOfI16(i16 value);
+	i32 SignOfI32(i32 value);
+	i64 SignOfI64(i64 value);
+	
+	#if !ORCA_COMPILATION
+	void SeedRand(u32 seed);
+	u32 RandU32(u32 min, u32 max);
+	i32 RandI32(i32 min, i32 max);
+	i64 RandI64(i64 min, i64 max);
+	r32 RandR32(r32 min, r32 max);
+	r64 RandR64(r64 min, r64 max);
+	#endif
+	
+	r32 ClampR32(r32 value, r32 min, r32 max);
+	r64 ClampR64(r64 value, r64 min, r64 max);
+	i8 ClampI8(i8 value, i8 min, i8 max);
+	i16 ClampI16(i16 value, i16 min, i16 max);
+	i32 ClampI32(i32 value, i32 min, i32 max);
+	i64 ClampI64(i64 value, i64 min, i64 max);
+	u8 ClampU8(u8 value, u8 min, u8 max);
+	u16 ClampU16(u16 value, u16 min, u16 max);
+	u32 ClampU32(u32 value, u32 min, u32 max);
+	u64 ClampU64(u64 value, u64 min, u64 max);
+	
+	r32 LerpR32(r32 val1, r32 val2, r32 amount);
+	r64 LerpR64(r64 val1, r64 val2, r64 amount);
+	
+	r32 LerpClampR32(r32 val1, r32 val2, r32 amount);
+	r64 LerpClampR64(r64 val1, r64 val2, r64 amount);
+	
+	r32 InverseLerpR32(r32 start, r32 end, r32 value, bool clamp = false);
+	r64 InverseLerpR64(r64 start, r64 end, r64 value, bool clamp = false);
+	
+	r32 DecimalPartR32(r32 value);
+	r64 DecimalPartR64(r64 value);
+	
+	r32 ModR32(r32 numerator, r32 denominator);
+	r64 ModR64(r64 numerator, r64 denominator);
+	
+	u8 StoreI8inU8(i8 value);
+	i8 ReadI8FromU8(u8 value);
+	
+	i8 ClampI32toI8(i32 value);
+	u8 ClampI32toU8(i32 value);
+	i16 ClampI32toI16(i32 value);
+	u32 ClampI32toU32(i32 value);
+	i32 ClampU32toI32(u32 value);
+	i16 ClampR32toI16(r32 value);
+	
+	i8 ConvertSampleR64ToI8(r64 sample);
+	i16 ConvertSampleR64ToI16(r64 sample);
+	i32 ConvertSampleR64ToI32(r64 sample);
+	r64 ConvertSampleI8ToR64(i8 sampleI8);
+	r64 ConvertSampleI16ToR64(i16 sampleI16);
+	r64 ConvertSampleI32ToR64(i32 sampleI32);
+	
+	bool BasicallyEqualR32(r32 value1, r32 value2, r32 tolerance = 0.001f);
+	bool BasicallyEqualR64(r64 value1, r64 value2, r64 tolerance = 0.001);
+	
+	bool BasicallyGreaterThanR32(r32 value1, r32 value2, r32 tolerance = 0.001f);
+	bool BasicallyGreaterThanR64(r64 value1, r64 value2, r64 tolerance = 0.001);
+	
+	bool BasicallyLessThanR32(r32 value1, r32 value2, r32 tolerance = 0.001f);
+	bool BasicallyLessThanR64(r64 value1, r64 value2, r64 tolerance = 0.001);
+	
+	bool BasicallyBetweenR32(r32 value, r32 min, r32 max, r32 tolerance = 0.001f);
+	bool BasicallyBetweenR64(r64 value, r64 min, r64 max, r64 tolerance = 0.001);
+	
+	u8 FlagsDiffU8(u8 flags1, u8 flags2);
+	
+	u8 AbsDiffU8(u8 value1, u8 value2);
+	u16 AbsDiffU16(u16 value1, u16 value2);
+	u32 AbsDiffU32(u32 value1, u32 value2);
+	u64 AbsDiffU64(u64 value1, u64 value2);
+	i8 AbsDiffI8(i8 value1, i8 value2);
+	i16 AbsDiffI16(i16 value1, i16 value2);
+	i32 AbsDiffI32(i32 value1, i32 value2);
+	i64 AbsDiffI64(i64 value1, i64 value2);
+	
+	bool IsInfiniteR32(r32 value);
+	bool IsInfiniteR64(r64 value);
+	
+	u32 RoundUpToU32(u32 value, u32 chunkSize);
+	u64 RoundUpToU64(u64 value, u64 chunkSize);
+	i32 RoundUpToI32(i32 value, i32 chunkSize);
+	i64 RoundUpToI64(i64 value, i64 chunkSize);
+	
+	r32 SubAnimAmountR32(r32 animAmount, r32 subPieceStart, r32 subPieceEnd);
+	r64 SubAnimAmountR64(r64 animAmount, r64 subPieceStart, r64 subPieceEnd);
+	
+	r32 SubAnimAmountTwoWayR32(r32 animAmount, r32 subPieceStart, r32 subPieceEnd);
+	r64 SubAnimAmountTwoWayR64(r64 animAmount, r64 subPieceStart, r64 subPieceEnd);
+	
+	r32 AngleFixR32(r32 angle);
+	r64 AngleFixR64(r64 angle);
+	
+	r32 AngleDiffR32(r32 left, r32 right);
+	r64 AngleDiffR64(r64 left, r64 right);
+	
+	r32 AngleOppositeR32(r32 angle);
+	r64 AngleOppositeR64(r64 angle);
+	
+	r32 AngleFlipVerticalR32(r32 angle, bool normalize = true);
+	r64 AngleFlipVerticalR64(r64 angle, bool normalize = true);
+	
+	r32 AngleFlipHorizontalR32(r32 angle, bool normalize = true);
+	r64 AngleFlipHorizontalR64(r64 angle, bool normalize = true);
+	
+	r32 AngleLerpR32(r32 angleFrom, r32 angleTo, r32 amount);
+	r64 AngleLerpR64(r64 angleFrom, r64 angleTo, r64 amount);
+#else
+
+// +--------------------------------------------------------------+
 // |                        Min Functions                         |
 // +--------------------------------------------------------------+
 	inline u32 MinU32(u32 value1, u32 value2)
@@ -1287,6 +1575,8 @@ r64 AngleLerpR64(r64 angleFrom, r64 angleTo, r64 amount)
 	if (to - from < -Pi32) { to += TwoPi32; }
 	return from + (to - from) * amount;
 }
+
+#endif //GYLIB_HEADER_ONLY
 
 // +--------------------------------------------------------------+
 // |                     Threading Intrinsics                     |

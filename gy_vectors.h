@@ -162,59 +162,6 @@ typedef Vector3i_t v3i;
 typedef Vector4i_t v4i;
 
 // +--------------------------------------------------------------+
-// |                        New Functions                         |
-// +--------------------------------------------------------------+
-Vector2_t NewVec2(r32 x, r32 y)
-{
-	Vector2_t result;
-	result.x = x;
-	result.y = y;
-	return result;
-}
-Vector3_t NewVec3(r32 x, r32 y, r32 z)
-{
-	Vector3_t result;
-	result.x = x;
-	result.y = y;
-	result.z = z;
-	return result;
-}
-Vector4_t NewVec4(r32 x, r32 y, r32 z, r32 w)
-{
-	Vector4_t result;
-	result.x = x;
-	result.y = y;
-	result.z = z;
-	result.w = w;
-	return result;
-}
-
-Vector2i_t NewVec2i(i32 x, i32 y)
-{
-	Vector2i_t result;
-	result.x = x;
-	result.y = y;
-	return result;
-}
-Vector3i_t NewVec3i(i32 x, i32 y, i32 z)
-{
-	Vector3i_t result;
-	result.x = x;
-	result.y = y;
-	result.z = z;
-	return result;
-}
-Vector4i_t NewVec4i(i32 x, i32 y, i32 z, i32 w)
-{
-	Vector4i_t result;
-	result.x = x;
-	result.y = y;
-	result.z = z;
-	result.w = w;
-	return result;
-}
-
-// +--------------------------------------------------------------+
 // |                   Simple Value Definitions                   |
 // +--------------------------------------------------------------+
 #define Vec2_Zero      NewVec2( 0.0f,  0.0f)
@@ -289,6 +236,256 @@ Vector4i_t NewVec4i(i32 x, i32 y, i32 z, i32 w)
 #define Vec4i_Forward   NewVec4i( 0,  0,  1, 0)
 #define Vec4i_Prevward  NewVec4i( 0,  0,  0,-1)
 #define Vec4i_Nextward  NewVec4i( 0,  0,  0, 1)
+
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	Vector2_t NewVec2(r32 x, r32 y);
+	Vector3_t NewVec3(r32 x, r32 y, r32 z);
+	Vector4_t NewVec4(r32 x, r32 y, r32 z, r32 w);
+	Vector2i_t NewVec2i(i32 x, i32 y);
+	Vector3i_t NewVec3i(i32 x, i32 y, i32 z);
+	Vector4i_t NewVec4i(i32 x, i32 y, i32 z, i32 w);
+	v2 ToVec2(v2i vector);
+	v3 ToVec3(v3i vector);
+	v4 ToVec4(v4i vector);
+	v4 ToVec4(v3 vector, r32 w);
+	v2 Vec3_xy(v3 vector);
+	v2 Vec3_xz(v3 vector);
+	v2 Vec3_yz(v3 vector);
+	v2 Vec2Floor(v2 vector);
+	v2i Vec2Floori(v2 vector);
+	v3 Vec3Floor(v3 vector);
+	v3i Vec3Floori(v3 vector);
+	v4 Vec4Floor(v4 vector);
+	v4i Vec4Floori(v4 vector);
+	v2 Vec2Ceil(v2 vector);
+	v2i Vec2Ceili(v2 vector);
+	v3 Vec3Ceil(v3 vector);
+	v3i Vec3Ceili(v3 vector);
+	v4 Vec4Ceil(v4 vector);
+	v4i Vec4Ceili(v4 vector);
+	v2 Vec2Round(v2 vector);
+	v2i Vec2Roundi(v2 vector);
+	v3 Vec3Round(v3 vector);
+	v3i Vec3Roundi(v3 vector);
+	v4 Vec4Round(v4 vector);
+	v4i Vec4Roundi(v4 vector);
+	v2 Vec2Max(v2 left, v2 right);
+	v2i Vec2iMax(v2i left, v2i right);
+	v3 Vec3Max(v3 left, v3 right);
+	v3i Vec3iMax(v3i left, v3i right);
+	v4 Vec4Max(v4 left, v4 right);
+	v4i Vec4iMax(v4i left, v4i right);
+	v2 Vec2Min(v2 left, v2 right);
+	v2i Vec2iMin(v2i left, v2i right);
+	v3 Vec3Min(v3 left, v3 right);
+	v3i Vec3iMin(v3i left, v3i right);
+	v4 Vec4Min(v4 left, v4 right);
+	v4i Vec4iMin(v4i left, v4i right);
+	v2i Vec2iAbs(v2i vector);
+	v2 Vec2Abs(v2 vector);
+	v3i Vec3iAbs(v3i vector);
+	v3 Vec3Abs(v3 vector);
+	v4i Vec4iAbs(v4i vector);
+	v4 Vec4Abs(v4 vector);
+	v2 Vec2Fill(r32 value);
+	v2i Vec2iFill(i32 value);
+	v3 Vec3Fill(r32 value);
+	v3i Vec3iFill(i32 value);
+	v4 Vec4Fill(r32 value);
+	v4i Vec4iFill(i32 value);
+	v3 Vec3FromVec2(v2 vector, r32 z);
+	v3i Vec3iFromVec2i(v2i vector, i32 z);
+	v4 Vec4FromVec3(v3 vector, r32 w);
+	v4i Vec4iFromVec3i(v3i vector, i32 w);
+	v2 Vec2Add(v2 left, v2 right);
+	v2 Vec2Subtract(v2 left, v2 right);
+	v2 Vec2Scale(v2 vector, r32 scalar);
+	v2 Vec2Multiply(v2 left, v2 right);
+	v2 Vec2Shrink(v2 vector, r32 divisor);
+	v2 Vec2Divide(v2 left, v2 right);
+	bool Vec2BasicallyEqual(v2 left, v2 right, r32 tolerance = 0.001f);
+	v2i Vec2iAdd(v2i left, v2i right);
+	v2i Vec2iSubtract(v2i left, v2i right);
+	v2i Vec2iScale(v2i vector, i32 scalar);
+	v2i Vec2iMultiply(v2i left, v2i right);
+	bool Vec2iEqual(v2i left, v2i right);
+	v3 Vec3Add(v3 left, v3 right);
+	v3 Vec3Subtract(v3 left, v3 right);
+	v3 Vec3Scale(v3 vector, r32 scalar);
+	v3 Vec3Multiply(v3 left, v3 right);
+	v3 Vec3Shrink(v3 vector, r32 divisor);
+	v3 Vec3Divide(v3 left, v3 right);
+	bool Vec3BasicallyEqual(v3 left, v3 right, r32 tolerance = 0.001f);
+	v3i Vec3iAdd(v3i left, v3i right);
+	v3i Vec3iSubtract(v3i left, v3i right);
+	v3i Vec3iScale(v3i vector, i32 scalar);
+	v3i Vec3iMultiply(v3i left, v3i right);
+	bool Vec3iEqual(v3i left, v3i right);
+	v4 Vec4Add(v4 left, v4 right);
+	v4 Vec4Subtract(v4 left, v4 right);
+	v4 Vec4Scale(v4 vector, r32 scalar);
+	v4 Vec4Multiply(v4 left, v4 right);
+	v4 Vec4Shrink(v4 vector, r32 divisor);
+	v4 Vec4Divide(v4 left, v4 right);
+	bool Vec4BasicallyEqual(v4 left, v4 right, r32 tolerance = 0.001f);
+	v4i Vec4iAdd(v4i left, v4i right);
+	v4i Vec4iSubtract(v4i left, v4i right);
+	v4i Vec4iScale(v4i vector, i32 scalar);
+	v4i Vec4iMultiply(v4i left, v4i right);
+	bool Vec4iEqual(v4i left, v4i right);
+	r32 Vec2Dot(v2 left, v2 right);
+	r32 Vec2Length(v2 vector);
+	r32 Vec2LengthSquared(v2 vector);
+	v2 Vec2Normalize(v2 vector);
+	v2 Vec2PerpRight(v2 vector);
+	v2 Vec2PerpLeft(v2 vector);
+	r32 Vec2Determinant(v2 left, v2 right);
+	r32 Vec2Inner(v2 left, v2 right);
+	v2 Vec2Clamp(v2 vector, v2 min, v2 max);
+	v2 Vec2Lerp(v2 start, v2 end, r32 amount);
+	v2 Vec2Rotate(v2 vector, r32 angle);
+	v2 Vec2FromAngle(r32 angle, r32 radius = 1.0f);
+	r32 Vec2AngleBetween(v2 vecLeft, v2 vecRight);
+	i32 Vec2iDot(v2i left, v2i right);
+	r32 Vec2iLength(v2i vector);
+	v2 Vec2iNormalize(v2i vector);
+	v2i Vec2iPerpRight(v2i vector);
+	v2i Vec2iPerpLeft(v2i vector);
+	i32 Vec2iDeterminant(v2i left, v2i right);
+	v2i Vec2iClamp(v2i vector, v2i min, v2i max);
+	r32 Vec3Dot(v3 left, v3 right);
+	r32 Vec3Length(v3 vector);
+	v3 Vec3Normalize(v3 vector);
+	r32 Vec3Determinant(v3 left, v3 right);
+	r32 Vec3Inner(v3 left, v3 right);
+	v3 Vec3Clamp(v3 vector, v3 min, v3 max);
+	v3 Vec3Lerp(v3 start, v3 end, r32 amount);
+	v3 Vec3Cross(v3 left, v3 right);
+	r32 Vec3AngleBetween(v3 vecLeft, v3 vecRight);
+	v3 Vec3From2Angles(r32 facingDirection, r32 rotationUpDown, r32 radius = 1.0f);
+	i32 Vec3iDot(v3i left, v3i right);
+	r32 Vec3iLength(v3i vector);
+	v3 Vec3iNormalize(v3i vector);
+	i32 Vec3iDeterminant(v3i left, v3i right);
+	v3i Vec3iClamp(v3i vector, v3i min, v3i max);
+	v3i Vec3iCross(v3i left, v3i right);
+	r32 Vec4Dot(v4 left, v4 right);
+	r32 Vec4Length(v4 vector);
+	v4 Vec4Normalize(v4 vector);
+	r32 Vec4Determinant(v4 left, v4 right);
+	r32 Vec4Inner(v4 left, v4 right);
+	v4 Vec4Clamp(v4 vector, v4 min, v4 max);
+	v4 Vec4Lerp(v4 start, v4 end, r32 amount);
+	i32 Vec4iDot(v4i left, v4i right);
+	r32 Vec4iLength(v4i vector);
+	v4 Vec4iNormalize(v4i vector);
+	i32 Vec4iDeterminant(v4i left, v4i right);
+	v4i Vec4iClamp(v4i vector, v4i min, v4i max);
+	void Vec2Align(v2* vectorOut, r32 alignmentScale = 1.0f);
+	void Vec3Align(v3* vectorOut, r32 alignmentScale = 1.0f);
+	void Vec4Align(v4* vectorOut, r32 alignmentScale = 1.0f);
+	v2 operator - (v2 vector);
+	v2 operator + (v2 left, v2 right);
+	v2 operator - (v2 left, v2 right);
+	v2 operator * (v2 vector, r32 scalar);
+	v2 operator * (r32 scalar, v2 vector);
+	v2 operator / (v2 vector, r32 scalar);
+	bool operator == (v2 left, v2 right);
+	bool operator != (v2 left, v2 right);
+	v2i operator - (v2i vector);
+	v2i operator + (v2i left, v2i right);
+	v2i operator - (v2i left, v2i right);
+	v2i operator * (v2i vector, i32 scalar);
+	v2i operator * (i32 scalar, v2i vector);
+	bool operator == (v2i left, v2i right);
+	bool operator != (v2i left, v2i right);
+	v3 operator - (v3 vector);
+	v3 operator + (v3 left, v3 right);
+	v3 operator - (v3 left, v3 right);
+	v3 operator * (v3 vector, r32 scalar);
+	v3 operator * (r32 scalar, v3 vector);
+	v3 operator / (v3 vector, r32 scalar);
+	bool operator == (v3 left, v3 right);
+	bool operator != (v3 left, v3 right);
+	v3i operator - (v3i vector);
+	v3i operator + (v3i left, v3i right);
+	v3i operator - (v3i left, v3i right);
+	v3i operator * (v3i vector, i32 scalar);
+	v3i operator * (i32 scalar, v3i vector);
+	bool operator == (v3i left, v3i right);
+	bool operator != (v3i left, v3i right);
+	v4 operator - (v4 vector);
+	v4 operator + (v4 left, v4 right);
+	v4 operator - (v4 left, v4 right);
+	v4 operator * (v4 vector, r32 scalar);
+	v4 operator * (r32 scalar, v4 vector);
+	v4 operator / (v4 vector, r32 scalar);
+	bool operator == (v4 left, v4 right);
+	bool operator != (v4 left, v4 right);
+	v4i operator - (v4i vector);
+	v4i operator + (v4i left, v4i right);
+	v4i operator - (v4i left, v4i right);
+	v4i operator * (v4i vector, i32 scalar);
+	v4i operator * (i32 scalar, v4i vector);
+	bool operator == (v4i left, v4i right);
+	bool operator != (v4i left, v4i right);
+#else
+
+// +--------------------------------------------------------------+
+// |                        New Functions                         |
+// +--------------------------------------------------------------+
+Vector2_t NewVec2(r32 x, r32 y)
+{
+	Vector2_t result;
+	result.x = x;
+	result.y = y;
+	return result;
+}
+Vector3_t NewVec3(r32 x, r32 y, r32 z)
+{
+	Vector3_t result;
+	result.x = x;
+	result.y = y;
+	result.z = z;
+	return result;
+}
+Vector4_t NewVec4(r32 x, r32 y, r32 z, r32 w)
+{
+	Vector4_t result;
+	result.x = x;
+	result.y = y;
+	result.z = z;
+	result.w = w;
+	return result;
+}
+
+Vector2i_t NewVec2i(i32 x, i32 y)
+{
+	Vector2i_t result;
+	result.x = x;
+	result.y = y;
+	return result;
+}
+Vector3i_t NewVec3i(i32 x, i32 y, i32 z)
+{
+	Vector3i_t result;
+	result.x = x;
+	result.y = y;
+	result.z = z;
+	return result;
+}
+Vector4i_t NewVec4i(i32 x, i32 y, i32 z, i32 w)
+{
+	Vector4i_t result;
+	result.x = x;
+	result.y = y;
+	result.z = z;
+	result.w = w;
+	return result;
+}
 
 // +--------------------------------------------------------------+
 // |                 Simple Conversions and Casts                 |
@@ -1411,56 +1608,58 @@ void Vec4Align(v4* vectorOut, r32 alignmentScale = 1.0f)
 // +--------------------------------------------------------------+
 // |                      Operator Overloads                      |
 // +--------------------------------------------------------------+
-inline v2 operator - (v2 vector)               { return NewVec2(-vector.x, -vector.y); }
-inline v2 operator + (v2 left, v2 right)       { return Vec2Add(left, right); }
-inline v2 operator - (v2 left, v2 right)       { return Vec2Subtract(left, right); }
-inline v2 operator * (v2 vector, r32 scalar)   { return Vec2Scale(vector, scalar); }
-inline v2 operator * (r32 scalar, v2 vector)   { return Vec2Scale(vector, scalar); }
-inline v2 operator / (v2 vector, r32 scalar)   { return Vec2Shrink(vector, scalar); }
-inline bool operator == (v2 left, v2 right)    { return (left.x == right.x && left.y == right.y); }
-inline bool operator != (v2 left, v2 right)    { return (left.x != right.x || left.y != right.y); }
+v2 operator - (v2 vector)               { return NewVec2(-vector.x, -vector.y); }
+v2 operator + (v2 left, v2 right)       { return Vec2Add(left, right); }
+v2 operator - (v2 left, v2 right)       { return Vec2Subtract(left, right); }
+v2 operator * (v2 vector, r32 scalar)   { return Vec2Scale(vector, scalar); }
+v2 operator * (r32 scalar, v2 vector)   { return Vec2Scale(vector, scalar); }
+v2 operator / (v2 vector, r32 scalar)   { return Vec2Shrink(vector, scalar); }
+bool operator == (v2 left, v2 right)    { return (left.x == right.x && left.y == right.y); }
+bool operator != (v2 left, v2 right)    { return (left.x != right.x || left.y != right.y); }
 
-inline v2i operator - (v2i vector)             { return NewVec2i(-vector.x, -vector.y); }
-inline v2i operator + (v2i left, v2i right)    { return Vec2iAdd(left, right); }
-inline v2i operator - (v2i left, v2i right)    { return Vec2iSubtract(left, right); }
-inline v2i operator * (v2i vector, i32 scalar) { return Vec2iScale(vector, scalar); }
-inline v2i operator * (i32 scalar, v2i vector) { return Vec2iScale(vector, scalar); }
-inline bool operator == (v2i left, v2i right)  { return (left.x == right.x && left.y == right.y); }
-inline bool operator != (v2i left, v2i right)  { return (left.x != right.x || left.y != right.y); }
+v2i operator - (v2i vector)             { return NewVec2i(-vector.x, -vector.y); }
+v2i operator + (v2i left, v2i right)    { return Vec2iAdd(left, right); }
+v2i operator - (v2i left, v2i right)    { return Vec2iSubtract(left, right); }
+v2i operator * (v2i vector, i32 scalar) { return Vec2iScale(vector, scalar); }
+v2i operator * (i32 scalar, v2i vector) { return Vec2iScale(vector, scalar); }
+bool operator == (v2i left, v2i right)  { return (left.x == right.x && left.y == right.y); }
+bool operator != (v2i left, v2i right)  { return (left.x != right.x || left.y != right.y); }
 
-inline v3 operator - (v3 vector)               { return NewVec3(-vector.x, -vector.y, -vector.z); }
-inline v3 operator + (v3 left, v3 right)       { return Vec3Add(left, right); }
-inline v3 operator - (v3 left, v3 right)       { return Vec3Subtract(left, right); }
-inline v3 operator * (v3 vector, r32 scalar)   { return Vec3Scale(vector, scalar); }
-inline v3 operator * (r32 scalar, v3 vector)   { return Vec3Scale(vector, scalar); }
-inline v3 operator / (v3 vector, r32 scalar)   { return Vec3Shrink(vector, scalar); }
-inline bool operator == (v3 left, v3 right)    { return (left.x == right.x && left.y == right.y && left.z == right.z); }
-inline bool operator != (v3 left, v3 right)    { return (left.x != right.x || left.y != right.y || left.z != right.z); }
+v3 operator - (v3 vector)               { return NewVec3(-vector.x, -vector.y, -vector.z); }
+v3 operator + (v3 left, v3 right)       { return Vec3Add(left, right); }
+v3 operator - (v3 left, v3 right)       { return Vec3Subtract(left, right); }
+v3 operator * (v3 vector, r32 scalar)   { return Vec3Scale(vector, scalar); }
+v3 operator * (r32 scalar, v3 vector)   { return Vec3Scale(vector, scalar); }
+v3 operator / (v3 vector, r32 scalar)   { return Vec3Shrink(vector, scalar); }
+bool operator == (v3 left, v3 right)    { return (left.x == right.x && left.y == right.y && left.z == right.z); }
+bool operator != (v3 left, v3 right)    { return (left.x != right.x || left.y != right.y || left.z != right.z); }
 
-inline v3i operator - (v3i vector)             { return NewVec3i(-vector.x, -vector.y, -vector.z); }
-inline v3i operator + (v3i left, v3i right)    { return Vec3iAdd(left, right); }
-inline v3i operator - (v3i left, v3i right)    { return Vec3iSubtract(left, right); }
-inline v3i operator * (v3i vector, i32 scalar) { return Vec3iScale(vector, scalar); }
-inline v3i operator * (i32 scalar, v3i vector) { return Vec3iScale(vector, scalar); }
-inline bool operator == (v3i left, v3i right)  { return (left.x == right.x && left.y == right.y && left.z == right.z); }
-inline bool operator != (v3i left, v3i right)  { return (left.x != right.x || left.y != right.y || left.z != right.z); }
+v3i operator - (v3i vector)             { return NewVec3i(-vector.x, -vector.y, -vector.z); }
+v3i operator + (v3i left, v3i right)    { return Vec3iAdd(left, right); }
+v3i operator - (v3i left, v3i right)    { return Vec3iSubtract(left, right); }
+v3i operator * (v3i vector, i32 scalar) { return Vec3iScale(vector, scalar); }
+v3i operator * (i32 scalar, v3i vector) { return Vec3iScale(vector, scalar); }
+bool operator == (v3i left, v3i right)  { return (left.x == right.x && left.y == right.y && left.z == right.z); }
+bool operator != (v3i left, v3i right)  { return (left.x != right.x || left.y != right.y || left.z != right.z); }
 
-inline v4 operator - (v4 vector)               { return NewVec4(-vector.x, -vector.y, -vector.z, -vector.w); }
-inline v4 operator + (v4 left, v4 right)       { return Vec4Add(left, right); }
-inline v4 operator - (v4 left, v4 right)       { return Vec4Subtract(left, right); }
-inline v4 operator * (v4 vector, r32 scalar)   { return Vec4Scale(vector, scalar); }
-inline v4 operator * (r32 scalar, v4 vector)   { return Vec4Scale(vector, scalar); }
-inline v4 operator / (v4 vector, r32 scalar)   { return Vec4Shrink(vector, scalar); }
-inline bool operator == (v4 left, v4 right)    { return (left.x == right.x && left.y == right.y && left.z == right.z && left.w == right.w); }
-inline bool operator != (v4 left, v4 right)    { return (left.x != right.x || left.y != right.y || left.z != right.z || left.w != right.w); }
+v4 operator - (v4 vector)               { return NewVec4(-vector.x, -vector.y, -vector.z, -vector.w); }
+v4 operator + (v4 left, v4 right)       { return Vec4Add(left, right); }
+v4 operator - (v4 left, v4 right)       { return Vec4Subtract(left, right); }
+v4 operator * (v4 vector, r32 scalar)   { return Vec4Scale(vector, scalar); }
+v4 operator * (r32 scalar, v4 vector)   { return Vec4Scale(vector, scalar); }
+v4 operator / (v4 vector, r32 scalar)   { return Vec4Shrink(vector, scalar); }
+bool operator == (v4 left, v4 right)    { return (left.x == right.x && left.y == right.y && left.z == right.z && left.w == right.w); }
+bool operator != (v4 left, v4 right)    { return (left.x != right.x || left.y != right.y || left.z != right.z || left.w != right.w); }
 
-inline v4i operator - (v4i vector)             { return NewVec4i(-vector.x, -vector.y, -vector.z, -vector.w); }
-inline v4i operator + (v4i left, v4i right)    { return Vec4iAdd(left, right); }
-inline v4i operator - (v4i left, v4i right)    { return Vec4iSubtract(left, right); }
-inline v4i operator * (v4i vector, i32 scalar) { return Vec4iScale(vector, scalar); }
-inline v4i operator * (i32 scalar, v4i vector) { return Vec4iScale(vector, scalar); }
-inline bool operator == (v4i left, v4i right)  { return (left.x == right.x && left.y == right.y && left.z == right.z && left.w == right.w); }
-inline bool operator != (v4i left, v4i right)  { return (left.x != right.x || left.y != right.y || left.z != right.z || left.w != right.w); }
+v4i operator - (v4i vector)             { return NewVec4i(-vector.x, -vector.y, -vector.z, -vector.w); }
+v4i operator + (v4i left, v4i right)    { return Vec4iAdd(left, right); }
+v4i operator - (v4i left, v4i right)    { return Vec4iSubtract(left, right); }
+v4i operator * (v4i vector, i32 scalar) { return Vec4iScale(vector, scalar); }
+v4i operator * (i32 scalar, v4i vector) { return Vec4iScale(vector, scalar); }
+bool operator == (v4i left, v4i right)  { return (left.x == right.x && left.y == right.y && left.z == right.z && left.w == right.w); }
+bool operator != (v4i left, v4i right)  { return (left.x != right.x || left.y != right.y || left.z != right.z || left.w != right.w); }
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_VECTORS_H
 

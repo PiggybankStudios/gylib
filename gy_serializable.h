@@ -43,6 +43,42 @@ struct JoinedSerializableContext_t
 	Serializable_t serializables[MAX_JOINED_SERIALIZABLES];
 };
 
+SERIALIZE_FUNC_DEFINITION(Serialize_JoinedSerializable);
+DESERIALIZE_FUNC_DEFINITION(Deserialize_JoinedSerializable);
+#ifdef GYLIB_HEADER_ONLY
+extern SerializableFuncs_t SzFuncs_JoinedSerializable;
+#else
+SerializableFuncs_t SzFuncs_JoinedSerializable = { Serialize_JoinedSerializable, Deserialize_JoinedSerializable };
+#endif
+
+// +--------------------------------------------------------------+
+// |                            Macros                            |
+// +--------------------------------------------------------------+
+#define NewSerializable(funcs, structPntr)                         NewSerializable_((funcs), sizeof(*(structPntr)), (structPntr))
+#define NewSerializableWithContext(funcs, structPntr, contextPntr) NewSerializable_((funcs), sizeof(*(structPntr)), (structPntr), (contextPntr)) 
+
+#define Serializable_Empty { { nullptr, nullptr }, 0, nullptr, nullptr }
+
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	Serializable_t NewSerializable_(SerializableFuncs_t funcs, u64 structSize, void* structPntr, void* contextPntr = nullptr);
+	Serializable_t NewSerializable_(SerializableFuncs_t funcs, u64 structSize, const void* structPntr, void* contextPntr = nullptr);
+	Serializable_t NewJoinedSerializable_(JoinedSerializableContext_t* context);
+	Serializable_t NewJoinedSerializableEmpty(JoinedSerializableContext_t* contextStructPntr);
+	Serializable_t NewJoinedSerializable(JoinedSerializableContext_t* contextStructPntr, Serializable_t serializable1, Serializable_t serializable2);
+	Serializable_t NewJoinedSerializable(JoinedSerializableContext_t* contextStructPntr, Serializable_t serializable1, Serializable_t serializable2, Serializable_t serializable3);
+	Serializable_t NewJoinedSerializable(JoinedSerializableContext_t* contextStructPntr, Serializable_t serializable1, Serializable_t serializable2, Serializable_t serializable3, Serializable_t serializable4);
+	void JoinedSerializableAppend(Serializable_t* joinedSerializable, Serializable_t newSerializable);
+	bool AreSerializablesEqual(const Serializable_t left, const Serializable_t right);
+	bool IsEmpty(const Serializable_t serializable);
+	MyStr_t Serialize(Serializable_t serializable, MemArena_t* memArena);
+	bool Deserialize(Serializable_t serializable, MyStr_t serializedData, MemArena_t* memArena = nullptr);
+	SERIALIZE_FUNC_DEFINITION(Serialize_JoinedSerializable);
+	DESERIALIZE_FUNC_DEFINITION(Deserialize_JoinedSerializable);
+#else
+
 // +--------------------------------------------------------------+
 // |                        New Functions                         |
 // +--------------------------------------------------------------+
@@ -59,17 +95,10 @@ Serializable_t NewSerializable_(SerializableFuncs_t funcs, u64 structSize, const
 {
 	return NewSerializable_(funcs, structSize, (void*)structPntr, contextPntr);
 }
-#define NewSerializable(funcs, structPntr)                         NewSerializable_((funcs), sizeof(*(structPntr)), (structPntr))
-#define NewSerializableWithContext(funcs, structPntr, contextPntr) NewSerializable_((funcs), sizeof(*(structPntr)), (structPntr), (contextPntr)) 
-
-#define Serializable_Empty { { nullptr, nullptr }, 0, nullptr, nullptr }
 
 // +--------------------------------------------------------------+
 // |                    New JoinedSerializable                    |
 // +--------------------------------------------------------------+
-SERIALIZE_FUNC_DEFINITION(Serialize_JoinedSerializable);
-DESERIALIZE_FUNC_DEFINITION(Deserialize_JoinedSerializable);
-SerializableFuncs_t SzFuncs_JoinedSerializable = { Serialize_JoinedSerializable, Deserialize_JoinedSerializable };
 Serializable_t NewJoinedSerializable_(JoinedSerializableContext_t* context) { return NewSerializable(SzFuncs_JoinedSerializable, context); }
 
 Serializable_t NewJoinedSerializableEmpty(JoinedSerializableContext_t* contextStructPntr)
@@ -224,4 +253,38 @@ DESERIALIZE_FUNC_DEFINITION(Deserialize_JoinedSerializable)
 	return false;
 }
 
+#endif //GYLIB_HEADER_ONLY
+
 #endif //  _GY_SERIALIZABLE_H
+
+// +--------------------------------------------------------------+
+// |                   Autocomplete Dictionary                    |
+// +--------------------------------------------------------------+
+/*
+@Defines
+MAX_JOINED_SERIALIZABLES
+Serializable_Empty
+@Types
+SerializeFunc_f
+DeserializeFunc_f
+SerializableFuncs_t
+Serializable_t
+JoinedSerializableContext_t
+@Globals
+SzFuncs_JoinedSerializable
+@Functions
+MyStr_t SERIALIZE_FUNC_DEFINITION(u64 structSize, const void* structPntr, MemArena_t* memArena, void* contextPntr)
+bool DESERIALIZE_FUNC_DEFINITION(MyStr_t serializedData, u64 structOutSize, void* structOutPntr, MemArena_t* memArena, void* contextPntr)
+#define NewSerializable(funcs, structPntr)
+#define NewSerializableWithContext(funcs, structPntr, contextPntr)
+Serializable_t NewSerializable_(SerializableFuncs_t funcs, u64 structSize, void* structPntr, void* contextPntr = nullptr)
+Serializable_t NewJoinedSerializableEmpty(JoinedSerializableContext_t* contextStructPntr)
+Serializable_t NewJoinedSerializable(JoinedSerializableContext_t* contextStructPntr, Serializable_t serializable1, Serializable_t serializable2, Serializable_t serializable3 = {}, Serializable_t serializable4 = {})
+void JoinedSerializableAppend(Serializable_t* joinedSerializable, Serializable_t newSerializable)
+bool AreSerializablesEqual(const Serializable_t left, const Serializable_t right)
+bool IsEmpty(const Serializable_t serializable)
+MyStr_t Serialize(Serializable_t serializable, MemArena_t* memArena)
+bool Deserialize(Serializable_t serializable, MyStr_t serializedData, MemArena_t* memArena = nullptr)
+MyStr_t Serialize_JoinedSerializable(u64 structSize, const void* structPntr, MemArena_t* memArena, void* contextPntr)
+bool Deserialize_JoinedSerializable(MyStr_t serializedData, u64 structOutSize, void* structOutPntr, MemArena_t* memArena, void* contextPntr)
+*/

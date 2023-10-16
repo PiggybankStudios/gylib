@@ -27,6 +27,32 @@ struct StringBuilder_t
 };
 
 // +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	void FreeStringBuilder(StringBuilder_t* builder);
+	void NewStringBuilder(StringBuilder_t* builder, MemArena_t* memArena, u64 initialRequiredCapacity = 0);
+	MyStr_t ToMyStr(const StringBuilder_t* builder);
+	char* ToStr(StringBuilder_t* builder);
+	u64 StringBuilderGetNumUnusedBytes(StringBuilder_t* builder, bool includeMemArenaSpace = false, GrowMemToken_t* growTokenOut = nullptr);
+	void StringBuilderShrink(StringBuilder_t* builder, bool deallocateIfNoChars = true);
+	MyStr_t TakeString(StringBuilder_t* builder, MemArena_t* memArena = nullptr);
+	void StringBuilderAllocMoreMem(StringBuilder_t* builder, u64 spaceRequired);
+	void StringBuilderClear(StringBuilder_t* builder, bool deallocate = false);
+	void StringBuilderAppend(StringBuilder_t* builder, MyStr_t str);
+	void StringBuilderAppend(StringBuilder_t* builder, const char* nullTermStr);
+	void StringBuilderAppendLine(StringBuilder_t* builder);
+	void StringBuilderAppendLine(StringBuilder_t* builder, MyStr_t str);
+	void StringBuilderAppendLine(StringBuilder_t* builder, const char* nullTermStr);
+	void StringBuilderSet(StringBuilder_t* builder, MyStr_t str);
+	void StringBuilderSet(StringBuilder_t* builder, const char* nullTermStr);
+	void StringBuilderAppendPrintVa(StringBuilder_t* builder, const char* formatString, va_list args1, va_list args2);
+	void StringBuilderAppendPrint(StringBuilder_t* builder, const char* formatString, ...);
+	void StringBuilderAppendPrintLine(StringBuilder_t* builder, const char* formatString, ...);
+	void StringBuilderPrint(StringBuilder_t* builder, const char* formatString, ...);
+#else
+
+// +--------------------------------------------------------------+
 // |                    New and Free Functions                    |
 // +--------------------------------------------------------------+
 void FreeStringBuilder(StringBuilder_t* builder)
@@ -341,6 +367,8 @@ void StringBuilderPrint(StringBuilder_t* builder, const char* formatString, ...)
 }
 
 //TODO: void StringBuilderReplace(StringBuilder_t* builder, MyStr_t target, MyStr_t replacement, bool ignoreCase = true)
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_STRING_BUILDER_H
 

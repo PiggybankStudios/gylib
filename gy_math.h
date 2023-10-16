@@ -18,6 +18,32 @@ Description:
 #include "gy_intrinsics.h"
 
 // +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	bool IsTriangleClockwise(v2 p0, v2 p1, v2 p2);
+	bool IsInsideTriangle(v2 p0, v2 p1, v2 p2, v2 test);
+	bool MinNoInfinitiesR32(r32 value1, r32 value2, r32* outValue, u8* whichIsMaxOut = nullptr);
+	bool MinNoInfinitiesR64(r64 value1, r64 value2, r64* outValue, u8* whichIsMaxOut = nullptr);
+	bool MinNoInfinitiesR32(r32 value1, r32 value2, r32 value3, r32* outValue, u8* whichIsMaxOut = nullptr);
+	bool MinNoInfinitiesR64(r64 value1, r64 value2, r64 value3, r64* outValue, u8* whichIsMaxOut = nullptr);
+	bool MaxNoInfinitiesR32(r32 value1, r32 value2, r32* outValue, u8* whichIsMaxOut = nullptr);
+	bool MaxNoInfinitiesR64(r64 value1, r64 value2, r64* outValue, u8* whichIsMaxOut = nullptr);
+	bool MaxNoInfinitiesR32(r32 value1, r32 value2, r32 value3, r32* outValue, u8* whichIsMaxOut = nullptr);
+	bool MaxNoInfinitiesR64(r64 value1, r64 value2, r64 value3, r64* outValue, u8* whichIsMaxOut = nullptr);
+	u8 NumDecimalDigitsU32(u32 number);
+	u8 NumDecimalDigitsU64(u64 number);
+	void ReduceRatioU32(u32* num1, u32* num2);
+	void ReduceRatioU64(u64* num1, u64* num2);
+	v2 ClosestPointOnLine(v2 lineStart, v2 lineEnd, v2 point);
+	v3 ClosestPointOnLine(v3 lineStart, v3 lineEnd, v3 point);
+	r32 AngleFromVec2(v2 vector);
+	r32 AngleFromVec2(r32 x, r32 y);
+	u64 PowerOfTwoGreaterThanOrEqualTo(u64 value, u8* powerOut = nullptr);
+	u64 TimeSinceBy(u64 timeSource, u64 programTimeSnapshot);
+#else
+
+// +--------------------------------------------------------------+
 // |                  Triangle Related Functions                  |
 // +--------------------------------------------------------------+
 bool IsTriangleClockwise(v2 p0, v2 p1, v2 p2)
@@ -420,6 +446,8 @@ u64 TimeSinceBy(u64 timeSource, u64 programTimeSnapshot)
 		return 0;
 	}
 }
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_MATH_H
 

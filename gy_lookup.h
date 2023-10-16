@@ -28,6 +28,9 @@ Description:
 #error You must define GYLIB_LOOKUP_PRIMES_[10-10000] before including gy_lookup.h
 #endif
 
+#ifdef GYLIB_HEADER_ONLY
+extern const u32 PrimeNumbersU32[PrimeNumbersU32_Count];
+#else
 const u32 PrimeNumbersU32[PrimeNumbersU32_Count] =
 {
 	      2UL,      3UL,      5UL,      7UL,     11UL,     13UL,     17UL,     19UL,     23UL,     29UL,
@@ -1037,6 +1040,7 @@ const u32 PrimeNumbersU32[PrimeNumbersU32_Count] =
 	#endif
 	#endif
 };
+#endif
 
 #endif //  _GY_LOOKUP_H
 
