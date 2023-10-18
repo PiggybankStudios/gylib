@@ -24,12 +24,25 @@ Description:
 #define GYLIB_GET_TEMP_ARENA_DEF(functionName) MemArena_t* functionName()
 typedef GYLIB_GET_TEMP_ARENA_DEF(GetTempArena_f);
 
-MemArena_t* TempArena = nullptr;
-MemArena_t* GetTempArena_Stub()
-{
-	return TempArena;
-}
-static GetTempArena_f* GetTempArena = GetTempArena_Stub;
+#if defined(GYLIB_TEMP_MEMORY_STATIC)
+	static MemArena_t* TempArena = nullptr;
+	static MemArena_t* GetTempArena_Stub()
+	{
+		return TempArena;
+	}
+	static GetTempArena_f* GetTempArena = GetTempArena_Stub;
+#elif defined(GYLIB_HEADER_ONLY)
+	extern MemArena_t* TempArena;
+	MemArena_t* GetTempArena_Stub();
+	extern GetTempArena_f* GetTempArena;
+#else
+	MemArena_t* TempArena = nullptr;
+	MemArena_t* GetTempArena_Stub()
+	{
+		return TempArena;
+	}
+	GetTempArena_f* GetTempArena = GetTempArena_Stub;
+#endif
 
 // +--------------------------------------------------------------+
 // |                         Alloc Macros                         |
@@ -55,6 +68,12 @@ static GetTempArena_f* GetTempArena = GetTempArena_Stub;
 // |                        Format Macros                         |
 // +--------------------------------------------------------------+
 #if defined(_GY_TIME_H ) && defined(_GY_STRING_H)
+#ifdef GYLIB_HEADER_ONLY
+	MyStr_t TempFormatRealTime(const RealTime_t* realTime, bool includeDayOfWeek = true, bool includeHourMinuteSecond = true, bool includeMonthDayYear = true);
+	const char* TempFormatRealTimeNt(const RealTime_t* realTime, bool includeDayOfWeek = true, bool includeHourMinuteSecond = true, bool includeMonthDayYear = true);
+	MyStr_t TempFormatMilliseconds(u64 milliseconds);
+	const char* TempFormatMillisecondsNt(u64 milliseconds);
+#else
 MyStr_t TempFormatRealTime(const RealTime_t* realTime, bool includeDayOfWeek = true, bool includeHourMinuteSecond = true, bool includeMonthDayYear = true)
 {
 	return FormatRealTime(realTime, TempArena, includeDayOfWeek, includeHourMinuteSecond, includeMonthDayYear);
@@ -71,6 +90,7 @@ const char* TempFormatMillisecondsNt(u64 milliseconds)
 {
 	return FormatMillisecondsNt(milliseconds, TempArena);
 }
+#endif //GYLIB_HEADER_ONLY
 #endif //defined(_GY_TIME_H ) && defined(_GY_STRING_H)
 
 #endif //  _GY_TEMP_MEMORY_CPP
@@ -80,6 +100,7 @@ const char* TempFormatMillisecondsNt(u64 milliseconds)
 // +--------------------------------------------------------------+
 /*
 @Defines
+GYLIB_TEMP_MEMORY_STATIC
 @Types
 @Globals
 TempArena

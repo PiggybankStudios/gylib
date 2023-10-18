@@ -28,9 +28,26 @@ Description:
 // +--------------------------------------------------------------+
 // |                        Main Interface                        |
 // +--------------------------------------------------------------+
+#ifdef GYLIB_SCRATCH_ARENAS_STATIC
+static MemArena_t* GetScratchArena(MemArena_t* avoidConflictWith1 = nullptr, MemArena_t* avoidConflictWith2 = nullptr);
+static void FreeScratchArena(MemArena_t* scratchArena);
+#else
 inline MemArena_t* GetScratchArena(MemArena_t* avoidConflictWith1 = nullptr, MemArena_t* avoidConflictWith2 = nullptr);
 inline void FreeScratchArena(MemArena_t* scratchArena);
+#endif
 
 #endif // GYLIB_SCRATCH_ARENA_AVAILABLE
 
 #endif //  _GY_SCRATCH_ARENAS_H
+
+// +--------------------------------------------------------------+
+// |                   Autocomplete Dictionary                    |
+// +--------------------------------------------------------------+
+/*
+@Defines
+GYLIB_SCRATCH_ARENA_AVAILABLE
+NUM_SCRATCH_ARENAS_PER_THREAD
+@Functions
+MemArena_t* GetScratchArena(MemArena_t* avoidConflictWith1 = nullptr, MemArena_t* avoidConflictWith2 = nullptr)
+void FreeScratchArena(MemArena_t* scratchArena)
+*/
