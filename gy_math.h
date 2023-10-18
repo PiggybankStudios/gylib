@@ -40,7 +40,6 @@ Description:
 	r32 AngleFromVec2(v2 vector);
 	r32 AngleFromVec2(r32 x, r32 y);
 	u64 PowerOfTwoGreaterThanOrEqualTo(u64 value, u8* powerOut = nullptr);
-	u64 TimeSinceBy(u64 timeSource, u64 programTimeSnapshot);
 #else
 
 // +--------------------------------------------------------------+
@@ -433,18 +432,6 @@ u64 PowerOfTwoGreaterThanOrEqualTo(u64 value, u8* powerOut = nullptr)
 	}
 	SetOptionalOutPntr(powerOut, power);
 	return result;
-}
-
-u64 TimeSinceBy(u64 timeSource, u64 programTimeSnapshot)
-{
-	if (programTimeSnapshot <= timeSource)
-	{
-		return timeSource - programTimeSnapshot;
-	}
-	else 
-	{
-		return 0;
-	}
 }
 
 #endif //GYLIB_HEADER_ONLY
