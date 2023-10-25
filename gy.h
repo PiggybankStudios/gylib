@@ -61,6 +61,7 @@ Description:
 #include "gylib/gy_serializable.h"
 #include "gylib/gy_common_serializables.h"
 #include "gylib/gy_simple_parsers.h"
+#include "gylib/gy_resource_manifest.h"
 #include "gylib/gy_collision.h"
 
 #include "gylib/gy_os.h"

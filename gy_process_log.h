@@ -425,7 +425,7 @@ LogGlobals_t
 logGlobals
 @Functions
 void FreeProcessLog(ProcessLog_t* log)
-void CreateProcessLog(ProcessLog_t* logOut, u64 fifoSize, MemArena_t* fifoArena, MemArena_t* logArena, MemArena_t* tempArena)
+void CreateProcessLog(ProcessLog_t* logOut, u64 fifoSize, MemArena_t* fifoArena, MemArena_t* logArena)
 void CreateProcessLogStub(ProcessLog_t* logOut)
 void SetProcessLogFilePath(ProcessLog_t* log, MyStr_t filePath)
 void SetProcessLogName(ProcessLog_t* log, MyStr_t processName)
