@@ -169,6 +169,10 @@ struct SplitStringContext_t
 	bool StrStartsWithSlash(const char* nullTermStr);
 	bool StrEndsWithSlash(MyStr_t str);
 	bool StrEndsWithSlash(const char* nullTermStr);
+	bool SplitStringFixed(MyStr_t target, MyStr_t delineator, u64 numPieces, MyStr_t* piecesBuffer, bool ignoreCase = false);
+	bool SplitStringFixed(MyStr_t target, const char* delineatorNullTerm, u64 numPieces, MyStr_t* piecesBuffer, bool ignoreCase = false);
+	bool SplitStringFixed(const char* targetNullTerm, MyStr_t delineator, u64 numPieces, MyStr_t* piecesBuffer, bool ignoreCase = false);
+	bool SplitStringFixed(const char* targetNullTerm, const char* delineatorNullTerm, u64 numPieces, MyStr_t* piecesBuffer, bool ignoreCase = false);
 	MyStr_t* SplitString(MemArena_t* memArena, MyStr_t target, MyStr_t delineator, u64* numPiecesOut = nullptr, bool ignoreCase = false);
 	MyStr_t* SplitString(MemArena_t* memArena, MyStr_t target, const char* delineatorNt, u64* numPiecesOut = nullptr, bool ignoreCase = false);
 	MyStr_t* SplitString(MemArena_t* memArena, const char* targetNt, MyStr_t delineator, u64* numPiecesOut = nullptr, bool ignoreCase = false);
@@ -913,6 +917,44 @@ bool StrEndsWithSlash(MyStr_t str)
 bool StrEndsWithSlash(const char* nullTermStr)
 {
 	return StrEndsWithSlash(NewStr(nullTermStr));
+}
+
+bool SplitStringFixed(MyStr_t target, MyStr_t delineator, u64 numPieces, MyStr_t* piecesBuffer, bool ignoreCase = false)
+{
+	u64 pieceIndex = 0;
+	u64 prevDelineator = 0;
+	for (u64 cIndex = 0; cIndex + delineator.length <= target.length+1; cIndex++)
+	{
+		bool match = false;
+		if (cIndex + delineator.length > target.length) { match = true; }
+		else if (ignoreCase && StrEqualsIgnoreCase(StrSubstringLength(&target, cIndex, delineator.length), delineator)) { match = true; }
+		else if (!ignoreCase && StrEquals(StrSubstringLength(&target, cIndex, delineator.length), delineator)) { match = true; }
+		if (match)
+		{
+			if (pieceIndex < numPieces)
+			{
+				piecesBuffer[pieceIndex] = StrSubstring(&target, prevDelineator, cIndex);
+				pieceIndex++;
+			}
+			else { return false; }
+			prevDelineator = cIndex + delineator.length;
+			cIndex += delineator.length-1;
+		}
+	}
+	if (pieceIndex != numPieces) { return false; }
+	return true;
+}
+bool SplitStringFixed(MyStr_t target, const char* delineatorNullTerm, u64 numPieces, MyStr_t* piecesBuffer, bool ignoreCase = false)
+{
+	return SplitStringFixed(target, NewStr(delineatorNullTerm), numPieces, piecesBuffer, ignoreCase);
+}
+bool SplitStringFixed(const char* targetNullTerm, MyStr_t delineator, u64 numPieces, MyStr_t* piecesBuffer, bool ignoreCase = false)
+{
+	return SplitStringFixed(NewStr(targetNullTerm), delineator, numPieces, piecesBuffer, ignoreCase);
+}
+bool SplitStringFixed(const char* targetNullTerm, const char* delineatorNullTerm, u64 numPieces, MyStr_t* piecesBuffer, bool ignoreCase = false)
+{
+	return SplitStringFixed(NewStr(targetNullTerm), NewStr(delineatorNullTerm), numPieces, piecesBuffer, ignoreCase);
 }
 
 //TODO: This has some kind of bug when the delineator is 2 or more characters long it chops off the last character (or more?) of the target!
@@ -2060,6 +2102,7 @@ bool StrStartsWith(MyStr_t str, MyStr_t prefix, bool ignoreCase = false)
 bool StrEndsWith(MyStr_t str, MyStr_t suffix, bool ignoreCase = false)
 bool StrStartsWithSlash(MyStr_t str)
 bool StrEndsWithSlash(MyStr_t str)
+bool SplitStringFixed(MyStr_t target, MyStr_t delineator, u64 numPieces, MyStr_t* piecesBuffer, bool ignoreCase = false)
 MyStr_t* SplitString(MemArena_t* memArena, MyStr_t target, MyStr_t delineator, u64* numPiecesOut = nullptr, bool ignoreCase = false)
 u64 UnescapeQuotedStringInPlace(MyStr_t* target, bool removeQuotes = true, bool allowNewLineEscapes = true, bool allowOtherEscapeCodes = false)
 MyStr_t UnescapeQuotedStringInArena(MemArena_t* memArena, MyStr_t target, bool removeQuotes = true, bool allowNewLineEscapes = true, bool allowOtherEscapeCodes = false)

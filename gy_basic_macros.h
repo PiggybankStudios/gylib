@@ -43,7 +43,7 @@ Description:
 
 #define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
 
-#define IsFlagSet(BitwiseField, Bit) (((BitwiseField) & (Bit)) != 0)
+#define IsFlagSet(BitwiseField, Bit) ((Bit) != 0 && ((BitwiseField) & (Bit)) == (Bit))
 #define FlagSet(BitwiseField, Bit)   (BitwiseField) |= (Bit)
 #define FlagUnset(BitwiseField, Bit) (BitwiseField) &= ~(Bit)
 #define FlagToggle(BitwiseField, Bit) ((BitwiseField) ^= (Bit))
