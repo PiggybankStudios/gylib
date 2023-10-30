@@ -209,6 +209,8 @@ struct SplitStringContext_t
 	MyStr_t StringRepeat(MemArena_t* memArena, const char* nullTermStr, u64 numRepetitions);
 	MyStr_t FormatBytes(u64 numBytes, MemArena_t* memArena);
 	const char* FormatBytesNt(u64 numBytes, MemArena_t* memArena);
+	MyStr_t FormatNumberWithCommas(u64 number, MemArena_t* memArena = nullptr);
+	const char* FormatNumberWithCommasNt(u64 number, MemArena_t* memArena = nullptr);
 	u64 FnvHashStr(MyStr_t str);
 	u64 FnvHashStr(const char* nullTermStr);
 	bool IsStringValidIdentifier(MyStr_t str, bool allowUnderscores = true, bool allowNumbers = true, bool allowLeadingNumbers = false, bool allowEmpty = false, bool allowSpaces = false);
@@ -1780,6 +1782,34 @@ const char* FormatBytesNt(u64 numBytes, MemArena_t* memArena)
 	return FormatBytes(numBytes, memArena).pntr;
 }
 
+MyStr_t FormatNumberWithCommas(u64 number, MemArena_t* memArena = nullptr)
+{
+	//Max uint64: 18,446,744,073,709,551,615 (20 digits + 6 commas)
+	static char printBuffer[20 + 6 + 1];
+	int numberLength = MyBufferPrintf(printBuffer, ArrayCount(printBuffer), "%llu", number);
+	if (numberLength >= 0 && numberLength < ArrayCount(printBuffer)) { printBuffer[numberLength] = '\0'; }
+	for (int cIndex = numberLength-3; cIndex > 0; cIndex -= 3)
+	{
+		//Shift all the characters up
+		for (int cIndex2 = ArrayCount(printBuffer)-1; cIndex2 > cIndex; cIndex2--)
+		{
+			printBuffer[cIndex2] = printBuffer[cIndex2-1];
+		}
+		//Insert the comma
+		printBuffer[cIndex] = ',';
+	}
+	MyStr_t result = NewStr(&printBuffer[0]);
+	if (memArena != nullptr)
+	{
+		result = AllocString(memArena, &result);
+	}
+	return result;
+}
+const char* FormatNumberWithCommasNt(u64 number, MemArena_t* memArena = nullptr)
+{
+	return FormatNumberWithCommas(number, memArena).chars;
+}
+
 u64 FnvHashStr(MyStr_t str)
 {
 	return FnvHashU64(str.pntr, str.length);
@@ -2124,6 +2154,8 @@ MyWideStr_t ConvertUtf8StrToUcs2(MemArena_t* memArena, MyStr_t utf8Str)
 bool DoesStrContainMultibyteUtf8Characters(MyStr_t str)
 MyStr_t FormatBytes(u64 numBytes, MemArena_t* memArena)
 const char* FormatBytesNt(u64 numBytes, MemArena_t* memArena)
+MyStr_t FormatNumberWithCommas(u64 number, MemArena_t* memArena = nullptr)
+const char* FormatNumberWithCommasNt(u64 number, MemArena_t* memArena = nullptr)
 u64 FnvHashStr(MyStr_t str)
 bool IsStringValidIdentifier(MyStr_t str, bool allowUnderscores = true, bool allowNumbers = true, bool allowLeadingNumbers = false, bool allowEmpty = false, bool allowSpaces = false)
 void StrReallocAppend(MyStr_t* baseStr, MyStr_t appendStr, MemArena_t* memArena)
