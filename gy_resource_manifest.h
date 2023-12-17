@@ -230,7 +230,7 @@ bool TryDeserResourceManifest(MyStr_t fileContents, ProcessLog_t* log, ResourceM
 			}
 			else
 			{
-				LogPrintLine_W(log, "WARNING: Unknown key %.*s on line %llu", token.key.length, token.key.chars, textParser.lineParser.lineIndex);
+				LogPrintLine_W(log, "WARNING: Unknown key %.*s on line %llu", StrPrint(token.key), textParser.lineParser.lineIndex);
 				log->hadWarnings = true;
 			}
 		}
@@ -240,12 +240,12 @@ bool TryDeserResourceManifest(MyStr_t fileContents, ProcessLog_t* log, ResourceM
 		}
 		else if (token.type == ParsingTokenType_Unknown)
 		{
-			LogPrintLine_W(log, "WARNING: Invalid syntax found on line %llu: \"%.*s\"", textParser.lineParser.lineIndex, token.str.length, token.str.chars);
+			LogPrintLine_W(log, "WARNING: Invalid syntax found on line %llu: \"%.*s\"", textParser.lineParser.lineIndex, StrPrint(token.str));
 			log->hadWarnings = true;
 		}
 		else
 		{
-			LogPrintLine_W(log, "WARNING: Unhandled token type %s on line %llu: \"%.*s\"", GetParsingTokenTypeStr(token.type), textParser.lineParser.lineIndex, token.str.length, token.str.chars);
+			LogPrintLine_W(log, "WARNING: Unhandled token type %s on line %llu: \"%.*s\"", GetParsingTokenTypeStr(token.type), textParser.lineParser.lineIndex, StrPrint(token.str));
 			log->hadWarnings = true;
 		}
 	}

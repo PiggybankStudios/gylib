@@ -429,7 +429,7 @@ bool XmlParserGetToken(XmlParser_t* parser, XmlParseResult_t* result, ProcessLog
 				if (nameGoesTillEndOfLine) { nameEndingCharIndex = workingLine.length; }
 				if (nameEndingCharIndex == 0)
 				{
-					if (log != nullptr) { LogPrintLine_E(log, "No name given for token on line %llu: \"%.*s\"", parser->lineParser.lineIndex, workingLine.length, workingLine.pntr); }
+					if (log != nullptr) { LogPrintLine_E(log, "No name given for token on line %llu: \"%.*s\"", parser->lineParser.lineIndex, StrPrint(workingLine)); }
 					result->type = XmlParseResultType_Error;
 					result->error = XmlParsingError_NoTypeFoundForToken;
 					return true;
@@ -440,14 +440,14 @@ bool XmlParserGetToken(XmlParser_t* parser, XmlParseResult_t* result, ProcessLog
 				{
 					if (nameGoesTillEndOfLine)
 					{
-						if (log != nullptr ) { LogPrintLine_E(log, "Unexpected end of line when parsing closing token on line %llu byte %llu: \"%.*s\"", parser->lineParser.lineIndex, workingStartIndex, workingLine.length, workingLine.pntr); }
+						if (log != nullptr ) { LogPrintLine_E(log, "Unexpected end of line when parsing closing token on line %llu byte %llu: \"%.*s\"", parser->lineParser.lineIndex, workingStartIndex, StrPrint(workingLine)); }
 						result->type = XmlParseResultType_Error;
 						result->error = XmlParsingError_UnexpectedEol;
 						return true;
 					}
 					if (workingLine.pntr[nameEndingCharIndex] != '>')
 					{
-						if (log != nullptr ) { LogPrintLine_E(log, "Expected > instead of 0x%08X \'%c\' when parsing closing token on line %llu byte %llu: \"%.*s\"", CharToU32(workingLine.pntr[nameEndingCharIndex]), workingLine.pntr[nameEndingCharIndex], parser->lineParser.lineIndex, workingStartIndex, workingLine.length, workingLine.pntr); }
+						if (log != nullptr ) { LogPrintLine_E(log, "Expected > instead of 0x%08X \'%c\' when parsing closing token on line %llu byte %llu: \"%.*s\"", CharToU32(workingLine.pntr[nameEndingCharIndex]), workingLine.pntr[nameEndingCharIndex], parser->lineParser.lineIndex, workingStartIndex, StrPrint(workingLine)); }
 						result->type = XmlParseResultType_Error;
 						result->error = XmlParsingError_ExpectedClosingAngleBracket;
 						return true;
@@ -457,7 +457,7 @@ bool XmlParserGetToken(XmlParser_t* parser, XmlParseResult_t* result, ProcessLog
 					
 					if (parser->parentTokens.length == 0)
 					{
-						if (log != nullptr ) { LogPrintLine_E(log, "Unexpected closing token. No tokens have been started on line %llu: \"%.*s\"", parser->lineParser.lineIndex, workingLine.length, workingLine.pntr); }
+						if (log != nullptr ) { LogPrintLine_E(log, "Unexpected closing token. No tokens have been started on line %llu: \"%.*s\"", parser->lineParser.lineIndex, StrPrint(workingLine)); }
 						result->type = XmlParseResultType_Error;
 						result->error = XmlParsingError_UnexpectedClosingToken;
 						return true;
@@ -465,7 +465,7 @@ bool XmlParserGetToken(XmlParser_t* parser, XmlParseResult_t* result, ProcessLog
 					XmlToken_t* parentToken = VarArrayGetHard(&parser->parentTokens, parser->parentTokens.length-1, XmlToken_t);
 					if (!StrEquals(parentToken->type, endingTokenType))
 					{
-						if (log != nullptr ) { LogPrintLine_E(log, "Ending token mismatch. Expect token \"%.*s\" to end, not \"%.*s\" on line %llu: \"%.*s\"", parentToken->type.length, parentToken->type.pntr, endingTokenType.length, endingTokenType.pntr, parser->lineParser.lineIndex, workingLine.length, workingLine.pntr); }
+						if (log != nullptr ) { LogPrintLine_E(log, "Ending token mismatch. Expect token \"%.*s\" to end, not \"%.*s\" on line %llu: \"%.*s\"", StrPrint(parentToken->type), StrPrint(endingTokenType), parser->lineParser.lineIndex, StrPrint(workingLine)); }
 						result->type = XmlParseResultType_Error;
 						result->error = XmlParsingError_ClosingTokenMismatch;
 						return true;
@@ -543,7 +543,7 @@ bool XmlParserGetToken(XmlParser_t* parser, XmlParseResult_t* result, ProcessLog
 					bool foundEquals = FindNextCharInStr(workingLine, 0, "=", &equalsIndex);
 					if (!foundEquals)
 					{
-						if (log != nullptr) { LogPrintLine_E(log, "No equals found for property of token on line %llu: \"%.*s\"", parser->lineParser.lineIndex, workingLine.length, workingLine.pntr); }
+						if (log != nullptr) { LogPrintLine_E(log, "No equals found for property of token on line %llu: \"%.*s\"", parser->lineParser.lineIndex, StrPrint(workingLine)); }
 						result->type = XmlParseResultType_Error;
 						result->error = XmlParsingError_NoEqualsForProperty;
 						return true;
@@ -577,7 +577,7 @@ bool XmlParserGetToken(XmlParser_t* parser, XmlParseResult_t* result, ProcessLog
 					{
 						if (propertyValue.length == 0)
 						{
-							if (log != nullptr) { LogPrintLine_E(log, "Missing property value on line %llu: \"%.*s\"", parser->lineParser.lineIndex, workingLine.length, workingLine.pntr); }
+							if (log != nullptr) { LogPrintLine_E(log, "Missing property value on line %llu: \"%.*s\"", parser->lineParser.lineIndex, StrPrint(workingLine)); }
 							result->type = XmlParseResultType_Error;
 							result->error = XmlParsingError_MissingPropertyValue;
 							return true;
@@ -654,7 +654,7 @@ bool XmlParserGetToken(XmlParser_t* parser, XmlParseResult_t* result, ProcessLog
 				MyStr_t contentStr = NewStr(nextOpenBracketIndex, workingLine.pntr);
 				if (parser->parentTokens.length == 0)
 				{
-					if (log != nullptr ) { LogPrintLine_E(log, "Invalid character(s) found outside token on line %llu byte %llu: \"%.*s\"", parser->lineParser.lineIndex, workingStartIndex, workingLine.length, workingLine.pntr); }
+					if (log != nullptr ) { LogPrintLine_E(log, "Invalid character(s) found outside token on line %llu byte %llu: \"%.*s\"", parser->lineParser.lineIndex, workingStartIndex, StrPrint(workingLine)); }
 					result->type = XmlParseResultType_Error;
 					result->error = XmlParsingError_InvalidCharacterOutsideToken;
 					return true;
@@ -676,7 +676,7 @@ bool XmlParserGetToken(XmlParser_t* parser, XmlParseResult_t* result, ProcessLog
 			VarArrayLoop(&parser->parentTokens, tIndex)
 			{
 				VarArrayLoopGet(XmlToken_t, token, &parser->parentTokens, tIndex);
-				LogPrintLine_E(log, "  [%llu]: %llu \"%.*s\"", tIndex, token->tokenParseIndex, token->type.length, token->type.pntr);
+				LogPrintLine_E(log, "  [%llu]: %llu \"%.*s\"", tIndex, token->tokenParseIndex, StrPrint(token->type));
 			}
 		}
 		result->type = XmlParseResultType_Error;
