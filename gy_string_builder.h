@@ -278,11 +278,11 @@ void StringBuilderAppendPrintVa(StringBuilder_t* builder, const char* formatStri
 	
 	if (growableSpaceAvailable > 0)
 	{
-		int printResult = MyVaListPrintf(&builder->chars[builder->length], growableSpaceAvailable+1, formatString, args1);
+		int printResult = MyVaListPrintf(&builder->chars[builder->length], (int)(growableSpaceAvailable+1), formatString, args1);
 		Assert(printResult >= 0); //TODO: Can we handle this condition rather than assert? What has happened to the buffer we gave it? Should we call GrowMem??
 		
 		bool increasedLength = false;
-		if (printResult > normalSpaceAvailable && growableSpaceAvailable > normalSpaceAvailable)
+		if ((u64)printResult > normalSpaceAvailable && growableSpaceAvailable > normalSpaceAvailable)
 		{
 			u64 newAllocLength = builder->length + MinU64((u64)printResult, growableSpaceAvailable) + 1;
 			GrowMem(builder->allocArena, builder->chars, builder->allocLength, newAllocLength, &growToken);
@@ -291,14 +291,14 @@ void StringBuilderAppendPrintVa(StringBuilder_t* builder, const char* formatStri
 			increasedLength = true;
 		}
 		
-		if (printResult > growableSpaceAvailable)
+		if ((u64)printResult > growableSpaceAvailable)
 		{
 			//We need more memory, allocate some more and then try the print again
 			StringBuilderAllocMoreMem(builder, builder->length + (u64)printResult + 1);
 			
 			normalSpaceAvailable = StringBuilderGetNumUnusedBytes(builder, false);
 			Assert(normalSpaceAvailable >= (u64)printResult);
-			int secondPrintResult = MyVaListPrintf(&builder->chars[builder->length], normalSpaceAvailable+1, formatString, args2);
+			int secondPrintResult = MyVaListPrintf(&builder->chars[builder->length], (int)(normalSpaceAvailable+1), formatString, args2);
 			Assert(secondPrintResult == printResult);
 			
 			builder->length += (u64)secondPrintResult;
@@ -322,7 +322,7 @@ void StringBuilderAppendPrintVa(StringBuilder_t* builder, const char* formatStri
 		
 		normalSpaceAvailable = StringBuilderGetNumUnusedBytes(builder, false);
 		Assert(normalSpaceAvailable >= (u64)printResult);
-		int secondPrintResult = MyVaListPrintf(&builder->chars[builder->length], normalSpaceAvailable+1, formatString, args2);
+		int secondPrintResult = MyVaListPrintf(&builder->chars[builder->length], (int)(normalSpaceAvailable+1), formatString, args2);
 		Assert(secondPrintResult == printResult);
 		
 		builder->length += (u64)secondPrintResult;

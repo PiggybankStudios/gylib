@@ -67,6 +67,30 @@ Date:   09\14\2021
 #define GYLIB_MEM_ARENA_DEBUG_ENABLED 0
 #endif
 
+#if PLAYDATE_COMPILATION
+#if defined(PLAYDATE_DEVICE) && defined(PLAYDATE_SIMULATOR)
+#error Both PLAYDATE_DEVICE and PLAYDATE_SIMULATOR were defined, which is not supported!
+#elif defined(PLAYDATE_DEVICE)
+#undef PLAYDATE_DEVICE
+#define PLAYDATE_DEVICE    1
+#define PLAYDATE_SIMULATOR 0
+#elif defined(PLAYDATE_SIMULATOR)
+#undef PLAYDATE_SIMULATOR
+#define PLAYDATE_SIMULATOR 1
+#define PLAYDATE_DEVICE    0
+#else
+#error Either PLAYDATE_DEVICE or PLAYDATE_SIMULATOR must be defined!
+#endif
+#endif
+
+#if (PLAYDATE_COMPILATION && PLAYDATE_DEVICE) || WASM_COMPILATION
+#define PLATFORM_32BIT 1
+#define PLATFORM_64BIT 0
+#else
+#define PLATFORM_32BIT 0
+#define PLATFORM_64BIT 1
+#endif
+
 #endif //  _GY_DEFINES_CHECK_H
 
 // +--------------------------------------------------------------+
@@ -82,6 +106,10 @@ PLAYDATE_COMPILATION
 ORCA_COMPILATION
 GY_WASM_STD_LIB
 GYLIB_MEM_ARENA_DEBUG_ENABLED
+PLAYDATE_DEVICE
+PLAYDATE_SIMULATOR
+PLATFORM_32BIT
+PLATFORM_64BIT
 @Types
 @Functions
 */

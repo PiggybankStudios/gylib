@@ -245,10 +245,10 @@ void StringBufferPrint(StringBufferGeneric_t* stringBuffer, const char* formatSt
 	Assert(IsInitialized(stringBuffer));
 	va_list args;
 	va_start(args, formatString);
-	int printResult = MyVaListPrintf(&stringBuffer->chars[0], stringBuffer->bufferSize, formatString, args);
+	int printResult = MyVaListPrintf(&stringBuffer->chars[0], (int)stringBuffer->bufferSize, formatString, args);
 	va_end(args);
 	Assert(printResult >= 0);
-	Assert(printResult < stringBuffer->bufferSize);
+	Assert((u64)printResult < stringBuffer->bufferSize);
 	stringBuffer->length = (u64)printResult;
 	stringBuffer->chars[stringBuffer->length] = '\0';
 }
@@ -258,10 +258,10 @@ bool StringBufferTryPrint(StringBufferGeneric_t* stringBuffer, const char* forma
 	Assert(IsInitialized(stringBuffer));
 	va_list args;
 	va_start(args, formatString);
-	int printResult = MyVaListPrintf(&stringBuffer->chars[0], stringBuffer->bufferSize, formatString, args);
+	int printResult = MyVaListPrintf(&stringBuffer->chars[0], (int)stringBuffer->bufferSize, formatString, args);
 	va_end(args);
 	if (printResult < 0) { DebugAssert(IsNullTerminated(stringBuffer)); return false; }
-	if (printResult >= stringBuffer->bufferSize) { stringBuffer->length = stringBuffer->bufferSize-1; DebugAssert(IsNullTerminated(stringBuffer)); return false; }
+	if ((u64)printResult >= stringBuffer->bufferSize) { stringBuffer->length = stringBuffer->bufferSize-1; DebugAssert(IsNullTerminated(stringBuffer)); return false; }
 	stringBuffer->length = (u64)printResult;
 	stringBuffer->chars[stringBuffer->length] = '\0';
 	return true;
@@ -272,10 +272,10 @@ void StringBufferAppendPrint(StringBufferGeneric_t* stringBuffer, const char* fo
 	Assert(IsInitialized(stringBuffer));
 	va_list args;
 	va_start(args, formatString);
-	int printResult = MyVaListPrintf(&stringBuffer->chars[stringBuffer->length], stringBuffer->bufferSize - stringBuffer->length, formatString, args);
+	int printResult = MyVaListPrintf(&stringBuffer->chars[stringBuffer->length], (int)(stringBuffer->bufferSize - stringBuffer->length), formatString, args);
 	va_end(args);
 	Assert(printResult >= 0);
-	Assert(printResult < stringBuffer->bufferSize - stringBuffer->length);
+	Assert((u64)printResult < stringBuffer->bufferSize - stringBuffer->length);
 	stringBuffer->length += (u64)printResult;
 	stringBuffer->chars[stringBuffer->length] = '\0';
 }
@@ -285,10 +285,10 @@ bool StringBufferTryAppendPrint(StringBufferGeneric_t* stringBuffer, const char*
 	Assert(IsInitialized(stringBuffer));
 	va_list args;
 	va_start(args, formatString);
-	int printResult = MyVaListPrintf(&stringBuffer->chars[stringBuffer->length], stringBuffer->bufferSize - stringBuffer->length, formatString, args);
+	int printResult = MyVaListPrintf(&stringBuffer->chars[stringBuffer->length], (int)(stringBuffer->bufferSize - stringBuffer->length), formatString, args);
 	va_end(args);
 	if (printResult < 0) { DebugAssert(IsNullTerminated(stringBuffer)); return false; }
-	if (printResult >= stringBuffer->bufferSize - stringBuffer->length) { stringBuffer->length = stringBuffer->bufferSize-1; DebugAssert(IsNullTerminated(stringBuffer)); return false; }
+	if ((u64)printResult >= stringBuffer->bufferSize - stringBuffer->length) { stringBuffer->length = stringBuffer->bufferSize-1; DebugAssert(IsNullTerminated(stringBuffer)); return false; }
 	stringBuffer->length += (u64)printResult;
 	stringBuffer->chars[stringBuffer->length] = '\0';
 	return true;

@@ -463,7 +463,6 @@ bool TryParseBitfieldEnum(MyStr_t str, enum_t* valueOut, enum_t enumCount, const
 	return false;
 }
 
-
 // +--------------------------------------------------------------+
 // |                      Parse Other Types                       |
 // +--------------------------------------------------------------+

@@ -587,6 +587,7 @@ void InitMemArena_VirtualStack(MemArena_t* arena, u64 maxSize, u64 maxNumMarks, 
 	arena->size = headerAndMarksSizeRoundedUp - headerAndMarksSize;
 	
 	MarkedStackArenaHeader_t* stackHeader = (MarkedStackArenaHeader_t*)arena->headerPntr;
+	NotNull(stackHeader);
 	ClearPointer(stackHeader);
 	stackHeader->maxNumMarks = maxNumMarks;
 	stackHeader->numMarks = 0;

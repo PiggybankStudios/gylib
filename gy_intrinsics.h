@@ -1074,7 +1074,7 @@ inline void SeedRand(u32 seed)
 inline u32 RandU32(u32 min, u32 max)
 {
 	r64 scaled = (r64)rand() / RAND_MAX;
-	if (scaled == 1.0f) { return max-1; }
+	if (scaled == 1.0) { return max-1; }
 	return (u32)((max - min)*scaled) + min;
 }
 inline i32 RandI32(i32 min, i32 max)
@@ -1090,7 +1090,7 @@ inline i64 RandI64(i64 min, i64 max)
 inline r32 RandR32(r32 min, r32 max)
 {
 	r64 scaled = (r64)rand() / RAND_MAX;
-	return (r32)((max - min)*scaled) + min;
+	return (r32)((max - min)*(r32)scaled) + min;
 }
 inline r64 RandR64(r64 min, r64 max)
 {
@@ -1518,8 +1518,8 @@ r64 AngleDiffR64(r64 left, r64 right)
 {
 	r64 fixedLeft = AngleFixR64(left);
 	r64 fixedRight = AngleFixR64(right);
-	if (fixedLeft - fixedRight > Pi32) { fixedLeft -= TwoPi32; }
-	if (fixedLeft - fixedRight < -Pi32) { fixedLeft += TwoPi32; }
+	if (fixedLeft - fixedRight > Pi64) { fixedLeft -= TwoPi64; }
+	if (fixedLeft - fixedRight < -Pi64) { fixedLeft += TwoPi64; }
 	return fixedLeft - fixedRight;
 }
 
@@ -1571,8 +1571,8 @@ r64 AngleLerpR64(r64 angleFrom, r64 angleTo, r64 amount)
 {
 	r64 from = AngleFixR64(angleFrom);
 	r64 to = AngleFixR64(angleTo);
-	if (to - from > Pi32) { to -= TwoPi32; }
-	if (to - from < -Pi32) { to += TwoPi32; }
+	if (to - from > Pi64) { to -= TwoPi64; }
+	if (to - from < -Pi64) { to += TwoPi64; }
 	return from + (to - from) * amount;
 }
 

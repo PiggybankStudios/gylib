@@ -717,9 +717,9 @@ Color_t ColorSrgbFromXyz(ColorXYZ_t colorXyz, bool* isValidColorOut = nullptr)
 	result.a = ClampI32toU8((i32)RoundR64i(colorXyz.a * 255));
 	if (isValidColorOut != nullptr)
 	{
-		if      (nonlinearRed   < 0.0f || nonlinearRed   > 1.0f) { *isValidColorOut = false; }
-		else if (nonlinearGreen < 0.0f || nonlinearGreen > 1.0f) { *isValidColorOut = false; }
-		else if (nonlinearBlue  < 0.0f || nonlinearBlue  > 1.0f) { *isValidColorOut = false; }
+		if      (nonlinearRed   < 0.0 || nonlinearRed   > 1.0) { *isValidColorOut = false; }
+		else if (nonlinearGreen < 0.0 || nonlinearGreen > 1.0) { *isValidColorOut = false; }
+		else if (nonlinearBlue  < 0.0 || nonlinearBlue  > 1.0) { *isValidColorOut = false; }
 		else { *isValidColorOut = true; }
 		
 	}

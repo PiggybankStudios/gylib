@@ -15,6 +15,7 @@ extern "C" {
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <limits.h>
 #include <stddef.h>
 #include <math.h>
@@ -70,6 +71,66 @@ void* (*pdrealloc)(void* ptr, size_t size);
 #define MyFree(ptr) pdrealloc((ptr), 0)
 #endif
 
+#ifndef MyStrToFloat
+#ifdef GYLIB_HEADER_ONLY
+float ratof(char* arr);
+#else
+float ratof(char* arr)
+{
+	float val = 0;
+	int afterdot=0;
+	float scale=1;
+	int neg = 0; 
+	
+	if (*arr == '-')
+	{
+		arr++;
+		neg = 1;
+	}
+	while (*arr)
+	{
+		if (afterdot)
+		{
+			scale = scale/10;
+			val = val + (*arr-'0')*scale;
+		}
+		else
+		{
+			if (*arr == '.') { afterdot++; }
+			else { val = val * 10.0f + (*arr - '0'); }
+		}
+		arr++;
+	}
+	
+	return ((neg) ? -val : val);
+}
+#endif
+#define MyStrToFloat(nullTermStr) ratof(nullTermStr)
+#endif
+
+#if PLAYDATE_DEVICE
+void* _malloc_r(struct _reent* _REENT, size_t nbytes) { return pdrealloc(NULL,nbytes); }
+void* _realloc_r(struct _reent* _REENT, void* ptr, size_t nbytes) { return pdrealloc(ptr,nbytes); }
+void _free_r(struct _reent* _REENT, void* ptr ) { if ( ptr != NULL ) pdrealloc(ptr,0); }
+#endif //PLAYDATE_DEVICE
+
+// On the playdate device itself, the stdlib implementation for printf style functions is unsupported, so we pull-in stb_sprintf.h and use that instead
+// #if PLAYDATE_DEVICE
+
+#ifndef GYLIB_HEADER_ONLY
+#define STB_SPRINTF_IMPLEMENTATION
+#endif
+#include "stb/stb_sprintf.h"
+
+#ifndef MyBufferPrintf
+#define MyBufferPrintf(buffer, bufferSize, formatStr, ...) stbsp_snprintf((buffer), (bufferSize), (formatStr), ##__VA_ARGS__)
+#endif
+#ifndef MyVaListPrintf
+#define MyVaListPrintf(buffer, bufferSize, formatStr, vaList) stbsp_vsnprintf((buffer), (bufferSize), (formatStr), vaList)
+#endif
+
+// #endif //PLAYDATE_DEVICE
+
 #endif //PLAYDATE_COMPILATION
 
 // +--------------------------------------------------------------+
@@ -113,7 +174,7 @@ float ratof(char* arr)
 		else
 		{
 			if (*arr == '.') { afterdot++; }
-			else { val = val * 10.0 + (*arr - '0'); }
+			else { val = val * 10.0f + (*arr - '0'); }
 		}
 		arr++;
 	}
@@ -231,12 +292,9 @@ float ratof(char* arr)
 #define MyWideStrLength(str)
 #define MyWideStrLength32(str)
 #define MyStrStrNt(str1, str2)
-#define MyMalloc(size)
-#define MyRealloc(pntr, newSize)
-#define MyFree(size)
 #define MyBufferPrintf(buffer, bufferSize, formatStr, ...)
 #define MyVaListPrintf(buffer, bufferSize, formatStr, vaList)
-#define MyHostToNetworkByteOrderU32(integer)
+#define MyHostToNetworkByteOrderU16(integer)
 #define MyHostToNetworkByteOrderU32(integer)
 #define MyNetworkToHostByteOrderU16(integer)
 #define MyNetworkToHostByteOrderU32(integer)

@@ -102,6 +102,20 @@ struct SplitStringContext_t
 
 #define FreeString(arena, strPntr) do { NotNullStr(strPntr); if ((strPntr)->pntr != nullptr) { FreeMem((arena), (strPntr)->pntr, (strPntr)->length+1); (strPntr)->pntr = nullptr; (strPntr)->length = 0; } } while(0)
 
+// +==============================+
+// |         Print Macros         |
+// +==============================+
+// When using the %.*s format specifier, we need to be careful about the size of the length argument being passed
+// On 32-bit platforms, the u64 in the MyStr_t structure is too large, so we need to cast to u32.
+// We should use one of these macros in ALL location where we are using %.*s in a format string and sourcing from MyStr_t
+#if PLATFORM_32BIT
+#define StrPrint(myStrStruct)   (u32)(myStrStruct).length, (myStrStruct).chars
+#define StrPntrPrint(myStrPntr) (u32)(myStrStruct)->length, (myStrStruct)->chars
+#else
+#define StrPrint(myStrStruct)   (myStrStruct).length, (myStrStruct).chars
+#define StrPntrPrint(myStrPntr) (myStrStruct)->length, (myStrStruct)->chars
+#endif
+
 // +--------------------------------------------------------------+
 // |                         Header Only                          |
 // +--------------------------------------------------------------+
@@ -1787,7 +1801,7 @@ MyStr_t FormatNumberWithCommas(u64 number, MemArena_t* memArena = nullptr)
 	//Max uint64: 18,446,744,073,709,551,615 (20 digits + 6 commas)
 	static char printBuffer[20 + 6 + 1];
 	int numberLength = MyBufferPrintf(printBuffer, ArrayCount(printBuffer), "%llu", number);
-	if (numberLength >= 0 && numberLength < ArrayCount(printBuffer)) { printBuffer[numberLength] = '\0'; }
+	if (numberLength >= 0 && numberLength < (int)ArrayCount(printBuffer)) { printBuffer[numberLength] = '\0'; }
 	for (int cIndex = numberLength-3; cIndex > 0; cIndex -= 3)
 	{
 		//Shift all the characters up
@@ -2115,6 +2129,8 @@ bool BufferIsNullTerminated(u64 bufferSize, const char* bufferPntr)
 #define NewStringInArena(arena, length, charPntr)
 #define NewStringInArenaNt(arena, nullTermStr)
 #define FreeString(arena, strPntr)
+#define StrPrint(myStrStruct)
+#define StrPntrPrint(myStrPntr)
 MyStr_t PrintInArenaStr(MemArena_t* arena, const char* formatString, ...)
 u64 TrimLeadingWhitespace(MyStr_t* target, bool trimNewLines = false)
 u64 TrimTrailingWhitespace(MyStr_t* target, bool trimNewLines = false)

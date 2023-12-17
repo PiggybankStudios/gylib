@@ -87,6 +87,7 @@ struct ProcessLog_t
 	XmlParsingError_t xmlParsingError;
 	
 	MemArena_t* allocArena;
+	GyLibDebugOutput_f* immediateOutputFuncPntr;
 	MyStr_t processName;
 	MyStr_t filePath;
 	StringFifo_t fifo;
@@ -122,6 +123,7 @@ LogGlobals_t* logGlobals = nullptr;
 	void FreeProcessLog(ProcessLog_t* log);
 	void CreateProcessLog(ProcessLog_t* logOut, u64 fifoSize, MemArena_t* fifoArena, MemArena_t* logArena);
 	void CreateProcessLogStub(ProcessLog_t* logOut);
+	void ProcessLogRouteToDebugOutput(ProcessLog_t* log, GyLibDebugOutput_f* outputFuncPntr);
 	void SetProcessLogFilePath(ProcessLog_t* log, MyStr_t filePath);
 	void SetProcessLogName(ProcessLog_t* log, MyStr_t processName);
 	void LogOutput_(ProcessLog_t* log, u8 flags, const char* filePath, u32 lineNumber, const char* funcName, DbgLevel_t dbgLevel, bool addNewLine, const char* message);
@@ -190,6 +192,12 @@ void CreateProcessLogStub(ProcessLog_t* logOut)
 	logOut->processName = MyStr_Empty;
 }
 
+void ProcessLogRouteToDebugOutput(ProcessLog_t* log, GyLibDebugOutput_f* outputFuncPntr)
+{
+	NotNull(log);
+	log->immediateOutputFuncPntr = outputFuncPntr;
+}
+
 //TODO: Create a CopyProcessLog function?
 
 // +--------------------------------------------------------------+
@@ -229,7 +237,14 @@ void LogOutput_(ProcessLog_t* log, u8 flags, const char* filePath, u32 lineNumbe
 {
 	NotNull_(log);
 	UNUSED(addNewLine); //TODO: We should probably take this into account
+	
 	if (log->debugBreakOnWarningsAndErrors && (dbgLevel == DbgLevel_Warning || dbgLevel == DbgLevel_Error)) { MyDebugBreak(); }
+	
+	if (log->immediateOutputFuncPntr != nullptr)
+	{
+		log->immediateOutputFuncPntr(filePath, lineNumber, funcName, dbgLevel, addNewLine, message);
+	}
+	
 	if (log->fifo.bufferSize > 0)
 	{
 		MemArena_t* scratch = GetScratchArena();
@@ -256,7 +271,7 @@ void LogPrint_(ProcessLog_t* log, u8 flags, const char* filePath, u32 lineNumber
 {
 	NotNull_(log);
 	if (log->debugBreakOnWarningsAndErrors && (dbgLevel == DbgLevel_Warning || dbgLevel == DbgLevel_Error)) { MyDebugBreak(); }
-	if (log->fifo.bufferSize > 0)
+	if (log->fifo.bufferSize > 0 || log->immediateOutputFuncPntr != nullptr)
 	{
 		MemArena_t* scratch = GetScratchArena();
 		va_list args;
@@ -427,6 +442,7 @@ logGlobals
 void FreeProcessLog(ProcessLog_t* log)
 void CreateProcessLog(ProcessLog_t* logOut, u64 fifoSize, MemArena_t* fifoArena, MemArena_t* logArena)
 void CreateProcessLogStub(ProcessLog_t* logOut)
+void ProcessLogRouteToDebugOutput(ProcessLog_t* log, GyLibDebugOutput_f* outputFuncPntr)
 void SetProcessLogFilePath(ProcessLog_t* log, MyStr_t filePath)
 void SetProcessLogName(ProcessLog_t* log, MyStr_t processName)
 void LogOutput_(ProcessLog_t* log, u8 flags, const char* filePath, u32 lineNumber, const char* funcName, DbgLevel_t dbgLevel, bool addNewLine, const char* message)

@@ -211,7 +211,7 @@ r32 InverseEaseQuadraticOut(r32 y)
 // y = -(1/2)((2x-1)*(2x-3) - 1) ; [0.5, 1]
 r32 EaseQuadraticInOut(r32 p)
 {
-	if (p < 0.5)
+	if (p < 0.5f)
 	{
 		return 2 * p * p;
 	}
@@ -222,7 +222,7 @@ r32 EaseQuadraticInOut(r32 p)
 }
 r32 InverseEaseQuadraticInOut(r32 y)
 {
-	if (y < 0.5)
+	if (y < 0.5f)
 	{
 		return SqrtR32(y / 2);
 	}
@@ -253,7 +253,7 @@ r32 EaseCubicOut(r32 p)
 // y = (1/2)((2x-2)^3 + 2) ; [0.5, 1]
 r32 EaseCubicInOut(r32 p)
 {
-	if (p < 0.5)
+	if (p < 0.5f)
 	{
 		return 4 * p * p * p;
 	}
@@ -285,7 +285,7 @@ r32 EaseQuarticOut(r32 p)
 // y = -(1/2)((2x-2)^4 - 2) ; [0.5, 1]
 r32 EaseQuarticInOut(r32 p) 
 {
-	if (p < 0.5)
+	if (p < 0.5f)
 	{
 		return 8 * p * p * p * p;
 	}
@@ -317,7 +317,7 @@ r32 EaseQuinticOut(r32 p)
 // y = (1/2)((2x-2)^5 + 2) ; [0.5, 1]
 r32 EaseQuinticInOut(r32 p) 
 {
-	if (p < 0.5)
+	if (p < 0.5f)
 	{
 		return 16 * p * p * p * p * p;
 	}
@@ -391,7 +391,7 @@ r32 EaseExponentialIn(r32 p)
 // Modeled after the exponential function y = -2^(-10x) + 1
 r32 EaseExponentialOut(r32 p)
 {
-	return (p == 1.0) ? p : 1 - (r32)pow(2, -10 * p);
+	return (p == 1.0f) ? p : 1 - (r32)pow(2, -10 * p);
 }
 
 // Modeled after the piecewise exponential
@@ -462,7 +462,7 @@ r32 EaseBackOut(r32 p)
 // y = (1/2)*(1-((1-x)^3-(1-x)*(r32)sin((1-x)*pi))+1) ; [0.5, 1]
 r32 EaseBackInOut(r32 p)
 {
-	if (p < 0.5)
+	if (p < 0.5f)
 	{
 		r32 f = 2 * p;
 		return 0.5f * (f * f * f - f * (r32)sin(f * Pi32));
@@ -479,7 +479,7 @@ r32 EaseBackInOut(r32 p)
 // +==============================+
 r32 EaseBounceOut(r32 p)
 {
-	if (p < 4/11.0)
+	if (p < 4/11.0f)
 	{
 		return (121 * p * p)/16.0f;
 	}
@@ -487,7 +487,7 @@ r32 EaseBounceOut(r32 p)
 	{
 		return (363/40.0f * p * p) - (99/10.0f * p) + 17/5.0f;
 	}
-	else if (p < 9/10.0)
+	else if (p < 9/10.0f)
 	{
 		return (4356/361.0f * p * p) - (35442/1805.0f * p) + 16061/1805.0f;
 	}
@@ -504,7 +504,7 @@ r32 EaseBounceIn(r32 p)
 
 r32 EaseBounceInOut(r32 p)
 {
-	if (p < 0.5)
+	if (p < 0.5f)
 	{
 		return 0.5f * EaseBounceIn(p*2);
 	}
