@@ -434,6 +434,7 @@ typedef Obb3D_t       obb3;
 	bool IsInsideRec(rec rectangle, v2i point);
 	bool RecsIntersect(rec rectangle1, rec rectangle2, bool inclusive = true);
 	bool IsInsideReci(reci rectangle, v2i point, bool includePositiveEdges = false);
+	bool RecisIntersect(reci rectangle1, reci rectangle2, bool inclusive = true);
 	bool IsInsideBox(box boundingBox, v3 point);
 	bool IsInsideBox(box boundingBox, v3i point);
 	bool BoxesIntersect(box boundingBox1, box boundingBox2, bool inclusive = true);
@@ -2682,7 +2683,30 @@ bool IsInsideReci(reci rectangle, v2i point, bool includePositiveEdges = false) 
 	return true;
 }
 
-// TODO: Add RecisIntersect
+bool RecisIntersect(reci rectangle1, reci rectangle2, bool inclusive = true)
+{
+	if (inclusive)
+	{
+		if (rectangle1.x <= rectangle2.x + rectangle2.width &&
+			rectangle1.x + rectangle1.width >= rectangle2.x &&
+			rectangle1.y <= rectangle2.y + rectangle2.height &&
+			rectangle1.y + rectangle1.height >= rectangle2.y)
+		{
+			return true;
+		}
+	}
+	else
+	{
+		if (rectangle1.x < rectangle2.x + rectangle2.width &&
+			rectangle1.x + rectangle1.width > rectangle2.x &&
+			rectangle1.y < rectangle2.y + rectangle2.height &&
+			rectangle1.y + rectangle1.height > rectangle2.y)
+		{
+			return true;
+		}
+	}
+	return false;
+}
 
 // +==============================+
 // |             Box              |
@@ -3187,6 +3211,7 @@ rec GetObb2DAlignedBounds(obb2 boundingBox)
 bool IsInsideRec(rec rectangle, v2 point)
 bool RecsIntersect(rec rectangle1, rec rectangle2, bool inclusive = true)
 bool IsInsideReci(reci rectangle, v2i point, bool includePositiveEdges = false)
+bool RecisIntersect(reci rectangle1, reci rectangle2, bool inclusive = true)
 bool IsInsideBox(box boundingBox, v3 point)
 bool BoxesIntersect(box boundingBox1, box boundingBox2, bool inclusive = true)
 bool IsInsideBoxi(boxi boundingBox, v3i point, bool includePositiveEdges = false)

@@ -1763,7 +1763,8 @@ void* AllocMem_(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride)
 				if (arena->sourceArena != nullptr)
 				{
 					DebugAssert(arena->sourceArena != arena);
-					newPageHeader = (HeapPageHeader_t*)AllocMem(arena->sourceArena, sizeof(HeapPageHeader_t) + newPageSize, alignment);
+					//NOTE: Intentionally not putting the onus on the sourceArena to align the page. We will align allocations inside the page as requested
+					newPageHeader = (HeapPageHeader_t*)AllocMem(arena->sourceArena, sizeof(HeapPageHeader_t) + newPageSize);
 					// NotNullMsg(newPageHeader, "Failed to allocate new page from arena for paged heap");
 					if (newPageHeader == nullptr) { return nullptr; }
 				}
