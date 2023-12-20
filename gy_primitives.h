@@ -1199,7 +1199,7 @@ PrimitiveIndexedVerts_t GenerateVertsForDodecohedron(Dodec_t dodec, MemArena_t* 
 			case 10: faceIndices[0] = 18; faceIndices[1] = 19; faceIndices[2] = 8;  faceIndices[3] = 7;  faceIndices[4] = 6;  break;
 			
 			case 11: faceIndices[0] = 15; faceIndices[1] = 19; faceIndices[2] = 18; faceIndices[3] = 17; faceIndices[4] = 16; break; //Bottom Face
-			default: Assert(false); break;
+			default: Assert(false); return result; break;
 		}
 		
 		v3 faceNormal = Vec3Normalize(Vec3Cross(
