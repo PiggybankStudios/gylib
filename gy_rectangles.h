@@ -1416,8 +1416,8 @@ rec RecExpandDown(rec rectangle, r32 extraDown)
 	rec result;
 	result.x = rectangle.x;
 	result.y = rectangle.y;
-	result.width = rectangle.width + extraDown;
-	result.height = rectangle.height;
+	result.width = rectangle.width;
+	result.height = rectangle.height + extraDown;
 	return result;
 }
 rec RecRetract(rec rectangle, r32 subWidth, r32 subHeight)
@@ -1592,8 +1592,8 @@ reci ReciExpandDown(reci rectangle, i32 extraDown)
 	reci result;
 	result.x = rectangle.x;
 	result.y = rectangle.y;
-	result.width = rectangle.width + extraDown;
-	result.height = rectangle.height;
+	result.width = rectangle.width;
+	result.height = rectangle.height + extraDown;
 	return result;
 }
 reci ReciRetract(reci rectangle, i32 subWidth, i32 subHeight)
