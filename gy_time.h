@@ -19,6 +19,7 @@ Description:
 // +--------------------------------------------------------------+
 // |                           Defines                            |
 // +--------------------------------------------------------------+
+#define NUM_US_PER_MS         1000
 #define NUM_MS_PER_SECOND     1000
 #define NUM_SEC_PER_MINUTE    60
 #define NUM_MIN_PER_HOUR      60
@@ -29,20 +30,25 @@ Description:
 #define UNIX_EPOCH_DATE       1970
 #define MAX_DAYS_IN_MONTH     31
 
-#define NUM_MS_PER_MINUTE ((u64)NUM_SEC_PER_MINUTE * (u64)NUM_MS_PER_SECOND)
-#define NUM_MS_PER_HOUR   ((u64)NUM_MIN_PER_HOUR   * (u64)NUM_MS_PER_MINUTE)
-#define NUM_MS_PER_DAY    ((u64)NUM_HOUR_PER_DAY   * (u64)NUM_MS_PER_HOUR)
-#define NUM_MS_PER_WEEK   ((u64)NUM_DAYS_PER_WEEK  * (u64)NUM_MS_PER_DAY)
-#define NUM_MS_PER_YEAR   ((u64)NUM_DAYS_PER_YEAR  * (u64)NUM_MS_PER_DAY)
+#define NUM_US_PER_SECOND ((u64)NUM_MS_PER_SECOND  * (u64)NUM_US_PER_MS)       //     1,000,000 (i32 required)
+#define NUM_US_PER_MINUTE ((u64)NUM_SEC_PER_MINUTE * (u64)NUM_US_PER_SECOND)   //    60,000,000 (i32 required)
+#define NUM_US_PER_HOUR   ((u64)NUM_MIN_PER_HOUR   * (u64)NUM_US_PER_MINUTE)   // 3,600,000,000 (u32 required)
+#define NUM_US_PER_DAY    ((u64)NUM_HOUR_PER_DAY   * (u64)NUM_US_PER_HOUR)     //86,400,000,000 (i64 required)
 
-#define NUM_SEC_PER_HOUR   ((u64)NUM_MIN_PER_HOUR  * (u64)NUM_SEC_PER_MINUTE)
-#define NUM_SEC_PER_DAY    ((u64)NUM_HOUR_PER_DAY  * (u64)NUM_SEC_PER_HOUR)
-#define NUM_SEC_PER_WEEK   ((u64)NUM_DAYS_PER_WEEK * (u64)NUM_SEC_PER_DAY)
-#define NUM_SEC_PER_YEAR   ((u64)NUM_DAYS_PER_YEAR * (u64)NUM_SEC_PER_DAY)
+#define NUM_MS_PER_MINUTE ((u64)NUM_SEC_PER_MINUTE * (u64)NUM_MS_PER_SECOND)   //        60,000 (u16 required)
+#define NUM_MS_PER_HOUR   ((u64)NUM_MIN_PER_HOUR   * (u64)NUM_MS_PER_MINUTE)   //     3,600,000 (i32 required)
+#define NUM_MS_PER_DAY    ((u64)NUM_HOUR_PER_DAY   * (u64)NUM_MS_PER_HOUR)     //    86,400,000 (i32 required)
+#define NUM_MS_PER_WEEK   ((u64)NUM_DAYS_PER_WEEK  * (u64)NUM_MS_PER_DAY)      //   604,800,000 (i32 required)
+#define NUM_MS_PER_YEAR   ((u64)NUM_DAYS_PER_YEAR  * (u64)NUM_MS_PER_DAY)      //31,536,000,000 (i64 required)
 
-#define NUM_MIN_PER_DAY     ((u64)NUM_HOUR_PER_DAY  * (u64)NUM_MIN_PER_HOUR)
-#define NUM_MIN_PER_WEEK    ((u64)NUM_DAYS_PER_WEEK * (u64)NUM_MIN_PER_DAY)
-#define NUM_MIN_PER_YEAR    ((u64)NUM_DAYS_PER_YEAR * (u64)NUM_MIN_PER_DAY)
+#define NUM_SEC_PER_HOUR   ((u64)NUM_MIN_PER_HOUR  * (u64)NUM_SEC_PER_MINUTE)  //     3,600 (i16 required)
+#define NUM_SEC_PER_DAY    ((u64)NUM_HOUR_PER_DAY  * (u64)NUM_SEC_PER_HOUR)    //    86,400 (i32 required)
+#define NUM_SEC_PER_WEEK   ((u64)NUM_DAYS_PER_WEEK * (u64)NUM_SEC_PER_DAY)     //   604,800 (i32 required)
+#define NUM_SEC_PER_YEAR   ((u64)NUM_DAYS_PER_YEAR * (u64)NUM_SEC_PER_DAY)     //31,536,000 (i32 required)
+
+#define NUM_MIN_PER_DAY     ((u64)NUM_HOUR_PER_DAY  * (u64)NUM_MIN_PER_HOUR)   //  1,440 (i16 required)
+#define NUM_MIN_PER_WEEK    ((u64)NUM_DAYS_PER_WEEK * (u64)NUM_MIN_PER_DAY)    // 10,080 (i16 required)
+#define NUM_MIN_PER_YEAR    ((u64)NUM_DAYS_PER_YEAR * (u64)NUM_MIN_PER_DAY)    //525,600 (i32 required)
 
 // +--------------------------------------------------------------+
 // |                       Structures/Types                       |
@@ -446,6 +452,7 @@ void ConvertTimestampToRealTime(u64 timestamp, RealTime_t* realTimeOut, bool app
 // +--------------------------------------------------------------+
 /*
 @Defines
+NUM_US_PER_MS
 NUM_MS_PER_SECOND
 NUM_SEC_PER_MINUTE
 NUM_MIN_PER_HOUR
@@ -454,6 +461,11 @@ NUM_DAYS_PER_WEEK
 NUM_DAYS_PER_YEAR
 NUM_DAYS_PER_4YEARS
 UNIX_EPOCH_DATE
+MAX_DAYS_IN_MONTH
+NUM_US_PER_SECOND
+NUM_US_PER_MINUTE
+NUM_US_PER_HOUR
+NUM_US_PER_DAY
 NUM_MS_PER_MINUTE
 NUM_MS_PER_HOUR
 NUM_MS_PER_DAY
