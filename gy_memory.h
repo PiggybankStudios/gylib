@@ -438,11 +438,6 @@ void InitMemArena_PagedHeapFuncs(MemArena_t* arena, u64 pageSize, AllocationFunc
 }
 void InitMemArena_PagedHeapArena(MemArena_t* arena, u64 pageSize, MemArena_t* sourceArena, u64 maxNumPages = 0, AllocAlignment_t alignment = AllocAlignment_None)
 {
-	UNUSED(arena);
-	UNUSED(pageSize);
-	UNUSED(sourceArena);
-	UNUSED(maxNumPages);
-	UNUSED(alignment);
 	ClearPointer(arena);
 	arena->type = MemArenaType_PagedHeap;
 	arena->alignment = alignment;
@@ -1750,7 +1745,7 @@ void* AllocMem_(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride)
 			// +==============================+
 			// |      Allocate New Page       |
 			// +==============================+
-			if (result == nullptr)
+			if (result == nullptr && (arena->maxNumPages == 0 || arena->numPages < arena->maxNumPages))
 			{
 				u64 maxNeededSize = sizeof(HeapAllocPrefix_t) + numBytes + AllocAlignment_Max;
 				u64 newPageSize = arena->pageSize;
