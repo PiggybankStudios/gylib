@@ -263,7 +263,7 @@ void QuickSortAlloc(void* arrayPntr, u64 numElements, u64 elementSize, MemArena_
 @Types
 CompareFunc_f
 @Functions
-#define COMPARE_FUNC_DEFINITION(functionName)
+i32 COMPARE_FUNC_DEFINITION(const void* left, const void* right, void* contextPntr)
 i32 CompareFuncU8(const void* left, const void* right, void* contextPntr)
 i32 CompareFuncU16(const void* left, const void* right, void* contextPntr)
 i32 CompareFuncU32(const void* left, const void* right, void* contextPntr)

@@ -115,7 +115,7 @@ struct VarArray_t
 	void VarArrayRemoveRange_(VarArray_t* array, u64 index, u64 numItemsToRemove, u64 itemSize);
 	void VarArrayCopy(VarArray_t* destArray, const VarArray_t* sourceArray, MemArena_t* memArena);
 	void* VarArrayMove(VarArray_t* array, u64 fromIndex, u64 toIndex, bool swapWithTarget = true);
-	#if defined(_GY_SORTING_H) && !ORCA_COMPILATION
+	#if defined(_GY_SORTING_H)
 	void VarArraySort(VarArray_t* array, CompareFunc_f* compareFunc, void* contextPntr);
 	#endif
 #else
@@ -611,20 +611,26 @@ void* VarArrayMove(VarArray_t* array, u64 fromIndex, u64 toIndex, bool swapWithT
 // +--------------------------------------------------------------+
 // |                           Sorting                            |
 // +--------------------------------------------------------------+
-#if defined(_GY_SORTING_H) && !ORCA_COMPILATION
+#if defined(_GY_SORTING_H)
 void VarArraySort(VarArray_t* array, CompareFunc_f* compareFunc, void* contextPntr)
 {
 	NotNull(array);
 	NotNull(compareFunc);
 	Assert(array->itemSize > 0);
 	if (array->length == 0) { return; } // no sorting to do on an empty array
+	
+	#if ORCA_COMPILATION || PLAYDATE_COMPILATION
+	u8 sortingSpace[128];
+	Assert(array->itemSize*2 <= ArrayCount(sortingSpace));
+	void* workingSpace = &sortingSpace[0];
+	#else
 	void* workingSpace = alloca(array->itemSize*2);
+	#endif
+	
 	NotNull(workingSpace);
 	QuickSort(array->items, array->length, array->itemSize, workingSpace, compareFunc, contextPntr);
 }
 #endif
-
-//TODO: Add VarArraySort if gy_sorting.h is included?
 
 #endif //GYLIB_HEADER_ONLY
 
