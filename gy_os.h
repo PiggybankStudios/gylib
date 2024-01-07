@@ -520,8 +520,13 @@ void OsFreeReservedMemory(void* memoryPntr, u64 reservedSize)
 // |                   Autocomplete Dictionary                    |
 // +--------------------------------------------------------------+
 /*
+@Defines
+MAX_EXECUTABLE_PATH_LENGTH
 @Functions
-MyStr_t OsGetExecutablePath(MemArena_t* memArena)
-MyStr_t OsGetWorkingDirectory(MemArena_t* memArena)
+MyStr_t OsGetExecutablePath(MemArena_t* memArena, OsError_t* errorOut)
+MyStr_t OsGetWorkingDirectory(MemArena_t* memArena, OsError_t* errorOut)
 u64 OsGetMemoryPageSize()
+void* OsReserveMemory(u64 numBytes)
+void OsCommitReservedMemory(void* memoryPntr, u64 numBytes)
+void OsFreeReservedMemory(void* memoryPntr, u64 reservedSize)
 */

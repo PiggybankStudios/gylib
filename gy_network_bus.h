@@ -891,3 +891,99 @@ void UpdateNetworkBus(NetworkBus_t* bus)
 #endif // SOCKETS_SUPPORTED
 
 #endif //  _GY_NETWORK_BUS_H
+
+// +--------------------------------------------------------------+
+// |                   Autocomplete Dictionary                    |
+// +--------------------------------------------------------------+
+/*
+@Defines
+NETWORK_BUS_RESERVED_BASE_CMD
+NETWORK_BUS_CLIENT_TO_SERVER_BASE_CMD
+NETWORK_BUS_SERVER_TO_CLIENT_BASE_CMD
+NETWORK_BUS_UNRESERVED_BASE_CMD
+NETWORK_BUS_ATTN_STR
+NETWORK_BUS_ATTN_STR_LENGTH
+NETWORK_BUS_INCOMPLETE_CMD_TIMEOUT
+NETWORK_BUS_CONNECT_CMD_TIMEOUT
+NETWORK_BUS_RETRY_DELAY
+NETWORK_BUS_DEFAULT_MAX_NUM_TRIES
+NetworkBusCmd_None
+NetworkBusRsp_None
+NetworkBusCmd_NewClient
+NetworkBusCmd_Disconnect
+NetworkBusCmd_Success
+NetworkBusCmd_Failure
+NetworkBusCmd_Ping
+NetworkBusCmd_Ack
+NetworkBusCmd_Last
+NetworkBusRsp_IdAssigned
+NetworkBusRsp_Kicked
+NetworkBusRsp_Success
+NetworkBusRsp_Failure
+NetworkBusRsp_Ping
+NetworkBusRsp_Ack
+NetworkBusRsp_Last
+NetworkBusState_None
+NetworkBusState_Disconnected
+NetworkBusState_JustOpened
+NetworkBusState_WaitingForClientId
+NetworkBusState_Connected
+NetworkBusState_NumStates
+ResponseCheckResult_NA
+ResponseCheckResult_Failure
+ResponseCheckResult_Success
+ResponseCheckResult_NumResults
+NbPacketHandleFlags_None
+NbPacketHandleFlags_NbInternal
+NbPacketHandleFlags_RetryPacket
+NbPacketHandleFlags_All
+@Types
+NetworkBusCmd_t
+NetworkBusState_t
+ResponseCheckResult_t
+NbPacketHandleFlags_t
+NbGetProgramTime_f
+NbHandleCommand_f
+NbResponseCheck_f
+NbRetryPacketFinished_f
+NbClientConnectedOrDisconnected_f
+NetworkCmdHeader_t
+RetryPacket_t
+NetworkBusClient_t
+NetworkBusCallbacks_t
+NetworkBus_t
+NetworkBusStandardPayload_t
+@Functions
+const char* GetNetworkBusCmdStr(NetworkBusCmd_t cmd)
+const char* GetNetworkBusStateStr(NetworkBusState_t enumValue)
+const char* GetResponseCheckResultStr(ResponseCheckResult_t enumValue)
+const char* GetNbPacketHandleFlagsStr(NbPacketHandleFlags_t enumValue)
+u64 NB_GET_PROGRAM_TIME_DEFINITION(struct NetworkBus_t* bus)
+bool NB_HANDLE_COMMAND_DEFINITION(struct NetworkBus_t* bus, struct NetworkBusClient_t* sourceClient, NbPacketHandleFlags_t handleFlags, struct NetworkCmdHeader_t header, const u8* payloadPntr)
+Tribool_t NB_RESPONSE_CHECK_DEFINITION(struct NetworkBus_t* bus, struct RetryPacket_t* packet, struct NetworkCmdHeader_t header, const u8* payloadPntr)
+void NB_RETRY_PACKET_FINISHED_DEFINITION(struct NetworkBus_t* bus, struct RetryPacket_t* packet, bool success, struct NetworkCmdHeader_t rspHeader, const u8* rspPayloadPntr)
+void NB_CLIENT_CONNECTED_OR_DISCONNECTED_DEFINITION(struct NetworkBus_t* bus, struct NetworkBusClient_t* client, bool connected)
+Serializable_t NewSerializable_NetworkBusStandardPayload(NetworkBusStandardPayload_t* successOrFailurePayload)
+void FreeRetryPacket(NetworkBus_t* bus, RetryPacket_t* packet)
+void FreeNetworkBus(NetworkBus_t* bus)
+void CreateNetworkBus(NetworkBus_t* busOut, BufferedSocket_t* socket, MemArena_t* memArena, MemArena_t* tempArena)
+void NetworkBusSetCallbacks(NetworkBus_t* bus, void* contextPntr, NbGetProgramTime_f* getProgramTimeFunc, NbHandleCommand_f* handleCommandFunc, NbResponseCheck_f* responseCheckFunc, NbRetryPacketFinished_f* retryPacketFinishedFunc, NbClientConnectedOrDisconnected_f* clientConnectedOrDisconnectedFunc)
+bool NetworkBusSendCmdWithPayload(NetworkBus_t* bus, NetworkBusClient_t* client, u64 packetId, u32 cmd, u64 payloadLength, const void* payloadPntr)
+bool NetworkBusSendCmdStandardPayload(NetworkBus_t* bus, NetworkBusClient_t* client, u64 packetId, u32 cmd, u64 sentPacketId, u32 sentCmd)
+bool NetworkBusSendCmd(NetworkBus_t* bus, NetworkBusClient_t* client, u64 packetId, u32 cmd, Serializable_t payloadSerializable = Serializable_Empty)
+bool NetworkBusSendSuccess(NetworkBus_t* bus, NetworkBusClient_t* client, u64 packetId, u64 sentPacketId, u32 sentCmd)
+bool NetworkBusSendFailure(NetworkBus_t* bus, NetworkBusClient_t* client, u64 packetId, u64 sentPacketId, u32 sentCmd)
+u64 NetworkBusSendRetryPacketWithPayload(NetworkBus_t* bus, NetworkBusClient_t* client, u32 cmd, u32 expectedRspCmd, u32 failureRspCmd, u64 payloadLength, const void* payloadPntr, u64 maxNumTries = NETWORK_BUS_DEFAULT_MAX_NUM_TRIES)
+u64 NetworkBusSendRetryPacket(NetworkBus_t* bus, NetworkBusClient_t* client, u32 cmd, u32 expectedRspCmd, u32 failureRspCmd, Serializable_t payloadSerializable = Serializable_Empty, u64 maxNumTries = NETWORK_BUS_DEFAULT_MAX_NUM_TRIES)
+NetworkBusClient_t* FindNetworkBusClientById(NetworkBus_t* bus, u64 clientId)
+NetworkBusClient_t* FindNetworkBusClientByAddress(NetworkBus_t* bus, IpAddressAndPort_t address)
+bool TryFindCmdInBuffer(BufferedSocketBuffer_t* buffer, u64 programTime, NetworkCmdHeader_t* headerOut, u8** payloadPntrOut)
+void PopCmdInBuffer(BufferedSocketBuffer_t* buffer, NetworkCmdHeader_t* header, u8* payloadPntr)
+void NetworkBusChangeState(NetworkBus_t* bus, NetworkBusState_t newState)
+void NetworkBusStartConnection(NetworkBus_t* bus)
+void NetworkUpdateConnectionProcess(NetworkBus_t* bus, u64 programTime)
+void NetworkBusFinishRetryPacket(NetworkBus_t* bus, RetryPacket_t* retryPacket, u64 retryPacketIndex, bool success, NetworkCmdHeader_t header, u8* payloadPntr)
+void NetworkBusHandleCmd(NetworkBus_t* bus, BufferedSocketBuffer_t* buffer, NetworkCmdHeader_t header, u8* payloadPntr)
+bool NetworkBusServiceBuffer(NetworkBus_t* bus, u64 programTime, BufferedSocketBuffer_t* buffer)
+void UpdateNetworkBus(NetworkBus_t* bus)
+*/

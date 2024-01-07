@@ -51,3 +51,26 @@ void OsCommitReservedMemory(void* memoryPntr, u64 numBytes);
 void OsFreeReservedMemory(void* memoryPntr, u64 reservedSize);
 
 #endif //  _GY_OS_DEFS_H
+
+// +--------------------------------------------------------------+
+// |                   Autocomplete Dictionary                    |
+// +--------------------------------------------------------------+
+/*
+@Defines
+OsError_None
+OsError_UnsupportedPlatform
+OsError_FailedToAllocateMemory
+OsError_EmptyPath
+OsError_ExePathTooLong
+OsError_NumErrors
+@Types
+OsError_t
+@Functions
+const char* GetOsErrorStr(OsError_t enumValue)
+struct MyStr_t OsGetExecutablePath(struct MemArena_t* memArena, OsError_t* errorOut)
+struct MyStr_t OsGetWorkingDirectory(struct MemArena_t* memArena, OsError_t* errorOut = nullptr)
+u64 OsGetMemoryPageSize()
+void* OsReserveMemory(u64 numBytes)
+void OsCommitReservedMemory(void* memoryPntr, u64 numBytes)
+void OsFreeReservedMemory(void* memoryPntr, u64 reservedSize)
+*/
