@@ -2101,7 +2101,7 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize, bool ignoreNullp
 		// +==============================+
 		case MemArenaType_StdHeap:
 		{
-			free(allocPntr);
+			MyFree(allocPntr);
 			Decrement(arena->numAllocations);
 			DecrementBy(arena->used, allocSize);
 			result = true;
