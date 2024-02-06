@@ -14,6 +14,9 @@ Description:
 
 #if SOCKETS_SUPPORTED
 
+//TODO: Add all the actual includes we need for this file
+#include "gy_extras.h"
+
 // +--------------------------------------------------------------+
 // |                           Defines                            |
 // +--------------------------------------------------------------+
