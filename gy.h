@@ -33,6 +33,7 @@ Description:
 #include "gylib/gy_string.h"
 #include "gylib/gy_string_buffer.h"
 #include "gylib/gy_uuid.h"
+#include "gylib/gy_stream.h"
 #include "gylib/gy_vectors.h"
 #include "gylib/gy_directions.h"
 #include "gylib/gy_basis_vectors.h"
