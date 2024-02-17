@@ -1530,25 +1530,61 @@ u64 StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ign
 	if (target.length == 0) { return 0; } //nothing to replace
 	
 	u64 numReplacements = 0;
-	u64 writeIndex = 0;
-	for (u64 readIndex = 0; readIndex < str.length; readIndex++)
+	if (!ignoreCase) //Faster code-path:
 	{
-		if (readIndex + target.length <= str.length &&
-			((ignoreCase && StrEqualsIgnoreCase(StrSubstringLength(&str, readIndex, target.length), target)) ||
-			(!ignoreCase && StrEquals(StrSubstringLength(&str, readIndex, target.length), target))))
+		u64 writeIndex = 0;
+		u64 prevMemMove = 0;
+		u64 readIndex = 0;
+		for (readIndex = 0; readIndex < str.length; readIndex++)
 		{
-			for (u64 cIndex = 0; cIndex < replacement.length; cIndex++)
+			if (readIndex + target.length <= str.length &&
+				MyMemCompare(&str.chars[readIndex], target.chars, target.length) == 0)
 			{
-				str.pntr[writeIndex + cIndex] = replacement.pntr[cIndex];
+				if (prevMemMove < writeIndex)
+				{
+					u64 amountToMove = writeIndex - prevMemMove;
+					MyMemMove(&str.chars[prevMemMove], &str.chars[readIndex - amountToMove], amountToMove);
+				}
+				MyMemCopy(&str.chars[writeIndex], replacement.chars, replacement.length);
+				writeIndex += replacement.length;
+				readIndex += target.length-1;
+				prevMemMove = writeIndex;
+				numReplacements++;
 			}
-			writeIndex += replacement.length;
-			readIndex += target.length-1;
-			numReplacements++;
+			else
+			{
+				//str.pntr[writeIndex] = str.pntr[readIndex];
+				writeIndex++;
+			}
 		}
-		else
+		if (prevMemMove < writeIndex)
 		{
-			str.pntr[writeIndex] = str.pntr[readIndex];
-			writeIndex++;
+			u64 amountToMove = writeIndex - prevMemMove;
+			MyMemMove(&str.chars[prevMemMove], &str.chars[readIndex - amountToMove], amountToMove);
+		}
+	}
+	else
+	{
+		u64 writeIndex = 0;
+		for (u64 readIndex = 0; readIndex < str.length; readIndex++)
+		{
+			if (readIndex + target.length <= str.length &&
+				((ignoreCase && StrEqualsIgnoreCase(StrSubstringLength(&str, readIndex, target.length), target)) ||
+				(!ignoreCase && StrEquals(StrSubstringLength(&str, readIndex, target.length), target))))
+			{
+				for (u64 cIndex = 0; cIndex < replacement.length; cIndex++)
+				{
+					str.pntr[writeIndex + cIndex] = replacement.pntr[cIndex];
+				}
+				writeIndex += replacement.length;
+				readIndex += target.length-1;
+				numReplacements++;
+			}
+			else
+			{
+				str.pntr[writeIndex] = str.pntr[readIndex];
+				writeIndex++;
+			}
 		}
 	}
 	
@@ -1661,45 +1697,60 @@ bool FindSubstring(MyStr_t target, MyStr_t substring, u64* indexOut = nullptr, b
 	NotNullStr(&target);
 	NotNullStr(&substring);
 	if (substring.length > target.length) { return false; }
+	if (substring.length == 0) { return false; }
 	
-	for (u64 cIndex = startIndex; cIndex + substring.length <= target.length; )
+	if (!ignoreCase) //Faster code-path:
 	{
-		bool allMatched = true;
-		u64 cSubIndex = 0;
-		for (u64 subIndex = 0; subIndex < substring.length; )
+		for (u64 cIndex = startIndex; cIndex + substring.length <= target.length; cIndex++)
 		{
-			u32 targetCodepoint = 0;
-			u8 targetCodepointSize = GetCodepointForUtf8Str(target, cIndex + cSubIndex, &targetCodepoint);
-			u32 subCodepoint = 0;
-			u8 subCodepointSize = GetCodepointForUtf8Str(substring, subIndex, &subCodepoint);
-			if (targetCodepointSize == 0 || subCodepointSize == 0)
+			if (MyMemCompare(&target.chars[cIndex], substring.chars, substring.length) == 0)
 			{
-				return false;
+				SetOptionalOutPntr(indexOut, cIndex);
+				return true;
 			}
-			
-			if ((!ignoreCase && targetCodepoint != subCodepoint) ||
-				(ignoreCase && GetLowercaseCodepoint(targetCodepoint) != GetLowercaseCodepoint(subCodepoint)))
-			{
-				allMatched = false;
-				break;
-			}
-			
-			subIndex += subCodepointSize;
-			cSubIndex += targetCodepointSize;
 		}
-		if (allMatched)
+	}
+	else
+	{
+		for (u64 cIndex = startIndex; cIndex + substring.length <= target.length; )
 		{
-			if (indexOut != nullptr) { *indexOut = cIndex; }
-			return true;
-		}
-		else
-		{
-			u8 targetCodepointSize = GetCodepointForUtf8Str(target, cIndex, nullptr);
-			if (targetCodepointSize == 0)
+			bool allMatched = true;
+			u64 cSubIndex = 0;
+			for (u64 subIndex = 0; subIndex < substring.length; )
 			{
-				return false;
+				u32 targetCodepoint = 0;
+				u8 targetCodepointSize = GetCodepointForUtf8Str(target, cIndex + cSubIndex, &targetCodepoint);
+				u32 subCodepoint = 0;
+				u8 subCodepointSize = GetCodepointForUtf8Str(substring, subIndex, &subCodepoint);
+				if (targetCodepointSize == 0 || subCodepointSize == 0)
+				{
+					return false;
+				}
+				
+				if ((!ignoreCase && targetCodepoint != subCodepoint) ||
+					(ignoreCase && GetLowercaseCodepoint(targetCodepoint) != GetLowercaseCodepoint(subCodepoint)))
+				{
+					allMatched = false;
+					break;
+				}
+				
+				subIndex += subCodepointSize;
+				cSubIndex += targetCodepointSize;
 			}
-			cIndex += targetCodepointSize;
+			if (allMatched)
+			{
+				SetOptionalOutPntr(indexOut, cIndex);
+				return true;
+			}
+			else
+			{
+				u8 targetCodepointSize = GetCodepointForUtf8Str(target, cIndex, nullptr);
+				if (targetCodepointSize == 0)
+				{
+					return false;
+				}
+				cIndex += targetCodepointSize;
+			}
 		}
 	}
 	
