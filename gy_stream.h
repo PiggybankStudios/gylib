@@ -321,11 +321,13 @@ bool StreamIsOver(Stream_t* stream, bool considerChunkData = true)
 	NotNull(stream);
 	if (!StreamIsValid(stream)) { return true; }
 	if (considerChunkData && stream->chunkReturnedSize < stream->chunkSize) { return false; }
-	if (!stream->isTotalSizeFilled && IsFlagSet(stream->capabilities, StreamCapability_FiniteSize) && stream->callbacks.GetSize != nullptr)
-	{
-		stream->totalSize = stream->callbacks.GetSize(stream);
-		stream->isTotalSizeFilled = true;
-	}
+	// NOTE: I don't think we actually want to automatically trigger a GetSize calculation when asking StreamIsOver
+	//       It's pretty common to ask StreamIsOver in scenarios where you just wanna check if we encountered the end normally
+	// if (!stream->isTotalSizeFilled && IsFlagSet(stream->capabilities, StreamCapability_FiniteSize) && stream->callbacks.GetSize != nullptr)
+	// {
+	// 	stream->totalSize = stream->callbacks.GetSize(stream);
+	// 	stream->isTotalSizeFilled = true;
+	// }
 	if (stream->isTotalSizeFilled && stream->readIndex >= stream->totalSize) { return true; }
 	return false;
 }
@@ -372,7 +374,6 @@ void StreamMoveBack(Stream_t* stream, u64 amount)
 	Assert(IsFlagSet(stream->capabilities, StreamCapability_Backtracking));
 	Assert(stream->callbacks.Move != nullptr);
 	stream->callbacks.Move(stream, -(i64)amount);
-	DebugAssert(stream->readIndex == 0);
 }
 
 // +--------------------------------------------------------------+
@@ -451,7 +452,7 @@ void* StreamReadRemainingInArena(Stream_t* stream, MemArena_t* memArena, u64* nu
 
 //NOTE: This doesn't always return targetStr if includeTargetStr, we will return any remaining data at the end of the stream, and that
 //      final chunk will not include the targetStr
-MyStr_t StreamReadUntil(Stream_t* stream, MyStr_t targetStr, bool includeTargetStr = false, MemArena_t* chunkArena = nullptr, u64 chunkReadSize = 64)
+MyStr_t StreamReadUntil(Stream_t* stream, MyStr_t targetStr, bool includeTargetStr = false, MemArena_t* chunkArena = nullptr, u64 chunkReadSize = 1024)
 {
 	NotNull(stream);
 	NotNullStr(&targetStr);
@@ -474,7 +475,7 @@ MyStr_t StreamReadUntil(Stream_t* stream, MyStr_t targetStr, bool includeTargetS
 					StreamMoveBack(stream, stream->readIndex - startIndex);
 					u64 numBytesRead = 0;
 					void* resultPntr = StreamRead(stream, numBytesToTarget + targetStr.length, &numBytesRead);
-					Assert(numBytesRead == numBytesToTarget);
+					Assert(numBytesRead == numBytesToTarget + targetStr.length);
 					return NewStr(numBytesToTarget + (includeTargetStr ? targetStr.length : 0), (char*)resultPntr);
 				}
 			}
@@ -650,6 +651,7 @@ void* StreamReadInArena(Stream_t* stream, u64 numBytes, MemArena_t* memArena, u6
 void* StreamReadRemaining(Stream_t* stream, u64* numBytesReadOut)
 u64 StreamReadRemainingInto(Stream_t* stream, u64 bufferSize, void* bufferPntr)
 void* StreamReadRemainingInArena(Stream_t* stream, MemArena_t* memArena, u64* numBytesReadOut)
+MyStr_t StreamReadUntil(Stream_t* stream, MyStr_t targetStr, bool includeTargetStr = false, MemArena_t* chunkArena = nullptr, u64 chunkReadSize = 1024)
 void StreamSkip(Stream_t* stream, u64 amount, bool allowLess = true)
 */
 

@@ -25,6 +25,7 @@ struct LineParser_t
 	bool isStreamBased;
 	MyStr_t fileContents;
 	Stream_t* stream;
+	u64 chunkReadSize;
 };
 
 enum ParsingTokenType_t
@@ -175,6 +176,7 @@ LineParser_t NewLineParser(Stream_t* streamPntr)
 	result.lineIndex = 0;
 	result.isStreamBased = true;
 	result.stream = streamPntr;
+	result.chunkReadSize = 1024;
 	return result;
 }
 
@@ -187,7 +189,7 @@ bool LineParserGetLine(LineParser_t* parser, MyStr_t* lineOut, MemArena_t* chunk
 	{
 		NotNull(parser->stream);
 		if (StreamIsOver(parser->stream)) { return false; }
-		MyStr_t nextLine = StreamReadUntil(parser->stream, NewStr("\n"), false, chunkArena);
+		MyStr_t nextLine = StreamReadUntil(parser->stream, NewStr("\n"), false, chunkArena, parser->chunkReadSize);
 		if (nextLine.length > 0 && nextLine.chars[nextLine.length-1] == '\r') { nextLine.length--; }
 		SetOptionalOutPntr(lineOut, nextLine);
 		return true;

@@ -1517,6 +1517,8 @@ MyStr_t StrSplice(char* targetNullTermStr, u64 startIndex, u64 endIndex, const c
 	return StrSplice(NewStr(targetNullTermStr), startIndex, endIndex, NewStr(replacement), memArena);
 }
 
+//TODO: This is really slow right now, when we are replacing "\r\n" with "\n" in win32_files.cpp when asked to convertNewLines
+//      We should do some profiling and optimize this function a bit more
 //Returns the number of instances replaced
 u64 StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ignoreCase = false, bool allowShrinking = false)
 {
