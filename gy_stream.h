@@ -123,6 +123,12 @@ struct Stream_t
 	void* mainPntr;
 	void* otherPntr;
 	
+	MemArena_t* chunkArena;
+	u64 chunkSize;
+	u64 chunkReturnedSize;
+	u64 chunkAllocSize;
+	u8* chunkPntr;
+	
 	u64 readIndex;
 	u64 numBytesRead;
 	bool isTotalSizeFilled;
@@ -310,10 +316,11 @@ u64 StreamGetRemainingSize(Stream_t* stream)
 	return stream->totalSize - stream->readIndex;
 }
 
-bool StreamIsOver(Stream_t* stream)
+bool StreamIsOver(Stream_t* stream, bool considerChunkData = true)
 {
 	NotNull(stream);
 	if (stream->source == StreamSource_None) { return true; }
+	if (considerChunkData && stream->chunkReturnedSize < stream->chunkSize) { return false; }
 	if (!stream->isTotalSizeFilled && IsFlagSet(stream->capabilities, StreamCapability_FiniteSize) && stream->callbacks.GetSize != nullptr)
 	{
 		stream->totalSize = stream->callbacks.GetSize(stream);
@@ -324,95 +331,8 @@ bool StreamIsOver(Stream_t* stream)
 }
 
 // +--------------------------------------------------------------+
-// |                        Read Functions                        |
-// +--------------------------------------------------------------+
-void* StreamRead(Stream_t* stream, u64 numBytes)
-{
-	NotNull(stream);
-	Assert(IsFlagSet(stream->capabilities, StreamCapability_StaticRead));
-	Assert(stream->callbacks.ReadStatic != nullptr);
-	void* result = nullptr;
-	u64 numBytesRead = stream->callbacks.ReadStatic(stream, numBytes, &result);
-	Assert(numBytesRead == numBytes);
-	AssertIf(numBytesRead > 0, result != nullptr);
-	return result;
-}
-void* StreamRead(Stream_t* stream, u64 numBytes, u64* numBytesReadOut)
-{
-	NotNull(stream);
-	Assert(IsFlagSet(stream->capabilities, StreamCapability_StaticRead));
-	Assert(stream->callbacks.ReadStatic != nullptr);
-	void* result = nullptr;
-	u64 numBytesRead = stream->callbacks.ReadStatic(stream, numBytes, &result);
-	AssertIf(numBytesRead > 0, result != nullptr);
-	SetOptionalOutPntr(numBytesReadOut, numBytesRead);
-	return result;
-}
-u64 StreamReadInto(Stream_t* stream, u64 bufferSize, void* bufferPntr)
-{
-	NotNull(stream);
-	Assert(stream->callbacks.ReadBuffer != nullptr);
-	return stream->callbacks.ReadBuffer(stream, bufferSize, bufferPntr);
-}
-void* StreamReadInArena(Stream_t* stream, u64 numBytes, MemArena_t* memArena)
-{
-	NotNull2(stream, memArena);
-	Assert(stream->callbacks.ReadAlloc != nullptr);
-	void* result = nullptr;
-	u64 numBytesRead = stream->callbacks.ReadAlloc(stream, numBytes, memArena, &result);
-	Assert(numBytesRead == numBytes);
-	AssertIf(numBytesRead > 0, result != nullptr);
-	return result;
-}
-void* StreamReadInArena(Stream_t* stream, u64 numBytes, MemArena_t* memArena, u64* numBytesReadOut)
-{
-	NotNull2(stream, memArena);
-	Assert(stream->callbacks.ReadAlloc != nullptr);
-	void* result = nullptr;
-	u64 numBytesRead = stream->callbacks.ReadAlloc(stream, numBytes, memArena, &result);
-	AssertIf(numBytesRead > 0, result != nullptr);
-	SetOptionalOutPntr(numBytesReadOut, numBytesRead);
-	return result;
-}
-void* StreamReadRemaining(Stream_t* stream, u64* numBytesReadOut)
-{
-	NotNull(stream);
-	return StreamRead(stream, StreamGetRemainingSize(stream), numBytesReadOut);
-}
-u64 StreamReadRemainingInto(Stream_t* stream, u64 bufferSize, void* bufferPntr)
-{
-	NotNull(stream);
-	u64 numBytesRemaining = StreamGetRemainingSize(stream);
-	Assert(bufferSize >= numBytesRemaining);
-	return StreamReadInto(stream, numBytesRemaining, bufferPntr);
-}
-void* StreamReadRemainingInArena(Stream_t* stream, MemArena_t* memArena, u64* numBytesReadOut)
-{
-	NotNull(stream);
-	return StreamReadInArena(stream, StreamGetRemainingSize(stream), memArena, numBytesReadOut);
-}
-
-// +--------------------------------------------------------------+
 // |                        Move Functions                        |
 // +--------------------------------------------------------------+
-void StreamSkip(Stream_t* stream, u64 amount, bool allowLess = true)
-{
-	NotNull(stream);
-	if (allowLess && stream->isTotalSizeFilled)
-	{
-		amount = MinU64(amount, stream->totalSize - stream->readIndex);
-	}
-	if (stream->callbacks.Move)
-	{
-		stream->callbacks.Move(stream, (i64)amount);
-	}
-	else
-	{
-		u64 numBytesRead = StreamReadInto(stream, amount, nullptr);
-		AssertIf(!allowLess, numBytesRead == amount);
-	}
-}
-
 void StreamReset(Stream_t* stream)
 {
 	NotNull(stream);
@@ -453,6 +373,211 @@ void StreamMoveBack(Stream_t* stream, u64 amount)
 	Assert(stream->callbacks.Move != nullptr);
 	stream->callbacks.Move(stream, -(i64)amount);
 	DebugAssert(stream->readIndex == 0);
+}
+
+// +--------------------------------------------------------------+
+// |                        Read Functions                        |
+// +--------------------------------------------------------------+
+void* StreamRead(Stream_t* stream, u64 numBytes)
+{
+	NotNull(stream);
+	AssertMsg(stream->chunkReturnedSize == stream->chunkSize, "Chunk-based reading is incompatible with other reading styles (for now)");
+	Assert(IsFlagSet(stream->capabilities, StreamCapability_StaticRead));
+	Assert(stream->callbacks.ReadStatic != nullptr);
+	void* result = nullptr;
+	u64 numBytesRead = stream->callbacks.ReadStatic(stream, numBytes, &result);
+	Assert(numBytesRead == numBytes);
+	AssertIf(numBytesRead > 0, result != nullptr);
+	return result;
+}
+void* StreamRead(Stream_t* stream, u64 numBytes, u64* numBytesReadOut)
+{
+	NotNull(stream);
+	AssertMsg(stream->chunkReturnedSize == stream->chunkSize, "Chunk-based reading is incompatible with other reading styles (for now)");
+	Assert(IsFlagSet(stream->capabilities, StreamCapability_StaticRead));
+	Assert(stream->callbacks.ReadStatic != nullptr);
+	void* result = nullptr;
+	u64 numBytesRead = stream->callbacks.ReadStatic(stream, numBytes, &result);
+	AssertIf(numBytesRead > 0, result != nullptr);
+	SetOptionalOutPntr(numBytesReadOut, numBytesRead);
+	return result;
+}
+u64 StreamReadInto(Stream_t* stream, u64 bufferSize, void* bufferPntr)
+{
+	NotNull(stream);
+	AssertMsg(stream->chunkReturnedSize == stream->chunkSize, "Chunk-based reading is incompatible with other reading styles (for now)");
+	Assert(stream->callbacks.ReadBuffer != nullptr);
+	return stream->callbacks.ReadBuffer(stream, bufferSize, bufferPntr);
+}
+void* StreamReadInArena(Stream_t* stream, u64 numBytes, MemArena_t* memArena)
+{
+	NotNull2(stream, memArena);
+	AssertMsg(stream->chunkReturnedSize == stream->chunkSize, "Chunk-based reading is incompatible with other reading styles (for now)");
+	Assert(stream->callbacks.ReadAlloc != nullptr);
+	void* result = nullptr;
+	u64 numBytesRead = stream->callbacks.ReadAlloc(stream, numBytes, memArena, &result);
+	Assert(numBytesRead == numBytes);
+	AssertIf(numBytesRead > 0, result != nullptr);
+	return result;
+}
+void* StreamReadInArena(Stream_t* stream, u64 numBytes, MemArena_t* memArena, u64* numBytesReadOut)
+{
+	NotNull2(stream, memArena);
+	AssertMsg(stream->chunkReturnedSize == stream->chunkSize, "Chunk-based reading is incompatible with other reading styles (for now)");
+	Assert(stream->callbacks.ReadAlloc != nullptr);
+	void* result = nullptr;
+	u64 numBytesRead = stream->callbacks.ReadAlloc(stream, numBytes, memArena, &result);
+	AssertIf(numBytesRead > 0, result != nullptr);
+	SetOptionalOutPntr(numBytesReadOut, numBytesRead);
+	return result;
+}
+void* StreamReadRemaining(Stream_t* stream, u64* numBytesReadOut)
+{
+	NotNull(stream);
+	return StreamRead(stream, StreamGetRemainingSize(stream), numBytesReadOut);
+}
+u64 StreamReadRemainingInto(Stream_t* stream, u64 bufferSize, void* bufferPntr)
+{
+	NotNull(stream);
+	u64 numBytesRemaining = StreamGetRemainingSize(stream);
+	Assert(bufferSize >= numBytesRemaining);
+	return StreamReadInto(stream, numBytesRemaining, bufferPntr);
+}
+void* StreamReadRemainingInArena(Stream_t* stream, MemArena_t* memArena, u64* numBytesReadOut)
+{
+	NotNull(stream);
+	return StreamReadInArena(stream, StreamGetRemainingSize(stream), memArena, numBytesReadOut);
+}
+
+//NOTE: This doesn't always return targetStr if includeTargetStr, we will return any remaining data at the end of the stream, and that
+//      final chunk will not include the targetStr
+MyStr_t StreamReadUntil(Stream_t* stream, MyStr_t targetStr, bool includeTargetStr = false, MemArena_t* chunkArena = nullptr, u64 chunkReadSize = 64)
+{
+	NotNull(stream);
+	NotNullStr(&targetStr);
+	Assert(targetStr.length > 0);
+	if (IsFlagSet(stream->capabilities, StreamCapability_StaticRead) &&
+		IsFlagSet(stream->capabilities, StreamCapability_Backtracking))
+	{
+		AssertMsg(stream->chunkReturnedSize == stream->chunkSize, "Chunk-based reading was started on a stream that supports StaticRead??");
+		u64 startIndex = stream->readIndex;
+		while (!StreamIsOver(stream, false))
+		{
+			u64 currentIndex = stream->readIndex;
+			u64 readSize = 0;
+			u8* readData = (u8*)StreamRead(stream, chunkReadSize, &readSize);
+			for (u64 bIndex = 0; bIndex + targetStr.length <= readSize; bIndex++)
+			{
+				if (MyMemCompare(&readData[bIndex], targetStr.chars, targetStr.length) == 0)
+				{
+					u64 numBytesToTarget = (currentIndex + bIndex) - startIndex;
+					StreamMoveBack(stream, stream->readIndex - startIndex);
+					u64 numBytesRead = 0;
+					void* resultPntr = StreamRead(stream, numBytesToTarget + targetStr.length, &numBytesRead);
+					Assert(numBytesRead == numBytesToTarget);
+					return NewStr(numBytesToTarget + (includeTargetStr ? targetStr.length : 0), (char*)resultPntr);
+				}
+			}
+		}
+		
+		if (stream->readIndex > startIndex)
+		{
+			u64 numBytesToEnd = stream->readIndex - startIndex;
+			StreamMoveBack(stream, stream->readIndex - startIndex);
+			u64 numBytesRead = 0;
+			void* resultPntr = StreamRead(stream, numBytesToEnd, &numBytesRead);
+			Assert(numBytesRead == numBytesToEnd);
+			return NewStr(numBytesToEnd, (char*)resultPntr);
+		}
+		else { return MyStr_Empty; }
+	}
+	else
+	{
+		//Chop off the piece of read data that we returned last time and bring the remaining data down in the chunk
+		if (stream->chunkReturnedSize > 0)
+		{
+			Assert(stream->chunkSize >= stream->chunkReturnedSize);
+			for (u64 bIndex = 0; bIndex < stream->chunkSize - stream->chunkReturnedSize; bIndex++)
+			{
+				stream->chunkPntr[bIndex] = stream->chunkPntr[stream->chunkReturnedSize + bIndex];
+			}
+			stream->chunkSize -= stream->chunkReturnedSize;
+		}
+		
+		Assert(chunkArena != nullptr);
+		Assert(stream->chunkArena == nullptr || stream->chunkArena == chunkArena);
+		u64 searchIndex = 0;
+		while (true)
+		{
+			for (u64 bIndex = searchIndex; bIndex + targetStr.length <= stream->chunkSize; bIndex++)
+			{
+				if (MyMemCompare(&stream->chunkPntr[bIndex], targetStr.chars, targetStr.length) == 0)
+				{
+					stream->chunkReturnedSize = bIndex + targetStr.length;
+					return NewStr(bIndex + (includeTargetStr ? targetStr.length : 0), (char*)stream->chunkPntr);
+				}
+			}
+			searchIndex = stream->chunkSize;
+			
+			if (StreamIsOver(stream, false)) { break; }
+			
+			u64 newChunkAllocSize = stream->chunkAllocSize;
+			while (newChunkAllocSize - stream->chunkSize < chunkReadSize)
+			{
+				 if (newChunkAllocSize == 0) { newChunkAllocSize = 8; }
+				 newChunkAllocSize *= 2;
+			}
+			if (newChunkAllocSize > stream->chunkAllocSize)
+			{
+				if (stream->chunkPntr == nullptr)
+				{
+					Assert(stream->chunkArena == nullptr);
+					stream->chunkArena = chunkArena;
+					stream->chunkPntr = AllocArray(stream->chunkArena, u8, newChunkAllocSize);
+					stream->chunkAllocSize = newChunkAllocSize;
+				}
+				else
+				{
+					NotNull(stream->chunkArena);
+					stream->chunkPntr = (u8*)ReallocMem(stream->chunkArena, stream->chunkPntr, newChunkAllocSize, stream->chunkAllocSize);
+					stream->chunkAllocSize = newChunkAllocSize;
+				}
+			}
+			
+			Assert(stream->callbacks.ReadBuffer != nullptr);
+			u64 numBytesRead = stream->callbacks.ReadBuffer(stream, chunkReadSize, &stream->chunkPntr[stream->chunkSize]);
+			if (numBytesRead == 0) { Assert(StreamIsOver(stream, false)); break; }
+			stream->chunkSize += numBytesRead;
+		}
+		
+		if (stream->chunkSize > 0)
+		{
+			stream->chunkReturnedSize = stream->chunkSize;
+			return NewStr(stream->chunkSize, (char*)stream->chunkPntr);
+		}
+		else { return MyStr_Empty; }
+	}
+}
+
+// +--------------------------------------------------------------+
+// |                       Other Functions                        |
+// +--------------------------------------------------------------+
+void StreamSkip(Stream_t* stream, u64 amount, bool allowLess = true)
+{
+	NotNull(stream);
+	if (allowLess && stream->isTotalSizeFilled)
+	{
+		amount = MinU64(amount, stream->totalSize - stream->readIndex);
+	}
+	if (stream->callbacks.Move)
+	{
+		stream->callbacks.Move(stream, (i64)amount);
+	}
+	else
+	{
+		u64 numBytesRead = StreamReadInto(stream, amount, nullptr);
+		AssertIf(!allowLess, numBytesRead == amount);
+	}
 }
 
 // +--------------------------------------------------------------+
@@ -513,7 +638,11 @@ bool StreamCanBacktrack(const Stream_t* stream)
 bool StreamIsWritable(const Stream_t* stream)
 u64 StreamGetSize(Stream_t* stream)
 u64 StreamGetRemainingSize(Stream_t* stream)
-bool StreamIsOver(Stream_t* stream)
+bool StreamIsOver(Stream_t* stream, bool considerChunkData = true)
+void StreamReset(Stream_t* stream)
+void StreamMoveToEnd(Stream_t* stream)
+void StreamMove(Stream_t* stream, i64 amount)
+void StreamMoveBack(Stream_t* stream, u64 amount)
 void* StreamRead(Stream_t* stream, u64 numBytes, u64* numBytesReadOut = nullptr)
 u64 StreamReadInto(Stream_t* stream, u64 bufferSize, void* bufferPntr)
 void* StreamReadInArena(Stream_t* stream, u64 numBytes, MemArena_t* memArena, u64* numBytesReadOut = nullptr)
@@ -521,10 +650,6 @@ void* StreamReadRemaining(Stream_t* stream, u64* numBytesReadOut)
 u64 StreamReadRemainingInto(Stream_t* stream, u64 bufferSize, void* bufferPntr)
 void* StreamReadRemainingInArena(Stream_t* stream, MemArena_t* memArena, u64* numBytesReadOut)
 void StreamSkip(Stream_t* stream, u64 amount, bool allowLess = true)
-void StreamReset(Stream_t* stream)
-void StreamMoveToEnd(Stream_t* stream)
-void StreamMove(Stream_t* stream, i64 amount)
-void StreamMoveBack(Stream_t* stream, u64 amount)
 */
 
 #endif //  _GY_STREAM_H
