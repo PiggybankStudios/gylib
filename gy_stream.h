@@ -62,10 +62,11 @@ enum StreamCapability_t
 	StreamCapability_FiniteSize   = 0x01, //The size can be known
 	StreamCapability_GivenSize    = 0x02, //The size is known, and takes no extra cost to know
 	StreamCapability_Backtracking = 0x04, //We can just back to an earlier point in the stream
-	StreamCapability_Writable     = 0x08, //The pointers returned by read functions point to writable memory
+	StreamCapability_Writable     = 0x08, //The pointers returned by read functions point to writable memory (only matters for static reads, arena or buffer backed reads are kind of writable by default)
+	StreamCapability_StaticRead   = 0x10, //The stream is backed by pre-allocated memory, so you can use StreamRead instead of StreamReadInArena or StreamReadInto
 	
-	StreamCapability_All          = 0x0F,
-	StreamCapability_NumCapabilities = 4,
+	StreamCapability_All          = 0x1F,
+	StreamCapability_NumCapabilities = 5,
 };
 #ifdef GYLIB_HEADER_ONLY
 const char* GetStreamCapabilityStr(StreamCapability_t enumValue);
@@ -79,6 +80,7 @@ const char* GetStreamCapabilityStr(StreamCapability_t enumValue)
 		case StreamCapability_GivenSize:    return "GivenSize";
 		case StreamCapability_Backtracking: return "Backtracking";
 		case StreamCapability_Writable:     return "Writable";
+		case StreamCapability_StaticRead:   return "StaticRead";
 		case StreamCapability_All:          return "All";
 		default: return "Unknown";
 	}
@@ -117,6 +119,7 @@ struct Stream_t
 	StreamCallbacks_t callbacks;
 	
 	MyStr_t filePath;
+	bool convertNewLines;
 	void* mainPntr;
 	void* otherPntr;
 	
@@ -125,6 +128,9 @@ struct Stream_t
 	bool isTotalSizeFilled;
 	u64 totalSize;
 };
+
+#define Stream_Invalid NewStream(StreamSource_None, 0x0000, nullptr, nullptr, MyStr_Empty)
+#define Stream_Invalid_Const { nullptr, StreamSource_None, 0x0000, {}, MyStr_Empty_Const, false, nullptr, nullptr, 0, 0, false, 0 }
 
 // +--------------------------------------------------------------+
 // |              StreamSource_Buffer Implementation              |
@@ -214,10 +220,11 @@ Stream_t NewStream(StreamSource_t source, u16 capabilities, const StreamCallback
 	Stream_t result = {};
 	result.source = source;
 	result.capabilities = capabilities;
-	MyMemCopy(&result.callbacks, &callbacks, sizeof(StreamCallbacks_t));
+	if (callbacks != nullptr) { MyMemCopy(&result.callbacks, callbacks, sizeof(StreamCallbacks_t)); }
 	result.allocArena = memArena;
-	if (result.allocArena != nullptr && !IsEmptyStr(filePath))
+	if (!IsEmptyStr(filePath))
 	{
+		NotNull(result.allocArena);
 		result.filePath = AllocString(result.allocArena, &filePath);
 	}
 	else { result.filePath = MyStr_Empty; }
@@ -238,7 +245,8 @@ Stream_t NewBufferStream(const void* bufferPntr, u64 bufferSize, bool isWritable
 		StreamCapability_FiniteSize |
 		StreamCapability_GivenSize |
 		StreamCapability_Backtracking |
-		(isWritable ? StreamCapability_Writable : 0)
+		(isWritable ? StreamCapability_Writable : 0) |
+		StreamCapability_StaticRead
 	);
 	
 	Stream_t result = NewStream(StreamSource_Buffer, streamCaps, &callbacks, nullptr, MyStr_Empty);
@@ -257,19 +265,24 @@ Stream_t NewMyStrStream(MyStr_t bufferStr, bool isWritable)
 // +--------------------------------------------------------------+
 // |                        Info Functions                        |
 // +--------------------------------------------------------------+
-bool StreamIsFinite(Stream_t* stream)
+bool StreamIsValid(const Stream_t* stream)
+{
+	NotNull(stream);
+	return (stream->source != StreamSource_None);
+}
+bool StreamIsFinite(const Stream_t* stream)
 {
 	return IsFlagSet(stream->capabilities, StreamCapability_FiniteSize);
 }
-bool StreamIsGivenSize(Stream_t* stream)
+bool StreamIsGivenSize(const Stream_t* stream)
 {
 	return IsFlagSet(stream->capabilities, StreamCapability_GivenSize);
 }
-bool StreamCanBacktrack(Stream_t* stream)
+bool StreamCanBacktrack(const Stream_t* stream)
 {
 	return IsFlagSet(stream->capabilities, StreamCapability_Backtracking);
 }
-bool StreamIsWritable(Stream_t* stream)
+bool StreamIsWritable(const Stream_t* stream)
 {
 	return IsFlagSet(stream->capabilities, StreamCapability_Writable);
 }
@@ -316,6 +329,7 @@ bool StreamIsOver(Stream_t* stream)
 void* StreamRead(Stream_t* stream, u64 numBytes)
 {
 	NotNull(stream);
+	Assert(IsFlagSet(stream->capabilities, StreamCapability_StaticRead));
 	Assert(stream->callbacks.ReadStatic != nullptr);
 	void* result = nullptr;
 	u64 numBytesRead = stream->callbacks.ReadStatic(stream, numBytes, &result);
@@ -326,6 +340,7 @@ void* StreamRead(Stream_t* stream, u64 numBytes)
 void* StreamRead(Stream_t* stream, u64 numBytes, u64* numBytesReadOut)
 {
 	NotNull(stream);
+	Assert(IsFlagSet(stream->capabilities, StreamCapability_StaticRead));
 	Assert(stream->callbacks.ReadStatic != nullptr);
 	void* result = nullptr;
 	u64 numBytesRead = stream->callbacks.ReadStatic(stream, numBytes, &result);
@@ -459,6 +474,8 @@ StreamCapability_Backtracking
 StreamCapability_Writable
 StreamCapability_All
 StreamCapability_NumCapabilities
+Stream_Invalid
+Stream_Invalid_Const
 @Types
 StreamSource_t
 StreamCapability_t
@@ -489,10 +506,11 @@ void FreeStream(Stream_t* stream)
 Stream_t NewStream(StreamSource_t source, u16 capabilities, const StreamCallbacks_t* callbacks, MemArena_t* memArena, MyStr_t filePath)
 Stream_t NewBufferStream(const void* bufferPntr, u64 bufferSize, bool isWritable)
 Stream_t NewMyStrStream(MyStr_t bufferStr, bool isWritable)
-bool StreamIsFinite(Stream_t* stream)
-bool StreamIsGivenSize(Stream_t* stream)
-bool StreamCanBacktrack(Stream_t* stream)
-bool StreamIsWritable(Stream_t* stream)
+bool StreamIsValid(const Stream_t* stream)
+bool StreamIsFinite(const Stream_t* stream)
+bool StreamIsGivenSize(const Stream_t* stream)
+bool StreamCanBacktrack(const Stream_t* stream)
+bool StreamIsWritable(const Stream_t* stream)
 u64 StreamGetSize(Stream_t* stream)
 u64 StreamGetRemainingSize(Stream_t* stream)
 bool StreamIsOver(Stream_t* stream)
