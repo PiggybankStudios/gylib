@@ -209,8 +209,8 @@ struct SplitStringContext_t
 	MyStr_t StrSplice(MyStr_t target, u64 startIndex, u64 endIndex, const char* replacementNullTerm, MemArena_t* memArena);
 	MyStr_t StrSplice(char* targetNullTermStr, u64 startIndex, u64 endIndex, MyStr_t replacement, MemArena_t* memArena);
 	MyStr_t StrSplice(char* targetNullTermStr, u64 startIndex, u64 endIndex, const char* replacement, MemArena_t* memArena);
-	u64 StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ignoreCase = false);
-	u64 StrReplaceInPlace(MyStr_t str, const char* target, const char* replacement, bool ignoreCase = false);
+	u64 StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ignoreCase = false, bool allowShrinking = false);
+	u64 StrReplaceInPlace(MyStr_t str, const char* target, const char* replacement, bool ignoreCase = false, bool allowShrinking = false);
 	MyStr_t StrReplace(MyStr_t str, MyStr_t target, MyStr_t replacement, MemArena_t* memArena);
 	MyStr_t StrReplace(MyStr_t str, const char* target, const char* replacement, MemArena_t* memArena);
 	bool FindSubstring(MyStr_t target, MyStr_t substring, u64* indexOut = nullptr, bool ignoreCase = false, u64 startIndex = 0);
@@ -1518,37 +1518,45 @@ MyStr_t StrSplice(char* targetNullTermStr, u64 startIndex, u64 endIndex, const c
 }
 
 //Returns the number of instances replaced
-u64 StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ignoreCase = false)
+u64 StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ignoreCase = false, bool allowShrinking = false)
 {
 	NotNullStr(&str);
 	NotNullStr(&target);
 	NotNullStr(&replacement);
-	Assert(target.length == replacement.length); //TODO: Add support for replacement being shorter?
+	AssertIf(!allowShrinking, target.length == replacement.length);
+	AssertIf(allowShrinking, target.length >= replacement.length);
 	if (target.length == 0) { return 0; } //nothing to replace
 	
-	u64 result = 0;
-	for (u64 cIndex = 0; cIndex + target.length <= str.length; cIndex++)
+	u64 numReplacements = 0;
+	u64 writeIndex = 0;
+	for (u64 readIndex = 0; readIndex + target.length <= str.length; readIndex++)
 	{
-		if ((ignoreCase && StrEqualsIgnoreCase(StrSubstringLength(&str, cIndex, target.length), target)) ||
-			(!ignoreCase && StrEquals(StrSubstringLength(&str, cIndex, target.length), target)))
+		if ((ignoreCase && StrEqualsIgnoreCase(StrSubstringLength(&str, readIndex, target.length), target)) ||
+			(!ignoreCase && StrEquals(StrSubstringLength(&str, readIndex, target.length), target)))
 		{
-			for (u64 cIndex2 = 0; cIndex2 < target.length; cIndex2++)
+			for (u64 cIndex = 0; cIndex < replacement.length; cIndex++)
 			{
-				str.pntr[cIndex + cIndex2] = replacement.pntr[cIndex2];
+				str.pntr[writeIndex + cIndex] = replacement.pntr[cIndex];
 			}
-			cIndex += replacement.length-1;
-			result++;
+			writeIndex += replacement.length;
+			readIndex += target.length-1;
+			numReplacements++;
+		}
+		else
+		{
+			str.pntr[writeIndex] = str.pntr[readIndex];
+			writeIndex++;
 		}
 	}
 	
-	return result;
+	return numReplacements;
 }
-u64 StrReplaceInPlace(MyStr_t str, const char* target, const char* replacement, bool ignoreCase = false)
+u64 StrReplaceInPlace(MyStr_t str, const char* target, const char* replacement, bool ignoreCase = false, bool allowShrinking = false)
 {
 	NotNullStr(&str);
 	NotNull(target);
 	NotNull(replacement);
-	return StrReplaceInPlace(str, NewStr(target), NewStr(replacement), ignoreCase);
+	return StrReplaceInPlace(str, NewStr(target), NewStr(replacement), ignoreCase, allowShrinking);
 }
 
 //TODO: Add ignoreCase support to this implementation!
@@ -2158,7 +2166,7 @@ MyStr_t GetDirectoryPart(MyStr_t filePath)
 const char* GetFileNamePartNt(const char* filePath)
 void StrSpliceInPlace(MyStr_t target, u64 startIndex, MyStr_t replacement)
 MyStr_t StrSplice(MyStr_t target, u64 startIndex, u64 endIndex, MyStr_t replacement, MemArena_t* memArena)
-u64 StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ignoreCase = false)
+u64 StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ignoreCase = false, bool allowShrinking = false)
 MyStr_t StrReplace(MyStr_t str, MyStr_t target, MyStr_t replacement, MemArena_t* memArena)
 bool FindSubstring(MyStr_t target, MyStr_t substring, u64* indexOut = nullptr, bool ignoreCase = false, u64 startIndex = 0)
 MyStr_t FindStrParensPart(MyStr_t target, char openParensChar = '[', char closeParensChar = ']')
