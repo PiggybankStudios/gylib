@@ -22,7 +22,9 @@ struct LineParser_t
 	u64 byteIndex;
 	u64 lineBeginByteIndex;
 	u64 lineIndex; //This is not zero based! It's more like a line number you'd see in the gutter of a text editor!
+	bool isStreamBased;
 	MyStr_t fileContents;
+	Stream_t* stream;
 };
 
 enum ParsingTokenType_t
@@ -136,9 +138,12 @@ struct XmlParseResult_t
 // +--------------------------------------------------------------+
 #ifdef GYLIB_HEADER_ONLY
 	LineParser_t NewLineParser(MyStr_t fileContents);
-	bool LineParserGetLine(LineParser_t* parser, MyStr_t* lineOut);
+	LineParser_t NewLineParser(Stream_t* streamPntr);
+	bool LineParserGetLine(LineParser_t* parser, MyStr_t* lineOut, MemArena_t* chunkArena = nullptr);
+	bool LineParserIsFinished(const LineParser_t* parser);
 	TextParser_t NewTextParser(MyStr_t fileContents);
-	bool TextParserGetToken(TextParser_t* parser, ParsingToken_t* tokenOut);
+	TextParser_t NewTextParser(Stream_t* streamPntr);
+	bool TextParserGetToken(TextParser_t* parser, ParsingToken_t* tokenOut, MemArena_t* chunkArena = nullptr);
 	XmlParser_t NewXmlParser(MemArena_t* arenaForLists, MyStr_t fileContents);
 	void FreeXmlParser(XmlParser_t* parser);
 	#if GYLIB_SCRATCH_ARENA_AVAILABLE
@@ -157,46 +162,84 @@ LineParser_t NewLineParser(MyStr_t fileContents)
 	LineParser_t result = {};
 	result.byteIndex = 0;
 	result.lineIndex = 0;
+	result.isStreamBased = false;
 	result.fileContents = fileContents;
 	return result;
 }
+LineParser_t NewLineParser(Stream_t* streamPntr)
+{
+	NotNull(streamPntr);
+	Assert(StreamIsValid(streamPntr));
+	LineParser_t result = {};
+	result.byteIndex = 0;
+	result.lineIndex = 0;
+	result.isStreamBased = true;
+	result.stream = streamPntr;
+	return result;
+}
 
-bool LineParserGetLine(LineParser_t* parser, MyStr_t* lineOut)
+//chunkArena is only required if the parser isStreamBased, and that stream doesn't support StaticRead
+bool LineParserGetLine(LineParser_t* parser, MyStr_t* lineOut, MemArena_t* chunkArena = nullptr)
 {
 	NotNull(parser);
-	NotNullStr(&parser->fileContents);
-	if (parser->byteIndex >= parser->fileContents.length) { return false; }
-	parser->lineIndex++;
-	parser->lineBeginByteIndex = parser->byteIndex;
 	
-	u64 endOfLineByteSize = 0;
-	u64 startIndex = parser->byteIndex;
-	while (parser->byteIndex < parser->fileContents.length)
+	if (parser->isStreamBased)
 	{
-		char nextChar = parser->fileContents.pntr[parser->byteIndex];
-		char nextNextChar = parser->fileContents.pntr[parser->byteIndex+1];
-		if (nextChar != nextNextChar &&
-			(nextChar     == '\n' || nextChar     == '\r') &&
-			(nextNextChar == '\n' || nextNextChar == '\r'))
-		{
-			endOfLineByteSize = 2;
-			break;
-		}
-		else if (nextChar == '\n' || nextChar == '\r')
-		{
-			endOfLineByteSize = 1;
-			break;
-		}
-		else
-		{
-			parser->byteIndex++;
-		}
+		NotNull(parser->stream);
+		if (StreamIsOver(parser->stream)) { return false; }
+		MyStr_t nextLine = StreamReadUntil(parser->stream, NewStr("\n"), false, chunkArena);
+		if (nextLine.length > 0 && nextLine.chars[nextLine.length-1] == '\r') { nextLine.length--; }
+		SetOptionalOutPntr(lineOut, nextLine);
+		return true;
 	}
-	
-	MyStr_t line = NewStr(parser->byteIndex - startIndex, &parser->fileContents.pntr[startIndex]);
-	parser->byteIndex += endOfLineByteSize;
-	if (lineOut != nullptr) { *lineOut = line; }
-	return true;
+	else
+	{
+		NotNullStr(&parser->fileContents);
+		if (parser->byteIndex >= parser->fileContents.length) { return false; }
+		parser->lineIndex++;
+		parser->lineBeginByteIndex = parser->byteIndex;
+		
+		u64 endOfLineByteSize = 0;
+		u64 startIndex = parser->byteIndex;
+		while (parser->byteIndex < parser->fileContents.length)
+		{
+			char nextChar = parser->fileContents.pntr[parser->byteIndex];
+			char nextNextChar = parser->fileContents.pntr[parser->byteIndex+1];
+			if (nextChar != nextNextChar &&
+				(nextChar     == '\n' || nextChar     == '\r') &&
+				(nextNextChar == '\n' || nextNextChar == '\r'))
+			{
+				endOfLineByteSize = 2;
+				break;
+			}
+			else if (nextChar == '\n' || nextChar == '\r')
+			{
+				endOfLineByteSize = 1;
+				break;
+			}
+			else
+			{
+				parser->byteIndex++;
+			}
+		}
+		
+		MyStr_t line = NewStr(parser->byteIndex - startIndex, &parser->fileContents.pntr[startIndex]);
+		parser->byteIndex += endOfLineByteSize;
+		SetOptionalOutPntr(lineOut, line);
+		return true;
+	}
+}
+
+bool LineParserIsFinished(const LineParser_t* parser)
+{
+	if (parser->isStreamBased)
+	{
+		return StreamIsOver(parser->stream);
+	}
+	else
+	{
+		return (parser->byteIndex >= parser->fileContents.length);
+	}
 }
 
 // +--------------------------------------------------------------+
@@ -210,19 +253,29 @@ TextParser_t NewTextParser(MyStr_t fileContents)
 	result.currentLine = MyStr_Empty;
 	return result;
 }
+TextParser_t NewTextParser(Stream_t* streamPntr)
+{
+	TextParser_t result = {};
+	result.lineParser = NewLineParser(streamPntr);
+	result.byteIndex = 0;
+	result.currentLine = MyStr_Empty;
+	return result;
+}
 
-bool TextParserGetToken(TextParser_t* parser, ParsingToken_t* tokenOut)
+//chunkArena is only required if the parser isStreamBased, and that stream doesn't support StaticRead
+bool TextParserGetToken(TextParser_t* parser, ParsingToken_t* tokenOut, MemArena_t* chunkArena = nullptr)
 {
 	NotNull(parser);
 	NotNull(tokenOut);
 	
-	while (parser->lineParser.byteIndex < parser->lineParser.fileContents.length)
+	while (!LineParserIsFinished(&parser->lineParser))
 	{
 		if (parser->byteIndex >= parser->currentLine.length)
 		{
-			bool gotLine = LineParserGetLine(&parser->lineParser, &parser->currentLine);
+			bool gotLine = LineParserGetLine(&parser->lineParser, &parser->currentLine, chunkArena);
 			if (!gotLine)
 			{
+				// GyLibWriteLine_W("Got no more lines from lineParser");
 				return false;
 			}
 			parser->byteIndex = 0;
@@ -296,12 +349,14 @@ bool TextParserGetToken(TextParser_t* parser, ParsingToken_t* tokenOut)
 		return true;
 	}
 	
+	// GyLibWriteLine_W("Line Parser is finished");
 	return false;
 }
 
 // +--------------------------------------------------------------+
 // |                     XmlParser Functions                      |
 // +--------------------------------------------------------------+
+//TODO: Add support for Stream_t based XmlParser
 XmlParser_t NewXmlParser(MemArena_t* arenaForLists, MyStr_t fileContents)
 {
 	XmlParser_t result = {};
@@ -739,10 +794,11 @@ XmlParseResult_t
 const char* GetParsingTokenTypeStr(ParsingTokenType_t enumValue)
 const char* GetXmlParsingErrorStr(XmlParsingError_t error)
 const char* GetXmlParseResultTypeStr(XmlParseResultType_t enumValue)
-LineParser_t NewLineParser(MyStr_t fileContents)
-bool LineParserGetLine(LineParser_t* parser, MyStr_t* lineOut)
-TextParser_t NewTextParser(MyStr_t fileContents)
-bool TextParserGetToken(TextParser_t* parser, ParsingToken_t* tokenOut)
+LineParser_t NewLineParser(Stream_t* streamPntr)
+bool LineParserGetLine(LineParser_t* parser, MyStr_t* lineOut, MemArena_t* chunkArena = nullptr)
+bool LineParserIsFinished(const LineParser_t* parser);
+TextParser_t NewTextParser(Stream_t* streamPntr)
+bool TextParserGetToken(TextParser_t* parser, ParsingToken_t* tokenOut, MemArena_t* chunkArena = nullptr)
 XmlParser_t NewXmlParser(MemArena_t* arenaForLists, MyStr_t fileContents)
 void FreeXmlParser(XmlParser_t* parser)
 bool XmlParserCheckIdentifierHasValidChars(XmlParser_t* parser, MyStr_t identifierStr, XmlParseResult_t* result, ProcessLog_t* log)

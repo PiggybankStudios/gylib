@@ -319,7 +319,7 @@ u64 StreamGetRemainingSize(Stream_t* stream)
 bool StreamIsOver(Stream_t* stream, bool considerChunkData = true)
 {
 	NotNull(stream);
-	if (stream->source == StreamSource_None) { return true; }
+	if (!StreamIsValid(stream)) { return true; }
 	if (considerChunkData && stream->chunkReturnedSize < stream->chunkSize) { return false; }
 	if (!stream->isTotalSizeFilled && IsFlagSet(stream->capabilities, StreamCapability_FiniteSize) && stream->callbacks.GetSize != nullptr)
 	{
@@ -502,6 +502,7 @@ MyStr_t StreamReadUntil(Stream_t* stream, MyStr_t targetStr, bool includeTargetS
 				stream->chunkPntr[bIndex] = stream->chunkPntr[stream->chunkReturnedSize + bIndex];
 			}
 			stream->chunkSize -= stream->chunkReturnedSize;
+			stream->chunkReturnedSize = 0;
 		}
 		
 		Assert(chunkArena != nullptr);

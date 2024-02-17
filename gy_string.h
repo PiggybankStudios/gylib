@@ -1529,10 +1529,11 @@ u64 StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ign
 	
 	u64 numReplacements = 0;
 	u64 writeIndex = 0;
-	for (u64 readIndex = 0; readIndex + target.length <= str.length; readIndex++)
+	for (u64 readIndex = 0; readIndex < str.length; readIndex++)
 	{
-		if ((ignoreCase && StrEqualsIgnoreCase(StrSubstringLength(&str, readIndex, target.length), target)) ||
-			(!ignoreCase && StrEquals(StrSubstringLength(&str, readIndex, target.length), target)))
+		if (readIndex + target.length <= str.length &&
+			((ignoreCase && StrEqualsIgnoreCase(StrSubstringLength(&str, readIndex, target.length), target)) ||
+			(!ignoreCase && StrEquals(StrSubstringLength(&str, readIndex, target.length), target))))
 		{
 			for (u64 cIndex = 0; cIndex < replacement.length; cIndex++)
 			{
