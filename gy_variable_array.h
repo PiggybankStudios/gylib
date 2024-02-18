@@ -115,6 +115,8 @@ struct VarArray_t
 	void VarArrayRemoveRange_(VarArray_t* array, u64 index, u64 numItemsToRemove, u64 itemSize);
 	void VarArrayCopy(VarArray_t* destArray, const VarArray_t* sourceArray, MemArena_t* memArena);
 	void* VarArrayMove(VarArray_t* array, u64 fromIndex, u64 toIndex, bool swapWithTarget = true);
+	void VarArrayReverse(VarArray_t* array, u64 startIndex, u64 endIndex);
+	void VarArrayReverse(VarArray_t* array);
 	#if defined(_GY_SORTING_H)
 	void VarArraySort(VarArray_t* array, CompareFunc_f* compareFunc, void* contextPntr);
 	#endif
@@ -609,6 +611,38 @@ void* VarArrayMove(VarArray_t* array, u64 fromIndex, u64 toIndex, bool swapWithT
 }
 
 // +--------------------------------------------------------------+
+// |                           Reverse                            |
+// +--------------------------------------------------------------+
+//endIndex is non-inclusive
+void VarArrayReverse(VarArray_t* array, u64 startIndex, u64 endIndex)
+{
+	Assert(startIndex <= endIndex);
+	Assert(startIndex <= array->length);
+	Assert(endIndex <= array->length);
+	if (startIndex == endIndex) { return; }
+	Assert(array->itemSize > 0);
+	#if ORCA_COMPILATION || PLAYDATE_COMPILATION
+	u8 tempSpace[128];
+	Assert(array->itemSize < sizeof(tempSpace));
+	void* workingSpace = &tempSpace[0]
+	#else
+	void* workingSpace = alloca(array->itemSize);
+	#endif
+	for (u64 iIndex = 0; iIndex < (endIndex - startIndex)/2; iIndex++)
+	{
+		void* item1 = ((u8*)array->items) + (array->itemSize * (startIndex + iIndex));
+		void* item2 = ((u8*)array->items) + (array->itemSize * (endIndex-1 - iIndex));
+		MyMemCopy(workingSpace, item1, array->itemSize);
+		MyMemCopy(item1, item2, array->itemSize);
+		MyMemCopy(item2, workingSpace, array->itemSize);
+	}
+}
+void VarArrayReverse(VarArray_t* array)
+{
+	VarArrayReverse(array, 0, array->length);
+}
+
+// +--------------------------------------------------------------+
 // |                           Sorting                            |
 // +--------------------------------------------------------------+
 #if defined(_GY_SORTING_H)
@@ -678,5 +712,6 @@ void VarArrayAddVarArray(VarArray_t* destArray, const VarArray_t* sourceArray, u
 #define VarArrayRemoveRange(array, index, numItemsToRemove, type)
 void VarArrayCopy(VarArray_t* destArray, const VarArray_t* sourceArray, MemArena_t* memArena)
 void* VarArrayMove(VarArray_t* array, u64 fromIndex, u64 toIndex, bool swapWithTarget = true)
+void VarArrayReverse(VarArray_t* array, u64 startIndex = 0, u64 endIndex = 0)
 void VarArraySort(VarArray_t* array, CompareFunc_f* compareFunc, void* contextPntr)
 */
