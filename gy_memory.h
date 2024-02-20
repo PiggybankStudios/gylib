@@ -144,6 +144,9 @@ enum MemArenaFlag_t
 struct MemArena_t
 {
 	MemArenaType_t type;
+	#if GYLIB_DEBUG_NAMES_ENABLED
+	const char* debugName;
+	#endif
 	u16 flags;
 	AllocAlignment_t alignment;
 	u64 pageSize;
