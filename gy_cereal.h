@@ -90,7 +90,9 @@ struct CrlContextEntry_t
 	u64 index;
 	bool keepForSecondPass;
 	bool isFilled;
+	bool isAllocated;
 	u64 size;
+	u64 count;
 	union
 	{
 		u8 valueBytes[CRL_CONTEXT_MAX_VALUE_SIZE];
@@ -117,15 +119,17 @@ struct CrlTask_t
 	u64 arraySize; //(Optional in Deser)
 	
 	//Serialization Only
-	bool isRuntimeVarArray; //serOnly
-	u64 runtimeItemSize; //serOnly
-	const void* runtimeItemPntr; //serOnly
+	bool isRuntimeVarArray;
+	bool isAllocated;
+	u64 runtimeItemSize;
+	const void* runtimeItemPntr;
 	
 	//Deserialization Only
 	u64 predeclaredSize; //(Optional)
 	
 	bool started;
-	u64 startFileOffset;
+	u64 taskStartFileOffset;
+	u64 itemStartFileOffset;
 	u16 deserStructSize;
 	u64 progressIndex;
 };
@@ -137,6 +141,7 @@ struct CrlEngine_t
 	MemArena_t* deserOutputArena;
 	bool isDeserializing;
 	CrlVersion_t version;
+	bool onSecondSerializationPass;
 	
 	//serializing
 	u64 outputSize;
@@ -155,6 +160,7 @@ struct CrlEngine_t
 	CrlContextEntry_t* contextEntries;
 	
 	VarArray_t taskStack; //CrlTask_t
+	CrlTask_t* currentTask;
 };
 
 #define CrlVersion_Zero       NewCrlVersion(0, 0)
@@ -166,6 +172,7 @@ struct CrlEngine_t
 // |                            Macros                            |
 // +--------------------------------------------------------------+
 #define CrlPushContext(crl, index, typedPntr, ...) CrlPushContext_((crl), (index), sizeof(*(typedPntr)), (void*)(typedPntr), ##__VA_ARGS__)
+#define CrlPushContextArray(crl, index, type, count, ...) (type*)CrlPushContextArray_((crl), (index), sizeof(type), (count), ##__VA_ARGS__)
 #define CrlPushContextI8(crl, index, value, ...)   do { i8   _valueI8   = (value); CrlPushContextValue_((crl), (index), sizeof(i8),   &_valueI8,   ##__VA_ARGS__); } while(0)
 #define CrlPushContextI16(crl, index, value, ...)  do { i16  _valueI16  = (value); CrlPushContextValue_((crl), (index), sizeof(i16),  &_valueI16,  ##__VA_ARGS__); } while(0)
 #define CrlPushContextI32(crl, index, value, ...)  do { i32  _valueI32  = (value); CrlPushContextValue_((crl), (index), sizeof(i32),  &_valueI32,  ##__VA_ARGS__); } while(0)
@@ -181,6 +188,10 @@ struct CrlEngine_t
 #define CrlGetContextHard(crl, index, type) (type*)CrlGetContext_((crl), (index), sizeof(type), true)
 #define CrlGetContextSoft(crl, index, type) (type*)CrlGetContext_((crl), (index), sizeof(type), false)
 #define CrlGetContext(crl, index, type) CrlGetContextHard((crl), (index), type)
+
+#define CrlGetContextArrayHard(crl, index, type, countOut) (type*)CrlGetContextArray_((crl), (index), sizeof(type), (countOut), true)
+#define CrlGetContextArraySoft(crl, index, type, countOut) (type*)CrlGetContextArray_((crl), (index), sizeof(type), (countOut), false)
+#define CrlGetContextArray(crl, index, type, countOut) CrlGetContextArrayHard((crl), (index), type, (countOut))
 
 #define CrlGetContextI8(crl, index)   CrlGetContextRaw_((crl), (index), sizeof(i8), true)->valueI8
 #define CrlGetContextI16(crl, index)  CrlGetContextRaw_((crl), (index), sizeof(i16), true)->valueI16
@@ -203,6 +214,7 @@ struct CrlEngine_t
 	bool IsCrlVersionLessThan(CrlVersion_t left, CrlVersion_t right, bool allowEqual = false);
 	bool IsCrlVersionEqual(CrlVersion_t left, CrlVersion_t right, bool allowEqual = false);
 	MyStr_t CrlGetDebugStackString(CrlEngine_t* crl, MemArena_t* memArena);
+	void FreeCrlTask(CrlEngine_t* crl, CrlTask_t* task);
 	void FreeCrlEngine(CrlEngine_t* crl);
 	void CreateCrlEngine(CrlEngine_t* crl, bool deserializing, CrlVersion_t version, MemArena_t* memArena, u64 numTypes, u64 numContextEntries, ProcessLog_t* processLog, Stream_t* stream);
 	void CreateCrlEngineDeser(CrlEngine_t* crl, CrlVersion_t version, MemArena_t* memArena, MemArena_t* deserOutputArena, u64 numTypes, u64 numContextEntries, ProcessLog_t* processLog, Stream_t* stream);
@@ -210,14 +222,18 @@ struct CrlEngine_t
 	CrlRegisteredType_t* CrlGetType(CrlEngine_t* crl, u64 index);
 	CrlRegisteredTypeVersion_t* CrlGetTypeVersion(CrlEngine_t* crl, u64 index, CrlVersion_t version, bool allowLowerVersions = true);
 	CrlRegisteredType_t* CrlRegisterType(CrlEngine_t* crl, const char* debugName, u64 index, MyStr_t designation, bool customReadingLogic, CrlVersion_t version, u64 serializedSize, u64 minimumSize, CrlSerialize_f* serializeFunc, CrlDeserialize_f* deserializeFunc);
-	void CrlPushContext_(CrlEngine_t* crl, u64 index, u64 size, void* pntr, bool allowOverwrite = false, bool keepForSecondPass = false);
+	void CrlPushContext_(CrlEngine_t* crl, u64 index, u64 size, void* pntr, bool allowOverwrite = false, bool allocate = false, bool keepForSecondPass = false);
+	void* CrlPushContextArray_(CrlEngine_t* crl, u64 index, u64 itemSize, u64 itemCount, bool allowOverwrite = false, bool keepForSecondPass = false);
 	void CrlPushContextValue_(CrlEngine_t* crl, u64 index, u64 valueSize, const void* valuePntr, bool allowOverwrite = false, bool keepForSecondPass = false);
 	void* CrlGetContext_(CrlEngine_t* crl, u64 index, u64 size, bool assertOnFailure);
+	void* CrlGetContextArray_(CrlEngine_t* crl, u64 index, u64 itemSize, u64* countOut, bool assertOnFailure);
 	CrlContextEntry_t* CrlGetContextRaw_(CrlEngine_t* crl, u64 index, u64 size, bool assertOnFailure);
 	CrlTask_t* CrlPushTask(CrlEngine_t* crl, u64 typeIndex, bool isArray, bool isVarArray, u64 arraySize, const void* runtimeItemPntr, u64 runtimeItemSize, u64 predeclaredSize);
 	CrlTask_t* CrlPushSingleTaskSer(CrlEngine_t* crl, u64 typeIndex, const void* runtimeItemPntr, u64 runtimeItemSize);
 	CrlTask_t* CrlPushArrayTaskSer(CrlEngine_t* crl, u64 typeIndex, const void* runtimeItemPntr, u64 runtimeItemSize, u64 arraySize);
 	CrlTask_t* CrlPushVarArrayTaskSer(CrlEngine_t* crl, u64 typeIndex, const VarArray_t* runtimeVarArray);
+	CrlTask_t* CrlPushExplicitArrayTaskSer(CrlEngine_t* crl, u64 typeIndex, u64 runtimeItemSize, u64 arraySize);
+	void CrlPushExplicitArrayItemSer(CrlEngine_t* crl, CrlTask_t* explicitArrayTask, void* runtimeItemPntr);
 	CrlTask_t* CrlPushSingleTaskDeser(CrlEngine_t* crl, u64 typeIndex, u64 predeclaredSize = 0);
 	CrlTask_t* CrlPushArrayTaskDeser(CrlEngine_t* crl, u64 typeIndex, u64 predeclaredArraySize = 0, u64 predeclaredSize = 0);
 	bool CrlEngineRun(CrlEngine_t* crl, u64 firstTaskTypeIndex, u64 firstTaskRuntimeItemSize, const void* firstTaskRuntimeItemPntr, u64 firstTaskPredeclaredSize);
@@ -291,6 +307,18 @@ MyStr_t CrlGetDebugStackString(CrlEngine_t* crl, MemArena_t* memArena)
 // +--------------------------------------------------------------+
 // |                       Free and Create                        |
 // +--------------------------------------------------------------+
+void FreeCrlTask(CrlEngine_t* crl, CrlTask_t* task)
+{
+	NotNull2(crl, task);
+	if (task->isAllocated)
+	{
+		NotNull(crl->allocArena);
+		Assert(task->isArray);
+		Assert(task->arraySize > 0);
+		FreeMem(crl->allocArena, (void*)task->runtimeItemPntr, sizeof(void*) * task->arraySize);
+	}
+	ClearPointer(task);
+}
 void FreeCrlEngine(CrlEngine_t* crl)
 {
 	NotNull(crl);
@@ -307,6 +335,14 @@ void FreeCrlEngine(CrlEngine_t* crl)
 	if (crl->contextEntries != nullptr)
 	{
 		NotNull(crl->allocArena);
+		for (u64 cIndex = 0; cIndex < crl->numContextEntries; cIndex++)
+		{
+			CrlContextEntry_t* contextEntry = &crl->contextEntries[cIndex];
+			if (contextEntry->isFilled && contextEntry->isAllocated)
+			{
+				FreeMem(crl->allocArena, contextEntry->pntr, contextEntry->size * contextEntry->count);
+			}
+		}
 		FreeMem(crl->allocArena, crl->contextEntries, sizeof(CrlContextEntry_t) * crl->numContextEntries);
 	}
 	if (crl->outputPntr != nullptr)
@@ -449,28 +485,71 @@ CrlRegisteredType_t* CrlRegisterType(CrlEngine_t* crl, const char* debugName,
 // +--------------------------------------------------------------+
 // |                           Context                            |
 // +--------------------------------------------------------------+
-void CrlPushContext_(CrlEngine_t* crl, u64 index, u64 size, void* pntr, bool allowOverwrite = false, bool keepForSecondPass = false)
+void CrlPushContext_(CrlEngine_t* crl, u64 index, u64 size, void* pntr, bool allowOverwrite = false, bool allocate = false, bool keepForSecondPass = false)
 {
 	NotNull(crl);
 	Assert(index < crl->numContextEntries);
 	AssertIf(pntr != nullptr, size > 0);
 	AssertIf(pntr == nullptr, keepForSecondPass == false);
+	AssertIf(pntr == nullptr, allocate == false);
 	CrlContextEntry_t* entry = &crl->contextEntries[index];
+	if (entry->isFilled && entry->isAllocated) { FreeMem(crl->allocArena, entry->pntr, entry->size * entry->count); }
 	if (pntr != nullptr)
 	{
 		AssertIf(!allowOverwrite, !entry->isFilled);
 		entry->size = size;
+		entry->count = 1;
 		entry->pntr = pntr;
+		if (allocate)
+		{
+			entry->pntr = AllocMem(crl->allocArena, size);
+			NotNull(entry->pntr);
+			MyMemCopy(entry->pntr, pntr, size);
+		}
 		entry->keepForSecondPass = keepForSecondPass;
+		entry->isAllocated = allocate;
 		entry->isFilled = true;
 	}
 	else
 	{
 		AssertIf(!allowOverwrite, entry->isFilled);
 		entry->size = 0;
+		entry->count = 0;
 		entry->pntr = nullptr;
 		entry->keepForSecondPass = false;
+		entry->isAllocated = false;
 		entry->isFilled = false;
+	}
+}
+void* CrlPushContextArray_(CrlEngine_t* crl, u64 index, u64 itemSize, u64 itemCount, bool allowOverwrite = false, bool keepForSecondPass = false)
+{
+	NotNull(crl);
+	Assert(index < crl->numContextEntries);
+	Assert(itemSize > 0);
+	CrlContextEntry_t* entry = &crl->contextEntries[index];
+	if (entry->isFilled && entry->isAllocated) { FreeMem(crl->allocArena, entry->pntr, entry->size * entry->count); }
+	if (itemCount > 0)
+	{
+		AssertIf(!allowOverwrite, !entry->isFilled);
+		entry->size = itemSize;
+		entry->count = itemCount;
+		entry->pntr = AllocMem(crl->allocArena, itemSize * itemCount);
+		NotNull(entry->pntr);
+		entry->keepForSecondPass = keepForSecondPass;
+		entry->isAllocated = true;
+		entry->isFilled = true;
+		return entry->pntr;
+	}
+	else
+	{
+		// AssertIf(!allowOverwrite, entry->isFilled); //You're allowed to set a 0 size array, even if it's not filled previously, we'll just treat it as an unset value
+		entry->size = 0;
+		entry->count = 0;
+		entry->pntr = nullptr;
+		entry->keepForSecondPass = false;
+		entry->isAllocated = false;
+		entry->isFilled = false;
+		return nullptr;
 	}
 }
 void CrlPushContextValue_(CrlEngine_t* crl, u64 index, u64 valueSize, const void* valuePntr, bool allowOverwrite = false, bool keepForSecondPass = false)
@@ -481,20 +560,25 @@ void CrlPushContextValue_(CrlEngine_t* crl, u64 index, u64 valueSize, const void
 	CrlContextEntry_t* entry = &crl->contextEntries[index];
 	Assert(valueSize <= CRL_CONTEXT_MAX_VALUE_SIZE);
 	AssertIf(valuePntr == nullptr, keepForSecondPass == false);
+	if (entry->isFilled && entry->isAllocated) { FreeMem(crl->allocArena, entry->pntr, entry->size * entry->count); }
 	if (valuePntr != nullptr)
 	{
 		AssertIf(!allowOverwrite, !entry->isFilled);
 		entry->size = valueSize;
+		entry->count = 1;
 		MyMemCopy(&entry->valueBytes[0], valuePntr, valueSize);
 		entry->keepForSecondPass = keepForSecondPass;
+		entry->isAllocated = false;
 		entry->isFilled = true;
 	}
 	else
 	{
 		AssertIf(!allowOverwrite, entry->isFilled);
 		entry->size = 0;
+		entry->count = 0;
 		MyMemSet(&entry->valueBytes[0], 0x00, CRL_CONTEXT_MAX_VALUE_SIZE);
 		entry->keepForSecondPass = false;
+		entry->isAllocated = false;
 		entry->isFilled = false;
 	}
 }
@@ -504,9 +588,28 @@ void* CrlGetContext_(CrlEngine_t* crl, u64 index, u64 size, bool assertOnFailure
 	NotNull(crl);
 	Assert(index < crl->numContextEntries);
 	CrlContextEntry_t* entry = &crl->contextEntries[index];
-	if (entry->pntr != nullptr)
+	if (entry->isFilled)
 	{
+		NotNull(entry->pntr);
 		Assert(entry->size == size);
+		return entry->pntr;
+	}
+	else if (assertOnFailure)
+	{
+		AssertMsg(false, "Failed to get CrlEngine context entry!");
+	}
+	return nullptr;
+}
+void* CrlGetContextArray_(CrlEngine_t* crl, u64 index, u64 itemSize, u64* countOut, bool assertOnFailure)
+{
+	NotNull(crl);
+	Assert(index < crl->numContextEntries);
+	CrlContextEntry_t* entry = &crl->contextEntries[index];
+	if (entry->isFilled)
+	{
+		NotNull(entry->pntr);
+		Assert(entry->size == itemSize);
+		SetOptionalOutPntr(countOut, entry->count);
 		return entry->pntr;
 	}
 	else if (assertOnFailure)
@@ -537,7 +640,8 @@ CrlContextEntry_t* CrlGetContextRaw_(CrlEngine_t* crl, u64 index, u64 size, bool
 // +--------------------------------------------------------------+
 //TODO: runtimeItemPntr and runtimeItemSize are not important for Deserialization.
 //      Maybe we should just completely separate Deserializing vs. Serializing PushTask functions?
-CrlTask_t* CrlPushTask(CrlEngine_t* crl, u64 typeIndex, bool isArray, bool isVarArray, u64 arraySize,
+CrlTask_t* CrlPushTask(CrlEngine_t* crl, u64 typeIndex,
+	bool isArray, bool isVarArray, bool isAllocated, u64 arraySize,
 	const void* runtimeItemPntr, u64 runtimeItemSize, //Serialize
 	u64 predeclaredSize) //Deserialize
 {
@@ -556,6 +660,7 @@ CrlTask_t* CrlPushTask(CrlEngine_t* crl, u64 typeIndex, bool isArray, bool isVar
 	newTask->arraySize = arraySize;
 	newTask->isRuntimeVarArray = isVarArray;
 	newTask->predeclaredSize = predeclaredSize;
+	newTask->isAllocated = isAllocated;
 	newTask->started = false;
 	
 	return newTask;
@@ -564,28 +669,50 @@ CrlTask_t* CrlPushTask(CrlEngine_t* crl, u64 typeIndex, bool isArray, bool isVar
 CrlTask_t* CrlPushSingleTaskSer(CrlEngine_t* crl, u64 typeIndex, const void* runtimeItemPntr, u64 runtimeItemSize)
 {
 	Assert(crl != nullptr && !crl->isDeserializing);
-	return CrlPushTask(crl, typeIndex, false, false, 0, runtimeItemPntr, runtimeItemSize, 0);
+	return CrlPushTask(crl, typeIndex, false, false, false, 0, runtimeItemPntr, runtimeItemSize, 0);
 }
 CrlTask_t* CrlPushArrayTaskSer(CrlEngine_t* crl, u64 typeIndex, const void* runtimeItemPntr, u64 runtimeItemSize, u64 arraySize)
 {
 	Assert(crl != nullptr && !crl->isDeserializing);
-	return CrlPushTask(crl, typeIndex, true, false, arraySize, runtimeItemPntr, runtimeItemSize, 0);
+	return CrlPushTask(crl, typeIndex, true, false, false, arraySize, runtimeItemPntr, runtimeItemSize, 0);
 }
 CrlTask_t* CrlPushVarArrayTaskSer(CrlEngine_t* crl, u64 typeIndex, const VarArray_t* runtimeVarArray)
 {
 	Assert(crl != nullptr && !crl->isDeserializing);
-	return CrlPushTask(crl, typeIndex, true, true, runtimeVarArray->length, runtimeVarArray, runtimeVarArray->itemSize, 0);
+	return CrlPushTask(crl, typeIndex, true, true, false, runtimeVarArray->length, runtimeVarArray, runtimeVarArray->itemSize, 0);
+}
+CrlTask_t* CrlPushExplicitArrayTaskSer(CrlEngine_t* crl, u64 typeIndex, u64 runtimeItemSize, u64 arraySize)
+{
+	Assert(crl != nullptr && !crl->isDeserializing);
+	void* itemsSpace = nullptr;
+	if (arraySize > 0)
+	{
+		itemsSpace = AllocMem(crl->allocArena, sizeof(void*) * arraySize);
+		NotNull(itemsSpace);
+		MyMemSet(itemsSpace, 0x00, sizeof(void*) * arraySize);
+	}
+	return CrlPushTask(crl, typeIndex, true, false, true, arraySize, itemsSpace, runtimeItemSize, 0);
+}
+void CrlPushExplicitArrayItemSer(CrlEngine_t* crl, CrlTask_t* explicitArrayTask, const void* runtimeItemPntr, u64 arrayIndex)
+{
+	NotNull2(crl, explicitArrayTask);
+	Assert(explicitArrayTask->isArray);
+	Assert(explicitArrayTask->isAllocated);
+	NotNull(explicitArrayTask->runtimeItemPntr);
+	Assert(arrayIndex < explicitArrayTask->arraySize);
+	void** itemPntr = &((void**)explicitArrayTask->runtimeItemPntr)[arrayIndex];
+	*itemPntr = (void*)runtimeItemPntr;
 }
 
 CrlTask_t* CrlPushSingleTaskDeser(CrlEngine_t* crl, u64 typeIndex, u64 predeclaredSize = 0)
 {
 	Assert(crl != nullptr && crl->isDeserializing);
-	return CrlPushTask(crl, typeIndex, false, false, 0, nullptr, 0, predeclaredSize);
+	return CrlPushTask(crl, typeIndex, false, false, false, 0, nullptr, 0, predeclaredSize);
 }
 CrlTask_t* CrlPushArrayTaskDeser(CrlEngine_t* crl, u64 typeIndex, u64 predeclaredArraySize = 0, u64 predeclaredSize = 0)
 {
 	Assert(crl != nullptr && crl->isDeserializing);
-	return CrlPushTask(crl, typeIndex, true, false, predeclaredArraySize, nullptr, 0, predeclaredSize);
+	return CrlPushTask(crl, typeIndex, true, false, false, predeclaredArraySize, nullptr, 0, predeclaredSize);
 }
 
 // +--------------------------------------------------------------+
@@ -637,6 +764,8 @@ bool CrlEngineRun(CrlEngine_t* crl, u64 firstTaskTypeIndex, u64 firstTaskRuntime
 	for (u8 pass = 0; pass < numPasses; pass++)
 	{
 		crl->writeIndex = 0;
+		crl->onSecondSerializationPass = (pass > 0);
+		
 		if (!crl->isDeserializing)
 		{
 			CrlPushSingleTaskSer(crl, firstTaskTypeIndex, firstTaskRuntimeItemPntr, firstTaskRuntimeItemSize);
@@ -650,9 +779,11 @@ bool CrlEngineRun(CrlEngine_t* crl, u64 firstTaskTypeIndex, u64 firstTaskRuntime
 		{
 			u64 nextTaskIndex = crl->taskStack.length-1;
 			CrlTask_t* nextTask = VarArrayGetHard(&crl->taskStack, nextTaskIndex, CrlTask_t);
+			crl->currentTask = nextTask;
+			
 			if (!nextTask->started)
 			{
-				nextTask->startFileOffset = (crl->isDeserializing ? crl->inputStream->readIndex : crl->writeIndex);
+				nextTask->taskStartFileOffset = (crl->isDeserializing ? crl->inputStream->readIndex : crl->writeIndex);
 				if (nextTask->isArray)
 				{
 					if (!crl->isDeserializing)
@@ -711,6 +842,7 @@ bool CrlEngineRun(CrlEngine_t* crl, u64 firstTaskTypeIndex, u64 firstTaskRuntime
 				}
 				nextTask->started = true;
 			}
+			nextTask->itemStartFileOffset = (crl->isDeserializing ? crl->inputStream->readIndex : crl->writeIndex);
 			
 			// +==============================+
 			// |        Serialization         |
@@ -725,9 +857,14 @@ bool CrlEngineRun(CrlEngine_t* crl, u64 firstTaskTypeIndex, u64 firstTaskRuntime
 						const VarArray_t* varArray = (const VarArray_t*)nextTask->runtimeItemPntr;
 						runtimeItemPntr = VarArrayGet_(varArray, nextTask->progressIndex, nextTask->runtimeItemSize, true);
 					}
-					else
+					else if (nextTask->isAllocated)
 					{
-						runtimeItemPntr = (void*)(((u8*)runtimeItemPntr) + (nextTask->runtimeItemSize * nextTask->progressIndex));
+						NotNull(nextTask->runtimeItemPntr);
+						runtimeItemPntr = ((void**)nextTask->runtimeItemPntr)[nextTask->progressIndex];
+					}
+					else if (nextTask->runtimeItemPntr != nullptr)
+					{
+						runtimeItemPntr = (void*)(((u8*)nextTask->runtimeItemPntr) + (nextTask->runtimeItemSize * nextTask->progressIndex));
 					}
 				}
 				
@@ -759,6 +896,7 @@ bool CrlEngineRun(CrlEngine_t* crl, u64 firstTaskTypeIndex, u64 firstTaskRuntime
 					
 					//Re-acquire the nextTask pntr into the VarArray because Deserialize might have pushed new items into the array, causing a realloc
 					nextTask = VarArrayGetHard(&crl->taskStack, nextTaskIndex, CrlTask_t);
+					crl->currentTask = nextTask;
 				}
 				
 				if (nextTask->isArray)
@@ -766,11 +904,13 @@ bool CrlEngineRun(CrlEngine_t* crl, u64 firstTaskTypeIndex, u64 firstTaskRuntime
 					nextTask->progressIndex++;
 					if (nextTask->progressIndex >= nextTask->arraySize)
 					{
+						FreeCrlTask(crl, nextTask);
 						VarArrayRemove(&crl->taskStack, nextTaskIndex, CrlTask_t);
 					}
 				}
 				else
 				{
+					FreeCrlTask(crl, nextTask);
 					VarArrayRemove(&crl->taskStack, nextTaskIndex, CrlTask_t);
 				}
 			}
@@ -847,6 +987,7 @@ bool CrlEngineRun(CrlEngine_t* crl, u64 firstTaskTypeIndex, u64 firstTaskRuntime
 					
 					//Re-acquire the nextTask pntr into the VarArray because Deserialize might have pushed new items into the array, causing a realloc
 					nextTask = VarArrayGetHard(&crl->taskStack, nextTaskIndex, CrlTask_t);
+					crl->currentTask = nextTask;
 				}
 				
 				if (nextTask->isArray)
@@ -854,11 +995,13 @@ bool CrlEngineRun(CrlEngine_t* crl, u64 firstTaskTypeIndex, u64 firstTaskRuntime
 					nextTask->progressIndex++;
 					if (nextTask->progressIndex >= nextTask->arraySize)
 					{
+						FreeCrlTask(crl, nextTask);
 						VarArrayRemove(&crl->taskStack, nextTaskIndex, CrlTask_t);
 					}
 				}
 				else
 				{
+					FreeCrlTask(crl, nextTask);
 					VarArrayRemove(&crl->taskStack, nextTaskIndex, CrlTask_t);
 				}
 			}
@@ -891,6 +1034,7 @@ bool CrlEngineRun(CrlEngine_t* crl, u64 firstTaskTypeIndex, u64 firstTaskRuntime
 					CrlContextEntry_t* entry = &crl->contextEntries[cIndex];
 					if (entry->isFilled && !entry->keepForSecondPass)
 					{
+						if (entry->isAllocated) { FreeMem(crl->allocArena, entry->pntr, entry->size * entry->count); }
 						MyMemSet(&entry->valueBytes[0], 0x00, CRL_CONTEXT_MAX_VALUE_SIZE);
 						entry->isFilled = false;
 					}
@@ -971,6 +1115,7 @@ bool IsCrlVersionGreaterThan(CrlVersion_t left, CrlVersion_t right, bool allowEq
 bool IsCrlVersionLessThan(CrlVersion_t left, CrlVersion_t right, bool allowEqual = false)
 bool IsCrlVersionEqual(CrlVersion_t left, CrlVersion_t right, bool allowEqual = false)
 MyStr_t CrlGetDebugStackString(CrlEngine_t* crl, MemArena_t* memArena)
+void FreeCrlTask(CrlEngine_t* crl, CrlTask_t* task)
 void FreeCrlEngine(CrlEngine_t* crl)
 void CreateCrlEngine(CrlEngine_t* crl, bool deserializing, CrlVersion_t version, MemArena_t* memArena, u64 numTypes, u64 numContextEntries, ProcessLog_t* processLog, Stream_t* stream)
 void CreateCrlEngineDeser(CrlEngine_t* crl, CrlVersion_t version, MemArena_t* memArena, MemArena_t* deserOutputArena, u64 numTypes, u64 numContextEntries, ProcessLog_t* processLog, Stream_t* stream)
@@ -978,9 +1123,11 @@ void CreateCrlEngineSer(CrlEngine_t* crl, CrlVersion_t version, MemArena_t* memA
 CrlRegisteredType_t* CrlGetType(CrlEngine_t* crl, u64 index)
 CrlRegisteredTypeVersion_t* CrlGetTypeVersion(CrlEngine_t* crl, u64 index, CrlVersion_t version, bool allowLowerVersions = true)
 CrlRegisteredType_t* CrlRegisterType(CrlEngine_t* crl, const char* debugName, u64 index, MyStr_t designation, bool customReadingLogic, CrlVersion_t version, u64 serializedSize, u64 minimumSize, CrlSerialize_f* serializeFunc, CrlDeserialize_f* deserializeFunc)
-void CrlPushContext_(CrlEngine_t* crl, u64 index, u64 size, void* pntr, bool allowOverwrite = false, bool keepForSecondPass = false)
+void CrlPushContext_(CrlEngine_t* crl, u64 index, u64 size, void* pntr, bool allowOverwrite = false, bool allocate = false, bool keepForSecondPass = false)
+void* CrlPushContextArray_(CrlEngine_t* crl, u64 index, u64 itemSize, u64 itemCount, bool allowOverwrite = false, bool keepForSecondPass = false)
 void CrlPushContextValue_(CrlEngine_t* crl, u64 index, u64 valueSize, const void* valuePntr, bool allowOverwrite = false, bool keepForSecondPass = false)
-void CrlPushContext(CrlEngine_t* crl, u64 index, T* typedPntr, bool allowOverwrite = false, bool keepForSecondPass = false)
+void CrlPushContext(CrlEngine_t* crl, u64 index, T* typedPntr, bool allowOverwrite = false, bool allocate = false, bool keepForSecondPass = false)
+T* CrlPushContextArray(CrlEngine_t* crl, u64 index, T type, u64 count, bool allowOverwrite = false, bool keepForSecondPass = false)
 void CrlPushContextI8(CrlEngine_t* crl, u64 index, i8 value, bool allowOverwrite = false, bool keepForSecondPass = false)
 void CrlPushContextI16(CrlEngine_t* crl, u64 index, i16 value, bool allowOverwrite = false, bool keepForSecondPass = false)
 void CrlPushContextI32(CrlEngine_t* crl, u64 index, i32 value, bool allowOverwrite = false, bool keepForSecondPass = false)
@@ -993,10 +1140,14 @@ void CrlPushContextR32(CrlEngine_t* crl, u64 index, r32 value, bool allowOverwri
 void CrlPushContextR64(CrlEngine_t* crl, u64 index, r64 value, bool allowOverwrite = false, bool keepForSecondPass = false)
 void CrlPushContextBool(CrlEngine_t* crl, u64 index, bool value, bool allowOverwrite = false, bool keepForSecondPass = false)
 void* CrlGetContext_(CrlEngine_t* crl, u64 index, u64 size, bool assertOnFailure)
+void* CrlGetContextArray_(CrlEngine_t* crl, u64 index, u64 itemSize, u64* countOut, bool assertOnFailure)
 CrlContextEntry_t* CrlGetContextRaw_(CrlEngine_t* crl, u64 index, u64 size, bool assertOnFailure)
 T* CrlGetContextHard(CrlEngine_t* crl, u64 index, Type T)
 T* CrlGetContextSoft(CrlEngine_t* crl, u64 index, Type T)
 T* CrlGetContext(CrlEngine_t* crl, u64 index, Type T)
+T* CrlGetContextArrayHard(CrlEngine_t* crl, u64 index, Type T, u64* countOut)
+T* CrlGetContextArraySoft(CrlEngine_t* crl, u64 index, Type T, u64* countOut)
+T* CrlGetContextArray(CrlEngine_t* crl, u64 index, Type T, u64* countOut)
 i8 CrlGetContextI8(CrlEngine_t* crl, u64 index)
 i16 CrlGetContextI16(CrlEngine_t* crl, u64 index)
 i32 CrlGetContextI32(CrlEngine_t* crl, u64 index)
@@ -1012,6 +1163,8 @@ CrlTask_t* CrlPushTask(CrlEngine_t* crl, u64 typeIndex, bool isArray, bool isVar
 CrlTask_t* CrlPushSingleTaskSer(CrlEngine_t* crl, u64 typeIndex, const void* runtimeItemPntr, u64 runtimeItemSize)
 CrlTask_t* CrlPushArrayTaskSer(CrlEngine_t* crl, u64 typeIndex, const void* runtimeItemPntr, u64 runtimeItemSize, u64 arraySize)
 CrlTask_t* CrlPushVarArrayTaskSer(CrlEngine_t* crl, u64 typeIndex, const VarArray_t* runtimeVarArray)
+CrlTask_t* CrlPushExplicitArrayTaskSer(CrlEngine_t* crl, u64 typeIndex, u64 runtimeItemSize, u64 arraySize)
+void CrlPushExplicitArrayItemSer(CrlEngine_t* crl, CrlTask_t* explicitArrayTask, void* runtimeItemPntr)
 CrlTask_t* CrlPushSingleTaskDeser(CrlEngine_t* crl, u64 typeIndex, u64 predeclaredSize = 0)
 CrlTask_t* CrlPushArrayTaskDeser(CrlEngine_t* crl, u64 typeIndex, u64 predeclaredArraySize = 0, u64 predeclaredSize = 0)
 bool CrlEngineRun(CrlEngine_t* crl, u64 firstTaskTypeIndex, u64 firstTaskRuntimeItemSize, const void* firstTaskRuntimeItemPntr, u64 firstTaskPredeclaredSize)
