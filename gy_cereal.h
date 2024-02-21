@@ -9,14 +9,14 @@ Description:
 NOTE: Crl stands for Cereal
 */
 
-//TODO: Pass scratch arena to Deserialize function for each task
 //TODO: Remove array count embedding, let the application handle storing array counts somewhere. Or maybe just give them an option? We would need a callback or something to do a bit of work when the array count is read for the first time
-//TODO: Struct sizes should be auto-injected into the stream, minimum size for structures should be part of registration
-//TODO: Split PushTask functions for Serialization and Deserialization
 //TODO: Add support for GYLIB_HEADER_ONLY
 //TODO: Add support for context values that get deallocated automatically
 //TODO: How do we fill in information from later serialization processes, earlier in the file? Like having file offsets written to a header?
 //TODO: Test all the error scenarios to make sure they are working properly (Write some unit tests maybe?)
+//TODO: Test adding new versions of registered types (can we remove the need for a Serialize implementation for every version but the newest?)
+//TODO: Add support for skipping tasks that are pushed that have not been registered?
+//TODO: Add a debug mode that tracks who pushes what context and what tasks, and outputs a graphviz file so we can visualize the dependency graph
 
 #ifndef _GY_CEREAL_H
 #define _GY_CEREAL_H
@@ -38,6 +38,8 @@ enum CrlError_t
 	CrlError_IncompleteData,
 	CrlError_InvalidDesignation,
 	CrlError_EmptySerialization,
+	CrlError_StructSizeTooSmall,
+	CrlError_StructSizeTooLarge,
 	CrlError_NumErrors,
 };
 const char* GetCrlErrorStr(CrlError_t enumValue)
@@ -48,23 +50,25 @@ const char* GetCrlErrorStr(CrlError_t enumValue)
 		case CrlError_IncompleteData:     return "IncompleteData";
 		case CrlError_InvalidDesignation: return "InvalidDesignation";
 		case CrlError_EmptySerialization: return "EmptySerialization";
+		case CrlError_StructSizeTooSmall: return "StructSizeTooSmall";
+		case CrlError_StructSizeTooLarge: return "StructSizeTooLarge";
 		default: return "Unknown";
 	}
 }
 
 struct CrlEngine_t;
-#define CRL_SERIALIZE_DEF(functionName) bool functionName(CrlEngine_t* crl, const void* inputPntr, u64 inputSize, u64 arrayIndex, void* outputPntr, u64 outputSize, u64* writeIndexPntr)
+#define CRL_SERIALIZE_DEF(functionName) bool functionName(CrlEngine_t* crl, u64 arrayIndex, u64 runtimeItemSize, const void* runtimeItemPntr, u64 structSize, u8* structPntr)
 typedef CRL_SERIALIZE_DEF(CrlSerialize_f);
-//TODO: Ideally the CerealEngine can handle struct sizes and pass that in, so the majority of reading (and reading failures) happen in Cereal Engine
-// a.k.a. We should inject struct sizes into the stream, read them, and use that to determine deserialized struct sizes
-#define CRL_DESERIALIZE_DEF(functionName) bool functionName(CrlEngine_t* crl, const void* inputPntr, u64 inputSize, u64 arrayIndex)
+#define CRL_DESERIALIZE_DEF(functionName) bool functionName(CrlEngine_t* crl, MemArena_t* memArena, MemArena_t* scratch, u64 arrayIndex, u64 structSize, const u8* structPntr)
 typedef CRL_DESERIALIZE_DEF(CrlDeserialize_f);
 
 struct CrlRegisteredTypeVersion_t
 {
 	CrlVersion_t version;
 	char designation[CRL_TYPE_DESIGNATION_SIZE];
-	u64 serializedSize;
+	bool customReadingLogic;
+	u64 serializedSize; //Max is UINT16_MAX (unless customReadingLogic is used)
+	u64 minimumSize;
 	CrlSerialize_f* Serialize;
 	CrlDeserialize_f* Deserialize;
 	#if DEBUG_BUILD
@@ -104,16 +108,22 @@ struct CrlContextEntry_t
 
 struct CrlTask_t
 {
-	bool isArray;
 	CrlRegisteredType_t* type;
 	CrlRegisteredTypeVersion_t* typeVersion;
+	bool isArray;
+	u64 arraySize; //(Optional in Deser)
+	
+	//Serialization Only
+	bool isRuntimeVarArray; //serOnly
+	u64 runtimeItemSize; //serOnly
+	const void* runtimeItemPntr; //serOnly
+	
+	//Deserialization Only
+	u64 predeclaredSize; //(Optional)
 	
 	bool started;
 	u64 startFileOffset;
-	u64 arraySize;
-	bool isRuntimeVarArray;
-	u64 runtimeItemSize;
-	const void* runtimeItemPntr;
+	u16 deserStructSize;
 	u64 progressIndex;
 };
 
@@ -201,7 +211,6 @@ MyStr_t CrlGetDebugStackString(CrlEngine_t* crl, MemArena_t* memArena)
 		#if DEBUG_BUILD
 		StringBuilderAppend(&builder, task->typeVersion->debugName);
 		#else
-		// void StringBuilderAppendPrint(StringBuilder_t* builder, const char* formatString, ...)
 		StringBuilderAppendPrint(&builder, "%llu", task->type->index);
 		#endif
 		if (task->isArray)
@@ -308,14 +317,19 @@ CrlRegisteredTypeVersion_t* CrlGetTypeVersion(CrlEngine_t* crl, u64 index, CrlVe
 	return result;
 }
 
-//The index must increase by 1 with each registration, OR stay the same and the version must then increase by some amount
-CrlRegisteredType_t* CrlRegisterType(CrlEngine_t* crl, const char* debugName, u64 index, MyStr_t designation, CrlVersion_t version, u64 serializedSize, CrlSerialize_f* serializeFunc, CrlDeserialize_f* deserializeFunc)
+//The index must increase with each registration, OR stay the same and the version must then increase by some amount
+CrlRegisteredType_t* CrlRegisterType(CrlEngine_t* crl, const char* debugName,
+	u64 index, MyStr_t designation, bool customReadingLogic, CrlVersion_t version,
+	u64 serializedSize, u64 minimumSize,
+	CrlSerialize_f* serializeFunc, CrlDeserialize_f* deserializeFunc)
 {
 	Assert(crl->numRegisteredTypes < crl->numRegisteredTypesAlloc);
 	Assert(index >= crl->numRegisteredTypes || index == crl->numRegisteredTypes-1);
 	NotNull2(serializeFunc, deserializeFunc);
 	Assert(designation.length == CRL_TYPE_DESIGNATION_SIZE || designation.length == 0);
 	Assert(serializedSize > 0);
+	//We actual encode sizes as u16 so it can't be bigger than that, unless customReadingLogic is used
+	AssertIf(!customReadingLogic, serializedSize <= UINT16_MAX);
 	
 	CrlRegisteredType_t* type = nullptr;
 	if (index == crl->numRegisteredTypes-1)
@@ -352,7 +366,9 @@ CrlRegisteredType_t* CrlRegisterType(CrlEngine_t* crl, const char* debugName, u6
 	newVersion->version = version;
 	if (designation.length == CRL_TYPE_DESIGNATION_SIZE) { MyMemCopy(&newVersion->designation, designation.chars, CRL_TYPE_DESIGNATION_SIZE); }
 	else { newVersion->designation[0] = '\0'; }
+	newVersion->customReadingLogic = customReadingLogic;
 	newVersion->serializedSize = serializedSize;
+	newVersion->minimumSize = minimumSize;
 	newVersion->Serialize = serializeFunc;
 	newVersion->Deserialize = deserializeFunc;
 	
@@ -481,7 +497,9 @@ CrlContextEntry_t* CrlGetContextRaw_(CrlEngine_t* crl, u64 index, u64 size, bool
 // +--------------------------------------------------------------+
 //TODO: runtimeItemPntr and runtimeItemSize are not important for Deserialization.
 //      Maybe we should just completely separate Deserializing vs. Serializing PushTask functions?
-CrlTask_t* CrlPushTask(CrlEngine_t* crl, bool isArray, u64 typeIndex, const void* runtimeItemPntr, u64 runtimeItemSize, u64 arraySize = 0)
+CrlTask_t* CrlPushTask(CrlEngine_t* crl, u64 typeIndex, bool isArray, bool isVarArray, u64 arraySize,
+	const void* runtimeItemPntr, u64 runtimeItemSize, //Serialize
+	u64 predeclaredSize) //Deserialize
 {
 	NotNull(crl);
 	if (isArray && arraySize == 0) { return nullptr; } //Pushing a task with no elements is pointless
@@ -496,11 +514,13 @@ CrlTask_t* CrlPushTask(CrlEngine_t* crl, bool isArray, u64 typeIndex, const void
 	newTask->runtimeItemPntr = runtimeItemPntr;
 	newTask->runtimeItemSize = runtimeItemSize;
 	newTask->arraySize = arraySize;
-	newTask->isRuntimeVarArray = false;
+	newTask->isRuntimeVarArray = isVarArray;
+	newTask->predeclaredSize = predeclaredSize;
 	newTask->started = false;
 	
 	return newTask;
 }
+#if 0
 CrlTask_t* CrlPushArrayTask(CrlEngine_t* crl, u64 typeIndex, const void* runtimeItemPntr, u64 runtimeItemSize, u64 arraySize = 0)
 {
 	return CrlPushTask(crl, true, typeIndex, runtimeItemPntr, runtimeItemSize, arraySize);
@@ -515,11 +535,39 @@ CrlTask_t* CrlPushSingleTask(CrlEngine_t* crl, u64 typeIndex, const void* runtim
 {
 	return CrlPushTask(crl, false, typeIndex, runtimeItemPntr, runtimeItemSize);
 }
+#endif
+
+CrlTask_t* CrlPushSingleTaskSer(CrlEngine_t* crl, u64 typeIndex, const void* runtimeItemPntr, u64 runtimeItemSize)
+{
+	Assert(crl != nullptr && !crl->isDeserializing);
+	return CrlPushTask(crl, typeIndex, false, false, 0, runtimeItemPntr, runtimeItemSize, 0);
+}
+CrlTask_t* CrlPushArrayTaskSer(CrlEngine_t* crl, u64 typeIndex, const void* runtimeItemPntr, u64 runtimeItemSize, u64 arraySize)
+{
+	Assert(crl != nullptr && !crl->isDeserializing);
+	return CrlPushTask(crl, typeIndex, true, false, arraySize, runtimeItemPntr, runtimeItemSize, 0);
+}
+CrlTask_t* CrlPushVarArrayTaskSer(CrlEngine_t* crl, u64 typeIndex, const VarArray_t* runtimeVarArray)
+{
+	Assert(crl != nullptr && !crl->isDeserializing);
+	return CrlPushTask(crl, typeIndex, true, true, runtimeVarArray->length, runtimeVarArray, runtimeVarArray->itemSize, 0);
+}
+
+CrlTask_t* CrlPushSingleTaskDeser(CrlEngine_t* crl, u64 typeIndex, u64 predeclaredSize = 0)
+{
+	Assert(crl != nullptr && crl->isDeserializing);
+	return CrlPushTask(crl, typeIndex, false, false, 0, nullptr, 0, predeclaredSize);
+}
+CrlTask_t* CrlPushArrayTaskDeser(CrlEngine_t* crl, u64 typeIndex, u64 predeclaredArraySize = 0, u64 predeclaredSize = 0)
+{
+	Assert(crl != nullptr && crl->isDeserializing);
+	return CrlPushTask(crl, typeIndex, true, false, predeclaredArraySize, nullptr, 0, predeclaredSize);
+}
 
 // +--------------------------------------------------------------+
 // |                             Run                              |
 // +--------------------------------------------------------------+
-bool CrlEngineRun(CrlEngine_t* crl, u64 firstTaskTypeIndex, const void* firstTaskRuntimeItemPntr, u64 firstTaskRuntimeItemSize)
+bool CrlEngineRun(CrlEngine_t* crl, u64 firstTaskTypeIndex, u64 firstTaskRuntimeItemSize, const void* firstTaskRuntimeItemPntr, u64 firstTaskPredeclaredSize)
 {
 	#define CrlEngine_ReadTyped(type, varPntr, debugName) do                           \
 	{                                                                                  \
@@ -537,6 +585,21 @@ bool CrlEngineRun(CrlEngine_t* crl, u64 firstTaskTypeIndex, const void* firstTas
 			return false;                                                              \
 		}                                                                              \
 	} while(0)
+	#define CrlEngine_ReadBytes(numBytes, pntrVar, debugName) do                \
+	{                                                                           \
+		pntrVar = StreamDeser_ReadBytes(crl->inputStream, scratch, (numBytes)); \
+		if (pntrVar == nullptr)                                                 \
+		{                                                                       \
+			LogPrintLine_E(crl->log,                                            \
+				"Expected %u more bytes for %s before end of file.",            \
+				(numBytes),                                                     \
+				(debugName)                                                     \
+			);                                                                  \
+			LogExitFailure(crl->log, CrlError_IncompleteData);                  \
+			FreeScratchArena(scratch);                                          \
+			return false;                                                       \
+		}                                                                       \
+	} while(0)
 	
 	MemArena_t* scratch = GetScratchArena(crl->allocArena, (crl->isDeserializing ? crl->deserOutputArena : crl->serializedOutputArena));
 	
@@ -550,7 +613,14 @@ bool CrlEngineRun(CrlEngine_t* crl, u64 firstTaskTypeIndex, const void* firstTas
 	for (u8 pass = 0; pass < numPasses; pass++)
 	{
 		crl->writeIndex = 0;
-		CrlPushSingleTask(crl, firstTaskTypeIndex, firstTaskRuntimeItemPntr, firstTaskRuntimeItemSize);
+		if (!crl->isDeserializing)
+		{
+			CrlPushSingleTaskSer(crl, firstTaskTypeIndex, firstTaskRuntimeItemPntr, firstTaskRuntimeItemSize);
+		}
+		else
+		{
+			CrlPushSingleTaskDeser(crl, firstTaskTypeIndex, firstTaskPredeclaredSize);
+		}
 		
 		while (crl->taskStack.length > 0)
 		{
@@ -561,13 +631,58 @@ bool CrlEngineRun(CrlEngine_t* crl, u64 firstTaskTypeIndex, const void* firstTas
 				nextTask->startFileOffset = (crl->isDeserializing ? crl->inputStream->readIndex : crl->writeIndex);
 				if (nextTask->isArray)
 				{
-					if (crl->isDeserializing)
+					if (!crl->isDeserializing)
 					{
-						CrlEngine_ReadTyped(u64, &nextTask->arraySize, "Array Length");
+						BinSer_WriteU64(crl->outputPntr, crl->outputSize, &crl->writeIndex, nextTask->arraySize);
 					}
 					else
 					{
-						BinSer_WriteU64(crl->outputPntr, crl->outputSize, &crl->writeIndex, nextTask->arraySize);
+						CrlEngine_ReadTyped(u64, &nextTask->arraySize, "Array Length");
+					}
+				}
+				if (!nextTask->typeVersion->customReadingLogic)
+				{
+					if (!crl->isDeserializing)
+					{
+						Assert(nextTask->typeVersion->serializedSize >= nextTask->typeVersion->minimumSize);
+						Assert(nextTask->typeVersion->serializedSize <= UINT16_MAX);
+						BinSer_WriteU16(crl->outputPntr, crl->outputSize, &crl->writeIndex, (u16)nextTask->typeVersion->serializedSize);
+					}
+					else
+					{
+						CrlEngine_ReadTyped(u16, &nextTask->deserStructSize, "Struct Size");
+						if (nextTask->deserStructSize < nextTask->typeVersion->minimumSize)
+						{
+							MyStr_t debugName = NewStr(CRL_TYPE_DESIGNATION_SIZE, &nextTask->typeVersion->designation[0]);
+							#if DEBUG_BUILD
+							debugName = nextTask->typeVersion->debugName;
+							#endif
+							LogPrintLine_E(crl->log,
+								"Declared size of struct is too small: %llu (expected at least %llu for \"%.*s\")",
+								nextTask->deserStructSize,
+								nextTask->typeVersion->minimumSize,
+								StrPrint(debugName)
+							);
+							LogExitFailure(crl->log, CrlError_StructSizeTooSmall);
+							FreeScratchArena(scratch);
+							return false;
+						}
+						else if (nextTask->deserStructSize > nextTask->typeVersion->serializedSize)
+						{
+							MyStr_t debugName = NewStr(CRL_TYPE_DESIGNATION_SIZE, &nextTask->typeVersion->designation[0]);
+							#if DEBUG_BUILD
+							debugName = nextTask->typeVersion->debugName;
+							#endif
+							LogPrintLine_E(crl->log,
+								"Declared size of struct is too large: %llu (expected at most %llu for \"%.*s\")",
+								nextTask->deserStructSize,
+								nextTask->typeVersion->serializedSize,
+								StrPrint(debugName)
+							);
+							LogExitFailure(crl->log, CrlError_StructSizeTooLarge);
+							FreeScratchArena(scratch);
+							return false;
+						}
 					}
 				}
 				nextTask->started = true;
@@ -578,17 +693,17 @@ bool CrlEngineRun(CrlEngine_t* crl, u64 firstTaskTypeIndex, const void* firstTas
 			// +==============================+
 			if (!crl->isDeserializing)
 			{
-				const void* inputPntr = nextTask->runtimeItemPntr;
+				const void* runtimeItemPntr = nextTask->runtimeItemPntr;
 				if (nextTask->isArray)
 				{
 					if (nextTask->isRuntimeVarArray)
 					{
 						const VarArray_t* varArray = (const VarArray_t*)nextTask->runtimeItemPntr;
-						inputPntr = VarArrayGet_(varArray, nextTask->progressIndex, nextTask->runtimeItemSize, true);
+						runtimeItemPntr = VarArrayGet_(varArray, nextTask->progressIndex, nextTask->runtimeItemSize, true);
 					}
 					else
 					{
-						inputPntr = (void*)(((u8*)inputPntr) + (nextTask->runtimeItemSize * nextTask->progressIndex));
+						runtimeItemPntr = (void*)(((u8*)runtimeItemPntr) + (nextTask->runtimeItemSize * nextTask->progressIndex));
 					}
 				}
 				
@@ -597,23 +712,31 @@ bool CrlEngineRun(CrlEngine_t* crl, u64 firstTaskTypeIndex, const void* firstTas
 					BinSer_WriteBytes(crl->outputPntr, crl->outputSize, &crl->writeIndex, CRL_TYPE_DESIGNATION_SIZE, &nextTask->typeVersion->designation[0]);
 				}
 				
+				u64 structSize = 0;
+				u8* structPntr = nullptr;
+				if (!nextTask->typeVersion->customReadingLogic && nextTask->typeVersion->serializedSize > 0)
+				{
+					structSize = nextTask->typeVersion->serializedSize;
+					structPntr = (u8*)BinSer_WriteStructure_(crl->outputPntr, crl->outputSize, &crl->writeIndex, nextTask->typeVersion->serializedSize);
+				}
+				
 				u64 numTasksBeforeSerialize = crl->taskStack.length;
-				if (!nextTask->typeVersion->Serialize(crl, inputPntr, nextTask->runtimeItemSize, nextTask->progressIndex, crl->outputPntr, crl->outputSize, &crl->writeIndex))
+				if (!nextTask->typeVersion->Serialize(crl, nextTask->progressIndex, nextTask->runtimeItemSize, runtimeItemPntr, structSize, structPntr))
 				{
 					AssertIf(crl->log != nullptr, crl->log->errorCode != 0);
 					FreeScratchArena(scratch);
 					return false;
 				}
-				
-				//To make it easy on the implementations, we reverse the items pushed onto the stack during
-				//Serialize/Deserialize so they will get carried out in the order in which they were pushed
 				if (numTasksBeforeSerialize < crl->taskStack.length)
 				{
+					//To make it easy on the implementations, we reverse the items pushed onto the stack during
+					//Serialize/Deserialize so they will get carried out in the order in which they were pushed
 					VarArrayReverse(&crl->taskStack, numTasksBeforeSerialize, crl->taskStack.length);
+					
+					//Re-acquire the nextTask pntr into the VarArray because Deserialize might have pushed new items into the array, causing a realloc
+					nextTask = VarArrayGetHard(&crl->taskStack, nextTaskIndex, CrlTask_t);
 				}
 				
-				//Re-acquire the nextTask pntr into the VarArray because Deserialize might have pushed new items into the array, causing a realloc
-				nextTask = VarArrayGetHard(&crl->taskStack, nextTaskIndex, CrlTask_t);
 				if (nextTask->isArray)
 				{
 					nextTask->progressIndex++;
@@ -635,9 +758,9 @@ bool CrlEngineRun(CrlEngine_t* crl, u64 firstTaskTypeIndex, const void* firstTas
 				PushMemMark(scratch);
 				u64 numBytesRead = 0;
 				
-				{
-					MyStr_t taskStackDebugStr = CrlGetDebugStackString(crl, scratch);
-				}
+				#if DEBUG_BUILD
+				MyStr_t taskStackDebugStr = CrlGetDebugStackString(crl, scratch);
+				#endif
 				
 				if (nextTask->typeVersion->designation[0] != '\0')
 				{
@@ -664,8 +787,9 @@ bool CrlEngineRun(CrlEngine_t* crl, u64 firstTaskTypeIndex, const void* firstTas
 						MyStr_t expectedDesignation = NewStr(CRL_TYPE_DESIGNATION_SIZE, (char*)&nextTask->typeVersion->designation[0]);
 						MyStr_t readDesignation = NewStr(CRL_TYPE_DESIGNATION_SIZE, (char*)designationBytes);
 						LogPrintLine_E(crl->log, "Invalid type designation found in file. Expected \"%.*s\", found \"%.*s\" at offset 0x%X", StrPrint(expectedDesignation), StrPrint(readDesignation), crl->inputStream->readIndex - CRL_TYPE_DESIGNATION_SIZE);
-						MyStr_t taskStackDebugStr = CrlGetDebugStackString(crl, scratch);
+						#if DEBUG_BUILD
 						LogPrintLine_E(crl->log, "Task Stack: %.*s", StrPrint(taskStackDebugStr));
+						#endif
 						LogExitFailure(crl->log, CrlError_InvalidDesignation);
 						PopMemMark(scratch);
 						FreeScratchArena(scratch);
@@ -673,34 +797,16 @@ bool CrlEngineRun(CrlEngine_t* crl, u64 firstTaskTypeIndex, const void* firstTas
 					}
 				}
 				
-				u64 inputSize = nextTask->typeVersion->serializedSize;
-				u8* inputBytes = nullptr;
-				//TODO: Once Cereal engine is taking care of most of the reading, then we can re-enable this. For now, the implementations are reading things in a special way to handle simple versioning (structs growing in size)
-				#if 0
-				if (inputSize > 0)
+				u64 structSize = 0;
+				u8* structPntr = nullptr;
+				if (!nextTask->typeVersion->customReadingLogic)
 				{
-					if (IsFlagSet(crl->inputStream->capabilities, StreamCapability_StaticRead))
-					{
-						inputBytes = (u8*)StreamRead(crl->inputStream, inputSize, &numBytesRead);
-					}
-					else
-					{
-						inputBytes = (u8*)StreamReadInArena(crl->inputStream, inputSize, scratch, &numBytesRead);
-					}
-					if (inputBytes == nullptr || numBytesRead < inputSize)
-					{
-						if (inputBytes == nullptr) { LogPrintLine_E(crl->log, "Failed to read %llu byte struct from stream (nullptr return)", inputSize); }
-						else { LogPrintLine_E(crl->log, "Failed to read %llu byte struct from stream. Only %llu bytes read", inputSize, numBytesRead); }
-						LogExitFailure(crl->log, CrlError_IncompleteData);
-						PopMemMark(scratch);
-						FreeScratchArena(scratch);
-						return false;
-					}
+					structSize = nextTask->deserStructSize;
+					CrlEngine_ReadBytes(nextTask->deserStructSize, structPntr, "Structure"); //TODO: Make the debugName for the error log line better!
 				}
-				#endif
 				
 				u64 numTasksBeforeDeserialize = crl->taskStack.length;
-				if (!nextTask->typeVersion->Deserialize(crl, inputBytes, inputSize, nextTask->progressIndex))
+				if (!nextTask->typeVersion->Deserialize(crl, crl->deserOutputArena, scratch, nextTask->progressIndex, structSize, structPntr))
 				{
 					Assert(crl->log->errorCode != 0);
 					PopMemMark(scratch);
@@ -709,15 +815,16 @@ bool CrlEngineRun(CrlEngine_t* crl, u64 firstTaskTypeIndex, const void* firstTas
 				}
 				PopMemMark(scratch);
 				
-				//To make it easy on the implementations, we reverse the items pushed onto the stack during
-				//Serialize/Deserialize so they will get carried out in the order in which they were pushed
 				if (numTasksBeforeDeserialize < crl->taskStack.length)
 				{
+					//To make it easy on the implementations, we reverse the items pushed onto the stack during
+					//Serialize/Deserialize so they will get carried out in the order in which they were pushed
 					VarArrayReverse(&crl->taskStack, numTasksBeforeDeserialize, crl->taskStack.length);
+					
+					//Re-acquire the nextTask pntr into the VarArray because Deserialize might have pushed new items into the array, causing a realloc
+					nextTask = VarArrayGetHard(&crl->taskStack, nextTaskIndex, CrlTask_t);
 				}
 				
-				//Re-acquire the nextTask pntr into the VarArray because Deserialize might have pushed new items into the array, causing a realloc
-				nextTask = VarArrayGetHard(&crl->taskStack, nextTaskIndex, CrlTask_t);
 				if (nextTask->isArray)
 				{
 					nextTask->progressIndex++;
@@ -777,6 +884,16 @@ bool CrlEngineRun(CrlEngine_t* crl, u64 firstTaskTypeIndex, const void* firstTas
 	return (crl->log != nullptr ? !crl->log->hadErrors : true);
 }
 
+bool CrlEngineSerialize(CrlEngine_t* crl, u64 firstTaskTypeIndex, u64 firstTaskRuntimeItemSize, const void* firstTaskRuntimeItemPntr)
+{
+	return CrlEngineRun(crl, firstTaskTypeIndex, firstTaskRuntimeItemSize, firstTaskRuntimeItemPntr, 0);
+}
+
+bool CrlEngineDeserialize(CrlEngine_t* crl, u64 firstTaskTypeIndex, u64 firstTaskPredeclaredSize = 0)
+{
+	return CrlEngineRun(crl, firstTaskTypeIndex, 0, nullptr, firstTaskPredeclaredSize);
+}
+
 // Ownership of this data is passed to the caller at this point
 MyStr_t CrlEngineTakeSerializedData(CrlEngine_t* crl)
 {
@@ -821,8 +938,8 @@ CrlTask_t
 CrlEngine_t
 @Functions
 const char* GetCrlErrorStr(CrlError_t enumValue)
-bool CRL_SERIALIZE_DEF(CrlEngine_t* crl, const void* inputPntr, void* outputPntr, u64 outputSize, u64* writeIndexPntr)
-bool CRL_DESERIALIZE_DEF(CrlEngine_t* crl, const void* inputPntr, u64 inputSize, u64 arrayIndex)
+bool CRL_SERIALIZE_DEF(CrlEngine_t* crl, u64 arrayIndex, u64 runtimeItemSize, const void* runtimeItemPntr, u64 structSize, u8* structPntr)
+bool CRL_DESERIALIZE_DEF(CrlEngine_t* crl, MemArena_t* memArena, MemArena_t* scratch, u64 arrayIndex, u64 structSize, const u8* structPntr)
 CrlVersion_t NewCrlVersion(u8 major, u8 minor)
 bool IsCrlVersionGreaterThan(CrlVersion_t left, CrlVersion_t right, bool allowEqual = false)
 bool IsCrlVersionLessThan(CrlVersion_t left, CrlVersion_t right, bool allowEqual = false)
@@ -834,7 +951,7 @@ void CreateCrlEngineDeser(CrlEngine_t* crl, CrlVersion_t version, MemArena_t* me
 void CreateCrlEngineSer(CrlEngine_t* crl, CrlVersion_t version, MemArena_t* memArena, MemArena_t* serializedOutputArena, u64 numTypes, u64 numContextEntries)
 CrlRegisteredType_t* CrlGetType(CrlEngine_t* crl, u64 index)
 CrlRegisteredTypeVersion_t* CrlGetTypeVersion(CrlEngine_t* crl, u64 index, CrlVersion_t version, bool allowLowerVersions = true)
-CrlRegisteredType_t* CrlRegisterType(CrlEngine_t* crl, const char* debugName, u64 index, MyStr_t designation, CrlVersion_t version, u64 serializedSize, CrlSerialize_f* serializeFunc, CrlDeserialize_f* deserializeFunc)
+CrlRegisteredType_t* CrlRegisterType(CrlEngine_t* crl, const char* debugName, u64 index, MyStr_t designation, bool customReadingLogic, CrlVersion_t version, u64 serializedSize, u64 minimumSize, CrlSerialize_f* serializeFunc, CrlDeserialize_f* deserializeFunc)
 void CrlPushContext_(CrlEngine_t* crl, u64 index, u64 size, void* pntr, bool allowOverwrite = false, bool keepForSecondPass = false)
 void CrlPushContextValue_(CrlEngine_t* crl, u64 index, u64 valueSize, const void* valuePntr, bool allowOverwrite = false, bool keepForSecondPass = false)
 void CrlPushContext(CrlEngine_t* crl, u64 index, T* typedPntr, bool allowOverwrite = false, bool keepForSecondPass = false)
@@ -865,10 +982,14 @@ u64 CrlGetContextU64(CrlEngine_t* crl, u64 index)
 r32 CrlGetContextR32(CrlEngine_t* crl, u64 index)
 r64 CrlGetContextR64(CrlEngine_t* crl, u64 index)
 bool CrlGetContextBool(CrlEngine_t* crl, u64 index)
-CrlTask_t* CrlPushTask(CrlEngine_t* crl, bool isArray, u64 typeIndex, const void* runtimeItemPntr, u64 runtimeItemSize, u64 arraySize = 0)
-CrlTask_t* CrlPushArrayTask(CrlEngine_t* crl, u64 typeIndex, const void* runtimeItemPntr, u64 runtimeItemSize, u64 arraySize = 0)
-CrlTask_t* CrlPushVarArrayTask(CrlEngine_t* crl, u64 typeIndex, const VarArray_t* runtimeVarArray, u64 arraySize = 0)
-CrlTask_t* CrlPushSingleTask(CrlEngine_t* crl, u64 typeIndex, const void* runtimeItemPntr, u64 runtimeItemSize)
-bool CrlEngineRun(CrlEngine_t* crl, u64 firstTaskTypeIndex, const void* firstTaskRuntimeItemPntr, u64 firstTaskRuntimeItemSize)
+CrlTask_t* CrlPushTask(CrlEngine_t* crl, u64 typeIndex, bool isArray, bool isVarArray, u64 arraySize, const void* runtimeItemPntr, u64 runtimeItemSize, u64 predeclaredSize)
+CrlTask_t* CrlPushSingleTaskSer(CrlEngine_t* crl, u64 typeIndex, const void* runtimeItemPntr, u64 runtimeItemSize)
+CrlTask_t* CrlPushArrayTaskSer(CrlEngine_t* crl, u64 typeIndex, const void* runtimeItemPntr, u64 runtimeItemSize, u64 arraySize)
+CrlTask_t* CrlPushVarArrayTaskSer(CrlEngine_t* crl, u64 typeIndex, const VarArray_t* runtimeVarArray)
+CrlTask_t* CrlPushSingleTaskDeser(CrlEngine_t* crl, u64 typeIndex, u64 predeclaredSize = 0)
+CrlTask_t* CrlPushArrayTaskDeser(CrlEngine_t* crl, u64 typeIndex, u64 predeclaredArraySize = 0, u64 predeclaredSize = 0)
+bool CrlEngineRun(CrlEngine_t* crl, u64 firstTaskTypeIndex, u64 firstTaskRuntimeItemSize, const void* firstTaskRuntimeItemPntr, u64 firstTaskPredeclaredSize)
+bool CrlEngineSerialize(CrlEngine_t* crl, u64 firstTaskTypeIndex, u64 firstTaskRuntimeItemSize, const void* firstTaskRuntimeItemPntr)
+bool CrlEngineDeserialize(CrlEngine_t* crl, u64 firstTaskTypeIndex, u64 firstTaskPredeclaredSize = 0)
 MyStr_t CrlEngineTakeSerializedData(CrlEngine_t* crl)
 */
