@@ -10,7 +10,6 @@ NOTE: Crl stands for Cereal
 */
 
 //TODO: Remove array count embedding, let the application handle storing array counts somewhere. Or maybe just give them an option? We would need a callback or something to do a bit of work when the array count is read for the first time
-//TODO: Add support for GYLIB_HEADER_ONLY
 //TODO: Add support for context values that get deallocated automatically
 //TODO: How do we fill in information from later serialization processes, earlier in the file? Like having file offsets written to a header?
 //TODO: Test all the error scenarios to make sure they are working properly (Write some unit tests maybe?)
@@ -42,6 +41,9 @@ enum CrlError_t
 	CrlError_StructSizeTooLarge,
 	CrlError_NumErrors,
 };
+#ifdef GYLIB_HEADER_ONLY
+const char* GetCrlErrorStr(CrlError_t enumValue);
+#else
 const char* GetCrlErrorStr(CrlError_t enumValue)
 {
 	switch (enumValue)
@@ -55,6 +57,7 @@ const char* GetCrlErrorStr(CrlError_t enumValue)
 		default: return "Unknown";
 	}
 }
+#endif
 
 struct CrlEngine_t;
 #define CRL_SERIALIZE_DEF(functionName) bool functionName(CrlEngine_t* crl, u64 arrayIndex, u64 runtimeItemSize, const void* runtimeItemPntr, u64 structSize, u8* structPntr)
@@ -158,6 +161,70 @@ struct CrlEngine_t
 #define CrlVersion_Zero_Const { 0, 0 }
 #define CrlVersion_Max        NewCrlVersion(255, 255)
 #define CrlVersion_Max_Const  { 255, 255 }
+
+// +--------------------------------------------------------------+
+// |                            Macros                            |
+// +--------------------------------------------------------------+
+#define CrlPushContext(crl, index, typedPntr, ...) CrlPushContext_((crl), (index), sizeof(*(typedPntr)), (void*)(typedPntr), ##__VA_ARGS__)
+#define CrlPushContextI8(crl, index, value, ...)   do { i8   _valueI8   = (value); CrlPushContextValue_((crl), (index), sizeof(i8),   &_valueI8,   ##__VA_ARGS__); } while(0)
+#define CrlPushContextI16(crl, index, value, ...)  do { i16  _valueI16  = (value); CrlPushContextValue_((crl), (index), sizeof(i16),  &_valueI16,  ##__VA_ARGS__); } while(0)
+#define CrlPushContextI32(crl, index, value, ...)  do { i32  _valueI32  = (value); CrlPushContextValue_((crl), (index), sizeof(i32),  &_valueI32,  ##__VA_ARGS__); } while(0)
+#define CrlPushContextI64(crl, index, value, ...)  do { i64  _valueI64  = (value); CrlPushContextValue_((crl), (index), sizeof(i64),  &_valueI64,  ##__VA_ARGS__); } while(0)
+#define CrlPushContextU8(crl, index, value, ...)   do { u8   _valueU8   = (value); CrlPushContextValue_((crl), (index), sizeof(u8),   &_valueU8,   ##__VA_ARGS__); } while(0)
+#define CrlPushContextU16(crl, index, value, ...)  do { u16  _valueU16  = (value); CrlPushContextValue_((crl), (index), sizeof(u16),  &_valueU16,  ##__VA_ARGS__); } while(0)
+#define CrlPushContextU32(crl, index, value, ...)  do { u32  _valueU32  = (value); CrlPushContextValue_((crl), (index), sizeof(u32),  &_valueU32,  ##__VA_ARGS__); } while(0)
+#define CrlPushContextU64(crl, index, value, ...)  do { u64  _valueU64  = (value); CrlPushContextValue_((crl), (index), sizeof(u64),  &_valueU64,  ##__VA_ARGS__); } while(0)
+#define CrlPushContextR32(crl, index, value, ...)  do { r32  _valueR32  = (value); CrlPushContextValue_((crl), (index), sizeof(r32),  &_valueR32,  ##__VA_ARGS__); } while(0)
+#define CrlPushContextR64(crl, index, value, ...)  do { r64  _valueR64  = (value); CrlPushContextValue_((crl), (index), sizeof(r64),  &_valueR64,  ##__VA_ARGS__); } while(0)
+#define CrlPushContextBool(crl, index, value, ...) do { bool _valueBool = (value); CrlPushContextValue_((crl), (index), sizeof(bool), &_valueBool, ##__VA_ARGS__); } while(0)
+
+#define CrlGetContextHard(crl, index, type) (type*)CrlGetContext_((crl), (index), sizeof(type), true)
+#define CrlGetContextSoft(crl, index, type) (type*)CrlGetContext_((crl), (index), sizeof(type), false)
+#define CrlGetContext(crl, index, type) CrlGetContextHard((crl), (index), type)
+
+#define CrlGetContextI8(crl, index)   CrlGetContextRaw_((crl), (index), sizeof(i8), true)->valueI8
+#define CrlGetContextI16(crl, index)  CrlGetContextRaw_((crl), (index), sizeof(i16), true)->valueI16
+#define CrlGetContextI32(crl, index)  CrlGetContextRaw_((crl), (index), sizeof(i32), true)->valueI32
+#define CrlGetContextI64(crl, index)  CrlGetContextRaw_((crl), (index), sizeof(i64), true)->valueI64
+#define CrlGetContextU8(crl, index)   CrlGetContextRaw_((crl), (index), sizeof(u8), true)->valueU8
+#define CrlGetContextU16(crl, index)  CrlGetContextRaw_((crl), (index), sizeof(u16), true)->valueU16
+#define CrlGetContextU32(crl, index)  CrlGetContextRaw_((crl), (index), sizeof(u32), true)->valueU32
+#define CrlGetContextU64(crl, index)  CrlGetContextRaw_((crl), (index), sizeof(u64), true)->valueU64
+#define CrlGetContextR32(crl, index)  CrlGetContextRaw_((crl), (index), sizeof(r32), true)->valueR32
+#define CrlGetContextR64(crl, index)  CrlGetContextRaw_((crl), (index), sizeof(r64), true)->valueR64
+#define CrlGetContextBool(crl, index) CrlGetContextRaw_((crl), (index), sizeof(bool), true)->valueBool
+
+// +--------------------------------------------------------------+
+// |                         Header Only                          |
+// +--------------------------------------------------------------+
+#ifdef GYLIB_HEADER_ONLY
+	CrlVersion_t NewCrlVersion(u8 major, u8 minor);
+	bool IsCrlVersionGreaterThan(CrlVersion_t left, CrlVersion_t right, bool allowEqual = false);
+	bool IsCrlVersionLessThan(CrlVersion_t left, CrlVersion_t right, bool allowEqual = false);
+	bool IsCrlVersionEqual(CrlVersion_t left, CrlVersion_t right, bool allowEqual = false);
+	MyStr_t CrlGetDebugStackString(CrlEngine_t* crl, MemArena_t* memArena);
+	void FreeCrlEngine(CrlEngine_t* crl);
+	void CreateCrlEngine(CrlEngine_t* crl, bool deserializing, CrlVersion_t version, MemArena_t* memArena, u64 numTypes, u64 numContextEntries, ProcessLog_t* processLog, Stream_t* stream);
+	void CreateCrlEngineDeser(CrlEngine_t* crl, CrlVersion_t version, MemArena_t* memArena, MemArena_t* deserOutputArena, u64 numTypes, u64 numContextEntries, ProcessLog_t* processLog, Stream_t* stream);
+	void CreateCrlEngineSer(CrlEngine_t* crl, CrlVersion_t version, MemArena_t* memArena, MemArena_t* serializedOutputArena, u64 numTypes, u64 numContextEntries);
+	CrlRegisteredType_t* CrlGetType(CrlEngine_t* crl, u64 index);
+	CrlRegisteredTypeVersion_t* CrlGetTypeVersion(CrlEngine_t* crl, u64 index, CrlVersion_t version, bool allowLowerVersions = true);
+	CrlRegisteredType_t* CrlRegisterType(CrlEngine_t* crl, const char* debugName, u64 index, MyStr_t designation, bool customReadingLogic, CrlVersion_t version, u64 serializedSize, u64 minimumSize, CrlSerialize_f* serializeFunc, CrlDeserialize_f* deserializeFunc);
+	void CrlPushContext_(CrlEngine_t* crl, u64 index, u64 size, void* pntr, bool allowOverwrite = false, bool keepForSecondPass = false);
+	void CrlPushContextValue_(CrlEngine_t* crl, u64 index, u64 valueSize, const void* valuePntr, bool allowOverwrite = false, bool keepForSecondPass = false);
+	void* CrlGetContext_(CrlEngine_t* crl, u64 index, u64 size, bool assertOnFailure);
+	CrlContextEntry_t* CrlGetContextRaw_(CrlEngine_t* crl, u64 index, u64 size, bool assertOnFailure);
+	CrlTask_t* CrlPushTask(CrlEngine_t* crl, u64 typeIndex, bool isArray, bool isVarArray, u64 arraySize, const void* runtimeItemPntr, u64 runtimeItemSize, u64 predeclaredSize);
+	CrlTask_t* CrlPushSingleTaskSer(CrlEngine_t* crl, u64 typeIndex, const void* runtimeItemPntr, u64 runtimeItemSize);
+	CrlTask_t* CrlPushArrayTaskSer(CrlEngine_t* crl, u64 typeIndex, const void* runtimeItemPntr, u64 runtimeItemSize, u64 arraySize);
+	CrlTask_t* CrlPushVarArrayTaskSer(CrlEngine_t* crl, u64 typeIndex, const VarArray_t* runtimeVarArray);
+	CrlTask_t* CrlPushSingleTaskDeser(CrlEngine_t* crl, u64 typeIndex, u64 predeclaredSize = 0);
+	CrlTask_t* CrlPushArrayTaskDeser(CrlEngine_t* crl, u64 typeIndex, u64 predeclaredArraySize = 0, u64 predeclaredSize = 0);
+	bool CrlEngineRun(CrlEngine_t* crl, u64 firstTaskTypeIndex, u64 firstTaskRuntimeItemSize, const void* firstTaskRuntimeItemPntr, u64 firstTaskPredeclaredSize);
+	bool CrlEngineSerialize(CrlEngine_t* crl, u64 firstTaskTypeIndex, u64 firstTaskRuntimeItemSize, const void* firstTaskRuntimeItemPntr);
+	bool CrlEngineDeserialize(CrlEngine_t* crl, u64 firstTaskTypeIndex, u64 firstTaskPredeclaredSize = 0);
+	MyStr_t CrlEngineTakeSerializedData(CrlEngine_t* crl);
+#else
 
 // +--------------------------------------------------------------+
 // |                      Version Functions                       |
@@ -431,18 +498,6 @@ void CrlPushContextValue_(CrlEngine_t* crl, u64 index, u64 valueSize, const void
 		entry->isFilled = false;
 	}
 }
-#define CrlPushContext(crl, index, typedPntr, ...) CrlPushContext_((crl), (index), sizeof(*(typedPntr)), (void*)(typedPntr), ##__VA_ARGS__)
-#define CrlPushContextI8(crl, index, value, ...)   do { i8   _valueI8   = (value); CrlPushContextValue_((crl), (index), sizeof(i8),   &_valueI8,   ##__VA_ARGS__); } while(0)
-#define CrlPushContextI16(crl, index, value, ...)  do { i16  _valueI16  = (value); CrlPushContextValue_((crl), (index), sizeof(i16),  &_valueI16,  ##__VA_ARGS__); } while(0)
-#define CrlPushContextI32(crl, index, value, ...)  do { i32  _valueI32  = (value); CrlPushContextValue_((crl), (index), sizeof(i32),  &_valueI32,  ##__VA_ARGS__); } while(0)
-#define CrlPushContextI64(crl, index, value, ...)  do { i64  _valueI64  = (value); CrlPushContextValue_((crl), (index), sizeof(i64),  &_valueI64,  ##__VA_ARGS__); } while(0)
-#define CrlPushContextU8(crl, index, value, ...)   do { u8   _valueU8   = (value); CrlPushContextValue_((crl), (index), sizeof(u8),   &_valueU8,   ##__VA_ARGS__); } while(0)
-#define CrlPushContextU16(crl, index, value, ...)  do { u16  _valueU16  = (value); CrlPushContextValue_((crl), (index), sizeof(u16),  &_valueU16,  ##__VA_ARGS__); } while(0)
-#define CrlPushContextU32(crl, index, value, ...)  do { u32  _valueU32  = (value); CrlPushContextValue_((crl), (index), sizeof(u32),  &_valueU32,  ##__VA_ARGS__); } while(0)
-#define CrlPushContextU64(crl, index, value, ...)  do { u64  _valueU64  = (value); CrlPushContextValue_((crl), (index), sizeof(u64),  &_valueU64,  ##__VA_ARGS__); } while(0)
-#define CrlPushContextR32(crl, index, value, ...)  do { r32  _valueR32  = (value); CrlPushContextValue_((crl), (index), sizeof(r32),  &_valueR32,  ##__VA_ARGS__); } while(0)
-#define CrlPushContextR64(crl, index, value, ...)  do { r64  _valueR64  = (value); CrlPushContextValue_((crl), (index), sizeof(r64),  &_valueR64,  ##__VA_ARGS__); } while(0)
-#define CrlPushContextBool(crl, index, value, ...) do { bool _valueBool = (value); CrlPushContextValue_((crl), (index), sizeof(bool), &_valueBool, ##__VA_ARGS__); } while(0)
 
 void* CrlGetContext_(CrlEngine_t* crl, u64 index, u64 size, bool assertOnFailure)
 {
@@ -476,21 +531,6 @@ CrlContextEntry_t* CrlGetContextRaw_(CrlEngine_t* crl, u64 index, u64 size, bool
 	}
 	return nullptr;
 }
-#define CrlGetContextHard(crl, index, type) (type*)CrlGetContext_((crl), (index), sizeof(type), true)
-#define CrlGetContextSoft(crl, index, type) (type*)CrlGetContext_((crl), (index), sizeof(type), false)
-#define CrlGetContext(crl, index, type) CrlGetContextHard((crl), (index), type)
-
-#define CrlGetContextI8(crl, index)   CrlGetContextRaw_((crl), (index), sizeof(i8), true)->valueI8
-#define CrlGetContextI16(crl, index)  CrlGetContextRaw_((crl), (index), sizeof(i16), true)->valueI16
-#define CrlGetContextI32(crl, index)  CrlGetContextRaw_((crl), (index), sizeof(i32), true)->valueI32
-#define CrlGetContextI64(crl, index)  CrlGetContextRaw_((crl), (index), sizeof(i64), true)->valueI64
-#define CrlGetContextU8(crl, index)   CrlGetContextRaw_((crl), (index), sizeof(u8), true)->valueU8
-#define CrlGetContextU16(crl, index)  CrlGetContextRaw_((crl), (index), sizeof(u16), true)->valueU16
-#define CrlGetContextU32(crl, index)  CrlGetContextRaw_((crl), (index), sizeof(u32), true)->valueU32
-#define CrlGetContextU64(crl, index)  CrlGetContextRaw_((crl), (index), sizeof(u64), true)->valueU64
-#define CrlGetContextR32(crl, index)  CrlGetContextRaw_((crl), (index), sizeof(r32), true)->valueR32
-#define CrlGetContextR64(crl, index)  CrlGetContextRaw_((crl), (index), sizeof(r64), true)->valueR64
-#define CrlGetContextBool(crl, index) CrlGetContextRaw_((crl), (index), sizeof(bool), true)->valueBool
 
 // +--------------------------------------------------------------+
 // |                            Tasks                             |
@@ -520,22 +560,6 @@ CrlTask_t* CrlPushTask(CrlEngine_t* crl, u64 typeIndex, bool isArray, bool isVar
 	
 	return newTask;
 }
-#if 0
-CrlTask_t* CrlPushArrayTask(CrlEngine_t* crl, u64 typeIndex, const void* runtimeItemPntr, u64 runtimeItemSize, u64 arraySize = 0)
-{
-	return CrlPushTask(crl, true, typeIndex, runtimeItemPntr, runtimeItemSize, arraySize);
-}
-CrlTask_t* CrlPushVarArrayTask(CrlEngine_t* crl, u64 typeIndex, const VarArray_t* runtimeVarArray, u64 arraySize = 0)
-{
-	CrlTask_t* task = CrlPushTask(crl, true, typeIndex, runtimeVarArray, runtimeVarArray->itemSize, (crl->isDeserializing ? arraySize : runtimeVarArray->length));
-	if (task != nullptr) { task->isRuntimeVarArray = true; }
-	return task;
-}
-CrlTask_t* CrlPushSingleTask(CrlEngine_t* crl, u64 typeIndex, const void* runtimeItemPntr, u64 runtimeItemSize)
-{
-	return CrlPushTask(crl, false, typeIndex, runtimeItemPntr, runtimeItemSize);
-}
-#endif
 
 CrlTask_t* CrlPushSingleTaskSer(CrlEngine_t* crl, u64 typeIndex, const void* runtimeItemPntr, u64 runtimeItemSize)
 {
@@ -905,6 +929,8 @@ MyStr_t CrlEngineTakeSerializedData(CrlEngine_t* crl)
 	crl->outputSize = 0;
 	return result;
 }
+
+#endif //GYLIB_HEADER_ONLY
 
 #endif // GYLIB_SCRATCH_ARENA_AVAILABLE
 
