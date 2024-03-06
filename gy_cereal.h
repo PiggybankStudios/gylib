@@ -212,7 +212,7 @@ struct CrlEngine_t
 	CrlVersion_t NewCrlVersion(u8 major, u8 minor);
 	bool IsCrlVersionGreaterThan(CrlVersion_t left, CrlVersion_t right, bool allowEqual = false);
 	bool IsCrlVersionLessThan(CrlVersion_t left, CrlVersion_t right, bool allowEqual = false);
-	bool IsCrlVersionEqual(CrlVersion_t left, CrlVersion_t right, bool allowEqual = false);
+	bool IsCrlVersionEqual(CrlVersion_t left, CrlVersion_t right);
 	MyStr_t CrlGetDebugStackString(CrlEngine_t* crl, MemArena_t* memArena);
 	void FreeCrlTask(CrlEngine_t* crl, CrlTask_t* task);
 	void FreeCrlEngine(CrlEngine_t* crl);
@@ -274,7 +274,7 @@ bool IsCrlVersionLessThan(CrlVersion_t left, CrlVersion_t right, bool allowEqual
 	}
 	else { return false; }
 }
-bool IsCrlVersionEqual(CrlVersion_t left, CrlVersion_t right, bool allowEqual = false)
+bool IsCrlVersionEqual(CrlVersion_t left, CrlVersion_t right)
 {
 	return (left.major == right.major && left.minor == right.minor);
 }
@@ -426,6 +426,7 @@ CrlRegisteredType_t* CrlRegisterType(CrlEngine_t* crl, const char* debugName,
 	u64 serializedSize, u64 minimumSize,
 	CrlSerialize_f* serializeFunc, CrlDeserialize_f* deserializeFunc)
 {
+	UNUSED(debugName);
 	Assert(crl->numRegisteredTypes < crl->numRegisteredTypesAlloc);
 	Assert(index >= crl->numRegisteredTypes || index == crl->numRegisteredTypes-1);
 	NotNull2(serializeFunc, deserializeFunc);
@@ -1113,7 +1114,7 @@ bool CRL_DESERIALIZE_DEF(CrlEngine_t* crl, MemArena_t* memArena, MemArena_t* scr
 CrlVersion_t NewCrlVersion(u8 major, u8 minor)
 bool IsCrlVersionGreaterThan(CrlVersion_t left, CrlVersion_t right, bool allowEqual = false)
 bool IsCrlVersionLessThan(CrlVersion_t left, CrlVersion_t right, bool allowEqual = false)
-bool IsCrlVersionEqual(CrlVersion_t left, CrlVersion_t right, bool allowEqual = false)
+bool IsCrlVersionEqual(CrlVersion_t left, CrlVersion_t right)
 MyStr_t CrlGetDebugStackString(CrlEngine_t* crl, MemArena_t* memArena)
 void FreeCrlTask(CrlEngine_t* crl, CrlTask_t* task)
 void FreeCrlEngine(CrlEngine_t* crl)

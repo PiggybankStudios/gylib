@@ -220,7 +220,6 @@ const void* StreamDeser_ReadStructDynamicSize_(Stream_t* stream, MemArena_t* mem
 		}
 		else { return initialRead; }
 	}
-	return nullptr;
 }
 
 bool StreamDeser_ReadVariable_(Stream_t* stream, MemArena_t* memArena, bool tryStaticRead, u64 valueSize, void* valueOutPntr)
