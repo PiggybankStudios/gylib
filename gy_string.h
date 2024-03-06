@@ -38,6 +38,26 @@ struct MyWideStr_t
 	};
 };
 
+union MyStrPair_t
+{
+	MyStr_t strs[2];
+	struct 
+	{
+		union
+		{
+			MyStr_t key;
+			MyStr_t left;
+			MyStr_t first;
+		};
+		union
+		{
+			MyStr_t value;
+			MyStr_t right;
+			MyStr_t second;
+		};
+	};
+};
+
 enum WordBreakCharClass_t
 {
 	WordBreakCharClass_AlphabeticLower,
@@ -125,6 +145,10 @@ struct SplitStringContext_t
 	MyStr_t NewStr(u64 length, const char* pntr);
 	MyStr_t NewStr(char* nullTermStr);
 	MyStr_t NewStr(const char* nullTermStr);
+	MyStrPair_t NewStrPair(const char* keyStrNullTerm, const char* valueStrNullTerm);
+	MyStrPair_t NewStrPair(MyStr_t keyStr, const char* valueStrNullTerm);
+	MyStrPair_t NewStrPair(const char* keyStrNullTerm, MyStr_t valueStr);
+	MyStrPair_t NewStrPair(MyStr_t keyStr, MyStr_t valueStr);
 	bool IsNullStr(MyStr_t target);
 	bool IsNullStr(const MyStr_t* targetPntr);
 	bool IsEmptyStr(MyStr_t target);
@@ -213,6 +237,7 @@ struct SplitStringContext_t
 	u64 StrReplaceInPlace(MyStr_t str, const char* target, const char* replacement, bool ignoreCase = false, bool allowShrinking = false);
 	MyStr_t StrReplace(MyStr_t str, MyStr_t target, MyStr_t replacement, MemArena_t* memArena);
 	MyStr_t StrReplace(MyStr_t str, const char* target, const char* replacement, MemArena_t* memArena);
+	MyStr_t StrReplaceMultiple(MyStr_t str, u64 numReplacements, const MyStrPair_t* replacements, MemArena_t* memArena);
 	bool FindSubstring(MyStr_t target, MyStr_t substring, u64* indexOut = nullptr, bool ignoreCase = false, u64 startIndex = 0);
 	bool FindSubstring(MyStr_t target, const char* nullTermSubstring, u64* indexOut= nullptr, bool ignoreCase = false, u64 startIndex = 0);
 	bool FindSubstring(const char* nullTermTarget, MyStr_t substring, u64* indexOut= nullptr, bool ignoreCase = false, u64 startIndex = 0);
@@ -281,6 +306,39 @@ MyStr_t NewStr(const char* nullTermStr)
 }
 
 //TODO: Is our idea of an empty string somewhat flawed because I could have a 0 length string that is still allocated?? Like when I go to deallocate a string should I check if it's pntr is nullptr or if it's length is 0??
+
+MyStrPair_t NewStrPair(const char* keyStrNullTerm, const char* valueStrNullTerm)
+{
+	MyStrPair_t result;
+	result.key.length = ((keyStrNullTerm != nullptr) ? MyStrLength64(keyStrNullTerm) : 0);
+	result.key.pntr = (char*)keyStrNullTerm;
+	result.value.length = ((valueStrNullTerm != nullptr) ? MyStrLength64(valueStrNullTerm) : 0);
+	result.value.pntr = (char*)valueStrNullTerm;
+	return result;
+}
+MyStrPair_t NewStrPair(MyStr_t keyStr, const char* valueStrNullTerm)
+{
+	MyStrPair_t result;
+	result.key = keyStr;
+	result.value.length = ((valueStrNullTerm != nullptr) ? MyStrLength64(valueStrNullTerm) : 0);
+	result.value.pntr = (char*)valueStrNullTerm;
+	return result;
+}
+MyStrPair_t NewStrPair(const char* keyStrNullTerm, MyStr_t valueStr)
+{
+	MyStrPair_t result;
+	result.key.length = ((keyStrNullTerm != nullptr) ? MyStrLength64(keyStrNullTerm) : 0);
+	result.key.pntr = (char*)keyStrNullTerm;
+	result.value = valueStr;
+	return result;
+}
+MyStrPair_t NewStrPair(MyStr_t keyStr, MyStr_t valueStr)
+{
+	MyStrPair_t result;
+	result.key = keyStr;
+	result.value = valueStr;
+	return result;
+}
 
 //A "Null Str" is one that has length but pntr is nullptr
 bool IsNullStr(MyStr_t target)
@@ -1691,6 +1749,68 @@ MyStr_t StrReplace(MyStr_t str, const char* target, const char* replacement, Mem
 	return StrReplace(str, NewStr(target), NewStr(replacement), memArena);
 }
 
+MyStr_t StrReplaceMultiple(MyStr_t str, u64 numReplacements, const MyStrPair_t* replacements, MemArena_t* memArena)
+{
+	NotNullStr(&str);
+	
+	MyStr_t result = MyStr_Empty;
+	for (u8 pass = 0; pass < 2; pass++)
+	{
+		u64 writeIndex = 0;
+		
+		for (u64 readIndex = 0; readIndex < str.length; readIndex++)
+		{
+			bool foundReplacement = false;
+			for (u64 rIndex = 0; rIndex < numReplacements; rIndex++)
+			{
+				const MyStrPair_t* replacement = &replacements[rIndex];
+				NotNullStr(&replacement->key);
+				NotNullStr(&replacement->value);
+				Assert(replacement->key.length > 0);
+				if (readIndex + replacement->key.length <= str.length)
+				{
+					if (MyMemCompare(&str.chars[readIndex], replacement->key.chars, replacement->key.length) == 0)
+					{
+						if (result.chars != nullptr)
+						{
+							Assert(writeIndex + replacement->value.length <= result.length);
+							if (replacement->value.length > 0) { MyMemCopy(&result.chars[writeIndex], replacement->value.chars, replacement->value.length); }
+						}
+						writeIndex += replacement->value.length;
+						readIndex += replacement->key.length-1;
+						foundReplacement = true;
+						break;
+					}
+				}
+			}
+			
+			if (!foundReplacement)
+			{
+				if (result.chars != nullptr)
+				{
+					result.chars[writeIndex] = str.chars[readIndex];
+				}
+				writeIndex++;
+			}
+		}
+		
+		if (pass == 0)
+		{
+			result.length = writeIndex;
+			if (memArena == nullptr) { return result; }
+			result.chars = AllocArray(memArena, char, result.length+1);
+			NotNull(result.chars);
+		}
+		else
+		{
+			Assert(writeIndex == result.length);
+			result.chars[result.length] = '\0';
+		}
+	}
+	
+	return result;
+}
+
 //TODO: This should return true if target and substring are equal!
 bool FindSubstring(MyStr_t target, MyStr_t substring, u64* indexOut = nullptr, bool ignoreCase = false, u64 startIndex = 0)
 {
@@ -2172,11 +2292,13 @@ WordBreakCharClass_NumClasses
 @Types
 MyStr_t
 MyWideStr_t
+MyStrPair_t
 WordBreakCharClass_t
 @Functions
 const char* GetWordBreakCharClassStr(WordBreakCharClass_t enumValue)
 MyStr_t NewStrLengthOnly(u64 length)
 MyStr_t NewStr(u64 length, char* pntr)
+MyStrPair_t NewStrPair(MyStr_t keyStr, MyStr_t valueStr)
 bool IsNullStr(MyStr_t target)
 bool IsEmptyStr(MyStr_t target)
 bool IsStrNullTerminated(MyStr_t target)
@@ -2222,6 +2344,7 @@ void StrSpliceInPlace(MyStr_t target, u64 startIndex, MyStr_t replacement)
 MyStr_t StrSplice(MyStr_t target, u64 startIndex, u64 endIndex, MyStr_t replacement, MemArena_t* memArena)
 u64 StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ignoreCase = false, bool allowShrinking = false)
 MyStr_t StrReplace(MyStr_t str, MyStr_t target, MyStr_t replacement, MemArena_t* memArena)
+MyStr_t StrReplaceMultiple(MyStr_t str, u64 numReplacements, const MyStrPair_t* replacements, MemArena_t* memArena)
 bool FindSubstring(MyStr_t target, MyStr_t substring, u64* indexOut = nullptr, bool ignoreCase = false, u64 startIndex = 0)
 MyStr_t FindStrParensPart(MyStr_t target, char openParensChar = '[', char closeParensChar = ']')
 MyStr_t StringRepeat(MemArena_t* memArena, MyStr_t str, u64 numRepetitions)
