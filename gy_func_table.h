@@ -34,6 +34,9 @@ struct Func_t
 	u64 tableIndex;
 };
 
+#define Func_Nullptr_Const { UINT64_MAX }
+#define Func_Nullptr MakeFunc_(UINT64_MAX)
+
 // +--------------------------------------------------------------+
 // |                            Macros                            |
 // +--------------------------------------------------------------+
@@ -45,6 +48,9 @@ struct Func_t
 // +--------------------------------------------------------------+
 #ifdef GYLIB_HEADER_ONLY
 	void* GetRawFuncPntr(Func_t func);
+	bool IsValidFunc(Func_t func);
+	bool IsValidFunc(Func_t* func);
+	Func_t MakeFunc_(u64 tableIndex);
 	Func_t MakeFunc(const void* functionPntr);
 #else
 
@@ -55,6 +61,23 @@ const void* GetRawFuncPntr(Func_t func)
 {
 	DebugAssert(func.tableIndex < ArrayCount(GlobalFuncTable));
 	return GlobalFuncTable[func.tableIndex];
+}
+
+bool IsValidFunc(Func_t func)
+{
+	return (func.tableIndex < ArrayCount(GlobalFuncTable));
+}
+
+bool IsValidFunc(Func_t* func)
+{
+	return (func->tableIndex < ArrayCount(GlobalFuncTable));
+}
+
+Func_t MakeFunc_(u64 tableIndex)
+{
+	Func_t result = {};
+	result.tableIndex = tableIndex;
+	return result;
 }
 
 Func_t MakeFunc(const void* functionPntr)
@@ -78,6 +101,8 @@ Func_t MakeFunc(const void* functionPntr)
 /*
 @Defines
 FuncTable_NumFunctions
+Func_Nullptr_Const
+Func_Nullptr
 @Types
 Func_t
 @Globals
@@ -86,5 +111,7 @@ GlobalFuncTable
 #define CallFunc(functionType, func, ...)
 #define PIGGEN_RegisterFunc(functionName)
 const void* GetRawFuncPntr(Func_t func)
+bool IsValidFunc(Func_t func);
+Func_t MakeFunc_(u64 tableIndex)
 Func_t MakeFunc(const void* functionPntr)
 */
