@@ -55,6 +55,14 @@ struct RayVsBoxResult_t
 	Dir3_t exitSide;
 };
 
+struct CircleVsRecResult_t
+{
+	bool intersects;
+	v2 closestPoint;
+	Dir2Ex_t recSide; //Will never be None
+	v2 circleResolveVec;
+};
+
 // +--------------------------------------------------------------+
 // |                         Header Only                          |
 // +--------------------------------------------------------------+
@@ -341,6 +349,100 @@ bool RayVsBox(Ray3_t ray, box boundingBox, RayVsBoxResult_t* result, bool giveNe
 	return true;
 }
 
+bool CircleVsRec(Circle_t circle, rec rectangle, CircleVsRecResult_t* result)
+{
+	NotNull(result);
+	ClearPointer(result);
+	
+	if (circle.x < rectangle.x + rectangle.width)
+	{
+		if (circle.x > rectangle.x)
+		{
+			if (circle.y < rectangle.y)
+			{
+				result->recSide = Dir2Ex_Up;
+				result->closestPoint = NewVec2(circle.x, rectangle.y);
+			}
+			else if (circle.y > rectangle.y + rectangle.height)
+			{
+				result->recSide = Dir2Ex_Down;
+				result->closestPoint = NewVec2(circle.x, rectangle.y + rectangle.height);
+			}
+			else
+			{
+				result->closestPoint = circle.center;
+			}
+		}
+		else
+		{
+			if (circle.y < rectangle.y + rectangle.height)
+			{
+				if (circle.y > rectangle.y)
+				{
+					result->recSide = Dir2Ex_Left;
+					result->closestPoint = NewVec2(rectangle.x, circle.y);
+				}
+				else
+				{
+					result->recSide = Dir2Ex_TopLeft;
+					result->closestPoint = NewVec2(rectangle.x, rectangle.y);
+				}
+			}
+			else
+			{
+				result->recSide = Dir2Ex_BottomLeft;
+				result->closestPoint = NewVec2(rectangle.x, rectangle.y + rectangle.height);
+			}
+		}
+	}
+	else
+	{
+		if (circle.y < rectangle.y + rectangle.height)
+		{
+			if (circle.y > rectangle.y)
+			{
+				result->recSide = Dir2Ex_Right;
+				result->closestPoint = NewVec2(rectangle.x + rectangle.width, circle.y);
+			}
+			else
+			{
+				result->recSide = Dir2Ex_TopRight;
+				result->closestPoint = NewVec2(rectangle.x + rectangle.width, rectangle.y);
+			}
+		}
+		else
+		{
+			result->recSide = Dir2Ex_BottomRight;
+			result->closestPoint = NewVec2(rectangle.x + rectangle.width, rectangle.y + rectangle.height);
+		}
+	}
+	
+	r32 distSquared = Vec2LengthSquared(circle.center - result->closestPoint);
+	result->intersects = (distSquared < Square(circle.radius));
+	
+	if (result->closestPoint == circle.center)
+	{
+		r32 resolveX = rectangle.x + ((circle.x > (rectangle.x + rectangle.width/2)) ? rectangle.width + circle.radius : -circle.radius) - circle.x;
+		r32 resolveY = rectangle.y + ((circle.y > (rectangle.y + rectangle.height/2)) ? rectangle.height + circle.radius : -circle.radius) - circle.y;
+		if (AbsR32(resolveX) < AbsR32(resolveY))
+		{
+			result->circleResolveVec = NewVec2(resolveX, 0);
+			result->recSide = (resolveX >= 0) ? Dir2Ex_Right : Dir2Ex_Left;
+		}
+		else
+		{
+			result->circleResolveVec = NewVec2(0, resolveY);
+			result->recSide = (resolveY >= 0) ? Dir2Ex_Down : Dir2Ex_Up;
+		}
+	}
+	else
+	{
+		result->circleResolveVec = result->closestPoint - (circle.center + (Vec2Normalize(result->closestPoint - circle.center) * circle.radius));
+	}
+	
+	return result->intersects;
+}
+
 #endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_COLLISION_H
@@ -354,8 +456,10 @@ bool RayVsBox(Ray3_t ray, box boundingBox, RayVsBoxResult_t* result, bool giveNe
 RayVsRectangle2DResult_t
 RayVsObb2DResult_t
 RayVsBoxResult_t
+CircleVsRecResult_t
 @Functions
 bool RayVsRectangle2D(Ray2_t ray, rec rectangle, RayVsRectangle2DResult_t* result, bool giveNegativeTimes = false)
 bool RayVsObb2D(Ray2_t ray, obb2 boundingBox, RayVsObb2DResult_t* result, bool giveNegativeTimes = false)
 bool RayVsBox(Ray3_t ray, box boundingBox, RayVsBoxResult_t* result, bool giveNegativeTimes = false)
+bool CircleVsRec(Circle_t circle, rec rectangle, CircleVsRecResult_t* result)
 */
