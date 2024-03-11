@@ -287,7 +287,6 @@ void StringBuilderAppendPrintVa(StringBuilder_t* builder, const char* formatStri
 			u64 newAllocLength = builder->length + MinU64((u64)printResult, growableSpaceAvailable) + 1;
 			GrowMem(builder->allocArena, builder->chars, builder->allocLength, newAllocLength, &growToken);
 			builder->allocLength = newAllocLength;
-			builder->length = builder->allocLength-1;
 			increasedLength = true;
 		}
 		
@@ -306,7 +305,7 @@ void StringBuilderAppendPrintVa(StringBuilder_t* builder, const char* formatStri
 		}
 		else
 		{
-			if (!increasedLength) { builder->length += (u64)printResult; }
+			builder->length += (u64)printResult;
 		}
 		
 		Assert(builder->length < builder->allocLength);
