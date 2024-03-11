@@ -63,6 +63,14 @@ struct CircleVsRecResult_t
 	v2 circleResolveVec;
 };
 
+struct SphereVsBoxResult_t
+{
+	bool intersects;
+	v3 closestPoint;
+	Dir3Ex_t boxSide; //Will never be None
+	v3 sphereResolveVec;
+};
+
 // +--------------------------------------------------------------+
 // |                         Header Only                          |
 // +--------------------------------------------------------------+
@@ -70,6 +78,12 @@ struct CircleVsRecResult_t
 	bool RayVsRectangle2D(Ray2_t ray, rec rectangle, RayVsRectangle2DResult_t* result, bool giveNegativeTimes = false);
 	bool RayVsObb2D(Ray2_t ray, obb2 boundingBox, RayVsObb2DResult_t* result, bool giveNegativeTimes = false);
 	bool RayVsBox(Ray3_t ray, box boundingBox, RayVsBoxResult_t* result, bool giveNegativeTimes = false, bool inclusive = true);
+	v2 GetClosestPointInRec(rec rectangle, v2 point, Dir2Ex_t* dirOut = nullptr);
+	v2 GetClosestPointOnRecSurface(rec rectangle, v2 point, Dir2Ex_t* dirOut = nullptr);
+	bool CircleVsRec(Circle_t circle, rec rectangle, CircleVsRecResult_t* result);
+	v3 GetClosestPointInBox(box boundingBox, v3 point, Dir3Ex_t* dirOut = nullptr);
+	v3 GetClosestPointOnBoxSurface(box boundingBox, v3 point, Dir3Ex_t* dirOut = nullptr);
+	bool SphereVsBox(Sphere_t sphere, box boundingBox, SphereVsBoxResult_t* result);
 #else
 
 // +--------------------------------------------------------------+
@@ -349,80 +363,110 @@ bool RayVsBox(Ray3_t ray, box boundingBox, RayVsBoxResult_t* result, bool giveNe
 	return true;
 }
 
-bool CircleVsRec(Circle_t circle, rec rectangle, CircleVsRecResult_t* result)
+//Returns Dir2Ex_None when point is inside rectangle
+v2 GetClosestPointInRec(rec rectangle, v2 point, Dir2Ex_t* dirOut = nullptr)
 {
-	NotNull(result);
-	ClearPointer(result);
-	
-	if (circle.x < rectangle.x + rectangle.width)
+	if (point.x < rectangle.x + rectangle.width)
 	{
-		if (circle.x > rectangle.x)
+		if (point.x > rectangle.x)
 		{
-			if (circle.y < rectangle.y)
+			if (point.y < rectangle.y)
 			{
-				result->recSide = Dir2Ex_Up;
-				result->closestPoint = NewVec2(circle.x, rectangle.y);
+				SetOptionalOutPntr(dirOut, Dir2Ex_Up);
+				return NewVec2(point.x, rectangle.y);
 			}
-			else if (circle.y > rectangle.y + rectangle.height)
+			else if (point.y > rectangle.y + rectangle.height)
 			{
-				result->recSide = Dir2Ex_Down;
-				result->closestPoint = NewVec2(circle.x, rectangle.y + rectangle.height);
+				SetOptionalOutPntr(dirOut, Dir2Ex_Down);
+				return NewVec2(point.x, rectangle.y + rectangle.height);
 			}
 			else
 			{
-				result->closestPoint = circle.center;
+				SetOptionalOutPntr(dirOut, Dir2Ex_None);
+				return point;
 			}
 		}
 		else
 		{
-			if (circle.y < rectangle.y + rectangle.height)
+			if (point.y < rectangle.y + rectangle.height)
 			{
-				if (circle.y > rectangle.y)
+				if (point.y > rectangle.y)
 				{
-					result->recSide = Dir2Ex_Left;
-					result->closestPoint = NewVec2(rectangle.x, circle.y);
+					SetOptionalOutPntr(dirOut, Dir2Ex_Left);
+					return NewVec2(rectangle.x, point.y);
 				}
 				else
 				{
-					result->recSide = Dir2Ex_TopLeft;
-					result->closestPoint = NewVec2(rectangle.x, rectangle.y);
+					SetOptionalOutPntr(dirOut, Dir2Ex_TopLeft);
+					return NewVec2(rectangle.x, rectangle.y);
 				}
 			}
 			else
 			{
-				result->recSide = Dir2Ex_BottomLeft;
-				result->closestPoint = NewVec2(rectangle.x, rectangle.y + rectangle.height);
+				SetOptionalOutPntr(dirOut, Dir2Ex_BottomLeft);
+				return NewVec2(rectangle.x, rectangle.y + rectangle.height);
 			}
 		}
 	}
 	else
 	{
-		if (circle.y < rectangle.y + rectangle.height)
+		if (point.y < rectangle.y + rectangle.height)
 		{
-			if (circle.y > rectangle.y)
+			if (point.y > rectangle.y)
 			{
-				result->recSide = Dir2Ex_Right;
-				result->closestPoint = NewVec2(rectangle.x + rectangle.width, circle.y);
+				SetOptionalOutPntr(dirOut, Dir2Ex_Right);
+				return NewVec2(rectangle.x + rectangle.width, point.y);
 			}
 			else
 			{
-				result->recSide = Dir2Ex_TopRight;
-				result->closestPoint = NewVec2(rectangle.x + rectangle.width, rectangle.y);
+				SetOptionalOutPntr(dirOut, Dir2Ex_TopRight);
+				return NewVec2(rectangle.x + rectangle.width, rectangle.y);
 			}
 		}
 		else
 		{
-			result->recSide = Dir2Ex_BottomRight;
-			result->closestPoint = NewVec2(rectangle.x + rectangle.width, rectangle.y + rectangle.height);
+			SetOptionalOutPntr(dirOut, Dir2Ex_BottomRight);
+			return NewVec2(rectangle.x + rectangle.width, rectangle.y + rectangle.height);
 		}
 	}
+}
+//Never returns Dir2Ex_None
+v2 GetClosestPointOnRecSurface(rec rectangle, v2 point, Dir2Ex_t* dirOut = nullptr)
+{
+	Dir2Ex_t recSide = Dir2Ex_None;
+	v2 result = GetClosestPointInRec(rectangle, point, &recSide);
+	if (recSide == Dir2Ex_None)
+	{
+		r32 resolveX = rectangle.x + ((point.x > (rectangle.x + rectangle.width/2))  ? rectangle.width  : 0) - point.x;
+		r32 resolveY = rectangle.y + ((point.y > (rectangle.y + rectangle.height/2)) ? rectangle.height : 0) - point.y;
+		if (AbsR32(resolveX) < AbsR32(resolveY))
+		{
+			recSide = (resolveX >= 0) ? Dir2Ex_Right : Dir2Ex_Left;
+			result.x += resolveX;
+		}
+		else
+		{
+			recSide = (resolveY >= 0) ? Dir2Ex_Down : Dir2Ex_Up;
+			result.y += resolveY;
+		}
+	}
+	SetOptionalOutPntr(dirOut, recSide);
+	return result;
+}
+
+bool CircleVsRec(Circle_t circle, rec rectangle, CircleVsRecResult_t* result)
+{
+	NotNull(result);
+	ClearPointer(result);
+	
+	result->closestPoint = GetClosestPointInRec(rectangle, circle.center, &result->recSide);
 	
 	r32 distSquared = Vec2LengthSquared(circle.center - result->closestPoint);
 	result->intersects = (distSquared < Square(circle.radius));
 	
 	if (result->closestPoint == circle.center)
 	{
-		r32 resolveX = rectangle.x + ((circle.x > (rectangle.x + rectangle.width/2)) ? rectangle.width + circle.radius : -circle.radius) - circle.x;
+		r32 resolveX = rectangle.x + ((circle.x > (rectangle.x + rectangle.width/2))  ? rectangle.width  + circle.radius : -circle.radius) - circle.x;
 		r32 resolveY = rectangle.y + ((circle.y > (rectangle.y + rectangle.height/2)) ? rectangle.height + circle.radius : -circle.radius) - circle.y;
 		if (AbsR32(resolveX) < AbsR32(resolveY))
 		{
@@ -442,6 +486,308 @@ bool CircleVsRec(Circle_t circle, rec rectangle, CircleVsRecResult_t* result)
 	
 	return result->intersects;
 }
+bool CircleVsRec(Circle_t circle, rec rectangle)
+{
+	CircleVsRecResult_t result;
+	return CircleVsRec(circle, rectangle, &result);
+}
+
+//Returns Dir3Ex_None when point is inside the box
+v3 GetClosestPointInBox(box boundingBox, v3 point, Dir3Ex_t* dirOut = nullptr)
+{
+	if (point.x < boundingBox.x + boundingBox.width)
+	{
+		if (point.x > boundingBox.x)
+		{
+			if (point.y < boundingBox.y + boundingBox.height)
+			{
+				if (point.y > boundingBox.y)
+				{
+					if (point.z < boundingBox.z + boundingBox.depth)
+					{
+						if (point.z > boundingBox.z)
+						{
+							//inside
+							SetOptionalOutPntr(dirOut, Dir3Ex_None);
+							return point;
+						}
+						else
+						{
+							SetOptionalOutPntr(dirOut, Dir3Ex_Backward);
+							return NewVec3(point.x, point.y, boundingBox.z);
+						}
+					}
+					else
+					{
+						SetOptionalOutPntr(dirOut, Dir3Ex_Forward);
+						return NewVec3(point.x, point.y, boundingBox.z + boundingBox.depth);
+					}
+				}
+				else
+				{
+					//bottom
+					if (point.z < boundingBox.z + boundingBox.depth)
+					{
+						if (point.z > boundingBox.z)
+						{
+							SetOptionalOutPntr(dirOut, Dir3Ex_Down);
+							return NewVec3(point.x, boundingBox.y, point.z);
+						}
+						else
+						{
+							SetOptionalOutPntr(dirOut, Dir3Ex_BottomBack);
+							return NewVec3(point.x, boundingBox.y, boundingBox.z);
+						}
+					}
+					else
+					{
+						SetOptionalOutPntr(dirOut, Dir3Ex_BottomFront);
+						return NewVec3(point.x, boundingBox.y, boundingBox.z + boundingBox.depth);
+					}
+				}
+			}
+			else
+			{
+				//top
+				if (point.z < boundingBox.z + boundingBox.depth)
+				{
+					if (point.z > boundingBox.z)
+					{
+						SetOptionalOutPntr(dirOut, Dir3Ex_Up);
+						return NewVec3(point.x, boundingBox.y + boundingBox.height, point.z);
+					}
+					else
+					{
+						SetOptionalOutPntr(dirOut, Dir3Ex_TopBack);
+						return NewVec3(point.x, boundingBox.y + boundingBox.height, boundingBox.z);
+					}
+				}
+				else
+				{
+					SetOptionalOutPntr(dirOut, Dir3Ex_TopFront);
+					return NewVec3(point.x, boundingBox.y + boundingBox.height, boundingBox.z + boundingBox.depth);
+				}
+			}
+		}
+		else
+		{
+			//left
+			if (point.y < boundingBox.y + boundingBox.height)
+			{
+				if (point.y > boundingBox.y)
+				{
+					if (point.z < boundingBox.z + boundingBox.depth)
+					{
+						if (point.z > boundingBox.z)
+						{
+							SetOptionalOutPntr(dirOut, Dir3Ex_Left);
+							return NewVec3(boundingBox.x, point.y, point.z);
+						}
+						else
+						{
+							SetOptionalOutPntr(dirOut, Dir3Ex_BottomFront);
+							return NewVec3(boundingBox.x, point.y, boundingBox.z);
+						}
+					}
+					else
+					{
+						SetOptionalOutPntr(dirOut, Dir3Ex_LeftFront);
+						return NewVec3(boundingBox.x, point.y, boundingBox.z + boundingBox.depth);
+					}
+				}
+				else
+				{
+					//bottom
+					if (point.z < boundingBox.z + boundingBox.depth)
+					{
+						if (point.z > boundingBox.z)
+						{
+							SetOptionalOutPntr(dirOut, Dir3Ex_BottomLeft);
+							return NewVec3(boundingBox.x, boundingBox.y, point.z);
+						}
+						else
+						{
+							SetOptionalOutPntr(dirOut, Dir3Ex_BottomLeftBack);
+							return NewVec3(boundingBox.x, boundingBox.y, boundingBox.z);
+						}
+					}
+					else
+					{
+						SetOptionalOutPntr(dirOut, Dir3Ex_BottomLeftFront);
+						return NewVec3(boundingBox.x, boundingBox.y, boundingBox.z + boundingBox.depth);
+					}
+				}
+			}
+			else
+			{
+				//top
+				if (point.z < boundingBox.z + boundingBox.depth)
+				{
+					if (point.z > boundingBox.z)
+					{
+						SetOptionalOutPntr(dirOut, Dir3Ex_TopLeft);
+						return NewVec3(boundingBox.x, boundingBox.y + boundingBox.height, point.z);
+					}
+					else
+					{
+						SetOptionalOutPntr(dirOut, Dir3Ex_TopLeftBack);
+						return NewVec3(boundingBox.x, boundingBox.y + boundingBox.height, boundingBox.z);
+					}
+				}
+				else
+				{
+					SetOptionalOutPntr(dirOut, Dir3Ex_TopLeftFront);
+					return NewVec3(boundingBox.x, boundingBox.y + boundingBox.height, boundingBox.z + boundingBox.depth);
+				}
+			}
+		}
+	}
+	else
+	{
+		//right
+		if (point.y < boundingBox.y + boundingBox.height)
+		{
+			if (point.y > boundingBox.y)
+			{
+				if (point.z < boundingBox.z + boundingBox.depth)
+				{
+					if (point.z > boundingBox.z)
+					{
+						SetOptionalOutPntr(dirOut, Dir3Ex_Right);
+						return NewVec3(boundingBox.x + boundingBox.width, point.y, point.z);
+					}
+					else
+					{
+						SetOptionalOutPntr(dirOut, Dir3Ex_RightBack);
+						return NewVec3(boundingBox.x + boundingBox.width, point.y, boundingBox.z);
+					}
+				}
+				else
+				{
+					SetOptionalOutPntr(dirOut, Dir3Ex_RightFront);
+					return NewVec3(boundingBox.x + boundingBox.width, point.y, boundingBox.z + boundingBox.depth);
+				}
+			}
+			else
+			{
+				//bottom
+				if (point.z < boundingBox.z + boundingBox.depth)
+				{
+					if (point.z > boundingBox.z)
+					{
+						SetOptionalOutPntr(dirOut, Dir3Ex_BottomRight);
+						return NewVec3(boundingBox.x + boundingBox.width, boundingBox.y, point.z);
+					}
+					else
+					{
+						SetOptionalOutPntr(dirOut, Dir3Ex_BottomRightBack);
+						return NewVec3(boundingBox.x + boundingBox.width, boundingBox.y, boundingBox.z);
+					}
+				}
+				else
+				{
+					SetOptionalOutPntr(dirOut, Dir3Ex_BottomRightFront);
+					return NewVec3(boundingBox.x + boundingBox.width, boundingBox.y, boundingBox.z + boundingBox.depth);
+				}
+			}
+		}
+		else
+		{
+			//top
+			if (point.z < boundingBox.z + boundingBox.depth)
+			{
+				if (point.z > boundingBox.z)
+				{
+					SetOptionalOutPntr(dirOut, Dir3Ex_TopRight);
+					return NewVec3(boundingBox.x + boundingBox.width, boundingBox.y + boundingBox.height, point.z);
+				}
+				else
+				{
+					SetOptionalOutPntr(dirOut, Dir3Ex_TopRightBack);
+					return NewVec3(boundingBox.x + boundingBox.width, boundingBox.y + boundingBox.height, boundingBox.z);
+				}
+			}
+			else
+			{
+				SetOptionalOutPntr(dirOut, Dir3Ex_TopRightFront);
+				return NewVec3(boundingBox.x + boundingBox.width, boundingBox.y + boundingBox.height, boundingBox.z + boundingBox.depth);
+			}
+		}
+	}
+}
+//Never returns Dir3Ex_None
+v3 GetClosestPointOnBoxSurface(box boundingBox, v3 point, Dir3Ex_t* dirOut = nullptr)
+{
+	Dir3Ex_t boxSide = Dir3Ex_None;
+	v3 result = GetClosestPointInBox(boundingBox, point, &boxSide);
+	if (boxSide == Dir3Ex_None)
+	{
+		r32 resolveX = boundingBox.x + ((point.x > (boundingBox.x + boundingBox.width/2))  ? boundingBox.width  : 0) - point.x;
+		r32 resolveY = boundingBox.y + ((point.y > (boundingBox.y + boundingBox.height/2)) ? boundingBox.height : 0) - point.y;
+		r32 resolveZ = boundingBox.z + ((point.z > (boundingBox.z + boundingBox.depth/2))  ? boundingBox.depth  : 0) - point.z;
+		if (AbsR32(resolveX) < AbsR32(resolveY) && AbsR32(resolveX) < AbsR32(resolveZ))
+		{
+			boxSide = (resolveX >= 0) ? Dir3Ex_Right : Dir3Ex_Left;
+			result.x += resolveX;
+		}
+		else if (AbsR32(resolveY) < AbsR32(resolveZ))
+		{
+			boxSide = (resolveY >= 0) ? Dir3Ex_Up : Dir3Ex_Down;
+			result.y += resolveY;
+		}
+		else
+		{
+			boxSide = (resolveZ >= 0) ? Dir3Ex_Forward : Dir3Ex_Backward;
+			result.z += resolveZ;
+		}
+	}
+	SetOptionalOutPntr(dirOut, boxSide);
+	return result;
+}
+
+bool SphereVsBox(Sphere_t sphere, box boundingBox, SphereVsBoxResult_t* result)
+{
+	NotNull(result);
+	ClearPointer(result);
+	
+	result->closestPoint = GetClosestPointInBox(boundingBox, sphere.center, &result->boxSide);
+	
+	r32 distSquared = Vec3LengthSquared(sphere.center - result->closestPoint);
+	result->intersects = (distSquared < Square(sphere.radius));
+	
+	if (result->closestPoint == sphere.center)
+	{
+		r32 resolveX = boundingBox.x + ((sphere.x > (boundingBox.x + boundingBox.width/2))  ? boundingBox.width  + sphere.radius : -sphere.radius) - sphere.x;
+		r32 resolveY = boundingBox.y + ((sphere.y > (boundingBox.y + boundingBox.height/2)) ? boundingBox.height + sphere.radius : -sphere.radius) - sphere.y;
+		r32 resolveZ = boundingBox.z + ((sphere.z > (boundingBox.z + boundingBox.depth/2))  ? boundingBox.depth  + sphere.radius : -sphere.radius) - sphere.z;
+		if (AbsR32(resolveX) < AbsR32(resolveY) && AbsR32(resolveX) < AbsR32(resolveZ))
+		{
+			result->sphereResolveVec = NewVec3(resolveX, 0, 0);
+			result->boxSide = (resolveX >= 0) ? Dir3Ex_Right : Dir3Ex_Left;
+		}
+		else if (AbsR32(resolveY) < AbsR32(resolveZ))
+		{
+			result->sphereResolveVec = NewVec3(0, resolveY, 0);
+			result->boxSide = (resolveY >= 0) ? Dir3Ex_Up : Dir3Ex_Down;
+		}
+		else
+		{
+			result->sphereResolveVec = NewVec3(0, 0, resolveZ);
+			result->boxSide = (resolveZ >= 0) ? Dir3Ex_Forward : Dir3Ex_Backward;
+		}
+	}
+	else
+	{
+		result->sphereResolveVec = result->closestPoint - (sphere.center + (Vec3Normalize(result->closestPoint - sphere.center) * sphere.radius));
+	}
+	
+	return result->intersects;
+}
+bool SphereVsBox(Sphere_t sphere, box boundingBox)
+{
+	SphereVsBoxResult_t result;
+	return SphereVsBox(sphere, boundingBox, &result);
+}
 
 #endif //GYLIB_HEADER_ONLY
 
@@ -460,6 +806,11 @@ CircleVsRecResult_t
 @Functions
 bool RayVsRectangle2D(Ray2_t ray, rec rectangle, RayVsRectangle2DResult_t* result, bool giveNegativeTimes = false)
 bool RayVsObb2D(Ray2_t ray, obb2 boundingBox, RayVsObb2DResult_t* result, bool giveNegativeTimes = false)
-bool RayVsBox(Ray3_t ray, box boundingBox, RayVsBoxResult_t* result, bool giveNegativeTimes = false)
-bool CircleVsRec(Circle_t circle, rec rectangle, CircleVsRecResult_t* result)
+bool RayVsBox(Ray3_t ray, box boundingBox, RayVsBoxResult_t* result, bool giveNegativeTimes = false, bool inclusive = true)
+v2 GetClosestPointInRec(rec rectangle, v2 point, Dir2Ex_t* dirOut = nullptr)
+v2 GetClosestPointOnRecSurface(rec rectangle, v2 point, Dir2Ex_t* dirOut = nullptr)
+bool CircleVsRec(Circle_t circle, rec rectangle, CircleVsRecResult_t* result = nullptr)
+v3 GetClosestPointInBox(box boundingBox, v3 point, Dir3Ex_t* dirOut = nullptr)
+v3 GetClosestPointOnBoxSurface(box boundingBox, v3 point, Dir3Ex_t* dirOut = nullptr)
+bool SphereVsBox(Sphere_t sphere, box boundingBox, SphereVsBoxResult_t* result = nullptr)
 */

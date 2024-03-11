@@ -358,6 +358,7 @@ typedef Vector4i_t v4i;
 	v2i Vec2iClamp(v2i vector, v2i min, v2i max);
 	r32 Vec3Dot(v3 left, v3 right);
 	r32 Vec3Length(v3 vector);
+	r32 Vec3LengthSquared(v3 vector);
 	v3 Vec3Normalize(v3 vector);
 	r32 Vec3Determinant(v3 left, v3 right);
 	r32 Vec3Inner(v3 left, v3 right);
@@ -1362,6 +1363,10 @@ r32 Vec3Length(v3 vector)
 {
 	return SqrtR32(Square(vector.x) + Square(vector.y) + Square(vector.z));
 }
+r32 Vec3LengthSquared(v3 vector)
+{
+	return (Square(vector.x) + Square(vector.y) + Square(vector.z));
+}
 v3 Vec3Normalize(v3 vector)
 {
 	return Vec3Shrink(vector, Vec3Length(vector));
@@ -1862,6 +1867,7 @@ i32 Vec2iDeterminant(v2i left, v2i right)
 v2i Vec2iClamp(v2i vector, v2i min, v2i max)
 r32 Vec3Dot(v3 left, v3 right)
 r32 Vec3Length(v3 vector)
+r32 Vec3LengthSquared(v3 vector)
 v3 Vec3Normalize(v3 vector)
 r32 Vec3Determinant(v3 left, v3 right)
 r32 Vec3Inner(v3 left, v3 right)

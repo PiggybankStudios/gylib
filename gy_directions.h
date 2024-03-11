@@ -64,10 +64,12 @@ Description:
 enum Dir2_t
 {
 	Dir2_None  = 0x00,
+	
 	Dir2_Right = 0x01, //+x ( 1,  0)
 	Dir2_Down  = 0x02, //+y ( 0,  1)
 	Dir2_Left  = 0x04, //-x (-1,  0)
 	Dir2_Up    = 0x08, //-y ( 0, -1)
+	
 	Dir2_All   = 0x0F,
 	Dir2_Count = 4,
 };
@@ -75,6 +77,7 @@ enum Dir2_t
 enum Dir2Ex_t
 {
 	Dir2Ex_None        = 0x00,
+	
 	Dir2Ex_Right       = 0x01, //+x ( 1,  0)
 	Dir2Ex_Down        = 0x02, //+y ( 0,  1)
 	Dir2Ex_Left        = 0x04, //-x (-1,  0)
@@ -83,6 +86,7 @@ enum Dir2Ex_t
 	Dir2Ex_TopRight    = 0x20, //+x -y (1, 0)
 	Dir2Ex_BottomRight = 0x40, //+x +y (1, 1)
 	Dir2Ex_BottomLeft  = 0x80, //-x +y (0, 1)
+	
 	Dir2Ex_Cardinal    = 0x0F,
 	Dir2Ex_Diagonal    = 0xF0,
 	Dir2Ex_All         = 0xFF,
@@ -91,44 +95,68 @@ enum Dir2Ex_t
 
 enum Dir3_t
 {
-	Dir3_None     = 0x00,
-	Dir3_Right    = 0x01, //+x ( 1,  0,  0)
-	Dir3_Left     = 0x02, //-x (-1,  0,  0)
-	Dir3_Up       = 0x04, //+y ( 0,  1,  0)
-	Dir3_Down     = 0x08, //-y ( 0, -1,  0)
-	Dir3_Forward  = 0x10, //+z ( 0,  0,  1)
-	Dir3_Backward = 0x20, //-z ( 0,  0, -1)
+	Dir3_None        = 0x00,
+	
+	Dir3_Right       = 0x01, //+x ( 1,  0,  0)
+	Dir3_Left        = 0x02, //-x (-1,  0,  0)
+	Dir3_Up          = 0x04, //+y ( 0,  1,  0)
+	Dir3_Down        = 0x08, //-y ( 0, -1,  0)
+	Dir3_Forward     = 0x10, //+z ( 0,  0,  1)
+	Dir3_Backward    = 0x20, //-z ( 0,  0, -1)
+	
 	Dir3_NotRight    = 0x3E,
 	Dir3_NotLeft     = 0x3D,
 	Dir3_NotUp       = 0x3B,
 	Dir3_NotDown     = 0x37,
 	Dir3_NotForward  = 0x2F,
 	Dir3_NotBackward = 0x1F,
-	Dir3_All = 0x3F,
+	
+	Dir3_All         = 0x3F,
 	Dir3_Count = 6,
 };
 
 enum Dir3Ex_t
 {
-	Dir3Ex_None             = 0x0000,
-	Dir3Ex_Right            = 0x0001, //+x ( 1,  0,  0)
-	Dir3Ex_Left             = 0x0002, //-x (-1,  0,  0)
-	Dir3Ex_Up               = 0x0004, //+y ( 0,  1,  0)
-	Dir3Ex_Down             = 0x0008, //-y ( 0, -1,  0)
-	Dir3Ex_Forward          = 0x0010, //+z ( 0,  0,  1)
-	Dir3Ex_Backward         = 0x0020, //-z ( 0,  0, -1)
-	Dir3Ex_BottomLeftBack   = 0x0040, //-x -y -z (0, 0, 0)
-	Dir3Ex_BottomRightBack  = 0x0080, //+x -y -z (1, 0, 0)
-	Dir3Ex_BottomRightFront = 0x0100, //+x +y -z (1, 1, 0)
-	Dir3Ex_BottomLeftFront  = 0x0200, //-x +y -z (0, 1, 0)
-	Dir3Ex_TopLeftBack      = 0x0400, //-x -y +z (0, 0, 1)
-	Dir3Ex_TopRightBack     = 0x0800, //+x -y +z (1, 0, 1)
-	Dir3Ex_TopRightFront    = 0x1000, //+x +y +z (1, 1, 1)
-	Dir3Ex_TopLeftFront     = 0x2000, //-x +y +z (0, 1, 1)
-	Dir3Ex_Cardinal         = 0x003F,
-	Dir3Ex_Diagonal         = 0x3FC0,
-	Dir3Ex_All              = 0x3FFF,
-	Dir3Ex_Count = 14,
+	Dir3Ex_None             = 0x00000000,
+	
+	Dir3Ex_Right            = 0x00000001, //+x ( 1,  0,  0)
+	Dir3Ex_Left             = 0x00000002, //-x (-1,  0,  0)
+	Dir3Ex_Up               = 0x00000004, //+y ( 0,  1,  0)
+	Dir3Ex_Down             = 0x00000008, //-y ( 0, -1,  0)
+	Dir3Ex_Forward          = 0x00000010, //+z ( 0,  0,  1)
+	Dir3Ex_Backward         = 0x00000020, //-z ( 0,  0, -1)
+	
+	Dir3Ex_TopRight         = 0x00000040, //+y +x ( 1,  1,  0)
+	Dir3Ex_TopBack          = 0x00000080, //+y -z ( 0,  1, -1)
+	Dir3Ex_TopLeft          = 0x00000100, //+y -x (-1,  1,  0)
+	Dir3Ex_TopFront         = 0x00000200, //+y +z ( 0,  1,  1)
+	Dir3Ex_RightBack        = 0x00000400, //+x -z ( 1,  0, -1)
+	Dir3Ex_LeftBack         = 0x00000800, //-x -z (-1,  0, -1)
+	Dir3Ex_LeftFront        = 0x00001000, //-x +z (-1,  0,  1)
+	Dir3Ex_RightFront       = 0x00002000, //+x +z ( 1,  0,  1)
+	Dir3Ex_BottomRight      = 0x00004000, //-y +x ( 1, -1,  0)
+	Dir3Ex_BottomBack       = 0x00008000, //-y -z ( 0, -1, -1)
+	Dir3Ex_BottomLeft       = 0x00010000, //-y -x (-1, -1,  0)
+	Dir3Ex_BottomFront      = 0x00020000, //-y +z ( 0, -1,  1)
+	
+	Dir3Ex_BottomLeftBack   = 0x00040000, //-x -y -z (0, 0, 0)
+	Dir3Ex_BottomRightBack  = 0x00080000, //+x -y -z (1, 0, 0)
+	Dir3Ex_BottomRightFront = 0x00100000, //+x +y -z (1, 1, 0)
+	Dir3Ex_BottomLeftFront  = 0x00200000, //-x +y -z (0, 1, 0)
+	Dir3Ex_TopLeftBack      = 0x00400000, //-x -y +z (0, 0, 1)
+	Dir3Ex_TopRightBack     = 0x00800000, //+x -y +z (1, 0, 1)
+	Dir3Ex_TopRightFront    = 0x01000000, //+x +y +z (1, 1, 1)
+	Dir3Ex_TopLeftFront     = 0x02000000, //-x +y +z (0, 1, 1)
+	
+	Dir3Ex_HorizontalX      = (Dir3Ex_Right   | Dir3Ex_Left    ),
+	Dir3Ex_HorizontalZ      = (Dir3Ex_Forward | Dir3Ex_Backward),
+	Dir3Ex_Vertical         = (Dir3Ex_Up      | Dir3Ex_Down    ),
+	
+	Dir3Ex_Cardinal         = 0x0000003F,
+	Dir3Ex_Edge             = 0x0003FFC0,
+	Dir3Ex_Corner           = 0x03FC0000,
+	Dir3Ex_All              = 0x00003FFF,
+	Dir3Ex_Count = 26,
 };
 
 enum Axis_t
@@ -154,6 +182,8 @@ enum Axis_t
 	v2i ToVec2i(Dir2Ex_t dir2ex);
 	v3 ToVec3(Dir3_t dir3);
 	v3i ToVec3i(Dir3_t dir3);
+	v3 ToVec3(Dir3Ex_t dir3ex);
+	v3i ToVec3i(Dir3Ex_t dir3ex);
 	v3 ToVec3(Axis_t axis);
 	v3i ToVec3i(Axis_t axis);
 	Dir2_t ToDir2(v2 vector);
@@ -172,7 +202,8 @@ enum Axis_t
 	bool IsSingleDir3(Dir3_t dir3, bool allowNone = false);
 	bool IsSingleDir3Ex(Dir3Ex_t dir3ex, bool allowNone = false);
 	bool IsCardinalDir3Ex(Dir3Ex_t dir3ex, bool allowNone = false);
-	bool IsDiagonalDir3Ex(Dir3Ex_t dir3ex, bool allowNone = false);
+	bool IsEdgeDir3Ex(Dir3Ex_t dir3ex, bool allowNone = false);
+	bool IsCornerDir3Ex(Dir3Ex_t dir3ex, bool allowNone = false);
 	u8 Dir2BitwiseCount(Dir2_t dir2);
 	u8 Dir2ExBitwiseCount(Dir2Ex_t dir2ex);
 	u8 Dir3BitwiseCount(Dir3_t dir3);
@@ -285,6 +316,68 @@ v3i ToVec3i(Dir3_t dir3)
 	if (IsFlagSet(dir3, Dir3_Up))       { result.y += 1; }
 	if (IsFlagSet(dir3, Dir3_Forward))  { result.z += 1; }
 	if (IsFlagSet(dir3, Dir3_Backward)) { result.z -= 1; }
+	return result;
+}
+v3 ToVec3(Dir3Ex_t dir3ex)
+{
+	v3 result = {};
+	if (IsFlagSet(dir3ex, Dir3Ex_Right))            { result.x += 1.0f; }
+	if (IsFlagSet(dir3ex, Dir3Ex_Left))             { result.x -= 1.0f; }
+	if (IsFlagSet(dir3ex, Dir3Ex_Down))             { result.y -= 1.0f; }
+	if (IsFlagSet(dir3ex, Dir3Ex_Up))               { result.y += 1.0f; }
+	if (IsFlagSet(dir3ex, Dir3Ex_Forward))          { result.z += 1.0f; }
+	if (IsFlagSet(dir3ex, Dir3Ex_Backward))         { result.z -= 1.0f; }
+	if (IsFlagSet(dir3ex, Dir3Ex_TopRight))         { result.y += 1.0f; result.x += 1.0f; }
+	if (IsFlagSet(dir3ex, Dir3Ex_TopBack))          { result.y += 1.0f; result.z -= 1.0f; }
+	if (IsFlagSet(dir3ex, Dir3Ex_TopLeft))          { result.y += 1.0f; result.x -= 1.0f; }
+	if (IsFlagSet(dir3ex, Dir3Ex_TopFront))         { result.y += 1.0f; result.z += 1.0f; }
+	if (IsFlagSet(dir3ex, Dir3Ex_RightBack))        { result.x += 1.0f; result.z -= 1.0f; }
+	if (IsFlagSet(dir3ex, Dir3Ex_LeftBack))         { result.x -= 1.0f; result.z -= 1.0f; }
+	if (IsFlagSet(dir3ex, Dir3Ex_LeftFront))        { result.x -= 1.0f; result.z += 1.0f; }
+	if (IsFlagSet(dir3ex, Dir3Ex_RightFront))       { result.x += 1.0f; result.z += 1.0f; }
+	if (IsFlagSet(dir3ex, Dir3Ex_BottomRight))      { result.y -= 1.0f; result.x += 1.0f; }
+	if (IsFlagSet(dir3ex, Dir3Ex_BottomBack))       { result.y -= 1.0f; result.z -= 1.0f; }
+	if (IsFlagSet(dir3ex, Dir3Ex_BottomLeft))       { result.y -= 1.0f; result.x -= 1.0f; }
+	if (IsFlagSet(dir3ex, Dir3Ex_BottomFront))      { result.y -= 1.0f; result.z += 1.0f; }
+	if (IsFlagSet(dir3ex, Dir3Ex_BottomLeftBack))   { result.x -= 1.0f; result.y -= 1.0f; result.z -= 1.0f; }
+	if (IsFlagSet(dir3ex, Dir3Ex_BottomRightBack))  { result.x += 1.0f; result.y -= 1.0f; result.z -= 1.0f; }
+	if (IsFlagSet(dir3ex, Dir3Ex_BottomRightFront)) { result.x += 1.0f; result.y -= 1.0f; result.z += 1.0f; }
+	if (IsFlagSet(dir3ex, Dir3Ex_BottomLeftFront))  { result.x -= 1.0f; result.y -= 1.0f; result.z += 1.0f; }
+	if (IsFlagSet(dir3ex, Dir3Ex_TopLeftBack))      { result.x -= 1.0f; result.y += 1.0f; result.z -= 1.0f; }
+	if (IsFlagSet(dir3ex, Dir3Ex_TopRightBack))     { result.x += 1.0f; result.y += 1.0f; result.z -= 1.0f; }
+	if (IsFlagSet(dir3ex, Dir3Ex_TopRightFront))    { result.x += 1.0f; result.y += 1.0f; result.z += 1.0f; }
+	if (IsFlagSet(dir3ex, Dir3Ex_TopLeftFront))     { result.x -= 1.0f; result.y += 1.0f; result.z += 1.0f; }
+	return result;
+}
+v3i ToVec3i(Dir3Ex_t dir3ex)
+{
+	v3i result = {};
+	if (IsFlagSet(dir3ex, Dir3Ex_Right))            { result.x += 1; }
+	if (IsFlagSet(dir3ex, Dir3Ex_Left))             { result.x -= 1; }
+	if (IsFlagSet(dir3ex, Dir3Ex_Down))             { result.y -= 1; }
+	if (IsFlagSet(dir3ex, Dir3Ex_Up))               { result.y += 1; }
+	if (IsFlagSet(dir3ex, Dir3Ex_Forward))          { result.z += 1; }
+	if (IsFlagSet(dir3ex, Dir3Ex_Backward))         { result.z -= 1; }
+	if (IsFlagSet(dir3ex, Dir3Ex_TopRight))         { result.y += 1; result.x += 1; }
+	if (IsFlagSet(dir3ex, Dir3Ex_TopBack))          { result.y += 1; result.z -= 1; }
+	if (IsFlagSet(dir3ex, Dir3Ex_TopLeft))          { result.y += 1; result.x -= 1; }
+	if (IsFlagSet(dir3ex, Dir3Ex_TopFront))         { result.y += 1; result.z += 1; }
+	if (IsFlagSet(dir3ex, Dir3Ex_RightBack))        { result.x += 1; result.z -= 1; }
+	if (IsFlagSet(dir3ex, Dir3Ex_LeftBack))         { result.x -= 1; result.z -= 1; }
+	if (IsFlagSet(dir3ex, Dir3Ex_LeftFront))        { result.x -= 1; result.z += 1; }
+	if (IsFlagSet(dir3ex, Dir3Ex_RightFront))       { result.x += 1; result.z += 1; }
+	if (IsFlagSet(dir3ex, Dir3Ex_BottomRight))      { result.y -= 1; result.x += 1; }
+	if (IsFlagSet(dir3ex, Dir3Ex_BottomBack))       { result.y -= 1; result.z -= 1; }
+	if (IsFlagSet(dir3ex, Dir3Ex_BottomLeft))       { result.y -= 1; result.x -= 1; }
+	if (IsFlagSet(dir3ex, Dir3Ex_BottomFront))      { result.y -= 1; result.z += 1; }
+	if (IsFlagSet(dir3ex, Dir3Ex_BottomLeftBack))   { result.x -= 1; result.y -= 1; result.z -= 1; }
+	if (IsFlagSet(dir3ex, Dir3Ex_BottomRightBack))  { result.x += 1; result.y -= 1; result.z -= 1; }
+	if (IsFlagSet(dir3ex, Dir3Ex_BottomRightFront)) { result.x += 1; result.y -= 1; result.z += 1; }
+	if (IsFlagSet(dir3ex, Dir3Ex_BottomLeftFront))  { result.x -= 1; result.y -= 1; result.z += 1; }
+	if (IsFlagSet(dir3ex, Dir3Ex_TopLeftBack))      { result.x -= 1; result.y += 1; result.z -= 1; }
+	if (IsFlagSet(dir3ex, Dir3Ex_TopRightBack))     { result.x += 1; result.y += 1; result.z -= 1; }
+	if (IsFlagSet(dir3ex, Dir3Ex_TopRightFront))    { result.x += 1; result.y += 1; result.z += 1; }
+	if (IsFlagSet(dir3ex, Dir3Ex_TopLeftFront))     { result.x -= 1; result.y += 1; result.z += 1; }
 	return result;
 }
 v3 ToVec3(Axis_t axis)
@@ -519,6 +612,18 @@ bool IsSingleDir3Ex(Dir3Ex_t dir3ex, bool allowNone = false)
 	if (dir3ex == Dir3Ex_Down)             { return true; }
 	if (dir3ex == Dir3Ex_Forward)          { return true; }
 	if (dir3ex == Dir3Ex_Backward)         { return true; }
+	if (dir3ex == Dir3Ex_TopRight)         { return true; }
+	if (dir3ex == Dir3Ex_TopBack)          { return true; }
+	if (dir3ex == Dir3Ex_TopLeft)          { return true; }
+	if (dir3ex == Dir3Ex_TopFront)         { return true; }
+	if (dir3ex == Dir3Ex_RightBack)        { return true; }
+	if (dir3ex == Dir3Ex_LeftBack)         { return true; }
+	if (dir3ex == Dir3Ex_LeftFront)        { return true; }
+	if (dir3ex == Dir3Ex_RightFront)       { return true; }
+	if (dir3ex == Dir3Ex_BottomRight)      { return true; }
+	if (dir3ex == Dir3Ex_BottomBack)       { return true; }
+	if (dir3ex == Dir3Ex_BottomLeft)       { return true; }
+	if (dir3ex == Dir3Ex_BottomFront)      { return true; }
 	if (dir3ex == Dir3Ex_BottomLeftBack)   { return true; }
 	if (dir3ex == Dir3Ex_BottomRightBack)  { return true; }
 	if (dir3ex == Dir3Ex_BottomRightFront) { return true; }
@@ -540,7 +645,24 @@ bool IsCardinalDir3Ex(Dir3Ex_t dir3ex, bool allowNone = false)
 	if (dir3ex == Dir3Ex_Backward)         { return true; }
 	return false;
 }
-bool IsDiagonalDir3Ex(Dir3Ex_t dir3ex, bool allowNone = false)
+bool IsEdgeDir3Ex(Dir3Ex_t dir3ex, bool allowNone = false)
+{
+	if (dir3ex == Dir3Ex_None && allowNone) { return true; }
+	if (dir3ex == Dir3Ex_TopRight)    { return true; }
+	if (dir3ex == Dir3Ex_TopBack)     { return true; }
+	if (dir3ex == Dir3Ex_TopLeft)     { return true; }
+	if (dir3ex == Dir3Ex_TopFront)    { return true; }
+	if (dir3ex == Dir3Ex_RightBack)   { return true; }
+	if (dir3ex == Dir3Ex_LeftBack)    { return true; }
+	if (dir3ex == Dir3Ex_LeftFront)   { return true; }
+	if (dir3ex == Dir3Ex_RightFront)  { return true; }
+	if (dir3ex == Dir3Ex_BottomRight) { return true; }
+	if (dir3ex == Dir3Ex_BottomBack)  { return true; }
+	if (dir3ex == Dir3Ex_BottomLeft)  { return true; }
+	if (dir3ex == Dir3Ex_BottomFront) { return true; }
+	return false;
+}
+bool IsCornerDir3Ex(Dir3Ex_t dir3ex, bool allowNone = false)
 {
 	if (dir3ex == Dir3Ex_None && allowNone) { return true; }
 	if (dir3ex == Dir3Ex_BottomLeftBack)   { return true; }
@@ -596,6 +718,18 @@ u8 Dir3ExBitwiseCount(Dir3Ex_t dir3ex)
 	if (IsFlagSet(dir3ex, Dir3Ex_Down))             { result++; }
 	if (IsFlagSet(dir3ex, Dir3Ex_Forward))          { result++; }
 	if (IsFlagSet(dir3ex, Dir3Ex_Backward))         { result++; }
+	if (IsFlagSet(dir3ex, Dir3Ex_TopRight))         { result++; }
+	if (IsFlagSet(dir3ex, Dir3Ex_TopBack))          { result++; }
+	if (IsFlagSet(dir3ex, Dir3Ex_TopLeft))          { result++; }
+	if (IsFlagSet(dir3ex, Dir3Ex_TopFront))         { result++; }
+	if (IsFlagSet(dir3ex, Dir3Ex_RightBack))        { result++; }
+	if (IsFlagSet(dir3ex, Dir3Ex_LeftBack))         { result++; }
+	if (IsFlagSet(dir3ex, Dir3Ex_LeftFront))        { result++; }
+	if (IsFlagSet(dir3ex, Dir3Ex_RightFront))       { result++; }
+	if (IsFlagSet(dir3ex, Dir3Ex_BottomRight))      { result++; }
+	if (IsFlagSet(dir3ex, Dir3Ex_BottomBack))       { result++; }
+	if (IsFlagSet(dir3ex, Dir3Ex_BottomLeft))       { result++; }
+	if (IsFlagSet(dir3ex, Dir3Ex_BottomFront))      { result++; }
 	if (IsFlagSet(dir3ex, Dir3Ex_BottomLeftBack))   { result++; }
 	if (IsFlagSet(dir3ex, Dir3Ex_BottomRightBack))  { result++; }
 	if (IsFlagSet(dir3ex, Dir3Ex_BottomRightFront)) { result++; }
@@ -753,15 +887,27 @@ const char* GetDir3SideString(Dir3_t dir3)
 
 const char* GetDir3ExString(Dir3Ex_t dir3ex)
 {
-	switch ((u16)dir3ex) //cast to satiate compiler warning
+	switch (dir3ex)
 	{
-		case Dir3Ex_None:     return "None";
-		case Dir3Ex_Right:    return "Right";
-		case Dir3Ex_Left:     return "Left";
-		case Dir3Ex_Up:       return "Up";
-		case Dir3Ex_Down:     return "Down";
-		case Dir3Ex_Forward:  return "Forward";
-		case Dir3Ex_Backward: return "Backward";
+		case Dir3Ex_None:             return "None";
+		case Dir3Ex_Right:            return "Right";
+		case Dir3Ex_Left:             return "Left";
+		case Dir3Ex_Up:               return "Up";
+		case Dir3Ex_Down:             return "Down";
+		case Dir3Ex_Forward:          return "Forward";
+		case Dir3Ex_Backward:         return "Backward";
+		case Dir3Ex_TopRight:         return "TopRight";
+		case Dir3Ex_TopBack:          return "TopBack";
+		case Dir3Ex_TopLeft:          return "TopLeft";
+		case Dir3Ex_TopFront:         return "TopFront";
+		case Dir3Ex_RightBack:        return "RightBack";
+		case Dir3Ex_LeftBack:         return "LeftBack";
+		case Dir3Ex_LeftFront:        return "LeftFront";
+		case Dir3Ex_RightFront:       return "RightFront";
+		case Dir3Ex_BottomRight:      return "BottomRight";
+		case Dir3Ex_BottomBack:       return "BottomBack";
+		case Dir3Ex_BottomLeft:       return "BottomLeft";
+		case Dir3Ex_BottomFront:      return "BottomFront";
 		case Dir3Ex_BottomLeftBack:   return "BottomLeftBack";
 		case Dir3Ex_BottomRightBack:  return "BottomRightBack";
 		case Dir3Ex_BottomRightFront: return "BottomRightFront";
@@ -770,35 +916,15 @@ const char* GetDir3ExString(Dir3Ex_t dir3ex)
 		case Dir3Ex_TopRightBack:     return "TopRightBack";
 		case Dir3Ex_TopRightFront:    return "TopRightFront";
 		case Dir3Ex_TopLeftFront:     return "TopLeftFront";
-		case Dir3Ex_Cardinal: return "Cardinal";
-		case Dir3Ex_Diagonal: return "Diagonal";
-		case (Dir3Ex_Left     | Dir3Ex_Right):    return "HorizontalX";
-		case (Dir3Ex_Up       | Dir3Ex_Down):     return "Vertical";
-		case (Dir3Ex_Forward  | Dir3Ex_Backward): return "HorizontalZ";
-		case (Dir3Ex_Up       | Dir3Ex_Left ):    return "UpLeft";
-		case (Dir3Ex_Up       | Dir3Ex_Right):    return "UpRight";
-		case (Dir3Ex_Up       | Dir3Ex_Forward):  return "UpForward";
-		case (Dir3Ex_Up       | Dir3Ex_Backward): return "UpBackward";
-		case (Dir3Ex_Down     | Dir3Ex_Left ):    return "DownLeft";
-		case (Dir3Ex_Down     | Dir3Ex_Right):    return "DownRight";
-		case (Dir3Ex_Down     | Dir3Ex_Forward):  return "DownForward";
-		case (Dir3Ex_Down     | Dir3Ex_Backward): return "DownBackward";
-		case (Dir3Ex_Forward  | Dir3Ex_Left ):    return "ForwardLeft";
-		case (Dir3Ex_Forward  | Dir3Ex_Right):    return "ForwardRight";
-		case (Dir3Ex_Backward | Dir3Ex_Left):     return "BackwardLeft";
-		case (Dir3Ex_Backward | Dir3Ex_Right):    return "BackwardRight";
-		case (Dir3Ex_Down | Dir3Ex_Left  | Dir3Ex_Backward): return "BottomLeftBack";
-		case (Dir3Ex_Down | Dir3Ex_Right | Dir3Ex_Backward): return "BottomRightBack";
-		case (Dir3Ex_Down | Dir3Ex_Right | Dir3Ex_Forward):  return "BottomRightFront";
-		case (Dir3Ex_Down | Dir3Ex_Left  | Dir3Ex_Forward):  return "BottomLeftFront";
-		case (Dir3Ex_Up   | Dir3Ex_Left  | Dir3Ex_Backward): return "TopLeftBack";
-		case (Dir3Ex_Up   | Dir3Ex_Right | Dir3Ex_Backward): return "TopRightBack";
-		case (Dir3Ex_Up   | Dir3Ex_Right | Dir3Ex_Forward):  return "TopRightFront";
-		case (Dir3Ex_Up   | Dir3Ex_Left  | Dir3Ex_Forward):  return "TopLeftFront";
-		//TODO: Do we want to give names to any other combinations?
-		case Dir3Ex_All: return "All";
+		case Dir3Ex_HorizontalX:      return "HorizontalX";
+		case Dir3Ex_HorizontalZ:      return "HorizontalZ";
+		case Dir3Ex_Vertical:         return "Vertical";
+		case Dir3Ex_Cardinal:         return "Cardinal";
+		case Dir3Ex_Edge:             return "Edge";
+		case Dir3Ex_Corner:           return "Corner";
+		case Dir3Ex_All:              return "All";
 		default: return "Unknown";
-	};
+	}
 }
 
 // +--------------------------------------------------------------+
@@ -856,14 +982,26 @@ u8 GetDir3ExIndex(Dir3Ex_t dir3ex)
 		case Dir3Ex_Down:             return 3;
 		case Dir3Ex_Forward:          return 4;
 		case Dir3Ex_Backward:         return 5;
-		case Dir3Ex_BottomLeftBack:   return 6;
-		case Dir3Ex_BottomRightBack:  return 7;
-		case Dir3Ex_BottomRightFront: return 8;
-		case Dir3Ex_BottomLeftFront:  return 9;
-		case Dir3Ex_TopLeftBack:      return 10;
-		case Dir3Ex_TopRightBack:     return 11;
-		case Dir3Ex_TopRightFront:    return 12;
-		case Dir3Ex_TopLeftFront:     return 13;
+		case Dir3Ex_TopRight:         return 6;
+		case Dir3Ex_TopBack:          return 7;
+		case Dir3Ex_TopLeft:          return 8;
+		case Dir3Ex_TopFront:         return 9;
+		case Dir3Ex_RightBack:        return 10;
+		case Dir3Ex_LeftBack:         return 11;
+		case Dir3Ex_LeftFront:        return 12;
+		case Dir3Ex_RightFront:       return 13;
+		case Dir3Ex_BottomRight:      return 14;
+		case Dir3Ex_BottomBack:       return 15;
+		case Dir3Ex_BottomLeft:       return 16;
+		case Dir3Ex_BottomFront:      return 17;
+		case Dir3Ex_BottomLeftBack:   return 18;
+		case Dir3Ex_BottomRightBack:  return 19;
+		case Dir3Ex_BottomRightFront: return 20;
+		case Dir3Ex_BottomLeftFront:  return 21;
+		case Dir3Ex_TopLeftBack:      return 22;
+		case Dir3Ex_TopRightBack:     return 23;
+		case Dir3Ex_TopRightFront:    return 24;
+		case Dir3Ex_TopLeftFront:     return 25;
 		default: return Dir3Ex_Count;
 	}
 }
@@ -956,14 +1094,26 @@ Dir3Ex_t Dir3ExFromIndex(u64 index)
 		case 3:  return Dir3Ex_Down;
 		case 4:  return Dir3Ex_Forward;
 		case 5:  return Dir3Ex_Backward;
-		case 6:  return Dir3Ex_BottomLeftBack;
-		case 7:  return Dir3Ex_BottomRightBack;
-		case 8:  return Dir3Ex_BottomRightFront;
-		case 9:  return Dir3Ex_BottomLeftFront;
-		case 10: return Dir3Ex_TopLeftBack;
-		case 11: return Dir3Ex_TopRightBack;
-		case 12: return Dir3Ex_TopRightFront;
-		case 13: return Dir3Ex_TopLeftFront;
+		case 6:  return Dir3Ex_TopRight;
+		case 7:  return Dir3Ex_TopBack;
+		case 8:  return Dir3Ex_TopLeft;
+		case 9:  return Dir3Ex_TopFront;
+		case 10: return Dir3Ex_RightBack;
+		case 11: return Dir3Ex_LeftBack;
+		case 12: return Dir3Ex_LeftFront;
+		case 13: return Dir3Ex_RightFront;
+		case 14: return Dir3Ex_BottomRight;
+		case 15: return Dir3Ex_BottomBack;
+		case 16: return Dir3Ex_BottomLeft;
+		case 17: return Dir3Ex_BottomFront;
+		case 18: return Dir3Ex_BottomLeftBack;
+		case 19: return Dir3Ex_BottomRightBack;
+		case 20: return Dir3Ex_BottomRightFront;
+		case 21: return Dir3Ex_BottomLeftFront;
+		case 22: return Dir3Ex_TopLeftBack;
+		case 23: return Dir3Ex_TopRightBack;
+		case 24: return Dir3Ex_TopRightFront;
+		case 25: return Dir3Ex_TopLeftFront;
 		default: Assert(false); return Dir3Ex_None; //shouldn't be possible because % above
 	}
 }
@@ -1039,6 +1189,18 @@ Dir3Ex_t Dir3ExOpposite(Dir3Ex_t dir3ex)
 		case Dir3Ex_Down:     return Dir3Ex_Up;
 		case Dir3Ex_Forward:  return Dir3Ex_Backward;
 		case Dir3Ex_Backward: return Dir3Ex_Forward;
+		case Dir3Ex_TopRight:    return Dir3Ex_BottomLeft;
+		case Dir3Ex_TopBack:     return Dir3Ex_BottomFront;
+		case Dir3Ex_TopLeft:     return Dir3Ex_BottomRight;
+		case Dir3Ex_TopFront:    return Dir3Ex_BottomBack;
+		case Dir3Ex_RightBack:   return Dir3Ex_LeftFront;
+		case Dir3Ex_LeftBack:    return Dir3Ex_RightFront;
+		case Dir3Ex_LeftFront:   return Dir3Ex_RightBack;
+		case Dir3Ex_RightFront:  return Dir3Ex_LeftBack;
+		case Dir3Ex_BottomRight: return Dir3Ex_TopLeft;
+		case Dir3Ex_BottomBack:  return Dir3Ex_TopFront;
+		case Dir3Ex_BottomLeft:  return Dir3Ex_TopRight;
+		case Dir3Ex_BottomFront: return Dir3Ex_TopBack;
 		case Dir3Ex_BottomLeftBack:   return Dir3Ex_TopRightFront;
 		case Dir3Ex_BottomRightBack:  return Dir3Ex_TopLeftFront;
 		case Dir3Ex_BottomRightFront: return Dir3Ex_TopLeftBack;
@@ -1346,6 +1508,18 @@ Dir3Ex_Up
 Dir3Ex_Down
 Dir3Ex_Forward
 Dir3Ex_Backward
+Dir3Ex_TopRight
+Dir3Ex_TopBack
+Dir3Ex_TopLeft
+Dir3Ex_TopFront
+Dir3Ex_RightBack
+Dir3Ex_LeftBack
+Dir3Ex_LeftFront
+Dir3Ex_RightFront
+Dir3Ex_BottomRight
+Dir3Ex_BottomBack
+Dir3Ex_BottomLeft
+Dir3Ex_BottomFront
 Dir3Ex_BottomLeftBack
 Dir3Ex_BottomRightBack
 Dir3Ex_BottomRightFront
@@ -1354,8 +1528,12 @@ Dir3Ex_TopLeftBack
 Dir3Ex_TopRightBack
 Dir3Ex_TopRightFront
 Dir3Ex_TopLeftFront
+Dir3Ex_HorizontalX
+Dir3Ex_HorizontalZ
+Dir3Ex_Vertical
 Dir3Ex_Cardinal
-Dir3Ex_Diagonal
+Dir3Ex_Edge
+Dir3Ex_Corner
 Dir3Ex_All
 Dir3Ex_Count
 Axis_None
@@ -1388,7 +1566,8 @@ bool IsDiagonalDir2Ex(Dir2Ex_t dir2ex, bool allowNone = false)
 bool IsSingleDir3(Dir3_t dir3, bool allowNone = false)
 bool IsSingleDir3Ex(Dir3Ex_t dir3ex, bool allowNone = false)
 bool IsCardinalDir3Ex(Dir3Ex_t dir3ex, bool allowNone = false)
-bool IsDiagonalDir3Ex(Dir3Ex_t dir3ex, bool allowNone = false)
+bool IsEdgeDir3Ex(Dir3Ex_t dir3ex, bool allowNone = false)
+bool IsCornerDir3Ex(Dir3Ex_t dir3ex, bool allowNone = false)
 u8 Dir2BitwiseCount(Dir2_t dir2)
 u8 Dir2ExBitwiseCount(Dir2Ex_t dir2ex)
 u8 Dir3BitwiseCount(Dir3_t dir3)
