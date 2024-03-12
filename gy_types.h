@@ -106,7 +106,7 @@ const char* GetTriboolStr(Tribool_t enumValue)
 #define STRUCT_VAR_SIZE(structureName, variableName) sizeof(((const structureName*)0)->variableName)
 #define STRUCT_VAR_OFFSET(structureName, variableName) (u32)((const u8*)&((const structureName*)0)->variableName - (const u8*)((const structureName*)0))
 #define STRUCT_VAR_END_OFFSET(structureName, variableName) (u32)(((const u8*)&((const structureName*)0)->variableName + sizeof(((const structureName*)0)->variableName)) - (const u8*)((const structureName*)0))
-#define IS_VAR_IN_X_BYTES_OF_STRUCT(structureName, numBytes, variableName) ((numBytes) >= STRUCT_VAR_END_OFFSET((structureName), (variableName)))
+#define IS_VAR_IN_X_BYTES_OF_STRUCT(structureName, numBytes, variableName) ((numBytes) >= STRUCT_VAR_END_OFFSET(structureName, variableName))
 
 #define VOID_FUNC_DEF(functionName) void functionName()
 typedef VOID_FUNC_DEF(VoidFunc_f);
