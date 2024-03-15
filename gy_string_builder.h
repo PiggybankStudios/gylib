@@ -219,7 +219,7 @@ void StringBuilderAppend(StringBuilder_t* builder, MyStr_t str)
 	{
 		GrowMemToken_t growToken = {};
 		u64 growableSpaceAvailable = StringBuilderGetNumUnusedBytes(builder, true, &growToken);
-		if (growableSpaceAvailable >= str.length)
+		if (growableSpaceAvailable >= str.length+1)
 		{
 			u64 numNewBytesUsed = (str.length+1 - normalSpaceAvailable);
 			MyMemCopy(&builder->chars[builder->length], str.chars, str.length);
