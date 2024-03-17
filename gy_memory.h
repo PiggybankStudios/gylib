@@ -171,6 +171,7 @@ struct MemArena_t
 	#if GYLIB_MEM_ARENA_DEBUG_ENABLED
 	MemArena_t* debugArena;
 	#endif
+	GyMutex_t mutex;
 };
 
 struct GrowMemToken_t
@@ -663,6 +664,10 @@ u64 GetNumMarks(MemArena_t* arena)
 {
 	NotNull(arena);
 	
+	bool didLock = false;
+	if (IsValidGyMutex(&arena->mutex)) { LockGyMutex(&arena->mutex); didLock = true; }
+	
+	u64 result = 0;
 	switch (arena->type)
 	{
 		// +======================================+
@@ -674,7 +679,7 @@ u64 GetNumMarks(MemArena_t* arena)
 			MarkedStackArenaHeader_t* stackHeader = (MarkedStackArenaHeader_t*)arena->headerPntr;
 			Assert(stackHeader->maxNumMarks > 0);
 			Assert(stackHeader->numMarks <= stackHeader->maxNumMarks);
-			return stackHeader->numMarks;
+			result = stackHeader->numMarks;
 		} break;
 		
 		// +======================================+
@@ -686,7 +691,7 @@ u64 GetNumMarks(MemArena_t* arena)
 			MarkedStackArenaHeader_t* firstPageHeader = (MarkedStackArenaHeader_t*)arena->headerPntr;
 			Assert(firstPageHeader->maxNumMarks > 0);
 			Assert(firstPageHeader->numMarks <= firstPageHeader->maxNumMarks);
-			return firstPageHeader->numMarks;
+			result = firstPageHeader->numMarks;
 		} break;
 		
 		// +========================================+
@@ -698,11 +703,14 @@ u64 GetNumMarks(MemArena_t* arena)
 			MarkedStackArenaHeader_t* stackHeader = (MarkedStackArenaHeader_t*)arena->headerPntr;
 			Assert(stackHeader->maxNumMarks > 0);
 			Assert(stackHeader->numMarks <= stackHeader->maxNumMarks);
-			return stackHeader->numMarks;
+			result = stackHeader->numMarks;
 		} break;
 		
-		default: AssertMsg(false, "Tried to GetNumMarks on arena that doesn't support pushing and popping"); return 0; break;
+		default: AssertMsg(false, "Tried to GetNumMarks on arena that doesn't support pushing and popping"); break;
 	}
+	
+	if (didLock) { UnlockGyMutex(&arena->mutex); }
+	return result;
 }
 
 // +--------------------------------------------------------------+
@@ -724,10 +732,13 @@ void StoreAllocInfo(const MemArena_t* refArena, MemArena_t* arena, void* allocPn
 }
 MemArenaAllocInfo_t* FindAllocInfoFor(MemArena_t* arena, void* allocPntr)
 {
+	bool didLock = false;
+	if (IsValidGyMutex(&arena->mutex)) { LockGyMutex(&arena->mutex); didLock = true; }
+	
 	switch (arena->type)
 	{
 		// +======================================+
-		// | MemArenaType_PagedHeap FreeAllocInfo |
+		// | MemArenaType_PagedHeap FindAllocInfo |
 		// +======================================+
 		case MemArenaType_PagedHeap:
 		{
@@ -752,6 +763,7 @@ MemArenaAllocInfo_t* FindAllocInfoFor(MemArena_t* arena, void* allocPntr)
 						MemArenaAllocInfo_t* allocInfo = (MemArenaAllocInfo_t*)allocAfterPrefixPntr;
 						if (allocInfo->allocPntr == allocPntr)
 						{
+							if (didLock) { UnlockGyMutex(&arena->mutex); }
 							return allocInfo;
 						}
 					}
@@ -773,10 +785,14 @@ MemArenaAllocInfo_t* FindAllocInfoFor(MemArena_t* arena, void* allocPntr)
 		} break;
 	}
 	
+	if (didLock) { UnlockGyMutex(&arena->mutex); }
 	return nullptr;
 }
 MemArenaAllocInfo_t* FindExtraAllocInfoInArena(MemArena_t* arena, MemArena_t* realArena)
 {
+	bool didLock = false;
+	if (IsValidGyMutex(&arena->mutex)) { LockGyMutex(&arena->mutex); didLock = true; }
+	
 	switch (arena->type)
 	{
 		// +======================================+
@@ -803,7 +819,11 @@ MemArenaAllocInfo_t* FindExtraAllocInfoInArena(MemArena_t* arena, MemArena_t* re
 					if (isAllocFilled && allocAfterPrefixSize == sizeof(MemArenaAllocInfo_t))
 					{
 						MemArenaAllocInfo_t* allocInfo = (MemArenaAllocInfo_t*)allocAfterPrefixPntr;
-						if (!FreeMem(realArena, allocInfo->allocPntr, allocInfo->allocSize)) { return allocInfo; }
+						if (!FreeMem(realArena, allocInfo->allocPntr, allocInfo->allocSize))
+						{
+							if (didLock) { UnlockGyMutex(&arena->mutex); }
+							return allocInfo;
+						}
 					}
 					
 					allocBytePntr += allocSize;
@@ -823,10 +843,14 @@ MemArenaAllocInfo_t* FindExtraAllocInfoInArena(MemArena_t* arena, MemArena_t* re
 		} break;
 	}
 	
+	if (didLock) { UnlockGyMutex(&arena->mutex); }
 	return nullptr;
 }
 void* FindMissingAllocInfoInArena(MemArena_t* arena, u64* allocSizeOut = nullptr)
 {
+	bool didLock = false;
+	if (IsValidGyMutex(&arena->mutex)) { LockGyMutex(&arena->mutex); didLock = true; }
+	
 	NotNull2(arena, arena->debugArena);
 	switch (arena->type)
 	{
@@ -858,6 +882,7 @@ void* FindMissingAllocInfoInArena(MemArena_t* arena, u64* allocSizeOut = nullptr
 						{
 							MyDebugBreak();
 							SetOptionalOutPntr(allocSizeOut, allocAfterPrefixSize);
+							if (didLock) { UnlockGyMutex(&arena->mutex); }
 							return allocAfterPrefixPntr;
 						}
 					}
@@ -879,6 +904,7 @@ void* FindMissingAllocInfoInArena(MemArena_t* arena, u64* allocSizeOut = nullptr
 		} break;
 	}
 	
+	if (didLock) { UnlockGyMutex(&arena->mutex); }
 	return nullptr;
 }
 //TODO: Add const back to refArena
@@ -892,6 +918,7 @@ void FreeAllocInfo(MemArena_t* refArena, MemArena_t* arena, void* allocPntr)
 	}
 	if (refArena->numAllocations != arena->numAllocations)
 	{
+		#if 1
 		MyDebugBreak();
 		u64 missingInfoSize = 0;
 		void* missingInfoPntr = FindMissingAllocInfoInArena(refArena, &missingInfoSize);
@@ -902,6 +929,7 @@ void FreeAllocInfo(MemArena_t* refArena, MemArena_t* arena, void* allocPntr)
 		UNUSED(extraAllocInfo);
 		refArena->debugArena = arena;
 		MyDebugBreak();
+		#endif
 	}
 }
 #endif //GYLIB_MEM_ARENA_DEBUG_ENABLED
@@ -917,6 +945,9 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 		AssertIfMsg(assertOnFailure, false, "Tried to verify uninitialized arena");
 		return false;
 	}
+	
+	bool didLock = false;
+	if (IsValidGyMutex(&arena->mutex)) { LockGyMutex(&arena->mutex); didLock = true; }
 	
 	switch (arena->type)
 	{
@@ -952,36 +983,43 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 			if (arena->mainPntr == nullptr)
 			{
 				AssertIfMsg(assertOnFailure, false, "FixedHeap mainPntr is null");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			if (arena->used >= arena->size)
 			{
 				AssertIfMsg(assertOnFailure, false, "FixedHeap used is larger than size");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled) && arena->used > arena->highUsedMark)
 			{
 				AssertIfMsg(assertOnFailure, false, "FixedHeap used is higher than high used mark");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled) && arena->numAllocations > arena->highAllocMark)
 			{
 				AssertIfMsg(assertOnFailure, false, "FixedHeap allocation count is higher than high allocation mark");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			if (!IsAlignedTo(arena->mainPntr, arena->alignment))
 			{
 				AssertIfMsg(assertOnFailure, false, "FixedHeap main memory not aligned to alignment setting");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			if (IsFlagSet(arena->flags, MemArenaFlag_SingleAlloc) && arena->numAllocations > 1)
 			{
 				AssertIfMsg(assertOnFailure, false, "FixedHeap single alloc doesn't match allocation count");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			if (arena->used < sizeof(HeapAllocPrefix_t))
 			{
 				AssertIfMsg(assertOnFailure, false, "FixedHeap used is smaller than 1 prefix size");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			
@@ -1003,6 +1041,7 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 				if (allocSize < sizeof(HeapAllocPrefix_t))
 				{
 					AssertIfMsg(assertOnFailure, false, "Found an allocation header that claimed to be smaller than the header itself in Fixed Heap");
+					if (didLock) { UnlockGyMutex(&arena->mutex); }
 					return false;
 				}
 				u64 allocAfterPrefixSize = allocSize - sizeof(HeapAllocPrefix_t);
@@ -1012,12 +1051,14 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 					if (numFilledSections + 1 > arena->numAllocations)
 					{
 						AssertIfMsg(assertOnFailure, false, "FixedHeap numAllocations doesn't match actual number of filled sections");
+						if (didLock) { UnlockGyMutex(&arena->mutex); }
 						return false;
 					}
 					numFilledSections++;
 					if (totalUsed + allocSize > arena->used)
 					{
 						AssertIfMsg(assertOnFailure, false, "FixedHeap used doesn't match actual total used area");
+						if (didLock) { UnlockGyMutex(&arena->mutex); }
 						return false;
 					}
 					totalUsed += allocSize;
@@ -1028,11 +1069,13 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 					if (lastSectionWasEmpty)
 					{
 						AssertIfMsg(assertOnFailure, false, "FixedHeap two empty sections in a row");
+						if (didLock) { UnlockGyMutex(&arena->mutex); }
 						return false;
 					}
 					if (totalUsed + sizeof(HeapAllocPrefix_t) > arena->used)
 					{
 						AssertIfMsg(assertOnFailure, false, "FixedHeap used doesn't match actual total used area");
+						if (didLock) { UnlockGyMutex(&arena->mutex); }
 						return false;
 					}
 					totalUsed += sizeof(HeapAllocPrefix_t);
@@ -1041,6 +1084,7 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 				if (allocOffset + allocSize > arena->size)
 				{
 					AssertIfMsg(assertOnFailure, false, "FixedHeap corrupt section size stepping us past the end of the arena memory");
+					if (didLock) { UnlockGyMutex(&arena->mutex); }
 					return false;
 				}
 				prevPrefixPntr = allocPntr;
@@ -1055,15 +1099,15 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 			if (totalUsed != arena->used)
 			{
 				AssertIfMsg(assertOnFailure, false, "FixedHeap used is higher than actual used amount");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			if (numFilledSections != arena->numAllocations)
 			{
 				AssertIfMsg(assertOnFailure, false, "FixedHeap numAllocations is higher than actual used section count");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
-			
-			return true;
 		} break;
 		
 		// +========================================+
@@ -1074,31 +1118,37 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 			if (arena->headerPntr == nullptr && arena->numPages > 0)
 			{
 				AssertIfMsg(assertOnFailure, false, "headerPntr was empty but numPages > 0! Has this arena been initialized??");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			if ((arena->sourceArena == nullptr) && (arena->allocFunc == nullptr || arena->freeFunc == nullptr))
 			{
 				AssertIfMsg(assertOnFailure, false, "PagedHeap doesn't have a allocFunc/freeFun nor a sourceArena to allocate new pages from");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			if (arena->mainPntr != nullptr)
 			{
 				AssertIfMsg(assertOnFailure, false, "mainPntr was filled when it shouldn't be!");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			if (arena->otherPntr != nullptr)
 			{
 				AssertIfMsg(assertOnFailure, false, "otherPntr was filled when it shouldn't be!");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			if (arena->pageSize == 0)
 			{
 				AssertIfMsg(assertOnFailure, false, "pageSize was zero! That's invalid!");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			if (arena->alignment > AllocAlignment_Max)
 			{
 				AssertIfMsg(assertOnFailure, false, "Invalid alignment value!");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			
@@ -1113,26 +1163,31 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 				if (pageHeader->size == 0)
 				{
 					AssertIfMsg(assertOnFailure, false, "Page had a size of 0!");
+					if (didLock) { UnlockGyMutex(&arena->mutex); }
 					return false;
 				}
 				if (pageHeader->size < arena->pageSize)
 				{
 					AssertIfMsg(assertOnFailure, false, "Page size was less than arena->pageSize!");
+					if (didLock) { UnlockGyMutex(&arena->mutex); }
 					return false;
 				}
 				if (pageIndex+1 < arena->numPages && pageHeader->next == nullptr)
 				{
 					AssertIfMsg(assertOnFailure, false, "Page next pntr was nullptr too soon! We expected more pages in the chain!");
+					if (didLock) { UnlockGyMutex(&arena->mutex); }
 					return false;
 				}
 				if (pageHeader->used > pageHeader->size)
 				{
 					AssertIfMsg(assertOnFailure, false, "Page used is higher than size! That's not right!");
+					if (didLock) { UnlockGyMutex(&arena->mutex); }
 					return false;
 				}
 				if (pageIndex >= arena->numPages)
 				{
 					AssertIfMsg(assertOnFailure, false, "The numPages in this paged heap is off. We have too many pages or the last pointer to a page was corrupt!");
+					if (didLock) { UnlockGyMutex(&arena->mutex); }
 					return false;
 				}
 				
@@ -1150,17 +1205,20 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 					if (sectionSize < sizeof(HeapAllocPrefix_t))
 					{
 						AssertIfMsg(assertOnFailure, false, "Found an allocation header that claimed to be smaller than the header itself in Paged Heap");
+						if (didLock) { UnlockGyMutex(&arena->mutex); }
 						return false;
 					}
 					u64 afterPrefixSize = sectionSize - sizeof(HeapAllocPrefix_t);
 					if (afterPrefixSize == 0)
 					{
 						AssertIfMsg(assertOnFailure, false, "Found an empty section that was only big enough to contain the allocation header");
+						if (didLock) { UnlockGyMutex(&arena->mutex); }
 						return false;
 					}
 					if (allocOffset + sectionSize > pageHeader->size)
 					{
 						AssertIfMsg(assertOnFailure, false, "Found a corrupt allocation header size. It would step us past the end of a page!");
+						if (didLock) { UnlockGyMutex(&arena->mutex); }
 						return false;
 					}
 					
@@ -1198,9 +1256,11 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 			if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled) && numAllocations != arena->numAllocations)
 			{
 				AssertIfMsg(assertOnFailure, false, "Actual allocation count in paged heap did not match tracked numAllocations");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			
+			if (didLock) { UnlockGyMutex(&arena->mutex); }
 			return !missingDebugForAllocation;
 		} break;
 		
@@ -1212,37 +1272,44 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 			if (arena->size == 0)
 			{
 				AssertIfMsg(assertOnFailure, false, "arena size is 0");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			if (arena->used > arena->size)
 			{
 				AssertIfMsg(assertOnFailure, false, "arena used is greater than size");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			if (arena->headerPntr == nullptr)
 			{
 				AssertIfMsg(assertOnFailure, false, "headerPntr is nullptr in MarkedStack");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			if (arena->otherPntr == nullptr)
 			{
 				AssertIfMsg(assertOnFailure, false, "otherPntr is nullptr in MarkedStack");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			if (arena->mainPntr == nullptr)
 			{
 				AssertIfMsg(assertOnFailure, false, "mainPntr is nullptr in MarkedStack");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			MarkedStackArenaHeader_t* stackHeader = (MarkedStackArenaHeader_t*)arena->headerPntr;
 			if (stackHeader->maxNumMarks * sizeof(u64) >= arena->size)
 			{
 				AssertIfMsg(assertOnFailure, false, "stackHeader for MarkedStack has invalid value for maxNumMarks (based on size of arena)");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			if (stackHeader->numMarks > stackHeader->maxNumMarks)
 			{
 				AssertIfMsg(assertOnFailure, false, "numMarks is greater than maxNumMarks in MarkedStack header");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
@@ -1250,26 +1317,31 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 				if (arena->highUsedMark > arena->size)
 				{
 					AssertIfMsg(assertOnFailure, false, "highUsedMark is greater than arena size");
+					if (didLock) { UnlockGyMutex(&arena->mutex); }
 					return false;
 				}
 				if (arena->resettableHighUsedMark > arena->size)
 				{
 					AssertIfMsg(assertOnFailure, false, "resettableHighUsedMark is greater than arena size");
+					if (didLock) { UnlockGyMutex(&arena->mutex); }
 					return false;
 				}
 				if (arena->highUsedMark < arena->used)
 				{
 					AssertIfMsg(assertOnFailure, false, "used is greater than current highUsedMark");
+					if (didLock) { UnlockGyMutex(&arena->mutex); }
 					return false;
 				}
 				if (stackHeader->highMarkCount > stackHeader->maxNumMarks)
 				{
 					AssertIfMsg(assertOnFailure, false, "highMarkCount is greater than maxNumMarks in MarkedStack header");
+					if (didLock) { UnlockGyMutex(&arena->mutex); }
 					return false;
 				}
 				if (stackHeader->highMarkCount < stackHeader->numMarks)
 				{
 					AssertIfMsg(assertOnFailure, false, "highMarkCount is less than numMarks in MarkedStack header");
+					if (didLock) { UnlockGyMutex(&arena->mutex); }
 					return false;
 				}
 			}
@@ -1277,12 +1349,14 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 			if (arena->otherPntr != expectedOtherPntr)
 			{
 				AssertIfMsg(assertOnFailure, false, "otherPntr is not where it's supposed to be compared to headerPntr");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			u8* expectedMainPntr = expectedOtherPntr + stackHeader->maxNumMarks * sizeof(u64);
 			if (arena->mainPntr != expectedMainPntr)
 			{
 				AssertIfMsg(assertOnFailure, false, "mainPntr is not where it's supposed to be compared to headerPntr/otherPntr");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			
@@ -1292,11 +1366,13 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 				if (marksPntr[mIndex] > arena->size)
 				{
 					AssertIfMsg(assertOnFailure, false, "One of the marks has and invalid value (too big, given the arena->size)");
+					if (didLock) { UnlockGyMutex(&arena->mutex); }
 					return false;
 				}
 				if (marksPntr[mIndex] > arena->used)
 				{
 					AssertIfMsg(assertOnFailure, false, "One of the marks is above the current used amount!");
+					if (didLock) { UnlockGyMutex(&arena->mutex); }
 					return false;
 				}
 			}
@@ -1310,16 +1386,19 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 			if (arena->size == 0)
 			{
 				AssertIfMsg(assertOnFailure, false, "arena size is 0");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			if (arena->used > arena->size)
 			{
 				AssertIfMsg(assertOnFailure, false, "arena used is greater than size");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			if (arena->headerPntr == nullptr)
 			{
 				AssertIfMsg(assertOnFailure, false, "headerPntr is nullptr in PagedStack");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			u64 pageIndex = 0;
@@ -1329,11 +1408,13 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 				if (pageIndex >= arena->numPages)
 				{
 					AssertIfMsg(assertOnFailure, false, "pageHeader linked list is longer than numPages in PagedStack");
+					if (didLock) { UnlockGyMutex(&arena->mutex); }
 					return false;
 				}
 				if (sizeof(MarkedStackArenaHeader_t) + (pageHeader->maxNumMarks * sizeof(u64)) >= pageHeader->thisPageSize)
 				{
 					AssertIfMsg(assertOnFailure, false, "pageHeader for PagedStack has invalid value for maxNumMarks (based on size of arena)");
+					if (didLock) { UnlockGyMutex(&arena->mutex); }
 					return false;
 				}
 				
@@ -1344,6 +1425,7 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 				if (pageHeader->numMarks > pageHeader->maxNumMarks)
 				{
 					AssertIfMsg(assertOnFailure, false, "numMarks is greater than maxNumMarks in PagedStack header");
+					if (didLock) { UnlockGyMutex(&arena->mutex); }
 					return false;
 				}
 				if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
@@ -1351,26 +1433,31 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 					if (arena->highUsedMark > arena->size)
 					{
 						AssertIfMsg(assertOnFailure, false, "highUsedMark is greater than arena size");
+						if (didLock) { UnlockGyMutex(&arena->mutex); }
 						return false;
 					}
 					if (arena->resettableHighUsedMark > arena->size)
 					{
 						AssertIfMsg(assertOnFailure, false, "resettableHighUsedMark is greater than arena size");
+						if (didLock) { UnlockGyMutex(&arena->mutex); }
 						return false;
 					}
 					if (arena->highUsedMark < arena->used)
 					{
 						AssertIfMsg(assertOnFailure, false, "used is greater than current highUsedMark");
+						if (didLock) { UnlockGyMutex(&arena->mutex); }
 						return false;
 					}
 					if (pageHeader->highMarkCount > pageHeader->maxNumMarks)
 					{
 						AssertIfMsg(assertOnFailure, false, "highMarkCount is greater than maxNumMarks in PagedStack header");
+						if (didLock) { UnlockGyMutex(&arena->mutex); }
 						return false;
 					}
 					if (pageHeader->highMarkCount < pageHeader->numMarks)
 					{
 						AssertIfMsg(assertOnFailure, false, "highMarkCount is less than numMarks in PagedStack header");
+						if (didLock) { UnlockGyMutex(&arena->mutex); }
 						return false;
 					}
 				}
@@ -1380,11 +1467,13 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 					if (pageMarks[mIndex] > arena->size)
 					{
 						AssertIfMsg(assertOnFailure, false, "One of the marks has and invalid value (too big, given the arena->size)");
+						if (didLock) { UnlockGyMutex(&arena->mutex); }
 						return false;
 					}
 					if (pageMarks[mIndex] > arena->used)
 					{
 						AssertIfMsg(assertOnFailure, false, "One of the marks is above the current used amount!");
+						if (didLock) { UnlockGyMutex(&arena->mutex); }
 						return false;
 					}
 				}
@@ -1395,6 +1484,7 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 			if (pageIndex != arena->numPages)
 			{
 				AssertIfMsg(assertOnFailure, false, "pageHeader linked list is shorter than numPages in PagedStack");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 		} break;
@@ -1407,37 +1497,44 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 			if (arena->size == 0)
 			{
 				AssertIfMsg(assertOnFailure, false, "arena size is 0");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			if (arena->used > arena->size)
 			{
 				AssertIfMsg(assertOnFailure, false, "arena used is greater than size");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			if (arena->headerPntr == nullptr)
 			{
 				AssertIfMsg(assertOnFailure, false, "headerPntr is nullptr in MarkedStack");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			if (arena->otherPntr == nullptr)
 			{
 				AssertIfMsg(assertOnFailure, false, "otherPntr is nullptr in MarkedStack");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			if (arena->mainPntr == nullptr)
 			{
 				AssertIfMsg(assertOnFailure, false, "mainPntr is nullptr in MarkedStack");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			MarkedStackArenaHeader_t* stackHeader = (MarkedStackArenaHeader_t*)arena->headerPntr;
 			if (stackHeader->maxNumMarks * sizeof(u64) >= arena->size)
 			{
 				AssertIfMsg(assertOnFailure, false, "stackHeader for MarkedStack has invalid value for maxNumMarks (based on size of arena)");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			if (stackHeader->numMarks > stackHeader->maxNumMarks)
 			{
 				AssertIfMsg(assertOnFailure, false, "numMarks is greater than maxNumMarks in MarkedStack header");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
@@ -1445,26 +1542,31 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 				if (arena->highUsedMark > arena->size)
 				{
 					AssertIfMsg(assertOnFailure, false, "highUsedMark is greater than arena size");
+					if (didLock) { UnlockGyMutex(&arena->mutex); }
 					return false;
 				}
 				if (arena->resettableHighUsedMark > arena->size)
 				{
 					AssertIfMsg(assertOnFailure, false, "resettableHighUsedMark is greater than arena size");
+					if (didLock) { UnlockGyMutex(&arena->mutex); }
 					return false;
 				}
 				if (arena->highUsedMark < arena->used)
 				{
 					AssertIfMsg(assertOnFailure, false, "used is greater than current highUsedMark");
+					if (didLock) { UnlockGyMutex(&arena->mutex); }
 					return false;
 				}
 				if (stackHeader->highMarkCount > stackHeader->maxNumMarks)
 				{
 					AssertIfMsg(assertOnFailure, false, "highMarkCount is greater than maxNumMarks in MarkedStack header");
+					if (didLock) { UnlockGyMutex(&arena->mutex); }
 					return false;
 				}
 				if (stackHeader->highMarkCount < stackHeader->numMarks)
 				{
 					AssertIfMsg(assertOnFailure, false, "highMarkCount is less than numMarks in MarkedStack header");
+					if (didLock) { UnlockGyMutex(&arena->mutex); }
 					return false;
 				}
 			}
@@ -1472,12 +1574,14 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 			if (arena->otherPntr != expectedOtherPntr)
 			{
 				AssertIfMsg(assertOnFailure, false, "otherPntr is not where it's supposed to be compared to headerPntr");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			u8* expectedMainPntr = expectedOtherPntr + stackHeader->maxNumMarks * sizeof(u64);
 			if (arena->mainPntr != expectedMainPntr)
 			{
 				AssertIfMsg(assertOnFailure, false, "mainPntr is not where it's supposed to be compared to headerPntr/otherPntr");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return false;
 			}
 			
@@ -1487,11 +1591,13 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 				if (marksPntr[mIndex] > arena->size)
 				{
 					AssertIfMsg(assertOnFailure, false, "One of the marks has and invalid value (too big, given the arena->size)");
+					if (didLock) { UnlockGyMutex(&arena->mutex); }
 					return false;
 				}
 				if (marksPntr[mIndex] > arena->used)
 				{
 					AssertIfMsg(assertOnFailure, false, "One of the marks is above the current used amount!");
+					if (didLock) { UnlockGyMutex(&arena->mutex); }
 					return false;
 				}
 			}
@@ -1511,10 +1617,12 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 		default:
 		{
 			AssertIfMsg(assertOnFailure, false, "Unsupported or corrupt arena type found in MemArenaVerify");
+			if (didLock) { UnlockGyMutex(&arena->mutex); }
 			return false;
 		} break;
 	}
 	
+	if (didLock) { UnlockGyMutex(&arena->mutex); }
 	return true;
 }
 
@@ -1530,6 +1638,9 @@ void* AllocMem_(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride)
 	NotNull(arena);
 	AssertMsg(arena->type != MemArenaType_None, "Tried to allocate from uninitialized arena");
 	
+	bool didLock = false;
+	if (IsValidGyMutex(&arena->mutex)) { LockGyMutex(&arena->mutex); didLock = true; }
+	
 	if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled) && arena->resettableHighUsedMark < arena->used) { arena->resettableHighUsedMark = arena->used; }
 	
 	if (IsFlagSet(arena->flags, MemArenaFlag_BreakOnAlloc) && (arena->debugBreakThreshold == 0 || numBytes >= arena->debugBreakThreshold))
@@ -1537,10 +1648,15 @@ void* AllocMem_(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride)
 		MyDebugBreak();
 	}
 	
-	if (numBytes == 0) { return nullptr; }
+	if (numBytes == 0)
+	{
+		if (didLock) { UnlockGyMutex(&arena->mutex); }
+		return nullptr;
+	}
 	if (IsFlagSet(arena->flags, MemArenaFlag_SingleAlloc) && arena->numAllocations > 0)
 	{
 		GyLibPrintLine_W("Attempted second allocation of %llu out of single alloc arena (type: %s, size: %llu, used: %llu)", numBytes, GetMemArenaTypeStr(arena->type), arena->size, arena->used);
+		if (didLock) { UnlockGyMutex(&arena->mutex); }
 		return nullptr;
 	}
 	AllocAlignment_t alignment = (alignOverride != AllocAlignment_None) ? alignOverride : arena->alignment;
@@ -1764,13 +1880,21 @@ void* AllocMem_(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride)
 					//NOTE: Intentionally not putting the onus on the sourceArena to align the page. We will align allocations inside the page as requested
 					newPageHeader = (HeapPageHeader_t*)AllocMem(arena->sourceArena, sizeof(HeapPageHeader_t) + newPageSize);
 					// NotNullMsg(newPageHeader, "Failed to allocate new page from arena for paged heap");
-					if (newPageHeader == nullptr) { return nullptr; }
+					if (newPageHeader == nullptr)
+					{
+						if (didLock) { UnlockGyMutex(&arena->mutex); }
+						return nullptr;
+					}
 				}
 				else if (arena->allocFunc != nullptr)
 				{
 					newPageHeader = (HeapPageHeader_t*)arena->allocFunc(sizeof(HeapPageHeader_t) + newPageSize);
 					// NotNullMsg(newPageHeader, "Failed to allocate new page for paged heap");
-					if (newPageHeader == nullptr) { return nullptr; }
+					if (newPageHeader == nullptr)
+					{
+						if (didLock) { UnlockGyMutex(&arena->mutex); }
+						return nullptr;
+					}
 				}
 				NotNullMsg(newPageHeader, "sourceArena and allocFunc are both not filled!");
 				
@@ -1848,7 +1972,11 @@ void* AllocMem_(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride)
 			NotNull(arena->headerPntr);
 			NotNull(arena->otherPntr);
 			u8 alignOffset = OffsetToAlign(((u8*)arena->mainPntr) + arena->used, alignment);
-			if (arena->used + alignOffset + numBytes > arena->size) { return nullptr; }
+			if (arena->used + alignOffset + numBytes > arena->size)
+			{
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
+				return nullptr;
+			}
 			result = ((u8*)arena->mainPntr) + arena->used + alignOffset;
 			arena->used += alignOffset + numBytes;
 			arena->numAllocations++;
@@ -1988,7 +2116,11 @@ void* AllocMem_(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride)
 					arena->size += newPagesNeededSize;
 					DebugAssert(arena->size <= arena->maxSize);
 				}
-				else { return nullptr; }
+				else
+				{
+					if (didLock) { UnlockGyMutex(&arena->mutex); }
+					return nullptr;
+				}
 			}
 			result = ((u8*)arena->mainPntr) + arena->used + alignOffset;
 			arena->used += alignOffset + numBytes;
@@ -2015,6 +2147,7 @@ void* AllocMem_(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride)
 	#endif
 	
 	AssertMsg(IsAlignedTo(result, alignment), "An arena has a bug where it tried to return mis-aligned memory");
+	if (didLock) { UnlockGyMutex(&arena->mutex); }
 	return (void*)result;
 }
 
@@ -2062,6 +2195,9 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize, bool ignoreNullp
 	AssertMsg(arena->type != MemArenaType_None, "Tried to free from uninitialized arena");
 	Assert(ignoreNullptr || allocPntr != nullptr);
 	if (allocPntr == nullptr) { return false; }
+	
+	bool didLock = false;
+	if (IsValidGyMutex(&arena->mutex)) { LockGyMutex(&arena->mutex); didLock = true; }
 	
 	if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled) && arena->resettableHighUsedMark < arena->used) { arena->resettableHighUsedMark = arena->used; }
 	
@@ -2448,6 +2584,7 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize, bool ignoreNullp
 	if (result && arena->debugArena != nullptr) { FreeAllocInfo(arena, arena->debugArena, allocPntr); }
 	#endif
 	
+	if (didLock) { UnlockGyMutex(&arena->mutex); }
 	return result;
 }
 
@@ -2464,6 +2601,9 @@ void* ReallocMem_(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize, 
 	AssertMsg(arena->type != MemArenaType_None, "Tried to realloc from uninitialized arena");
 	Assert(ignoreNullptr || allocPntr != nullptr);
 	
+	bool didLock = false;
+	if (IsValidGyMutex(&arena->mutex)) { LockGyMutex(&arena->mutex); didLock = true; }
+	
 	if (IsFlagSet(arena->flags, MemArenaFlag_BreakOnRealloc) && (arena->debugBreakThreshold == 0 || newSize >= arena->debugBreakThreshold || oldSize >= arena->debugBreakThreshold))
 	{
 		MyDebugBreak();
@@ -2472,12 +2612,14 @@ void* ReallocMem_(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize, 
 	AllocAlignment_t alignment = (alignOverride != AllocAlignment_None) ? alignOverride : arena->alignment;
 	if (newSize == oldSize && (allocPntr != nullptr || oldSize != 0) && IsAlignedTo(allocPntr, alignment)) //not resizing, just keep the memory where it's at
 	{
+		if (didLock) { UnlockGyMutex(&arena->mutex); }
 		return allocPntr;
 	}
 	if (newSize == 0) //Resizing to 0 is basically freeing
 	{
 		bool freeSuccess = FreeMem(arena, allocPntr, oldSize, ignoreNullptr, oldSizeOut);
 		AssertMsg(freeSuccess, "Failed attempt to free memory in arena when Realloc'd to 0 bytes");
+		if (didLock) { UnlockGyMutex(&arena->mutex); }
 		return nullptr;
 	}
 	
@@ -2605,6 +2747,7 @@ void* ReallocMem_(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize, 
 			{
 				DecrementBy(arena->used, oldSize);
 				Decrement(arena->numAllocations);
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return nullptr;
 			}
 			if (increasingSize) { arena->used += sizeChangeAmount; }
@@ -2683,6 +2826,7 @@ void* ReallocMem_(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize, 
 	}
 	#endif
 	
+	if (didLock) { UnlockGyMutex(&arena->mutex); }
 	return result;
 }
 
@@ -2702,6 +2846,9 @@ u64 GrowMemQuery(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize
 	NotNull(prevAllocPntr);
 	Assert(prevAllocSize > 0);
 	u64 result = 0;
+	
+	bool didLock = false;
+	if (IsValidGyMutex(&arena->mutex)) { LockGyMutex(&arena->mutex); didLock = true; }
 	
 	switch (arena->type)
 	{
@@ -2908,6 +3055,7 @@ u64 GrowMemQuery(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize
 		} break;
 	}
 	
+	if (didLock) { UnlockGyMutex(&arena->mutex); }
 	return result;
 }
 
@@ -2919,6 +3067,9 @@ void GrowMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, u6
 	Assert(prevAllocSize > 0);
 	Assert(newAllocSize >= prevAllocSize);
 	if (newAllocSize == prevAllocSize) { return; } //no work to do
+	
+	bool didLock = false;
+	if (IsValidGyMutex(&arena->mutex)) { LockGyMutex(&arena->mutex); didLock = true; }
 	
 	switch (arena->type)
 	{
@@ -3206,6 +3357,8 @@ void GrowMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, u6
 			AssertMsg(false, "Unsupported arena type in GrowMemQuery. Maybe the arena is corrupted?");
 		} break;
 	}
+	
+	if (didLock) { UnlockGyMutex(&arena->mutex); }
 }
 
 // +--------------------------------------------------------------+
@@ -3218,6 +3371,9 @@ void ShrinkMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, 
 	Assert(newAllocSize <= prevAllocSize);
 	Assert(newAllocSize > 0);
 	if (prevAllocSize == newAllocSize) { return; }
+	
+	bool didLock = false;
+	if (IsValidGyMutex(&arena->mutex)) { LockGyMutex(&arena->mutex); didLock = true; }
 	
 	switch (arena->type)
 	{
@@ -3421,6 +3577,8 @@ void ShrinkMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, 
 			AssertMsg(false, "Unsupported arena type in ShrinkMem. Maybe the arena is corrupted?");
 		} break;
 	}
+	
+	if (didLock) { UnlockGyMutex(&arena->mutex); }
 }
 
 // +--------------------------------------------------------------+
@@ -3429,6 +3587,9 @@ void ShrinkMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, 
 void FreeMemArena(MemArena_t* arena)
 {
 	NotNull(arena);
+	
+	if (IsValidGyMutex(&arena->mutex)) { FreeGyMutex(&arena->mutex); }
+	
 	switch (arena->type)
 	{
 		// +==================================+
@@ -3514,6 +3675,10 @@ void FreeMemArena(MemArena_t* arena)
 void ClearMemArena(MemArena_t* arena)
 {
 	NotNull(arena);
+	
+	bool didLock = false;
+	if (IsValidGyMutex(&arena->mutex)) { LockGyMutex(&arena->mutex); didLock = true; }
+	
 	switch (arena->type)
 	{
 		// +==================================+
@@ -3605,6 +3770,8 @@ void ClearMemArena(MemArena_t* arena)
 		
 		default: AssertMsg(false, "Tried to ClearMemArena on arena that doesn't know how to clear itself"); break;
 	}
+	
+	if (didLock) { UnlockGyMutex(&arena->mutex); }
 }
 
 // +--------------------------------------------------------------+
@@ -3614,6 +3781,9 @@ u64 PushMemMark(MemArena_t* arena)
 {
 	NotNull(arena);
 	u64 result = 0;
+	
+	bool didLock = false;
+	if (IsValidGyMutex(&arena->mutex)) { LockGyMutex(&arena->mutex); didLock = true; }
 	
 	switch (arena->type)
 	{
@@ -3632,6 +3802,7 @@ u64 PushMemMark(MemArena_t* arena)
 			{
 				GyLibPrintLine_E("Tried to push mark %llu onto marked stack which only has support for %llu marks", stackHeader->numMarks+1, stackHeader->maxNumMarks);
 				AssertMsg(false, "Too many marks pushed onto a MarkedStack");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return 0;
 			}
 			
@@ -3660,6 +3831,7 @@ u64 PushMemMark(MemArena_t* arena)
 			{
 				GyLibPrintLine_E("Tried to push mark %llu onto paged stack which only has support for %llu marks", firstPage->numMarks+1, firstPage->maxNumMarks);
 				AssertMsg(false, "Too many marks pushed onto a PagedStack");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return 0;
 			}
 			
@@ -3689,6 +3861,7 @@ u64 PushMemMark(MemArena_t* arena)
 			{
 				GyLibPrintLine_E("Tried to push mark %llu onto virtual stack which only has support for %llu marks", stackHeader->numMarks+1, stackHeader->maxNumMarks);
 				AssertMsg(false, "Too many marks pushed onto a VirtualStack");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return 0;
 			}
 			
@@ -3706,12 +3879,16 @@ u64 PushMemMark(MemArena_t* arena)
 		default: AssertMsg(false, "Tried to PushMemMark on arena that doesn't support pushing and popping"); break;
 	}
 	
+	if (didLock) { UnlockGyMutex(&arena->mutex); }
 	return result;
 }
 
 void PopMemMark(MemArena_t* arena, u64 mark = 0xFFFFFFFFFFFFFFFFULL)
 {
 	NotNull(arena);
+	
+	bool didLock = false;
+	if (IsValidGyMutex(&arena->mutex)) { LockGyMutex(&arena->mutex); didLock = true; }
 	
 	switch (arena->type)
 	{
@@ -3730,6 +3907,7 @@ void PopMemMark(MemArena_t* arena, u64 mark = 0xFFFFFFFFFFFFFFFFULL)
 			{
 				GyLibWriteLine_E("Tried to pop stack mark when no marks were left");
 				AssertMsg(false, "Tried to pop too many times on a MarkedStack");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return;
 			}
 			
@@ -3755,6 +3933,7 @@ void PopMemMark(MemArena_t* arena, u64 mark = 0xFFFFFFFFFFFFFFFFULL)
 			{
 				GyLibWriteLine_E("Tried to pop stack mark when no marks were left");
 				AssertMsg(false, "Tried to pop too many times on a MarkedStack");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return;
 			}
 			
@@ -3819,6 +3998,7 @@ void PopMemMark(MemArena_t* arena, u64 mark = 0xFFFFFFFFFFFFFFFFULL)
 			{
 				GyLibWriteLine_E("Tried to pop stack mark when no marks were left");
 				AssertMsg(false, "Tried to pop too many times on a VirtualStack");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
 				return;
 			}
 			
@@ -3832,6 +4012,8 @@ void PopMemMark(MemArena_t* arena, u64 mark = 0xFFFFFFFFFFFFFFFFULL)
 		
 		default: AssertMsg(false, "Tried to PopMemMark on arena that doesn't support pushing and popping"); break;
 	}
+	
+	if (didLock) { UnlockGyMutex(&arena->mutex); }
 }
 
 // +--------------------------------------------------------------+
