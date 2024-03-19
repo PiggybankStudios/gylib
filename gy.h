@@ -53,6 +53,7 @@ Description:
 #include "gylib/gy_sorting.h"
 #include "gylib/gy_linked_list.h"
 #include "gylib/gy_variable_array.h"
+#include "gylib/gy_id_map.h"
 #include "gylib/gy_str_hash_dictionary.h"
 #include "gylib/gy_word_tree.h"
 #include "gylib/gy_bezier.h"

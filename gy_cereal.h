@@ -9,6 +9,11 @@ Description:
 NOTE: Crl stands for Cereal
 */
 
+//NOTE: "Optional" data is data that was added in later versions of the binary format.
+// The "structSize" member tells us the size of the structure when it was serialized
+// Anything that at an offset above the structSize is considered to be omitted
+// The "optional split" is between the "original" version of the structure and the first optional member
+
 //TODO: Remove array count embedding, let the application handle storing array counts somewhere. Or maybe just give them an option? We would need a callback or something to do a bit of work when the array count is read for the first time
 //TODO: Add support for context values that get deallocated automatically
 //TODO: How do we fill in information from later serialization processes, earlier in the file? Like having file offsets written to a header?
