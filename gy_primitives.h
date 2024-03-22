@@ -21,6 +21,15 @@ Description:
 // +--------------------------------------------------------------+
 // |                          Structures                          |
 // +--------------------------------------------------------------+
+//Face Indices: top=0 right=1 front=2 left=3 back=4 bottom=5 (top face upward is forward, bottom face upward is backward, clockwise faces)
+#define BOX_PRIMITIVE_TOP_FACE_INDEX      0
+#define BOX_PRIMITIVE_RIGHT_FACE_INDEX    1
+#define BOX_PRIMITIVE_FRONT_FACE_INDEX    2
+#define BOX_PRIMITIVE_LEFT_FACE_INDEX     3
+#define BOX_PRIMITIVE_BACK_FACE_INDEX     4
+#define BOX_PRIMITIVE_BOTTOM_FACE_INDEX   5
+#define BOX_PRIMITIVE_INDICES_PER_FACE    6
+
 union PrimitiveVert3D_t
 {
 	v3 position;
@@ -916,7 +925,7 @@ void InvertPrimitiveVerts(PrimitiveIndexedVerts_t* indexedVerts)
 
 //NOTE: Passing nullptr for memArena in these functions will fill out the result struct with numVertices, numIndices, and numFaces but nothing else
 
-//Face Indices: top=0 right=1 front=2 left=3 back=4 bottom=5 (top face upward is forward, bottom face upward is backward, clockwise faces)
+// See BOX_PRIMITIVE_TOP_FACE_INDEX and similar defines above
 PrimitiveIndexedVerts_t GenerateVertsForBox(Box_t boundingBox, MemArena_t* memArena)
 {
 	PrimitiveIndexedVerts_t result = {};
@@ -1235,6 +1244,13 @@ PrimitiveIndexedVerts_t GenerateVertsForDodecohedron(Dodec_t dodec, MemArena_t* 
 // +--------------------------------------------------------------+
 /*
 @Defines
+BOX_PRIMITIVE_TOP_FACE_INDEX
+BOX_PRIMITIVE_RIGHT_FACE_INDEX
+BOX_PRIMITIVE_FRONT_FACE_INDEX
+BOX_PRIMITIVE_LEFT_FACE_INDEX
+BOX_PRIMITIVE_BACK_FACE_INDEX
+BOX_PRIMITIVE_BOTTOM_FACE_INDEX
+BOX_PRIMITIVE_INDICES_PER_FACE
 PENTAGON_NUM_EDGES
 PENTAGON_NUM_VERTICES
 PENTAGON_ANGLE_STEP32
