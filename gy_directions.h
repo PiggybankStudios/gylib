@@ -188,17 +188,21 @@ enum Axis_t
 	v3i ToVec3i(Axis_t axis);
 	Dir2_t ToDir2(v2 vector);
 	Dir2_t ToDir2(v2i vector);
+	Dir2_t ToDir2(Axis_t axis, bool positive = true);
 	Dir3_t ToDir3(v3 vector);
 	Dir3_t ToDir3(v3i vector);
+	Dir3_t ToDir3(Axis_t axis, bool positive = true);
 	bool IsToDir3Ambiguous(v3i vector);
 	Axis_t GetDir2Axis(Dir2_t dir2);
 	Axis_t GetDir3Axis(Dir3_t dir3);
 	Dir2Ex_t Dir2ExFromDir2Flags(u8 dirFlags);
 	u8 Dir2FlagsFromDir2Ex(Dir2Ex_t dir2ex);
+	bool IsDir2Positive(Dir2_t dir2);
 	bool IsSingleDir2(Dir2_t dir2, bool allowNone = false);
 	bool IsSingleDir2Ex(Dir2Ex_t dir2ex, bool allowNone = false);
 	bool IsCardinalDir2Ex(Dir2Ex_t dir2ex, bool allowNone = false);
 	bool IsDiagonalDir2Ex(Dir2Ex_t dir2ex, bool allowNone = false);
+	bool IsDir3Positive(Dir3_t dir3);
 	bool IsSingleDir3(Dir3_t dir3, bool allowNone = false);
 	bool IsSingleDir3Ex(Dir3Ex_t dir3ex, bool allowNone = false);
 	bool IsCardinalDir3Ex(Dir3Ex_t dir3ex, bool allowNone = false);
@@ -425,6 +429,15 @@ Dir2_t ToDir2(v2i vector)
 		else { return Dir2_Down; }
 	}
 }
+Dir2_t ToDir2(Axis_t axis, bool positive = true)
+{
+	switch (axis)
+	{
+		case Axis_X: return positive ? Dir2_Right : Dir2_Left;
+		case Axis_Y: return positive ? Dir2_Down  : Dir2_Up;
+		default: return Dir2_None;
+	}
+}
 
 Dir3_t ToDir3(v3 vector)
 {
@@ -468,6 +481,16 @@ Dir3_t ToDir3(v3i vector)
 	{
 		if (vector.z < 0) { return Dir3_Backward; }
 		else { return Dir3_Forward; }
+	}
+}
+Dir3_t ToDir3(Axis_t axis, bool positive = true)
+{
+	switch (axis)
+	{
+		case Axis_X: return (positive ? Dir3_Right   : Dir3_Left);
+		case Axis_Y: return (positive ? Dir3_Up      : Dir3_Down);
+		case Axis_Z: return (positive ? Dir3_Forward : Dir3_Backward);
+		default: return Dir3_None;
 	}
 }
 bool IsToDir3Ambiguous(v3i vector)
@@ -549,6 +572,11 @@ u8 Dir2FlagsFromDir2Ex(Dir2Ex_t dir2ex)
 // +--------------------------------------------------------------+
 // |                     Validation Functions                     |
 // +--------------------------------------------------------------+
+bool IsDir2Positive(Dir2_t dir2)
+{
+	return (dir2 == Dir2_Right || dir2 == Dir2_Down);
+}
+
 bool IsSingleDir2(Dir2_t dir2, bool allowNone = false)
 {
 	if (dir2 == Dir2_None && allowNone) { return true; }
@@ -589,6 +617,11 @@ bool IsDiagonalDir2Ex(Dir2Ex_t dir2ex, bool allowNone = false)
 	if (dir2ex == Dir2Ex_BottomRight) { return true; }
 	if (dir2ex == Dir2Ex_BottomLeft)  { return true; }
 	return false;
+}
+
+bool IsDir3Positive(Dir3_t dir3)
+{
+	return (dir3 == Dir3_Right || dir3 == Dir3_Up || dir3 == Dir3_Forward);
 }
 
 bool IsSingleDir3(Dir3_t dir3, bool allowNone = false)
@@ -1559,10 +1592,12 @@ Axis_t GetDir2Axis(Dir2_t dir2)
 Axis_t GetDir3Axis(Dir3_t dir3)
 Dir2Ex_t Dir2ExFromDir2Flags(u8 dirFlags)
 u8 Dir2FlagsFromDir2Ex(Dir2Ex_t dir2ex)
+bool IsDir2Positive(Dir2_t dir2)
 bool IsSingleDir2(Dir2_t dir2, bool allowNone = false)
 bool IsSingleDir2Ex(Dir2Ex_t dir2ex, bool allowNone = false)
 bool IsCardinalDir2Ex(Dir2Ex_t dir2ex, bool allowNone = false)
 bool IsDiagonalDir2Ex(Dir2Ex_t dir2ex, bool allowNone = false)
+bool IsDir3Positive(Dir3_t dir3)
 bool IsSingleDir3(Dir3_t dir3, bool allowNone = false)
 bool IsSingleDir3Ex(Dir3Ex_t dir3ex, bool allowNone = false)
 bool IsCardinalDir3Ex(Dir3Ex_t dir3ex, bool allowNone = false)
