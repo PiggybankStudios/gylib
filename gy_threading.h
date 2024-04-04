@@ -28,12 +28,12 @@ bool TryLockGyMutex(GyMutex_t* mutex, u32 timeout);
 void LockGyMutex(GyMutex_t* mutex);
 void UnlockGyMutex(GyMutex_t* mutex);
 #else // !GYLIB_HEADER_ONLY
-void InitGyMutex(GyMutex_t* mutex) { } // Stub Function
-void FreeGyMutex(GyMutex_t* mutex) { } // Stub Function
-bool IsValidGyMutex(GyMutex_t* mutex) { return false; }
-bool TryLockGyMutex(GyMutex_t* mutex, u32 timeout) { return false; } // Stub Function
-void LockGyMutex(GyMutex_t* mutex) { } // Stub Function
-void UnlockGyMutex(GyMutex_t* mutex) { } // Stub Function
+void InitGyMutex(GyMutex_t* mutex) { UNUSED(mutex); } // Stub Function
+void FreeGyMutex(GyMutex_t* mutex) { UNUSED(mutex); } // Stub Function
+bool IsValidGyMutex(GyMutex_t* mutex) { UNUSED(mutex); return false; }
+bool TryLockGyMutex(GyMutex_t* mutex, u32 timeout) { UNUSED(mutex); UNUSED(timeout); return false; } // Stub Function
+void LockGyMutex(GyMutex_t* mutex) { UNUSED(mutex); } // Stub Function
+void UnlockGyMutex(GyMutex_t* mutex) { UNUSED(mutex); } // Stub Function
 #endif // GYLIB_HEADER_ONLY
 
 #endif // GYLIB_THREADING_ENABLED
