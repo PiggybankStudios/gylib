@@ -2674,7 +2674,7 @@ void* ReallocMem_(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize, 
 			{
 				// if (oldSize == 0) { oldSize = GetAllocSize(arena, allocPntr); } //TODO: Uncomment me!
 				Assert(oldSize != 0);
-				MyMemCopy(result, allocPntr, oldSize);
+				MyMemCopy(result, allocPntr, MinU64(oldSize, newSize));
 			}
 			{
 				u64 reportedOldSize = oldSize;
