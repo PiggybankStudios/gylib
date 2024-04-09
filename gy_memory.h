@@ -296,6 +296,8 @@ while(0)
 	bool DoesMemArenaSupportFreeing(MemArena_t* arena);
 	bool DoesMemArenaSupportPushAndPop(MemArena_t* arena);
 	u64 GetNumMarks(MemArena_t* arena);
+	bool TryGetAllocSize(const MemArena_t* arena, const void* allocPntr, u64* sizeOut = nullptr);
+	u64 GetAllocSize(const MemArena_t* arena, const void* allocPntr);
 	#if GYLIB_MEM_ARENA_DEBUG_ENABLED
 	void StoreAllocInfo(const MemArena_t* refArena, MemArena_t* arena, void* allocPntr, u64 allocSize, const char* filePath, u64 lineNumber, const char* funcName);
 	MemArenaAllocInfo_t* FindAllocInfoFor(MemArena_t* arena, void* allocPntr);
@@ -710,6 +712,106 @@ u64 GetNumMarks(MemArena_t* arena)
 	}
 	
 	if (didLock) { UnlockGyMutex(&arena->mutex); }
+	return result;
+}
+
+bool TryGetAllocSize(const MemArena_t* arena, const void* allocPntr, u64* sizeOut = nullptr)
+{
+	NotNull(arena);
+	Assert(arena->type != MemArenaType_None);
+	NotNull(allocPntr);
+	
+	switch (arena->type)
+	{
+		// +==================================+
+		// | MemArenaType_Alias GetAllocSize  |
+		// +==================================+
+		case MemArenaType_Alias:
+		{
+			return TryGetAllocSize(arena->sourceArena, allocPntr, sizeOut);
+		} break;
+		
+		// +======================================+
+		// | MemArenaType_FixedHeap GetAllocSize  |
+		// +======================================+
+		case MemArenaType_FixedHeap:
+		{
+			u64 allocOffset = 0;
+			u8* allocBytePntr = (u8*)arena->mainPntr;
+			while (allocOffset < arena->size)
+			{
+				NotNull(allocBytePntr);
+				HeapAllocPrefix_t* allocPrefix = (HeapAllocPrefix_t*)allocBytePntr;
+				u8* allocAfterPrefixPntr = (allocBytePntr + sizeof(HeapAllocPrefix_t));
+				bool isSectionFilled = IsAllocPrefixFilled(allocPrefix->size);
+				u64 allocSize = UnpackAllocPrefixSize(allocPrefix->size);
+				u64 allocAfterPrefixSize = allocSize - sizeof(HeapAllocPrefix_t);
+				if (IsPntrWithin(allocPrefix, allocSize, allocPntr))
+				{
+					AssertMsg((u8*)allocPntr >= allocAfterPrefixPntr, "Tried to GetAllocSize on a pointer that pointed into a FixedHeap header. This is a corrupt pointer!");
+					//TODO: Check if the allocation was actually aligned. Be more strict if it wasn't aligned
+					AssertMsg((u8*)allocPntr <= allocAfterPrefixPntr + OffsetToAlign(allocAfterPrefixPntr, AllocAlignment_Max), "Tried to GetAllocSize on a pointer that pointed to the middle of a FixedHeap section. This is a corrupt pointer!");
+					AssertMsg(isSectionFilled, "Tried to GetAllocSize on a pntr that was previously freed in FixedHeap");
+					SetOptionalOutPntr(sizeOut, allocAfterPrefixSize);
+					return true;
+				}
+				allocOffset += allocSize;
+				allocBytePntr += allocSize;
+			}
+			return false;
+		} break;
+		
+		// +======================================+
+		// | MemArenaType_PagedHeap GetAllocSize  |
+		// +======================================+
+		case MemArenaType_PagedHeap:
+		{
+			HeapPageHeader_t* pageHeader = (HeapPageHeader_t*)arena->headerPntr;
+			while (pageHeader != nullptr)
+			{
+				u8* pageBase = (u8*)(pageHeader + 1);
+				if (IsPntrWithin(pageBase, pageHeader->size, allocPntr))
+				{
+					u64 allocOffset = 0;
+					u8* allocBytePntr = pageBase;
+					while (allocOffset < pageHeader->size)
+					{
+						HeapAllocPrefix_t* prefixPntr = (HeapAllocPrefix_t*)allocBytePntr;
+						u8* afterPrefixPntr = (allocBytePntr + sizeof(HeapAllocPrefix_t));
+						bool isSectionFilled = IsAllocPrefixFilled(prefixPntr->size);
+						u64 sectionSize = UnpackAllocPrefixSize(prefixPntr->size);
+						AssertMsg(sectionSize >= sizeof(HeapAllocPrefix_t), "Found an allocation header that claimed to be smaller than the header itself in Paged Heap");
+						u64 afterPrefixSize = sectionSize - sizeof(HeapAllocPrefix_t);
+						
+						if (IsPntrWithin(allocBytePntr, sectionSize, allocPntr))
+						{
+							AssertMsg((u8*)allocPntr >= afterPrefixPntr, "Tried to GetAllocSize on a pointer that pointed into a Paged Heap header. This is a corrupt pointer!");
+							//TODO: Check if the allocation was actually aligned. Be more strict if it wasn't aligned
+							AssertMsg((u8*)allocPntr <= afterPrefixPntr + OffsetToAlign(afterPrefixPntr, AllocAlignment_Max), "Tried to GetAllocSize on a pointer that pointed to the middle of a Paged Heap section. This is a corrupt pointer!");
+							AssertMsg(isSectionFilled, "Tried to GetAllocSize on a pntr that was previously freed in PagedHeap");
+							SetOptionalOutPntr(sizeOut, afterPrefixSize);
+							return true;
+						}
+						
+						allocOffset += sectionSize;
+						allocBytePntr += sectionSize;
+					}
+					AssertMsg(false, "We have a bug in our GetAllocSize walk. Couldn't find section that contained the pntr in this page!");
+					return false;
+				}
+				pageHeader = pageHeader->next;
+			}
+			return false;
+		} break;
+		
+		default: AssertMsg(false, "Tried to GetAllocSize on a MemArenaType that does not track allocation sizes!"); return false;
+	}
+}
+u64 GetAllocSize(const MemArena_t* arena, const void* allocPntr)
+{
+	u64 result = 0;
+	bool gotSize = TryGetAllocSize(arena, allocPntr, &result);
+	Assert(gotSize);
 	return result;
 }
 
@@ -2646,6 +2748,7 @@ void* ReallocMem_(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize, 
 			#else
 			result = (u8*)AllocMem(arena, newSize, alignOverride);
 			#endif
+			
 			if (result == nullptr)
 			{
 				if (allocPntr != nullptr)
@@ -2667,15 +2770,18 @@ void* ReallocMem_(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize, 
 					decreasingSize = (newSize < oldSize);
 					sizeChangeAmount = (newSize >= oldSize) ? (newSize - oldSize) : (oldSize - newSize);
 				}
-				if (oldSizeOut != nullptr) { *oldSizeOut = oldSize; }
+				SetOptionalOutPntr(oldSizeOut, oldSize);
 				break;
 			}
+			
 			if (allocPntr != nullptr)
 			{
-				// if (oldSize == 0) { oldSize = GetAllocSize(arena, allocPntr); } //TODO: Uncomment me!
-				Assert(oldSize != 0);
+				if (oldSize == 0) { oldSize = GetAllocSize(arena, allocPntr); }
+				// Assert(oldSize != 0);
 				MyMemCopy(result, allocPntr, MinU64(oldSize, newSize));
 			}
+			
+			if (allocPntr != nullptr)
 			{
 				u64 reportedOldSize = oldSize;
 				bool freeSuccess = FreeMem(arena, allocPntr, oldSize, ignoreNullptr, &reportedOldSize);
@@ -2689,11 +2795,13 @@ void* ReallocMem_(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize, 
 					AssertMsg(AbsDiffU64(oldSize, reportedOldSize) <= allowedSlop, "Given size did not match actual allocation size in Fixed Heap during ReallocMem. This is a memory management bug");
 				}
 				oldSize = reportedOldSize;
-				increasingSize = (newSize > oldSize);
-				decreasingSize = (newSize < oldSize);
-				sizeChangeAmount = (newSize >= oldSize) ? (newSize - oldSize) : (oldSize - newSize);
-				if (oldSizeOut != nullptr) { *oldSizeOut = oldSize; }
+				SetOptionalOutPntr(oldSizeOut, oldSize);
 			}
+			else { Assert(oldSize == 0); }
+			
+			increasingSize = (newSize > oldSize);
+			decreasingSize = (newSize < oldSize);
+			sizeChangeAmount = (newSize >= oldSize) ? (newSize - oldSize) : (oldSize - newSize);
 		} break;
 		
 		// +==================================+
@@ -4116,6 +4224,8 @@ bool DoesMemArenaSupportFreeing(MemArena_t* arena)
 bool DoesMemArenaSupportPushAndPop(MemArena_t* arena)
 bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 u64 GetNumMarks(MemArena_t* arena)
+bool TryGetAllocSize(const MemArena_t* arena, const void* allocPntr, u64* sizeOut = nullptr)
+u64 GetAllocSize(const MemArena_t* arena, const void* allocPntr)
 void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride = AllocAlignment_None)
 #define AllocStruct(arena, structName)
 #define AllocArray(arena, structName, numItems)
