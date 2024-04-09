@@ -104,6 +104,7 @@ enum AllocAlignment_t
 };
 
 typedef void* AllocationFunction_f(u64 numBytes);
+typedef void* ReallocFunction_f(void* memPntr, u64 newSize);
 typedef void FreeFunction_f(void* memPntr);
 
 #define HEAP_ALLOC_FILLED_FLAG 0x8000000000000000ULL
@@ -168,6 +169,7 @@ struct MemArena_t
 	void* mainPntr;
 	void* otherPntr;
 	AllocationFunction_f* allocFunc;
+	ReallocFunction_f* reallocFunc;
 	FreeFunction_f* freeFunc;
 	MemArena_t* sourceArena;
 	#if GYLIB_MEM_ARENA_DEBUG_ENABLED
@@ -283,7 +285,7 @@ while(0)
 	bool IsAlignedTo(const void* memoryPntr, AllocAlignment_t alignment);
 	u8 OffsetToAlign(const void* memoryPntr, AllocAlignment_t alignment);
 	bool IsPntrInsideRange(const void* testPntr, const void* rangeBase, u64 rangeSize, bool inclusive = false);
-	void InitMemArena_Redirect(MemArena_t* arena, AllocationFunction_f* allocFunc, FreeFunction_f* freeFunc);
+	void InitMemArena_Redirect(MemArena_t* arena, AllocationFunction_f* allocFunc, FreeFunction_f* freeFunc, ReallocFunction_f* reallocFunc = nullptr);
 	void InitMemArena_Alias(MemArena_t* arena, MemArena_t* sourceArena);
 	void InitMemArena_StdHeap(MemArena_t* arena);
 	void InitMemArena_FixedHeap(MemArena_t* arena, u64 size, void* memoryPntr, AllocAlignment_t alignment = AllocAlignment_None);
@@ -293,7 +295,7 @@ while(0)
 	void InitMemArena_PagedStackFuncs(MemArena_t* arena, u64 pageSize, AllocationFunction_f* allocFunc, FreeFunction_f* freeFunc, u64 maxNumMarks, AllocAlignment_t alignment = AllocAlignment_None);
 	void InitMemArena_VirtualStack(MemArena_t* arena, u64 maxSize, u64 maxNumMarks, AllocAlignment_t alignment = AllocAlignment_None);
 	void InitMemArena_Buffer(MemArena_t* arena, u64 bufferSize, void* bufferPntr, bool singleAlloc = false, AllocAlignment_t alignment = AllocAlignment_None);
-	void UpdateMemArenaFuncPntrs(MemArena_t* arena, AllocationFunction_f* allocFunc, FreeFunction_f* freeFunc);
+	void UpdateMemArenaFuncPntrs(MemArena_t* arena, AllocationFunction_f* allocFunc, FreeFunction_f* freeFunc, ReallocFunction_f* reallocFunc = nullptr);
 	bool IsInitialized(const MemArena_t* arena);
 	bool DoesMemArenaSupportFreeing(MemArena_t* arena);
 	bool DoesMemArenaSupportPushAndPop(MemArena_t* arena);
@@ -353,13 +355,14 @@ bool IsPntrInsideRange(const void* testPntr, const void* rangeBase, u64 rangeSiz
 // +--------------------------------------------------------------+
 // |                        Init Functions                        |
 // +--------------------------------------------------------------+
-void InitMemArena_Redirect(MemArena_t* arena, AllocationFunction_f* allocFunc, FreeFunction_f* freeFunc)
+void InitMemArena_Redirect(MemArena_t* arena, AllocationFunction_f* allocFunc, FreeFunction_f* freeFunc, ReallocFunction_f* reallocFunc = nullptr)
 {
 	NotNull(arena);
 	NotNull(allocFunc);
 	ClearPointer(arena);
 	arena->type = MemArenaType_Redirect;
 	arena->allocFunc = allocFunc;
+	arena->reallocFunc = reallocFunc;
 	arena->freeFunc = freeFunc;
 	arena->used = 0; //NOTE: This only tracks allocations, not deallocations, so it only goes up
 	arena->numAllocations = 0;
@@ -621,10 +624,12 @@ void InitMemArena_Buffer(MemArena_t* arena, u64 bufferSize, void* bufferPntr, bo
 
 #define CreateBufferArenaOnStack(arenaName, bufferName, size) MemArena_t arenaName; u8 bufferName[size]; InitMemArena_Buffer(&arenaName, (size), &bufferName[0])
 
-void UpdateMemArenaFuncPntrs(MemArena_t* arena, AllocationFunction_f* allocFunc, FreeFunction_f* freeFunc)
+void UpdateMemArenaFuncPntrs(MemArena_t* arena, AllocationFunction_f* allocFunc, FreeFunction_f* freeFunc, ReallocFunction_f* reallocFunc = nullptr)
 {
 	Assert(arena->type == MemArenaType_Redirect || arena->type == MemArenaType_PagedHeap);
+	Assert((arena->reallocFunc != nullptr) == (reallocFunc != nullptr));
 	arena->allocFunc = allocFunc;
+	arena->reallocFunc = reallocFunc;
 	arena->freeFunc = freeFunc;
 }
 
@@ -730,6 +735,7 @@ bool TryGetAllocSize(const MemArena_t* arena, const void* allocPntr, u64* sizeOu
 		// +==================================+
 		case MemArenaType_Alias:
 		{
+			NotNull(arena->sourceArena);
 			return TryGetAllocSize(arena->sourceArena, allocPntr, sizeOut);
 		} break;
 		
@@ -1058,17 +1064,29 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 		// +======================================+
 		// | MemArenaType_Redirect MemArenaVerify |
 		// +======================================+
-		// case MemArenaType_Redirect:
-		// {
-		// 	//TODO: Implement me!
-		// } break;
+		case MemArenaType_Redirect:
+		{
+			if (arena->allocFunc == nullptr)
+			{
+				AssertIfMsg(assertOnFailure, false, "Redirect arena has nullptr allocFunc!");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
+				return false;
+			}
+			if (arena->freeFunc == nullptr)
+			{
+				AssertIfMsg(assertOnFailure, false, "Redirect arena has nullptr freeFunc!");
+				if (didLock) { UnlockGyMutex(&arena->mutex); }
+				return false;
+			}
+		} break;
 		
 		// +====================================+
 		// | MemArenaType_Alias MemArenaVerify  |
 		// +====================================+
 		case MemArenaType_Alias:
 		{
-			//TODO: Implement me!
+			NotNull(arena->sourceArena);
+			return MemArenaVerify(arena->sourceArena, assertOnFailure);
 		} break;
 		
 		// +======================================+
@@ -2756,6 +2774,12 @@ void* ReallocMem_(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize, 
 		case MemArenaType_PagedHeap:
 		case MemArenaType_Buffer:
 		{
+			if (arena->type == MemArenaType_Redirect && arena->reallocFunc != nullptr)
+			{
+				result = (u8*)arena->reallocFunc(allocPntr, newSize);
+				break;
+			}
+			
 			#if GYLIB_MEM_ARENA_DEBUG_ENABLED
 			result = (u8*)AllocMem_(filePath, lineNumber, funcName, arena, newSize, alignOverride);
 			#else
@@ -2816,14 +2840,6 @@ void* ReallocMem_(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize, 
 			decreasingSize = (newSize < oldSize);
 			sizeChangeAmount = (newSize >= oldSize) ? (newSize - oldSize) : (oldSize - newSize);
 		} break;
-		
-		// +==================================+
-		// | MemArenaType_Redirect ReallocMem |
-		// +==================================+
-		// case MemArenaType_Redirect:
-		// {
-		// 	//TODO: Implement me, and remove from above!
-		// } break;
 		
 		// +===============================+
 		// | MemArenaType_Alias ReallocMem |
@@ -4217,6 +4233,7 @@ HeapPageHeader_t
 MarkedStackArenaHeader_t
 MemArena_t
 AllocationFunction_f
+ReallocFunction_f
 FreeFunction_f
 @Functions
 const char* GetMemArenaTypeStr(MemArenaType_t arenaType)
@@ -4228,7 +4245,7 @@ u8 OffsetToAlign(const void* memoryPntr, AllocAlignment_t alignment)
 bool IsPntrInsideRange(const void* testPntr, const void* rangeBase, u64 rangeSize, bool inclusive = false)
 void FreeMemArena(MemArena_t* arena)
 void ClearMemArena(MemArena_t* arena)
-void InitMemArena_Redirect(MemArena_t* arena, AllocationFunction_f* allocFunc, FreeFunction_f* freeFunc)
+void InitMemArena_Redirect(MemArena_t* arena, AllocationFunction_f* allocFunc, FreeFunction_f* freeFunc, ReallocFunction_f* reallocFunc = nullptr)
 void InitMemArena_Alias(MemArena_t* arena, MemArena_t* sourceArena)
 void InitMemArena_StdHeap(MemArena_t* arena)
 void InitMemArena_FixedHeap(MemArena_t* arena, u64 size, void* memoryPntr, AllocAlignment_t alignment = AllocAlignment_None)
