@@ -121,6 +121,7 @@ struct SplitStringContext_t
 #define NewStringInArenaNt(arena, nullTermStr)    NewStr(MyStrLength64(nullTermStr), AllocCharsAndFillNt((arena), (nullTermStr)))
 
 #define FreeString(arena, strPntr) do { NotNullStr(strPntr); if ((strPntr)->pntr != nullptr) { FreeMem((arena), (strPntr)->pntr, (strPntr)->length+1); (strPntr)->pntr = nullptr; (strPntr)->length = 0; } } while(0)
+#define FreeWideString(arena, wideStrPntr) do { NotNullStr(wideStrPntr); if ((wideStrPntr)->pntr != nullptr) { FreeMem((arena), (wideStrPntr)->pntr, sizeof(wchar_t) * ((wideStrPntr)->length+1)); (wideStrPntr)->pntr = nullptr; (wideStrPntr)->length = 0; } } while(0)
 
 // +==============================+
 // |         Print Macros         |
@@ -491,7 +492,7 @@ MyWideStr_t ConvertUtf8StrToUcs2(MemArena_t* memArena, MyStr_t utf8Str)
 	}
 	
 	MyWideStr_t result;
-	result.words = AllocArray(memArena, u16, numWordsNeeded);
+	result.words = AllocArray(memArena, u16, numWordsNeeded+1);
 	result.length = 0;
 	if (result.words == nullptr) { return result; }
 	
@@ -515,6 +516,7 @@ MyWideStr_t ConvertUtf8StrToUcs2(MemArena_t* memArena, MyStr_t utf8Str)
 	}
 	
 	Assert(result.length == numWordsNeeded);
+	result.chars[result.length] = 0;
 	return result;
 }
 
@@ -2313,6 +2315,7 @@ bool BufferIsNullTerminated(u64 bufferSize, const char* bufferPntr)
 #define NewStringInArena(arena, length, charPntr)
 #define NewStringInArenaNt(arena, nullTermStr)
 #define FreeString(arena, strPntr)
+#define FreeWideString(arena, wideStrPntr)
 #define StrPrint(myStrStruct)
 #define StrPntrPrint(myStrPntr)
 MyStr_t PrintInArenaStr(MemArena_t* arena, const char* formatString, ...)
