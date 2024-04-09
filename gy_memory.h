@@ -134,7 +134,7 @@ enum MemArenaFlag_t
 	MemArenaFlag_TelemetryEnabled = 0x0001,
 	MemArenaFlag_SingleAlloc      = 0x0002,
 	MemArenaFlag_AutoFreePages    = 0x0004,
-	// MemArenaFlag_Unused           = 0x0008,
+	MemArenaFlag_TrackTime        = 0x0008,
 	MemArenaFlag_BreakOnAlloc     = 0x0010,
 	MemArenaFlag_BreakOnFree      = 0x0020,
 	MemArenaFlag_BreakOnRealloc   = 0x0040,
@@ -153,6 +153,8 @@ struct MemArena_t
 	u64 maxSize;
 	u64 maxNumPages;
 	u64 debugBreakThreshold;
+	PerfTimeTotal_t totalTimeSpentAllocating;
+	u64 totalTimedAllocationActions;
 	
 	u64 size;
 	u64 used;
@@ -1740,6 +1742,9 @@ void* AllocMem_(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride)
 	NotNull(arena);
 	AssertMsg(arena->type != MemArenaType_None, "Tried to allocate from uninitialized arena");
 	
+	PerfTime_t startTime;
+	if (IsFlagSet(arena->flags, MemArenaFlag_TrackTime)) { startTime = GetPerfTime(); }
+	
 	bool didLock = false;
 	if (IsValidGyMutex(&arena->mutex)) { LockGyMutex(&arena->mutex); didLock = true; }
 	
@@ -1982,21 +1987,13 @@ void* AllocMem_(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride)
 					//NOTE: Intentionally not putting the onus on the sourceArena to align the page. We will align allocations inside the page as requested
 					newPageHeader = (HeapPageHeader_t*)AllocMem(arena->sourceArena, sizeof(HeapPageHeader_t) + newPageSize);
 					// NotNullMsg(newPageHeader, "Failed to allocate new page from arena for paged heap");
-					if (newPageHeader == nullptr)
-					{
-						if (didLock) { UnlockGyMutex(&arena->mutex); }
-						return nullptr;
-					}
+					if (newPageHeader == nullptr) { break; }
 				}
 				else if (arena->allocFunc != nullptr)
 				{
 					newPageHeader = (HeapPageHeader_t*)arena->allocFunc(sizeof(HeapPageHeader_t) + newPageSize);
 					// NotNullMsg(newPageHeader, "Failed to allocate new page for paged heap");
-					if (newPageHeader == nullptr)
-					{
-						if (didLock) { UnlockGyMutex(&arena->mutex); }
-						return nullptr;
-					}
+					if (newPageHeader == nullptr) { break; }
 				}
 				NotNullMsg(newPageHeader, "sourceArena and allocFunc are both not filled!");
 				
@@ -2076,8 +2073,7 @@ void* AllocMem_(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride)
 			u8 alignOffset = OffsetToAlign(((u8*)arena->mainPntr) + arena->used, alignment);
 			if (arena->used + alignOffset + numBytes > arena->size)
 			{
-				if (didLock) { UnlockGyMutex(&arena->mutex); }
-				return nullptr;
+				break;
 			}
 			result = ((u8*)arena->mainPntr) + arena->used + alignOffset;
 			arena->used += alignOffset + numBytes;
@@ -2220,8 +2216,7 @@ void* AllocMem_(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride)
 				}
 				else
 				{
-					if (didLock) { UnlockGyMutex(&arena->mutex); }
-					return nullptr;
+					break;
 				}
 			}
 			result = ((u8*)arena->mainPntr) + arena->used + alignOffset;
@@ -2248,8 +2243,14 @@ void* AllocMem_(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride)
 	if (result != nullptr && arena->debugArena != nullptr) { StoreAllocInfo(arena, arena->debugArena, result, numBytes, filePath, lineNumber, funcName); }
 	#endif
 	
-	AssertMsg(IsAlignedTo(result, alignment), "An arena has a bug where it tried to return mis-aligned memory");
+	AssertIfMsg(result != nullptr, IsAlignedTo(result, alignment), "An arena has a bug where it tried to return mis-aligned memory");
 	if (didLock) { UnlockGyMutex(&arena->mutex); }
+	if (IsFlagSet(arena->flags, MemArenaFlag_TrackTime))
+	{
+		PerfTime_t endTime = GetPerfTime();
+		AddToPerfTimeTotal(&startTime, &endTime, &arena->totalTimeSpentAllocating);
+		IncrementU64(arena->totalTimedAllocationActions);
+	}
 	return (void*)result;
 }
 
@@ -2297,6 +2298,9 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize, bool ignoreNullp
 	AssertMsg(arena->type != MemArenaType_None, "Tried to free from uninitialized arena");
 	Assert(ignoreNullptr || allocPntr != nullptr);
 	if (allocPntr == nullptr) { return false; }
+	
+	PerfTime_t startTime;
+	if (IsFlagSet(arena->flags, MemArenaFlag_TrackTime)) { startTime = GetPerfTime(); }
 	
 	bool didLock = false;
 	if (IsValidGyMutex(&arena->mutex)) { LockGyMutex(&arena->mutex); didLock = true; }
@@ -2687,6 +2691,12 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize, bool ignoreNullp
 	#endif
 	
 	if (didLock) { UnlockGyMutex(&arena->mutex); }
+	if (IsFlagSet(arena->flags, MemArenaFlag_TrackTime))
+	{
+		PerfTime_t endTime = GetPerfTime();
+		AddToPerfTimeTotal(&startTime, &endTime, &arena->totalTimeSpentAllocating);
+		IncrementU64(arena->totalTimedAllocationActions);
+	}
 	return result;
 }
 
@@ -2702,6 +2712,9 @@ void* ReallocMem_(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize, 
 	NotNull(arena);
 	AssertMsg(arena->type != MemArenaType_None, "Tried to realloc from uninitialized arena");
 	Assert(ignoreNullptr || allocPntr != nullptr);
+	
+	PerfTime_t startTime;
+	if (IsFlagSet(arena->flags, MemArenaFlag_TrackTime)) { startTime = GetPerfTime(); }
 	
 	bool didLock = false;
 	if (IsValidGyMutex(&arena->mutex)) { LockGyMutex(&arena->mutex); didLock = true; }
@@ -2850,13 +2863,12 @@ void* ReallocMem_(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize, 
 		case MemArenaType_StdHeap:
 		{
 			AssertMsg(alignment == AllocAlignment_None, "Tried to align memory in StdHeap type arena");
-			result = (u8*)realloc(allocPntr, newSize);
+			result = (u8*)MyRealloc(allocPntr, newSize);
 			if (result == nullptr)
 			{
 				DecrementBy(arena->used, oldSize);
 				Decrement(arena->numAllocations);
-				if (didLock) { UnlockGyMutex(&arena->mutex); }
-				return nullptr;
+				break;
 			}
 			if (increasingSize) { arena->used += sizeChangeAmount; }
 			else if (decreasingSize) { DecrementBy(arena->used, sizeChangeAmount); }
@@ -2935,6 +2947,12 @@ void* ReallocMem_(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize, 
 	#endif
 	
 	if (didLock) { UnlockGyMutex(&arena->mutex); }
+	if (IsFlagSet(arena->flags, MemArenaFlag_TrackTime))
+	{
+		PerfTime_t endTime = GetPerfTime();
+		AddToPerfTimeTotal(&startTime, &endTime, &arena->totalTimeSpentAllocating);
+		IncrementU64(arena->totalTimedAllocationActions);
+	}
 	return result;
 }
 
