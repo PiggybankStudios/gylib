@@ -39,6 +39,7 @@ struct StringBuilder_t
 	MyStr_t TakeString(StringBuilder_t* builder, MemArena_t* memArena = nullptr);
 	void StringBuilderAllocMoreMem(StringBuilder_t* builder, u64 spaceRequired);
 	void StringBuilderClear(StringBuilder_t* builder, bool deallocate = false);
+	void StringBuilderAppendChar(StringBuilder_t* builder, char newChar, u64 numRepetitions = 1);
 	void StringBuilderAppend(StringBuilder_t* builder, MyStr_t str);
 	void StringBuilderAppend(StringBuilder_t* builder, const char* nullTermStr);
 	void StringBuilderAppendLine(StringBuilder_t* builder);
@@ -200,6 +201,41 @@ void StringBuilderClear(StringBuilder_t* builder, bool deallocate = false)
 	{
 		NotNull(builder->chars);
 		builder->chars[0] = '\0';
+	}
+}
+
+void StringBuilderAppendChar(StringBuilder_t* builder, char newChar, u64 numRepetitions = 1)
+{
+	NotNull(builder);
+	if (numRepetitions == 0) { return; } //no work to do
+	
+	u64 normalSpaceAvailable = StringBuilderGetNumUnusedBytes(builder, false);
+	if (normalSpaceAvailable >= numRepetitions)
+	{
+		for (u64 cIndex = 0; cIndex < numRepetitions; cIndex++) { builder->chars[builder->length + cIndex] = newChar; }
+		builder->length += numRepetitions;
+		builder->chars[builder->length] = '\0';
+	}
+	else
+	{
+		GrowMemToken_t growToken = {};
+		u64 growableSpaceAvailable = StringBuilderGetNumUnusedBytes(builder, true, &growToken);
+		if (growableSpaceAvailable >= numRepetitions+1)
+		{
+			u64 numNewBytesUsed = (numRepetitions+1 - normalSpaceAvailable);
+			for (u64 cIndex = 0; cIndex < numRepetitions; cIndex++) { builder->chars[builder->length + cIndex] = newChar; }
+			builder->length += numRepetitions;
+			builder->chars[builder->length] = '\0';
+			GrowMem(builder->allocArena, builder->chars, builder->allocLength, builder->allocLength + numNewBytesUsed, &growToken);
+			builder->allocLength += numNewBytesUsed;
+		}
+		else
+		{
+			StringBuilderAllocMoreMem(builder, builder->length + numRepetitions + 1);
+			for (u64 cIndex = 0; cIndex < numRepetitions; cIndex++) { builder->chars[builder->length + cIndex] = newChar; }
+			builder->length += numRepetitions;
+			builder->chars[builder->length] = '\0';
+		}
 	}
 }
 
@@ -388,6 +424,7 @@ void StringBuilderShrink(StringBuilder_t* builder, bool deallocateIfNoChars = tr
 MyStr_t TakeString(StringBuilder_t* builder, MemArena_t* memArena = nullptr)
 void StringBuilderAllocMoreMem(StringBuilder_t* builder, u64 spaceRequired)
 void StringBuilderClear(StringBuilder_t* builder, bool deallocate = false)
+void StringBuilderAppendChar(StringBuilder_t* builder, char newChar, u64 numRepetitions = 1)
 void StringBuilderAppend(StringBuilder_t* builder, MyStr_t str)
 void StringBuilderAppendLine(StringBuilder_t* builder, const char* nullTermStr = "")
 void StringBuilderSet(StringBuilder_t* builder, MyStr_t str)
