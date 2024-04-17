@@ -42,16 +42,16 @@ struct PerfSectionBundle_t
 #define GetTotalPerfSectionsTime() GetTotalPerfSectionsTime_(&perfSections[0], perfSectionIndex, ArrayCount(perfSections))
 #define BundlePerfSections(memArena, bundleOut) BundlePerfSections_(&perfSections[0], perfSectionIndex, ArrayCount(perfSections), (memArena), (bundleOut))
 
-#define PrintPerfSections(printFunc, linePrefix) do                                                                              \
-{                                                                                                                                \
-	if (ArePerfSectionsEnabled())                                                                                                \
-	{                                                                                                                            \
-		for (u64 sectionIndex = 0; sectionIndex < GetNumPerfSections(); sectionIndex++)                                          \
-		{                                                                                                                        \
-			printFunc("%s%s: %.1lfms", (linePrefix), GetPerfSectionName(sectionIndex), GetPerfSectionTimeByIndex(sectionIndex)); \
-		}                                                                                                                        \
-		printFunc("%sTotal: %.1lfms", (linePrefix), GetTotalPerfSectionsTime());                                                 \
-	}                                                                                                                            \
+#define PrintPerfSections(printFunc, linePrefix) do                                                                \
+{                                                                                                                  \
+	if (ArePerfSectionsEnabled())                                                                                  \
+	{                                                                                                              \
+		printFunc("%s took %.1lfms total:", (linePrefix), GetTotalPerfSectionsTime());                             \
+		for (u64 sectionIndex = 0; sectionIndex < GetNumPerfSections(); sectionIndex++)                            \
+		{                                                                                                          \
+			printFunc("\t%s: %.1lfms", GetPerfSectionName(sectionIndex), GetPerfSectionTimeByIndex(sectionIndex)); \
+		}                                                                                                          \
+	}                                                                                                              \
 } while(0)
 
 // +--------------------------------------------------------------+
