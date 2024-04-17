@@ -176,7 +176,7 @@ u64 GetStringFifoPntrIndex(const StringFifo_t* fifo, const void* pntr)
 {
 	NotNull_(fifo);
 	NotNull_(pntr);
-	Assert_(((const u8*)pntr) >= fifo->buffer && ((const u8*)pntr) < fifo->buffer + fifo->bufferSize);
+	Assert_(((const u8*)pntr) >= fifo->buffer && ((const u8*)pntr) <= fifo->buffer + fifo->bufferSize);
 	return (u64)(((const u8*)pntr) - ((const u8*)fifo->buffer));
 }
 u64 GetStringFifoTailIndex(const StringFifo_t* fifo)

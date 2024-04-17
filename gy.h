@@ -22,6 +22,7 @@ Description:
 #include "gylib/gy_os_defs.h"
 #include "gylib/gy_intrinsics.h"
 #include "gylib/gy_debug.h"
+#include "gylib/gy_standard_names.h"
 #include "gylib/gy_random.h"
 #include "gylib/gy_noise.h"
 #include "gylib/gy_easing.h"
