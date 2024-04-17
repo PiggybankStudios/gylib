@@ -175,6 +175,9 @@ struct MemArena_t
 	#if GYLIB_MEM_ARENA_DEBUG_ENABLED
 	MemArena_t* debugArena;
 	#endif
+	#ifdef _GY_TEST_MEMORY_PREDECLARED //#include gy_test_memory.h with GYLIB_PREDECLARE_ONLY #defined before #including gy_memory.h
+	MemArenaTestSet_t* testSetOut;
+	#endif
 	GyMutex_t mutex;
 };
 
@@ -269,13 +272,13 @@ while(0)
 // +--------------------------------------------------------------+
 // These are pre-declared because there are somewhat cyclical dependencies within this file
 #if GYLIB_MEM_ARENA_DEBUG_ENABLED
-	void* AllocMem_(const char* filePath, u64 lineNumber, const char* funcName, MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride = AllocAlignment_None);
-	void* ReallocMem_(const char* filePath, u64 lineNumber, const char* funcName, MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 0, AllocAlignment_t alignOverride = AllocAlignment_None, bool ignoreNullptr = false, u64* oldSizeOut = nullptr);
-	bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreNullptr = false, u64* oldSizeOut = nullptr);
+	void* AllocMem_(const char* filePath, u64 lineNumber, const char* funcName, MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride = AllocAlignment_None, bool isSubCall = false);
+	void* ReallocMem_(const char* filePath, u64 lineNumber, const char* funcName, MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 0, AllocAlignment_t alignOverride = AllocAlignment_None, bool ignoreNullptr = false, u64* oldSizeOut = nullptr, bool isSubCall = false);
+	bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreNullptr = false, u64* oldSizeOut = nullptr, bool isSubCall = false);
 #else //!GYLIB_MEM_ARENA_DEBUG_ENABLED
-	void* AllocMem_(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride = AllocAlignment_None);
-	void* ReallocMem_(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 0, AllocAlignment_t alignOverride = AllocAlignment_None, bool ignoreNullptr = false, u64* oldSizeOut = nullptr);
-	bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreNullptr = false, u64* oldSizeOut = nullptr);
+	void* AllocMem_(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride = AllocAlignment_None, bool isSubCall = false);
+	void* ReallocMem_(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 0, AllocAlignment_t alignOverride = AllocAlignment_None, bool ignoreNullptr = false, u64* oldSizeOut = nullptr, bool isSubCall = false);
+	bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreNullptr = false, u64* oldSizeOut = nullptr, bool isSubCall = false);
 #endif //GYLIB_MEM_ARENA_DEBUG_ENABLED
 
 // +--------------------------------------------------------------+
@@ -1752,11 +1755,12 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 // |                      Allocate Function                       |
 // +--------------------------------------------------------------+
 #if GYLIB_MEM_ARENA_DEBUG_ENABLED
-void* AllocMem_(const char* filePath, u64 lineNumber, const char* funcName, MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride) //pre-declared at top of file
+void* AllocMem_(const char* filePath, u64 lineNumber, const char* funcName, MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride, bool isSubCall) //pre-declared at top of file
 #else
-void* AllocMem_(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride) //pre-declared at top of file
+void* AllocMem_(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride, bool isSubCall) //pre-declared at top of file
 #endif
 {
+	UNUSED(isSubCall);
 	NotNull(arena);
 	AssertMsg(arena->type != MemArenaType_None, "Tried to allocate from uninitialized arena");
 	
@@ -1813,9 +1817,9 @@ void* AllocMem_(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride)
 		{
 			NotNull(arena->sourceArena);
 			#if GYLIB_MEM_ARENA_DEBUG_ENABLED
-			result = (u8*)AllocMem_(filePath, lineNumber, funcName, arena->sourceArena, numBytes, alignment);
+			result = (u8*)AllocMem_(filePath, lineNumber, funcName, arena->sourceArena, numBytes, alignment, false);
 			#else
-			result = (u8*)AllocMem(arena->sourceArena, numBytes, alignment);
+			result = (u8*)AllocMem(arena->sourceArena, numBytes, alignment, false);
 			#endif
 			if (result == nullptr) { break; }
 			IncrementU64(arena->numAllocations);
@@ -2261,6 +2265,10 @@ void* AllocMem_(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride)
 	if (result != nullptr && arena->debugArena != nullptr) { StoreAllocInfo(arena, arena->debugArena, result, numBytes, filePath, lineNumber, funcName); }
 	#endif
 	
+	#ifdef _GY_TEST_MEMORY_PREDECLARED
+	if (!isSubCall && arena->testSetOut != nullptr) { MemArenaTestSetRecordAllocMemAction(arena->testSetOut, numBytes, alignOverride, result); }
+	#endif
+	
 	AssertIfMsg(result != nullptr, IsAlignedTo(result, alignment), "An arena has a bug where it tried to return mis-aligned memory");
 	if (didLock) { UnlockGyMutex(&arena->mutex); }
 	if (IsFlagSet(arena->flags, MemArenaFlag_TrackTime))
@@ -2310,8 +2318,9 @@ char* AllocCharsAndFillNt(MemArena_t* arena, const char* nullTermStr, bool addNu
 // |                        Free Function                         |
 // +--------------------------------------------------------------+
 //NOTE: oldSizeOut may not be written. In some cases it is written to allocSize if provided and no sanity checks are done
-bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize, bool ignoreNullptr, u64* oldSizeOut) //pre-declared at top of file
+bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize, bool ignoreNullptr, u64* oldSizeOut, bool isSubCall) //pre-declared at top of file
 {
+	UNUSED(isSubCall);
 	NotNull(arena);
 	AssertMsg(arena->type != MemArenaType_None, "Tried to free from uninitialized arena");
 	Assert(ignoreNullptr || allocPntr != nullptr);
@@ -2708,6 +2717,10 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize, bool ignoreNullp
 	if (result && arena->debugArena != nullptr) { FreeAllocInfo(arena, arena->debugArena, allocPntr); }
 	#endif
 	
+	#ifdef _GY_TEST_MEMORY_PREDECLARED
+	if (!isSubCall && arena->testSetOut != nullptr) { MemArenaTestSetRecordFreeMemAction(arena->testSetOut, allocPntr, allocSize); }
+	#endif
+	
 	if (didLock) { UnlockGyMutex(&arena->mutex); }
 	if (IsFlagSet(arena->flags, MemArenaFlag_TrackTime))
 	{
@@ -2722,11 +2735,12 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize, bool ignoreNullp
 // |                     Reallocate Function                      |
 // +--------------------------------------------------------------+
 #if GYLIB_MEM_ARENA_DEBUG_ENABLED
-void* ReallocMem_(const char* filePath, u64 lineNumber, const char* funcName, MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize, AllocAlignment_t alignOverride, bool ignoreNullptr, u64* oldSizeOut) //pre-declared at top of file
+void* ReallocMem_(const char* filePath, u64 lineNumber, const char* funcName, MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize, AllocAlignment_t alignOverride, bool ignoreNullptr, u64* oldSizeOut, bool isSubCall) //pre-declared at top of file
 #else
-void* ReallocMem_(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize, AllocAlignment_t alignOverride, bool ignoreNullptr, u64* oldSizeOut) //pre-declared at top of file
+void* ReallocMem_(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize, AllocAlignment_t alignOverride, bool ignoreNullptr, u64* oldSizeOut, bool isSubCall) //pre-declared at top of file
 #endif
 {
+	UNUSED(isSubCall);
 	NotNull(arena);
 	AssertMsg(arena->type != MemArenaType_None, "Tried to realloc from uninitialized arena");
 	Assert(ignoreNullptr || allocPntr != nullptr);
@@ -2750,7 +2764,7 @@ void* ReallocMem_(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize, 
 	}
 	if (newSize == 0) //Resizing to 0 is basically freeing
 	{
-		bool freeSuccess = FreeMem(arena, allocPntr, oldSize, ignoreNullptr, oldSizeOut);
+		bool freeSuccess = FreeMem(arena, allocPntr, oldSize, ignoreNullptr, oldSizeOut, true);
 		AssertMsg(freeSuccess, "Failed attempt to free memory in arena when Realloc'd to 0 bytes");
 		if (didLock) { UnlockGyMutex(&arena->mutex); }
 		return nullptr;
@@ -2781,9 +2795,9 @@ void* ReallocMem_(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize, 
 			}
 			
 			#if GYLIB_MEM_ARENA_DEBUG_ENABLED
-			result = (u8*)AllocMem_(filePath, lineNumber, funcName, arena, newSize, alignOverride);
+			result = (u8*)AllocMem_(filePath, lineNumber, funcName, arena, newSize, alignOverride, true);
 			#else
-			result = (u8*)AllocMem(arena, newSize, alignOverride);
+			result = (u8*)AllocMem(arena, newSize, alignOverride, true);
 			#endif
 			
 			if (result == nullptr)
@@ -2791,7 +2805,7 @@ void* ReallocMem_(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize, 
 				if (allocPntr != nullptr)
 				{
 					u64 reportedOldSize = oldSize;
-					bool freeSuccess = FreeMem(arena, allocPntr, oldSize, ignoreNullptr, &reportedOldSize);
+					bool freeSuccess = FreeMem(arena, allocPntr, oldSize, ignoreNullptr, &reportedOldSize, true);
 					AssertMsg(freeSuccess, "Failed to FreeMem after a failed AllocMem in ReallocMem! Something is probably wrong with this arena");
 					Assert(oldSize == 0 || oldSize == reportedOldSize);
 					if (oldSize != 0)
@@ -2821,7 +2835,7 @@ void* ReallocMem_(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize, 
 			if (allocPntr != nullptr)
 			{
 				u64 reportedOldSize = oldSize;
-				bool freeSuccess = FreeMem(arena, allocPntr, oldSize, ignoreNullptr, &reportedOldSize);
+				bool freeSuccess = FreeMem(arena, allocPntr, oldSize, ignoreNullptr, &reportedOldSize, true);
 				AssertMsg(freeSuccess, "Failed to FreeMem in ReallocMem! Does this arena type support freeing memory?");
 				if (oldSize != 0)
 				{
@@ -2848,7 +2862,7 @@ void* ReallocMem_(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize, 
 		{
 			NotNull(arena->sourceArena);
 			u64 reportedOldSize = oldSize;
-			result = (u8*)ReallocMem(arena->sourceArena, allocPntr, newSize, oldSize, alignment, ignoreNullptr, &reportedOldSize);
+			result = (u8*)ReallocMem(arena->sourceArena, allocPntr, newSize, oldSize, alignment, ignoreNullptr, &reportedOldSize, false);
 			Assert(oldSize == 0 || oldSize == reportedOldSize);
 			oldSize = reportedOldSize;
 			increasingSize = (newSize > oldSize);
@@ -2960,6 +2974,10 @@ void* ReallocMem_(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize, 
 		FreeAllocInfo(arena, arena->debugArena, allocPntr);
 		if (result != nullptr) { StoreAllocInfo(arena, arena->debugArena, result, newSize, filePath, lineNumber, funcName); }
 	}
+	#endif
+	
+	#ifdef _GY_TEST_MEMORY_PREDECLARED
+	if (!isSubCall && arena->testSetOut != nullptr) { MemArenaTestSetRecordReallocMemAction(arena->testSetOut, allocPntr, newSize, oldSize, alignOverride, result); }
 	#endif
 	
 	if (didLock) { UnlockGyMutex(&arena->mutex); }
@@ -4261,7 +4279,7 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 u64 GetNumMarks(MemArena_t* arena)
 bool TryGetAllocSize(const MemArena_t* arena, const void* allocPntr, u64* sizeOut = nullptr)
 u64 GetAllocSize(const MemArena_t* arena, const void* allocPntr)
-void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride = AllocAlignment_None)
+void* AllocMem(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride = AllocAlignment_None, bool isSubCall = false)
 #define AllocStruct(arena, structName)
 #define AllocArray(arena, structName, numItems)
 #define AllocBytes(arena, numBytes)
@@ -4272,11 +4290,11 @@ char* AllocCharsAndFillNt(MemArena_t* arena, const char* nullTermStr, bool addNu
 u64 GrowMemQuery(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, GrowMemToken_t* tokenOut = nullptr)
 void GrowMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, u64 newAllocSize, const GrowMemToken_t* token)
 void ShrinkMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, u64 newAllocSize)
-bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreNullptr = false, u64* oldSizeOut = nullptr)
+bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize = 0, bool ignoreNullptr = false, u64* oldSizeOut = nullptr, bool isSubCall = false)
 #define HardFreeMem(arena, allocPntr)
 #define SoftFreeMem(arena, allocPntr)
 #define FreeBufferArena(bufferArena, sourceArena)
-void* ReallocMem(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 0, AllocAlignment_t alignOverride = AllocAlignment_None, bool ignoreNullptr = false, u64* oldSizeOut = nullptr)
+void* ReallocMem(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize = 0, AllocAlignment_t alignOverride = AllocAlignment_None, bool ignoreNullptr = false, u64* oldSizeOut = nullptr, bool isSubCall = false)
 #define HardReallocMem(arena, allocPntr, newSize)
 #define SoftReallocMem(arena, allocPntr, newSize)
 u64 PushMemMark(MemArena_t* arena)
