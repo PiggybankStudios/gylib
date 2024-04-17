@@ -107,6 +107,8 @@ typedef void* AllocationFunction_f(u64 numBytes);
 typedef void* ReallocFunction_f(void* memPntr, u64 newSize);
 typedef void FreeFunction_f(void* memPntr);
 
+#define CACHED_FREE_MIN_SIZE 128 //bytes
+
 #define HEAP_ALLOC_FILLED_FLAG 0x8000000000000000ULL
 #define HEAP_ALLOC_SIZE_MASK   0x7FFFFFFFFFFFFFFFULL
 struct HeapAllocPrefix_t
@@ -119,6 +121,7 @@ struct HeapPageHeader_t
 	HeapPageHeader_t* next;
 	u64 size;
 	u64 used;
+	u64 cachedFreeOffset; //first free section >= CACHED_FREE_MIN_SIZE bytes in the page
 };
 
 struct MarkedStackArenaHeader_t
@@ -139,7 +142,8 @@ enum MemArenaFlag_t
 	MemArenaFlag_BreakOnAlloc     = 0x0010,
 	MemArenaFlag_BreakOnFree      = 0x0020,
 	MemArenaFlag_BreakOnRealloc   = 0x0040,
-	MemArenaFlag_NumFlags         = 6,
+	MemArenaFlag_CacheFreeOffset  = 0x0080, //An experimental option for PagedHeap arenas that optimizes AllocMem by storing an offset to first free section of some size or bigger (Doesn't work with GrowMem/ShrinkMem yet)
+	MemArenaFlag_NumFlags         = 7,
 };
 
 struct MemArena_t
@@ -1315,12 +1319,54 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 					if (didLock) { UnlockGyMutex(&arena->mutex); }
 					return false;
 				}
+				if (IsFlagSet(arena->flags, MemArenaFlag_CacheFreeOffset))
+				{
+					if (pageHeader->cachedFreeOffset > pageHeader->size)
+					{
+						AssertIfMsg(assertOnFailure, false, "The cachedFreeOffset is outside the bounds of the page!");
+						if (didLock) { UnlockGyMutex(&arena->mutex); }
+						return false;
+					}
+					if (pageHeader->cachedFreeOffset < pageHeader->size && pageHeader->cachedFreeOffset + sizeof(HeapAllocPrefix_t) > pageHeader->size)
+					{
+						AssertIfMsg(assertOnFailure, false, "The cachedFreeOffset points to a spot that leaks off the end of the page!");
+						if (didLock) { UnlockGyMutex(&arena->mutex); }
+						return false;
+					}
+				}
 				
 				u8* pageBase = (u8*)(pageHeader + 1);
+				
+				if (IsFlagSet(arena->flags, MemArenaFlag_CacheFreeOffset) && pageHeader->cachedFreeOffset < pageHeader->size)
+				{
+					HeapAllocPrefix_t* freePrefixPntr = (HeapAllocPrefix_t*)(pageBase + pageHeader->cachedFreeOffset);
+					bool isSectionFilled = IsAllocPrefixFilled(freePrefixPntr->size);
+					u64 sectionSize = UnpackAllocPrefixSize(freePrefixPntr->size);
+					if (isSectionFilled)
+					{
+						AssertIfMsg(assertOnFailure, false, "The cachedFreeOffset points to a filled section!");
+						if (didLock) { UnlockGyMutex(&arena->mutex); }
+						return false;
+					}
+					if (sectionSize < CACHED_FREE_MIN_SIZE)
+					{
+						AssertIfMsg(assertOnFailure, false, "The cachedFreeOffset points to a section that is smaller than CACHED_FREE_MIN_SIZE!");
+						if (didLock) { UnlockGyMutex(&arena->mutex); }
+						return false;
+					}
+					if (pageHeader->cachedFreeOffset + sectionSize > pageHeader->size)
+					{
+						AssertIfMsg(assertOnFailure, false, "The cachedFreeOffset points to a section leaks off the end of the page!");
+						if (didLock) { UnlockGyMutex(&arena->mutex); }
+						return false;
+					}
+				}
+				
 				u64 allocOffset = 0;
 				u8* allocBytePntr = pageBase;
 				u64 sectionIndex = 0;
 				HeapAllocPrefix_t* prevPrefixPntr = nullptr;
+				bool foundCachedFreeSection = false;
 				while (allocOffset < pageHeader->size)
 				{
 					HeapAllocPrefix_t* prefixPntr = (HeapAllocPrefix_t*)allocBytePntr;
@@ -1343,6 +1389,13 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 					if (allocOffset + sectionSize > pageHeader->size)
 					{
 						AssertIfMsg(assertOnFailure, false, "Found a corrupt allocation header size. It would step us past the end of a page!");
+						if (didLock) { UnlockGyMutex(&arena->mutex); }
+						return false;
+					}
+					if (allocOffset == pageHeader->cachedFreeOffset) { foundCachedFreeSection = true; }
+					else if (pageHeader->cachedFreeOffset > allocOffset && pageHeader->cachedFreeOffset < allocOffset + sectionSize)
+					{
+						AssertIfMsg(assertOnFailure, false, "The cachedFreeOffset points to the middle of a section!");
 						if (didLock) { UnlockGyMutex(&arena->mutex); }
 						return false;
 					}
@@ -1372,6 +1425,13 @@ bool MemArenaVerify(MemArena_t* arena, bool assertOnFailure = false)
 					allocBytePntr += sectionSize;
 					totalNumSections++;
 					sectionIndex++;
+				}
+				
+				if (IsFlagSet(arena->flags, MemArenaFlag_CacheFreeOffset) && !foundCachedFreeSection && pageHeader->cachedFreeOffset < pageHeader->size)
+				{
+					AssertIfMsg(assertOnFailure, false, "Couldn't find cachedFreeOffset section somehow?!");
+					if (didLock) { UnlockGyMutex(&arena->mutex); }
+					return false;
 				}
 				
 				pageHeader = pageHeader->next;
@@ -1930,9 +1990,10 @@ void* AllocMem_(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride,
 					continue;
 				}
 				
-				u64 allocOffset = 0;
-				u8* allocBytePntr = (u8*)(pageHeader + 1);
-				u64 sectionIndex = 0;
+				u64 allocOffset = (IsFlagSet(arena->flags, MemArenaFlag_CacheFreeOffset) && pageHeader->cachedFreeOffset < pageHeader->size) ? pageHeader->cachedFreeOffset : 0;
+				u8* allocBytePntr = ((u8*)(pageHeader + 1)) + allocOffset;
+				u64 walkIndex = 0;
+				bool searchingForNextFreeSection = false;
 				while (allocOffset < pageHeader->size)
 				{
 					HeapAllocPrefix_t* allocPntr = (HeapAllocPrefix_t*)allocBytePntr;
@@ -1944,46 +2005,78 @@ void* AllocMem_(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride,
 					u64 allocAfterPrefixSize = allocSize - sizeof(HeapAllocPrefix_t);
 					if (!isAllocFilled)
 					{
-						u8 alignOffset = OffsetToAlign(allocAfterPrefixPntr, alignment);
-						if (allocAfterPrefixSize >= alignOffset + numBytes)
+						if (searchingForNextFreeSection)
 						{
-							result = allocAfterPrefixPntr + alignOffset;
-							if (allocAfterPrefixSize > alignOffset + numBytes + sizeof(HeapAllocPrefix_t))
+							if (allocAfterPrefixSize >= CACHED_FREE_MIN_SIZE)
 							{
-								//Split the section into 2 (one filled and one empty)
-								allocPntr->size = PackAllocPrefixSize(true, sizeof(HeapAllocPrefix_t) + alignOffset + numBytes);
-								HeapAllocPrefix_t* newSection = (HeapAllocPrefix_t*)(allocAfterPrefixPntr + alignOffset + numBytes);
-								newSection->size = PackAllocPrefixSize(false, allocAfterPrefixSize - (alignOffset + numBytes));
-								pageHeader->used += alignOffset + numBytes + sizeof(HeapAllocPrefix_t);
-								arena->used += alignOffset + numBytes + sizeof(HeapAllocPrefix_t);
-								Assert(pageHeader->used <= pageHeader->size);
-								Assert(arena->used <= arena->size);
+								pageHeader->cachedFreeOffset = allocOffset;
+								searchingForNextFreeSection = false;
+								break;
 							}
-							else
+						}
+						else
+						{
+							u8 alignOffset = OffsetToAlign(allocAfterPrefixPntr, alignment);
+							if (allocAfterPrefixSize >= alignOffset + numBytes)
 							{
-								//This entire section is getting used (or there's not enough extra room to make another empty section)
-								allocPntr->size = PackAllocPrefixSize(true, allocSize);
-								pageHeader->used += allocSize - sizeof(HeapAllocPrefix_t);
-								arena->used += allocSize - sizeof(HeapAllocPrefix_t);
-								Assert(pageHeader->used <= pageHeader->size);
-								Assert(arena->used <= arena->size);
+								result = allocAfterPrefixPntr + alignOffset;
+								if (allocAfterPrefixSize > alignOffset + numBytes + sizeof(HeapAllocPrefix_t))
+								{
+									//Split the section into 2 (one filled and one empty)
+									allocPntr->size = PackAllocPrefixSize(true, sizeof(HeapAllocPrefix_t) + alignOffset + numBytes);
+									HeapAllocPrefix_t* newSection = (HeapAllocPrefix_t*)(allocAfterPrefixPntr + alignOffset + numBytes);
+									u64 newSectionSize = allocAfterPrefixSize - (alignOffset + numBytes);
+									newSection->size = PackAllocPrefixSize(false, newSectionSize);
+									pageHeader->used += alignOffset + numBytes + sizeof(HeapAllocPrefix_t);
+									arena->used += alignOffset + numBytes + sizeof(HeapAllocPrefix_t);
+									Assert(pageHeader->used <= pageHeader->size);
+									Assert(arena->used <= arena->size);
+									
+									if (allocOffset == pageHeader->cachedFreeOffset && IsFlagSet(arena->flags, MemArenaFlag_CacheFreeOffset))
+									{
+										if (newSectionSize - sizeof(HeapAllocPrefix_t) >= CACHED_FREE_MIN_SIZE)
+										{
+											pageHeader->cachedFreeOffset = allocOffset + sizeof(HeapAllocPrefix_t) + alignOffset + numBytes;
+										}
+										else
+										{
+											allocSize = sizeof(HeapAllocPrefix_t) + alignOffset + numBytes;
+											pageHeader->cachedFreeOffset = pageHeader->size;
+											searchingForNextFreeSection = true;
+										}
+									}
+								}
+								else
+								{
+									//This entire section is getting used (or there's not enough extra room to make another empty section)
+									allocPntr->size = PackAllocPrefixSize(true, allocSize);
+									pageHeader->used += allocSize - sizeof(HeapAllocPrefix_t);
+									arena->used += allocSize - sizeof(HeapAllocPrefix_t);
+									Assert(pageHeader->used <= pageHeader->size);
+									Assert(arena->used <= arena->size);
+									if (allocOffset == pageHeader->cachedFreeOffset && IsFlagSet(arena->flags, MemArenaFlag_CacheFreeOffset))
+									{
+										pageHeader->cachedFreeOffset = pageHeader->size;
+										searchingForNextFreeSection = true;
+									}
+								}
+								arena->numAllocations++;
+								if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
+								{
+									if (arena->highUsedMark < arena->used) { arena->highUsedMark = arena->used; }
+									if (arena->resettableHighUsedMark < arena->used) { arena->resettableHighUsedMark = arena->used; }
+									if (arena->highAllocMark < arena->numAllocations) { arena->highAllocMark = arena->numAllocations; }
+								}
+								if (!searchingForNextFreeSection) { break; }
 							}
-							arena->numAllocations++;
-							if (IsFlagSet(arena->flags, MemArenaFlag_TelemetryEnabled))
-							{
-								if (arena->highUsedMark < arena->used) { arena->highUsedMark = arena->used; }
-								if (arena->resettableHighUsedMark < arena->used) { arena->resettableHighUsedMark = arena->used; }
-								if (arena->highAllocMark < arena->numAllocations) { arena->highAllocMark = arena->numAllocations; }
-							}
-							break;
 						}
 					}
 					
 					allocBytePntr += allocSize;
 					allocOffset += allocSize;
-					sectionIndex++;
+					walkIndex++;
 				}
-				UNUSED(sectionIndex); //used for debug purposes
+				UNUSED(walkIndex); //used for debug purposes
 				
 				if (result != nullptr) { break; }
 				pageHeader = pageHeader->next;
@@ -2026,6 +2119,7 @@ void* AllocMem_(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride,
 				newPageHeader->next = nullptr;
 				newPageHeader->size = newPageSize;
 				newPageHeader->used = sizeof(HeapAllocPrefix_t);
+				newPageHeader->cachedFreeOffset = newPageSize;
 				
 				u8* pageBase = (u8*)(newPageHeader + 1);
 				HeapAllocPrefix_t* allocPntr = (HeapAllocPrefix_t*)pageBase;
@@ -2039,11 +2133,16 @@ void* AllocMem_(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride,
 					//Split the section into 2 (one filled and one empty)
 					allocPntr->size = PackAllocPrefixSize(true, sizeof(HeapAllocPrefix_t) + alignOffset + numBytes);
 					HeapAllocPrefix_t* newSection = (HeapAllocPrefix_t*)(allocAfterPrefixPntr + alignOffset + numBytes);
-					newSection->size = PackAllocPrefixSize(false, allocAfterPrefixSize - (alignOffset + numBytes));
+					u64 newSectionSize = allocAfterPrefixSize - (alignOffset + numBytes);
+					newSection->size = PackAllocPrefixSize(false, newSectionSize);
 					newPageHeader->used += alignOffset + numBytes + sizeof(HeapAllocPrefix_t);
 					arena->used += alignOffset + numBytes + sizeof(HeapAllocPrefix_t);
 					Assert(newPageHeader->used <= newPageHeader->size);
 					Assert(arena->used <= arena->size);
+					if (IsFlagSet(arena->flags, MemArenaFlag_CacheFreeOffset) && newSectionSize >= sizeof(HeapAllocPrefix_t) + CACHED_FREE_MIN_SIZE)
+					{
+						newPageHeader->cachedFreeOffset = sizeof(HeapAllocPrefix_t) + alignOffset + numBytes;
+					}
 				}
 				else
 				{
@@ -2361,7 +2460,7 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize, bool ignoreNullp
 		case MemArenaType_Alias:
 		{
 			NotNull(arena->sourceArena);
-			result = FreeMem(arena->sourceArena, allocPntr, allocSize, ignoreNullptr, oldSizeOut);
+			result = FreeMem(arena->sourceArena, allocPntr, allocSize, ignoreNullptr, oldSizeOut, false);
 			Decrement(arena->numAllocations);
 			arena->size = arena->sourceArena->size;
 			arena->used = arena->sourceArena->used;
@@ -2474,6 +2573,7 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize, bool ignoreNullp
 					u64 allocOffset = 0;
 					u8* allocBytePntr = pageBase;
 					u64 sectionIndex = 0;
+					u64 prevPrefixOffset = 0;
 					HeapAllocPrefix_t* prevPrefixPntr = nullptr;
 					while (allocOffset < pageHeader->size)
 					{
@@ -2507,6 +2607,10 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize, bool ignoreNullp
 							// |   Free Paged Heap Section    |
 							// +==============================+
 							prefixPntr->size = PackAllocPrefixSize(false, sectionSize);
+							if (IsFlagSet(arena->flags, MemArenaFlag_CacheFreeOffset) && afterPrefixSize >= CACHED_FREE_MIN_SIZE && allocOffset < pageHeader->cachedFreeOffset)
+							{
+								pageHeader->cachedFreeOffset = allocOffset;
+							}
 							AssertMsg(pageHeader->used >= afterPrefixSize, "Paged Heap used tracker was corrupted. Reached 0 too soon!");
 							AssertMsg(arena->used >= afterPrefixSize, "Paged Heap used tracker was corrupted. Reached 0 too soon!");
 							pageHeader->used -= afterPrefixSize;
@@ -2524,6 +2628,10 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize, bool ignoreNullp
 								if (!IsAllocPrefixFilled(nextPrefixPntr->size))
 								{
 									// Merge the next section with this one by making this section bigger
+									if (IsFlagSet(arena->flags, MemArenaFlag_CacheFreeOffset) && pageHeader->cachedFreeOffset == allocOffset + sectionSize)
+									{
+										pageHeader->cachedFreeOffset = allocOffset;
+									}
 									sectionSize += UnpackAllocPrefixSize(nextPrefixPntr->size);
 									prefixPntr->size = PackAllocPrefixSize(false, sectionSize);
 									AssertMsg(pageHeader->used >= sizeof(HeapAllocPrefix_t), "Paged Heap page->used tracker was corrupted. Reached 0 too soon.");
@@ -2540,6 +2648,10 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize, bool ignoreNullp
 								AssertMsg(arena->used >= sizeof(HeapAllocPrefix_t), "Paged Heap used tracker was corrupted. Reached 0 too soon.");
 								pageHeader->used -= sizeof(HeapAllocPrefix_t);
 								arena->used -= sizeof(HeapAllocPrefix_t);
+								if (IsFlagSet(arena->flags, MemArenaFlag_CacheFreeOffset) && pageHeader->cachedFreeOffset == allocOffset)
+								{
+									pageHeader->cachedFreeOffset = prevPrefixOffset;
+								}
 							}
 							
 							// +==============================+
@@ -2565,6 +2677,7 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize, bool ignoreNullp
 						}
 						
 						prevPrefixPntr = prefixPntr;
+						prevPrefixOffset = allocOffset;
 						allocOffset += sectionSize;
 						allocBytePntr += sectionSize;
 						sectionIndex++;
@@ -2755,6 +2868,11 @@ void* ReallocMem_(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize, 
 	{
 		MyDebugBreak();
 	}
+	
+	// NOTE: This can be helpful when trying to catch a particular action in a known series of actions BEFORE the action actually takes place
+	// #ifdef _GY_TEST_MEMORY_PREDECLARED
+	// if (arena->testSetOut != nullptr && MemArenaTestSetGetActionIndex(arena->testSetOut) == 8888) { MyDebugBreak(); }
+	// #endif
 	
 	AllocAlignment_t alignment = (alignOverride != AllocAlignment_None) ? alignOverride : arena->alignment;
 	if (newSize == oldSize && (allocPntr != nullptr || oldSize != 0) && IsAlignedTo(allocPntr, alignment)) //not resizing, just keep the memory where it's at
@@ -3100,7 +3218,7 @@ u64 GrowMemQuery(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize
 					u8* allocAfterPrefixPntr = (allocBytePntr + sizeof(HeapAllocPrefix_t));
 					bool isAllocFilled = IsAllocPrefixFilled(allocPntr->size);
 					u64 allocSize = UnpackAllocPrefixSize(allocPntr->size);
-					AssertMsg(allocSize >= sizeof(HeapAllocPrefix_t), "Found an allocation header that claimed to be smaller than the header itself in Fixed Heap");
+					AssertMsg(allocSize >= sizeof(HeapAllocPrefix_t), "Found an allocation header that claimed to be smaller than the header itself in Paged Heap");
 					AssertMsg(allocOffset + allocSize <= pageHeader->size, "Found an allocation header with invalid size. Would extend past the end of a page!");
 					u64 allocAfterPrefixSize = allocSize - sizeof(HeapAllocPrefix_t);
 					if (allocAfterPrefixPntr == prevAllocPntr)
