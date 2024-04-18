@@ -114,6 +114,8 @@ typedef VOID_FUNC_DEF(VoidFunc_f);
 typedef BOOL_FUNC_DEF(BoolFunc_f);
 #define I32_FUNC_DEF(functionName) i32 functionName()
 typedef I32_FUNC_DEF(I32Func_f);
+#define VOID_PNTR_FUNC_DEF(functionName) void* functionName()
+typedef VOID_PNTR_FUNC_DEF(VoidPntrFunc_f);
 
 #define SWAP_VARIABLES(varType, var1, var2) do { varType tempVarWithLongNameThatWontConflict = (var2); (var2) = (var1); (var1) = tempVarWithLongNameThatWontConflict; } while(0)
 #define SWAP_POINTERS(varType, pntr1, pntr2) do                                \
@@ -163,6 +165,7 @@ __func__
 VoidFunc_f
 BoolFunc_f
 I32Func_f
+VoidPntrFunc_f
 @Functions
 #define ArrayCount(Array)
 #define IsFlagSet(BitwiseField, Bit)
@@ -203,9 +206,10 @@ I32Func_f
 #define STRUCT_VAR_OFFSET(structureName, variableName)
 #define STRUCT_VAR_END_OFFSET(structureName, variableName)
 #define IS_VAR_IN_X_BYTES_OF_STRUCT(structureName, numBytes, variableName)
-#define VOID_FUNC_DEF(functionName)
-#define BOOL_FUNC_DEF(functionName)
-#define I32_FUNC_DEF(functionName)
+void VOID_FUNC_DEF()
+bool BOOL_FUNC_DEF()
+i32 I32_FUNC_DEF()
+void* VOID_PNTR_FUNC_DEF()
 #define UNUSED(varName)
 #define UNREFERENCED(varName)
 #define SWAP_VARIABLES(varType, var1, var2)
