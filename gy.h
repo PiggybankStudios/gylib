@@ -76,6 +76,7 @@ Description:
 
 #include "gylib/gy_ip.h"
 #include "gylib/gy_socket.h"
+#include "gylib/gy_expression.h"
 #include "gylib/gy_extras.h"
 #include "gylib/gy_network_bus.h"
 

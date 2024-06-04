@@ -20,6 +20,7 @@ enum Result_t
 	Result_Success,
 	Result_Failure,
 	Result_Unknown,
+	Result_Finished,
 	
 	Result_FunctionMissing,
 	Result_NotAFunction,
@@ -104,6 +105,15 @@ enum Result_t
 	Result_MissingSeed,
 	Result_MissingDifficulty,
 	Result_CouldntParseDifficulty,
+	Result_MissingQuote,
+	Result_InvalidChar,
+	Result_InvalidIdentifier,
+	Result_InvalidOperator,
+	Result_MissingLeftOperand,
+	Result_InvalidLeftOperand,
+	Result_MissingRightOperand,
+	Result_InvalidRightOperand,
+	Result_InvalidConstant,
 	
 	Result_NumValues,
 };
@@ -116,6 +126,7 @@ const char* GetResultStr(Result_t enumValue)
 		case Result_Success:                        return "Success";
 		case Result_Failure:                        return "Failure";
 		case Result_Unknown:                        return "Unknown";
+		case Result_Finished:                       return "Finished";
 		case Result_FunctionMissing:                return "FunctionMissing";
 		case Result_NotAFunction:                   return "NotAFunction";
 		case Result_Exception:                      return "Exception";
@@ -199,6 +210,15 @@ const char* GetResultStr(Result_t enumValue)
 		case Result_MissingSeed:                    return "MissingSeed";
 		case Result_MissingDifficulty:              return "MissingDifficulty";
 		case Result_CouldntParseDifficulty:         return "CouldntParseDifficulty";
+		case Result_MissingQuote:                   return "MissingQuote";
+		case Result_InvalidChar:                    return "InvalidChar";
+		case Result_InvalidIdentifier:              return "InvalidChar";
+		case Result_InvalidOperator:                return "InvalidOperator";
+		case Result_MissingLeftOperand:             return "MissingLeftOperand";
+		case Result_InvalidLeftOperand:             return "InvalidLeftOperand";
+		case Result_MissingRightOperand:            return "MissingRightOperand";
+		case Result_InvalidRightOperand:            return "InvalidRightOperand";
+		case Result_InvalidConstant:                return "InvalidConstant";
 		default: return "Unknown";
 	}
 }
