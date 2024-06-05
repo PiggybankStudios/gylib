@@ -32,6 +32,14 @@ void GyTestCase_UnescapeExpressionStr(const char* escapedStr, const char* unesca
 	MyStr_t result = UnescapeExpressionStr(&stackArena, NewStr(escapedStr));
 	Assert(StrEquals(result, unescapedStr));
 }
+void GyTestCase_EscapeExpressionStr(const char* unescapedStr, const char* escapedStr)
+{
+	char stackArray[256];
+	MemArena_t stackArena;
+	InitMemArena_Buffer(&stackArena, sizeof(stackArray), &stackArray[0], true);
+	MyStr_t result = EscapeExpressionStr(&stackArena, NewStr(unescapedStr));
+	Assert(StrEquals(result, escapedStr));
+}
 
 void GyTestCase_ExpNumberConversion(const char* numberStr, ExpValueType_t expectedType, i64 expectedValueInt, r64 expectedValueFloat = 0.0)
 {
@@ -49,7 +57,7 @@ void GyTestCase_ExpNumberConversion(const char* numberStr, ExpValueType_t expect
 	AssertIf(expectedType == ExpValueType_U64, expValue.valueU64 == (u64)expectedValueInt);
 }
 
-void GyTestCase_PrintExpPartHelper(const ExpPart_t* expPart)
+void GyTestCase_PrintExpPartHelper(const ExpPart_t* expPart, const ExpressionContext_t* context = nullptr)
 {
 	switch (expPart->type)
 	{
@@ -67,7 +75,8 @@ void GyTestCase_PrintExpPartHelper(const ExpPart_t* expPart)
 				case ExpValueType_U8:  GyLibPrintLine_I("%u",   (unsigned int)expPart->constantValue.valueU8);  break;
 				case ExpValueType_U16: GyLibPrintLine_I("%u",   (unsigned int)expPart->constantValue.valueU16); break;
 				case ExpValueType_U32: GyLibPrintLine_I("%u",   (unsigned int)expPart->constantValue.valueU32); break;
-				case ExpValueType_U64: GyLibPrintLine_I("%llu", expPart->constantValue.valueU64);               break;
+				case ExpValueType_U64: GyLibPrintLine_I("%llu",               expPart->constantValue.valueU64); break;
+				case ExpValueType_String: GyLibPrintLine_I("\"%.*s\"", StrPrint(expPart->constantValue.valueStr)); break;
 				default: GyLibPrintLine_I("UnknownType: %u", expPart->constantValue.type); break;
 			}
 		} break;
@@ -90,6 +99,61 @@ void GyTestCase_PrintExpPartHelper(const ExpPart_t* expPart)
 			}
 		} break;
 		
+		case ExpPartType_ParenthesisGroup:
+		{
+			if (expPart->child[0] != nullptr)
+			{
+				GyLibPrintLine_I("\tPart[%llu] Parens( Part[%llu] (%s) )", expPart->index, expPart->child[0]->index, GetExpPartTypeStr(expPart->child[0]->type));
+			}
+			else
+			{
+				GyLibPrintLine_E("\tPart[%llu] Parens( Empty )", expPart->index);
+			}
+		} break;
+		
+		case ExpPartType_Variable:
+		{
+			if (context != nullptr && expPart->variableIndex < context->variableDefs.length)
+			{
+				ExpVariableDef_t* variableDef = VarArrayGet(&context->variableDefs, expPart->variableIndex, ExpVariableDef_t);
+				GyLibPrintLine_I("\tPart[%llu] Variable[%llu] \"%.*s\"", expPart->index, expPart->variableIndex, StrPrint(variableDef->name));
+			}
+			else
+			{
+				GyLibPrintLine_I("\tPart[%llu] Variable[%llu]", expPart->index, expPart->variableIndex);
+			}
+		} break;
+		
+		case ExpPartType_Function:
+		{
+			u64 numArguments = 0;
+			while (numArguments < EXPRESSIONS_MAX_PART_CHILDREN && expPart->child[numArguments] != nullptr) { numArguments++; }
+			
+			if (context != nullptr && expPart->functionIndex < context->functionDefs.length)
+			{
+				ExpFuncDef_t* functionDef = VarArrayGet(&context->functionDefs, expPart->functionIndex, ExpFuncDef_t);
+				GyLibPrintLine_I("\tPart[%llu] Function[%llu] \"%.*s\":", expPart->index, expPart->functionIndex, StrPrint(functionDef->name));
+				numArguments = functionDef->numArguments;
+			}
+			else
+			{
+				GyLibPrintLine_I("\tPart[%llu] Function[%llu]:", expPart->index, expPart->functionIndex);
+			}
+			
+			for (u64 aIndex = 0; aIndex < numArguments; aIndex++)
+			{
+				const ExpPart_t* argument = expPart->child[aIndex];
+				if (argument != nullptr)
+				{
+					GyLibPrintLine_D("\t\tArgument[%u] Part[%llu] (%s)", (u32)aIndex, argument->index, GetExpPartTypeStr(argument->type));
+				}
+				else
+				{
+					GyLibPrintLine_E("\t\tArgument[%u] Empty", (u32)aIndex);
+				}
+			}
+		} break;
+		
 		default:
 		{
 			GyLibPrintLine_E("\tPart[%llu] UnknownType %d", expPart->index, expPart->type);
@@ -97,7 +161,7 @@ void GyTestCase_PrintExpPartHelper(const ExpPart_t* expPart)
 	}
 }
 
-void GyTestCase_PrintParse(const char* expressionStr)
+void GyTestCase_PrintParse(const char* expressionStr, const ExpressionContext_t* context = nullptr)
 {
 	char stackArray[256];
 	MemArena_t stackArena;
@@ -109,10 +173,11 @@ void GyTestCase_PrintParse(const char* expressionStr)
 	Assert(tokenizeResult == Result_Finished);
 	AssertIf(numTokens > 0, tokens != nullptr);
 	
-	ExpressionContext_t context = {};
+	ExpressionContext_t emptyContext = {};
+	if (context == nullptr) { context = &emptyContext; }
 	
 	Expression_t expression = {};
-	Result_t parseResult = TryCreateExpressionFromTokens(&context, numTokens, tokens, &expression);
+	Result_t parseResult = TryCreateExpressionFromTokens(context, numTokens, tokens, &expression);
 	if (parseResult != Result_Success)
 	{
 		GyLibPrintLine_E("Expression \"%s\" failed to parse: Result_%s", expressionStr, GetResultStr(parseResult));
@@ -124,11 +189,11 @@ void GyTestCase_PrintParse(const char* expressionStr)
 	else { GyLibWriteLine_E("\tRoot = Empty"); }
 	for (u64 pIndex = 0; pIndex < expression.numParts; pIndex++)
 	{
-		GyTestCase_PrintExpPartHelper(&expression.parts[pIndex]);
+		GyTestCase_PrintExpPartHelper(&expression.parts[pIndex], context);
 	}
 }
 
-void GyTest_Expressions()
+void GyTest_Expressions(MemArena_t* memArena)
 {
 	// +--------------------------------------------------------------+
 	// |                       Tokenizer Tests                        |
@@ -183,6 +248,9 @@ void GyTest_Expressions()
 	
 	GyTestCase_UnescapeExpressionStr("Regular String", "Regular String");
 	GyTestCase_UnescapeExpressionStr("\\\\ \\\\\\\\ \\\" \\' \\n \\r \\t", "\\ \\\\ \" ' \n \r \t");
+	GyTestCase_EscapeExpressionStr("Regular String", "Regular String");
+	GyTestCase_EscapeExpressionStr("path\\to\\file", "path\\\\to\\\\file");
+	GyTestCase_EscapeExpressionStr("\\\\\\ \"\'\r\n\t /nrt", "\\\\\\\\\\\\ \\\"\'\\r\\n\t /nrt");
 	
 	GyTestCase_ExpNumberConversion("1", ExpValueType_U8, 1);
 	GyTestCase_ExpNumberConversion("00000000001", ExpValueType_U8, 1);
@@ -213,8 +281,18 @@ void GyTest_Expressions()
 	GyTestCase_ExpNumberConversion("0000.1", ExpValueType_R32, 0, 0.1f);
 	GyTestCase_ExpNumberConversion("0000.001", ExpValueType_R32, 0, 0.001f);
 	
-	GyTestCase_PrintParse("3 + 8");
-	GyTestCase_PrintParse("3 + 8 * !1500");
+	ExpressionContext_t testContext = {};
+	CreateVarArray(&testContext.variableDefs, memArena, sizeof(ExpVariableDef_t));
+	CreateVarArray(&testContext.functionDefs, memArena, sizeof(ExpFuncDef_t));
+	ExpVariableDef_t* fooDef = VarArrayAdd(&testContext.variableDefs, ExpVariableDef_t); ClearPointer(fooDef); fooDef->type = ExpValueType_R32; fooDef->name = NewStr("foo");
+	ExpVariableDef_t* barDef = VarArrayAdd(&testContext.variableDefs, ExpVariableDef_t); ClearPointer(barDef); barDef->type = ExpValueType_R32; barDef->name = NewStr("bar");
+	ExpFuncDef_t* actionDef = VarArrayAdd(&testContext.functionDefs, ExpFuncDef_t); ClearPointer(actionDef); actionDef->returnType = ExpValueType_Void; actionDef->name = NewStr("action"); actionDef->numArguments = 1;
+	
+	GyTestCase_PrintParse("3 + 15 * 1500");
+	GyTestCase_PrintParse("action(3 + bar*foo) * 1500", &testContext);
+	
+	FreeVarArray(&testContext.variableDefs);
+	FreeVarArray(&testContext.functionDefs);
 }
 
 #endif //  _GY_TEST_EXPRESSIONS_H
@@ -224,5 +302,5 @@ void GyTest_Expressions()
 // +--------------------------------------------------------------+
 /*
 @Functions
-void GyTest_Expressions()
+void GyTest_Expressions(MemArena_t* memArena)
 */

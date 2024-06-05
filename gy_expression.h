@@ -19,7 +19,7 @@ Description:
 // +--------------------------------------------------------------+
 // |                     Defines and Typedefs                     |
 // +--------------------------------------------------------------+
-#define EXPRESSIONS_MAX_NODE_CHILDREN     8 //aka max function argument count
+#define EXPRESSIONS_MAX_PART_CHILDREN     8 //aka max function argument count
 #define EXPRESSIONS_MAX_PARSE_STACK_SIZE  16
 #define EXPRESSIONS_MAX_NUM_PARTS         128
 
@@ -225,7 +225,7 @@ struct ExpValue_t
 			u64 valuePntrTypeId; //types for pointers are handled by the application, acceptance of any TypeId is at the discretion of the function that consumes them
 			void* valuePntr;
 		};
-		MyStr_t valueStr;
+		MyStr_t valueStr; //needs to be unescaped before being used as a literal value
 		r32 valueR32;
 		r64 valueR64;
 		i8  valueI8;
@@ -245,9 +245,9 @@ struct ExpPart_t
 	ExpPartType_t type;
 	ExpValue_t constantValue;
 	ExpOp_t opType;
-	u64 functionIndex;
 	u64 variableIndex;
-	ExpPart_t* child[EXPRESSIONS_MAX_NODE_CHILDREN];
+	u64 functionIndex;
+	ExpPart_t* child[EXPRESSIONS_MAX_PART_CHILDREN];
 };
 
 struct ExpPartStack_t
@@ -277,7 +277,7 @@ struct ExpFuncDef_t
 	ExpValueType_t returnType;
 	MyStr_t name;
 	u64 numArguments;
-	ExpFuncArg_t arguments[EXPRESSIONS_MAX_NODE_CHILDREN];
+	ExpFuncArg_t arguments[EXPRESSIONS_MAX_PART_CHILDREN];
 	ExpressionFunc_f* pntr;
 };
 
@@ -675,34 +675,101 @@ MyStr_t UnescapeExpressionStr(MemArena_t* memArena, MyStr_t string)
 	return result;
 }
 
-//TODO: Add EscapeExpressionStr
+//NOTE: This does not escape tab or single quote characters because those escape sequences are optional
+MyStr_t EscapeExpressionStr(MemArena_t* memArena, MyStr_t string)
+{
+	NotNull(memArena);
+	NotNullStr(&string);
+	
+	u64 numEscapeSequences = 0;
+	for (u64 cIndex = 0; cIndex < string.length; cIndex++)
+	{
+		char c = string.chars[cIndex];
+		if (c == '\\' || c == '\"' || c == '\n' || c == '\r') { numEscapeSequences++; }
+	}
+	
+	MyStr_t result;
+	result.length = string.length + numEscapeSequences;
+	result.chars = AllocArray(memArena, char, result.length+1);
+	NotNull(result.chars);
+	
+	u64 outIndex = 0;
+	for (u64 inIndex = 0; inIndex < string.length; inIndex++)
+	{
+		Assert(outIndex < result.length);
+		char c = string.chars[inIndex];
+		char nextChar = ((inIndex+1) < string.length) ? string.chars[inIndex+1] : '\0';
+		if (c == '\\')
+		{
+			result.chars[outIndex++] = '\\';
+			Assert(outIndex < result.length);
+			result.chars[outIndex++] = '\\';
+		}
+		else if (c == '\"')
+		{
+			result.chars[outIndex++] = '\\';
+			Assert(outIndex < result.length);
+			result.chars[outIndex++] = '\"';
+		}
+		else if (c == '\n')
+		{
+			result.chars[outIndex++] = '\\';
+			Assert(outIndex < result.length);
+			result.chars[outIndex++] = 'n';
+		}
+		else if (c == '\r')
+		{
+			result.chars[outIndex++] = '\\';
+			Assert(outIndex < result.length);
+			result.chars[outIndex++] = 'r';
+		}
+		else
+		{
+			result.chars[outIndex++] = c;
+		}
+	}
+	Assert(outIndex == result.length);
+	
+	result.chars[result.length] = '\0';
+	return result;
+}
 
 // +--------------------------------------------------------------+
 // |                       Parsing Helpers                        |
 // +--------------------------------------------------------------+
-ExpVariableDef_t* FindExpVariableDef(ExpressionContext_t* context, MyStr_t variableName)
+ExpVariableDef_t* FindExpVariableDef(ExpressionContext_t* context, MyStr_t variableName, u64* indexOut = nullptr)
 {
 	VarArrayLoop(&context->variableDefs, vIndex)
 	{
 		VarArrayLoopGet(ExpVariableDef_t, variableDef, &context->variableDefs, vIndex);
 		if (StrEquals(variableDef->name, variableName))
 		{
+			SetOptionalOutPntr(indexOut, vIndex);
 			return variableDef;
 		}
 	}
 	return nullptr;
 }
-ExpFuncDef_t* FindExpFuncDef(ExpressionContext_t* context, MyStr_t functionName, u64 numArguments = UINT64_MAX)
+const ExpVariableDef_t* FindExpVariableDef(const ExpressionContext_t* context, MyStr_t variableName, u64* indexOut = nullptr) //const variant
 {
-	VarArrayLoop(&context->functionDefs, vIndex)
+	return (const ExpVariableDef_t*)FindExpVariableDef((ExpressionContext_t*)context, variableName, indexOut);
+}
+ExpFuncDef_t* FindExpFuncDef(ExpressionContext_t* context, MyStr_t functionName, u64 numArguments = UINT64_MAX, u64* indexOut = nullptr)
+{
+	VarArrayLoop(&context->functionDefs, fIndex)
 	{
-		VarArrayLoopGet(ExpFuncDef_t, functionDef, &context->functionDefs, vIndex);
+		VarArrayLoopGet(ExpFuncDef_t, functionDef, &context->functionDefs, fIndex);
 		if (StrEquals(functionDef->name, functionName) && (numArguments == UINT64_MAX || functionDef->numArguments == numArguments))
 		{
+			SetOptionalOutPntr(indexOut, fIndex);
 			return functionDef;
 		}
 	}
 	return nullptr;
+}
+const ExpFuncDef_t* FindExpFuncDef(const ExpressionContext_t* context, MyStr_t functionName, u64 numArguments = UINT64_MAX, u64* indexOut = nullptr) //const variant
+{
+	return (const ExpFuncDef_t*)FindExpFuncDef((ExpressionContext_t*)context, functionName, numArguments, indexOut);
 }
 
 void PushExpPart(ExpPartStack_t* stack, ExpPart_t* partPntr)
@@ -888,6 +955,40 @@ ExpPart_t* SplitExpPartTreeWithPrecedenceAtLeast(ExpPart_t* leftPart, ExpOp_t op
 	}
 }
 
+bool FindExpClosingParensToken(u64 numTokens, const ExpToken_t* tokens, u64 startIndex, u64* indexOut)
+{
+	AssertIf(numTokens > 0, tokens != nullptr);
+	bool foundEndParenthesis = false;
+	u64 endParenthesisIndex = 0;
+	u64 parensLevel = 0;
+	
+	for (u64 tIndex = startIndex; tIndex < numTokens; tIndex++)
+	{
+		const ExpToken_t* token = &tokens[tIndex];
+		if (token->type == ExpTokenType_Parenthesis)
+		{
+			if (token->str.length == 1 && token->str.chars[0] == '(')
+			{
+				parensLevel++;
+			}
+			else if (token->str.length == 1 && token->str.chars[0] == ')')
+			{
+				if (parensLevel == 0)
+				{
+					SetOptionalOutPntr(indexOut, tIndex);
+					return true;
+				}
+				else
+				{
+					parensLevel--;
+				}
+			}
+		}
+	}
+	
+	return false;
+}
+
 // +--------------------------------------------------------------+
 // |                      Add Part Functions                      |
 // +--------------------------------------------------------------+
@@ -936,22 +1037,24 @@ ExpPart_t* AddExpFunction(Expression_t* expression, u64 functionIndex)
 	result->functionIndex = functionIndex;
 	return result;
 }
+ExpPart_t* AddExpParenthesisGroup(Expression_t* expression, ExpPart_t* childRoot)
+{
+	ExpPart_t* result = AddExpPart(expression, ExpPartType_ParenthesisGroup);
+	if (result == nullptr) { return result; }
+	result->child[0] = childRoot;
+	return result;
+}
 
 // +--------------------------------------------------------------+
 // |                           Parsing                            |
 // +--------------------------------------------------------------+
 //If memArena is passed, then the strings referenced by ExpParts will be allocated in the arena, otherwise they will be pointing directly at wherever the tokens were pointing
 //TODO: Somehow we should return information about where an syntax error occurred in the expression
-Result_t TryCreateExpressionFromTokens(const ExpressionContext_t* context, u64 numTokens, const ExpToken_t* tokens, Expression_t* expressionOut, MemArena_t* memArena = nullptr)
+Result_t TryCreateExpressionFromTokens_Helper(Expression_t* expression, const ExpressionContext_t* context, u64 numTokens, const ExpToken_t* tokens, ExpPart_t** rootOut, ExpPart_t* functionPart = nullptr)
 {
-	NotNull2(context, expressionOut);
-	AssertIf(numTokens > 0, tokens != nullptr);
-	
-	Expression_t result = {};
-	result.allocArena = memArena;
-	result.numParts = 0;
-	result.rootPart = nullptr;
-	
+	NotNull2(expression, context);
+	AssertIf(functionPart != nullptr, rootOut == nullptr);
+	u64 functionArgIndex = 0;
 	ExpPartStack_t stack = {};
 	
 	for (u64 tIndex = 0; tIndex < numTokens; tIndex++)
@@ -965,9 +1068,9 @@ Result_t TryCreateExpressionFromTokens(const ExpressionContext_t* context, u64 n
 			case ExpTokenType_Number:
 			{
 				ExpValue_t numberValue = ConvertExpNumberToken(token->str);
-				if (numberValue.type == ExpValueType_None) { FreeExpression(&result); return Result_InvalidConstant; }
+				if (numberValue.type == ExpValueType_None) { return Result_InvalidConstant; }
 				
-				ExpPart_t* newNumberPart = AddExpPart(&result, ExpPartType_Constant);
+				ExpPart_t* newNumberPart = AddExpPart(expression, ExpPartType_Constant);
 				newNumberPart->constantValue = numberValue;
 				PushAndConnectExpPart(&stack, newNumberPart);
 			} break;
@@ -977,7 +1080,8 @@ Result_t TryCreateExpressionFromTokens(const ExpressionContext_t* context, u64 n
 			// +==============================+
 			case ExpTokenType_String:
 			{
-				Unimplemented(); //TODO: Implement me!
+				ExpPart_t* newStrPart = AddExpConstantString(expression, token->str);
+				PushAndConnectExpPart(&stack, newStrPart);
 			} break;
 			
 			// +==============================+
@@ -994,19 +1098,18 @@ Result_t TryCreateExpressionFromTokens(const ExpressionContext_t* context, u64 n
 						opType = (ExpOp_t)oIndex;
 					}
 				}
-				if (opType == ExpOp_None) { FreeExpression(&result); return Result_InvalidOperator; }
+				if (opType == ExpOp_None) { return Result_InvalidOperator; }
 				
 				u8 numOperands = GetExpOperandCount(opType);
 				if (numOperands >= 2) //operators with 2 or more values expect one value to be to the left-hand side of the operator syntax
 				{
-					if (stack.length == 0) { FreeExpression(&result); return Result_MissingLeftOperand; }
+					if (stack.length == 0) { return Result_MissingLeftOperand; }
 					ExpPart_t* leftOperand = PopExpPart(&stack);
 					NotNull(leftOperand);
 					
 					if (!IsExpPartReadyToBeOperand(leftOperand))
 					{
 						//If the part to the left is not fully complete, then we have some kind of syntax error (like two binary operators in a row)
-						FreeExpression(&result);
 						return Result_InvalidLeftOperand;
 					}
 					
@@ -1020,12 +1123,12 @@ Result_t TryCreateExpressionFromTokens(const ExpressionContext_t* context, u64 n
 						if (remainingPortion != nullptr) { PushExpPart(&stack, remainingPortion); }
 					}
 					
-					ExpPart_t* newOpPart = AddExpOperator(&result, opType, leftOperand);
+					ExpPart_t* newOpPart = AddExpOperator(expression, opType, leftOperand);
 					PushAndConnectExpPart(&stack, newOpPart);
 				}
 				else
 				{
-					ExpPart_t* newOpPart = AddExpOperator(&result, opType);
+					ExpPart_t* newOpPart = AddExpOperator(expression, opType);
 					PushAndConnectExpPart(&stack, newOpPart);
 				}
 			} break;
@@ -1035,8 +1138,42 @@ Result_t TryCreateExpressionFromTokens(const ExpressionContext_t* context, u64 n
 			// +==============================+
 			case ExpTokenType_Identifier:
 			{
-				Unimplemented(); //TODO: Implement me! We need to decide if the identifier is a function call or a variable and then find it in the context (or throw an error if it's an unknown)
 				//TODO: Maybe we should add support for named constants like "pi" where the identifier produces a constant part rather than a reference to something in the context
+				
+				const ExpToken_t* nextToken = (tIndex+1 < numTokens) ? &tokens[tIndex+1] : nullptr;
+				if (nextToken != nullptr && nextToken->type == ExpTokenType_Parenthesis && nextToken->str.length == 1 && nextToken->str.chars[0] == '(')
+				{
+					//If the next token is an open parenthesis, then this is a function call
+					u64 endParenthesisIndex = 0;
+					if (!FindExpClosingParensToken(numTokens, tokens, tIndex+2, &endParenthesisIndex)) { return Result_MismatchParenthesis; }
+					u64 numTokensInParenthesis = endParenthesisIndex - (tIndex+2);
+					
+					ExpPart_t functionPartProto = {};
+					Result_t subResult = TryCreateExpressionFromTokens_Helper(expression, context, numTokensInParenthesis, &tokens[tIndex+2], nullptr, &functionPartProto);
+					if (subResult != Result_Success) { return subResult; }
+					
+					u64 numArguments = 0;
+					while (numArguments < EXPRESSIONS_MAX_PART_CHILDREN && functionPartProto.child[numArguments] != nullptr) { numArguments++; }
+					
+					u64 funcDefIndex = 0;
+					const ExpFuncDef_t* funcDef = FindExpFuncDef(context, token->str, numArguments, &funcDefIndex);
+					if (funcDef == nullptr) { return Result_UnknownFunction; }
+					
+					ExpPart_t* newFunctionPart = AddExpFunction(expression, funcDefIndex);
+					MyMemCopy(&newFunctionPart->child[0], &functionPartProto.child[0], EXPRESSIONS_MAX_PART_CHILDREN * sizeof(ExpPart_t*));
+					PushAndConnectExpPart(&stack, newFunctionPart);
+					
+					tIndex = endParenthesisIndex;
+				}
+				else
+				{
+					u64 variableDefIndex = 0;
+					const ExpVariableDef_t* variableDef = FindExpVariableDef(context, token->str, &variableDefIndex);
+					if (variableDef == nullptr) { return Result_UnknownVariable; }
+					
+					ExpPart_t* newVariablePart = AddExpVariable(expression, variableDefIndex);
+					PushAndConnectExpPart(&stack, newVariablePart);
+				}
 			} break;
 			
 			// +==============================+
@@ -1044,7 +1181,21 @@ Result_t TryCreateExpressionFromTokens(const ExpressionContext_t* context, u64 n
 			// +==============================+
 			case ExpTokenType_Parenthesis:
 			{
-				Unimplemented(); //TODO: Implement me! We need to find the sub-portion of the tokens that are inside the parenthesis and parse them separately. Then add the lot to the stack
+				//If we find a closing parens here, then it had no starting parens to match it
+				if (token->str.length != 1 || token->str.chars[0] != '(') { return Result_MismatchParenthesis; }
+				
+				u64 endParenthesisIndex = 0;
+				if (!FindExpClosingParensToken(numTokens, tokens, tIndex+1, &endParenthesisIndex)) { return Result_MismatchParenthesis; }
+				u64 numTokensInParenthesis = endParenthesisIndex - (tIndex+1);
+				
+				ExpPart_t* groupRootPart = nullptr;
+				Result_t subResult = TryCreateExpressionFromTokens_Helper(expression, context, numTokensInParenthesis, &tokens[tIndex+1], &groupRootPart);
+				if (subResult != Result_Success) { return subResult; }
+				
+				ExpPart_t* newParensPart = AddExpParenthesisGroup(expression, groupRootPart);
+				PushAndConnectExpPart(&stack, newParensPart);
+				
+				tIndex = endParenthesisIndex;
 			} break;
 			
 			// +==============================+
@@ -1052,26 +1203,71 @@ Result_t TryCreateExpressionFromTokens(const ExpressionContext_t* context, u64 n
 			// +==============================+
 			case ExpTokenType_Comma:
 			{
-				Unimplemented(); //TODO: Implement me! We need to make sure that everything in the stack at this point is ready to be passed as an operand (aka argument) to a function. Also need to do a simila check at the end when we are return multiple items from the stack
+				if (functionPart == nullptr) { return Result_InvalidOperator; }
+				if (functionArgIndex >= EXPRESSIONS_MAX_PART_CHILDREN) { return Result_TooManyArguments; }
+				
+				if (stack.length == 1)
+				{
+					if (!IsExpPartReadyToBeOperand(stack.parts[0])) { return Result_MissingRightOperand; }
+					ExpPart_t* argument = PopExpPart(&stack);
+					functionPart->child[functionArgIndex++] = argument;
+				}
+				else { return Result_EmptyArgument; }
 			} break;
 			
 			default: AssertMsg(false, "Unhandled ExpTokenType in TryCreateExpressionFromTokens"); break;
 		}
 	}
 	
-	//TODO: If we are being called inside the context of a function's parenthesis then multiple items on the stack are allowed. Somehow we need to return those items to the calling scope so they can be hooked up a function in that scopes stack
-	if (stack.length == 1)
+	if (functionPart != nullptr)
 	{
-		result.rootPart = stack.parts[0];
+		if (functionArgIndex >= EXPRESSIONS_MAX_PART_CHILDREN) { return Result_TooManyArguments; }
+		
+		if (stack.length == 1)
+		{
+			if (!IsExpPartReadyToBeOperand(stack.parts[0])) { return Result_MissingRightOperand; }
+			ExpPart_t* argument = PopExpPart(&stack);
+			functionPart->child[functionArgIndex++] = argument;
+		}
+		else { return Result_EmptyArgument; }
+	}
+	else if (stack.length == 1)
+	{
+		if (!IsExpPartReadyToBeOperand(stack.parts[0])) { return Result_MissingRightOperand; }
+		SetOptionalOutPntr(rootOut, stack.parts[0]);
 	}
 	else
 	{
-		FreeExpression(&result);
-		return Result_Failure;//TODO: Better error code for this!
+		//TODO: Better error code for this?
+		return Result_Failure;
 	}
 	
-	MyMemCopy(expressionOut, &result, sizeof(Expression_t));
 	return Result_Success;
+}
+
+//If memArena is passed, then the strings referenced by ExpParts will be allocated in the arena, otherwise they will be pointing directly at wherever the tokens were pointing
+//TODO: Somehow we should return information about where an syntax error occurred in the expression
+Result_t TryCreateExpressionFromTokens(const ExpressionContext_t* context, u64 numTokens, const ExpToken_t* tokens, Expression_t* expressionOut, MemArena_t* memArena = nullptr)
+{
+	NotNull2(context, expressionOut);
+	AssertIf(numTokens > 0, tokens != nullptr);
+	
+	Expression_t expression = {};
+	expression.allocArena = memArena;
+	expression.numParts = 0;
+	
+	Result_t result = TryCreateExpressionFromTokens_Helper(&expression, context, numTokens, tokens, &expression.rootPart);
+	
+	if (result == Result_Success)
+	{
+		MyMemCopy(expressionOut, &expression, sizeof(Expression_t));
+	}
+	else
+	{
+		FreeExpression(&expression);
+	}
+	
+	return result;
 }
 
 //TODO: Implement the rest of me!
@@ -1085,7 +1281,7 @@ Result_t TryCreateExpressionFromTokens(const ExpressionContext_t* context, u64 n
 // +--------------------------------------------------------------+
 /*
 @Defines
-EXPRESSIONS_MAX_NODE_CHILDREN
+EXPRESSIONS_MAX_PART_CHILDREN
 EXPRESSIONS_MAX_NUM_PARTS
 ExpValueType_None
 ExpValueType_Void

@@ -114,6 +114,11 @@ enum Result_t
 	Result_MissingRightOperand,
 	Result_InvalidRightOperand,
 	Result_InvalidConstant,
+	Result_MismatchParenthesis,
+	Result_UnknownVariable,
+	Result_UnknownFunction,
+	Result_TooManyArguments,
+	Result_EmptyArgument,
 	
 	Result_NumValues,
 };
@@ -219,6 +224,11 @@ const char* GetResultStr(Result_t enumValue)
 		case Result_MissingRightOperand:            return "MissingRightOperand";
 		case Result_InvalidRightOperand:            return "InvalidRightOperand";
 		case Result_InvalidConstant:                return "InvalidConstant";
+		case Result_MismatchParenthesis:            return "MismatchParenthesis";
+		case Result_UnknownVariable:                return "UnknownVariable";
+		case Result_UnknownFunction:                return "UnknownFunction";
+		case Result_TooManyArguments:               return "TooManyArguments";
+		case Result_EmptyArgument:                  return "EmptyArgument";
 		default: return "Unknown";
 	}
 }
