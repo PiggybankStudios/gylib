@@ -93,7 +93,7 @@ enum ExpOp_t
 	ExpOp_BitwiseAnd,
 	ExpOp_BitwiseXor,
 	ExpOp_BitwiseNot,
-	ExpOp_Ternary,
+	ExpOp_Ternary, //TODO: Implement handling of this properly!
 	ExpOp_Assignment,
 	ExpOp_NumOps,
 };
@@ -211,6 +211,30 @@ const char* GetExpTokenTypeStr(ExpTokenType_t enumValue)
 }
 #endif
 
+enum ExpStepOrder_t
+{
+	ExpStepOrder_None = 0,
+	ExpStepOrder_Prefix,
+	ExpStepOrder_Natural,
+	ExpStepOrder_Postfix,
+	ExpStepOrder_NumOrders,
+};
+#ifdef GYLIB_HEADER_ONLY
+const char* GetExpStepOrderStr(ExpStepOrder_t enumValue);
+#else
+const char* GetExpStepOrderStr(ExpStepOrder_t enumValue)
+{
+	switch (enumValue)
+	{
+		case ExpStepOrder_None:    return "None";
+		case ExpStepOrder_Prefix:  return "Prefix";
+		case ExpStepOrder_Natural: return "Natural";
+		case ExpStepOrder_Postfix: return "Postfix";
+		default: return "Unknown";
+	}
+}
+#endif
+
 // +--------------------------------------------------------------+
 // |                          Structures                          |
 // +--------------------------------------------------------------+
@@ -243,11 +267,17 @@ struct ExpPart_t
 {
 	u64 index;
 	ExpPartType_t type;
-	ExpValue_t constantValue;
-	ExpOp_t opType;
-	u64 variableIndex;
-	u64 functionIndex;
+	ExpValueType_t evalType;
+	u64 childCount;
 	ExpPart_t* child[EXPRESSIONS_MAX_PART_CHILDREN];
+	// ExpPartType_Constant
+	ExpValue_t constantValue;
+	// ExpPartType_Operator
+	ExpOp_t opType;
+	// ExpPartType_Variable
+	u64 variableIndex;
+	// ExpPartType_Function
+	u64 functionIndex;
 };
 
 struct ExpPartStack_t
@@ -268,7 +298,7 @@ struct ExpFuncArg_t
 {
 	ExpValueType_t type;
 	MyStr_t name;
-	bool isOptional;
+	bool isOptional; //TODO: Implement handling of this!
 	ExpValue_t defaultValue;
 };
 
@@ -308,6 +338,9 @@ struct ExpTokenizer_t
 	u64 currentIndex;
 	ExpToken_t prevToken;
 };
+
+#define EXP_STEP_CALLBACK(functionName) void functionName(Expression_t* expression, ExpPart_t* part, u64 callbackIndex, u64 depth, ExpressionContext_t* context, void* userPntr)
+typedef EXP_STEP_CALLBACK(ExpStepCallback_f);
 
 // +--------------------------------------------------------------+
 // |                         Header Only                          |
@@ -399,6 +432,48 @@ bool IsExpPartReadyToBeOperand(const ExpPart_t* expPart)
 			if (expPart->child[oIndex] == nullptr) { return false; }
 		}
 	}
+	return true;
+}
+
+inline bool IsExpValueTypeInteger(ExpValueType_t type)
+{
+	return (
+		type == ExpValueType_I8 || type == ExpValueType_I16 || type == ExpValueType_I32 || type == ExpValueType_I64 ||
+		type == ExpValueType_U8 || type == ExpValueType_U16 || type == ExpValueType_U32 || type == ExpValueType_U64
+	);
+}
+inline bool IsExpValueTypeFloat(ExpValueType_t type)
+{
+	return (type == ExpValueType_R32 || type == ExpValueType_R64);
+}
+inline bool IsExpValueTypeSigned(ExpValueType_t type)
+{
+	return (
+		type == ExpValueType_R32 || type == ExpValueType_R64 ||
+		type == ExpValueType_I8 || type == ExpValueType_I16 || type == ExpValueType_I32 || type == ExpValueType_I64
+	);
+}
+inline bool IsExpValueTypeNumber(ExpValueType_t type)
+{
+	return (IsExpValueTypeInteger(type) || IsExpValueTypeFloat(type));
+}
+inline bool IsExpValueTypeConstantCompat(ExpValueType_t type)
+{
+	return (IsExpValueTypeNumber(type) || type == ExpValueType_String);
+}
+inline bool IsExpValueTypeBoolable(ExpValueType_t type)
+{
+	return (IsExpValueTypeNumber(type) || type == ExpValueType_Pointer);
+}
+inline bool CanExpValueTypeConvertTo(ExpValueType_t type, ExpValueType_t outType)
+{
+	if (type == outType) { return true; }
+	if (!IsExpValueTypeNumber(type)) { return false; } //only numbers have automatic conversion
+	if (!IsExpValueTypeNumber(outType)) { return false; } //only numbers have automatic conversion
+	if (IsExpValueTypeFloat(type) && !IsExpValueTypeFloat(outType)) { return false; } // disallow float -> integer conversion
+	//TODO: Do we want to be strict about any particular number conversions here? Our type checking has no static analysis for bubbling up real constant values,
+	// so it is going to call foul on anything that expects smaller than 64-bit types and has values being fed in through operators. And we have no way of "casting"
+	// from one type to another in the expression, so we can't appease the type checker if it's too strict.
 	return true;
 }
 
@@ -1041,6 +1116,7 @@ ExpPart_t* AddExpParenthesisGroup(Expression_t* expression, ExpPart_t* childRoot
 {
 	ExpPart_t* result = AddExpPart(expression, ExpPartType_ParenthesisGroup);
 	if (result == nullptr) { return result; }
+	result->childCount = 1;
 	result->child[0] = childRoot;
 	return result;
 }
@@ -1124,11 +1200,13 @@ Result_t TryCreateExpressionFromTokens_Helper(Expression_t* expression, const Ex
 					}
 					
 					ExpPart_t* newOpPart = AddExpOperator(expression, opType, leftOperand);
+					newOpPart->childCount = numOperands;
 					PushAndConnectExpPart(&stack, newOpPart);
 				}
 				else
 				{
 					ExpPart_t* newOpPart = AddExpOperator(expression, opType);
+					newOpPart->childCount = numOperands;
 					PushAndConnectExpPart(&stack, newOpPart);
 				}
 			} break;
@@ -1152,15 +1230,13 @@ Result_t TryCreateExpressionFromTokens_Helper(Expression_t* expression, const Ex
 					Result_t subResult = TryCreateExpressionFromTokens_Helper(expression, context, numTokensInParenthesis, &tokens[tIndex+2], nullptr, &functionPartProto);
 					if (subResult != Result_Success) { return subResult; }
 					
-					u64 numArguments = 0;
-					while (numArguments < EXPRESSIONS_MAX_PART_CHILDREN && functionPartProto.child[numArguments] != nullptr) { numArguments++; }
-					
 					u64 funcDefIndex = 0;
-					const ExpFuncDef_t* funcDef = FindExpFuncDef(context, token->str, numArguments, &funcDefIndex);
+					const ExpFuncDef_t* funcDef = FindExpFuncDef(context, token->str, functionPartProto.childCount, &funcDefIndex);
 					if (funcDef == nullptr) { return Result_UnknownFunction; }
 					
 					ExpPart_t* newFunctionPart = AddExpFunction(expression, funcDefIndex);
 					MyMemCopy(&newFunctionPart->child[0], &functionPartProto.child[0], EXPRESSIONS_MAX_PART_CHILDREN * sizeof(ExpPart_t*));
+					newFunctionPart->childCount = functionPartProto.childCount;
 					PushAndConnectExpPart(&stack, newFunctionPart);
 					
 					tIndex = endParenthesisIndex;
@@ -1211,6 +1287,7 @@ Result_t TryCreateExpressionFromTokens_Helper(Expression_t* expression, const Ex
 					if (!IsExpPartReadyToBeOperand(stack.parts[0])) { return Result_MissingRightOperand; }
 					ExpPart_t* argument = PopExpPart(&stack);
 					functionPart->child[functionArgIndex++] = argument;
+					functionPart->childCount = functionArgIndex;
 				}
 				else { return Result_EmptyArgument; }
 			} break;
@@ -1228,6 +1305,7 @@ Result_t TryCreateExpressionFromTokens_Helper(Expression_t* expression, const Ex
 			if (!IsExpPartReadyToBeOperand(stack.parts[0])) { return Result_MissingRightOperand; }
 			ExpPart_t* argument = PopExpPart(&stack);
 			functionPart->child[functionArgIndex++] = argument;
+			functionPart->childCount = functionArgIndex;
 		}
 		else { return Result_EmptyArgument; }
 	}
@@ -1268,6 +1346,236 @@ Result_t TryCreateExpressionFromTokens(const ExpressionContext_t* context, u64 n
 	}
 	
 	return result;
+}
+
+// +--------------------------------------------------------------+
+// |                          Evaluating                          |
+// +--------------------------------------------------------------+
+u64 StepThroughExpression_Helper(Expression_t* expression, ExpPart_t* part, ExpStepOrder_t order, ExpStepCallback_f* callback, ExpressionContext_t* context, void* userPntr, u64 startIndex, u64 depth)
+{
+	NotNull3(expression, part, callback);
+	Assert(order == ExpStepOrder_Prefix || order == ExpStepOrder_Natural || order == ExpStepOrder_Postfix);
+	
+	u64 index = startIndex;
+	
+	switch (part->type)
+	{
+		case ExpPartType_Constant:
+		case ExpPartType_Variable:
+		{
+			callback(expression, part, index++, depth, context, userPntr);
+		} break;
+		
+		case ExpPartType_Operator:
+		{
+			u8 numOperands = GetExpOperandCount(part->opType);
+			Assert(numOperands >= 1);
+			if (order == ExpStepOrder_Prefix || (numOperands == 1 && order == ExpStepOrder_Natural)) { callback(expression, part, index++, depth, context, userPntr); }
+			for (u8 oIndex = 0; oIndex < numOperands; oIndex++)
+			{
+				ExpPart_t* operand = part->child[oIndex];
+				index += StepThroughExpression_Helper(expression, operand, order, callback, context, userPntr, index, depth+1);
+				//For Natural order in operators that are 2 operands or greater, the operator comes in between every operand (potentially multiple times)
+				if (oIndex+1 < numOperands && order == ExpStepOrder_Natural) { callback(expression, part, index++, depth, context, userPntr); }
+			}
+			if (order == ExpStepOrder_Postfix) { callback(expression, part, index++, depth, context, userPntr); }
+		} break;
+		
+		case ExpPartType_Function:
+		{
+			if (order == ExpStepOrder_Prefix || order == ExpStepOrder_Natural) { callback(expression, part, index++, depth, context, userPntr); }
+			for (u64 aIndex = 0; aIndex < part->childCount; aIndex++)
+			{
+				ExpPart_t* argument = part->child[aIndex];
+				index += StepThroughExpression_Helper(expression, argument, order, callback, context, userPntr, index, depth+1);
+			}
+			if (order == ExpStepOrder_Postfix) { callback(expression, part, index++, depth, context, userPntr); }
+		} break;
+		
+		case ExpPartType_ParenthesisGroup:
+		{
+			if (order == ExpStepOrder_Prefix) { callback(expression, part, index++, depth, context, userPntr); }
+			index += StepThroughExpression_Helper(expression, part->child[0], order, callback, context, userPntr, index, depth+1);
+			if (order == ExpStepOrder_Postfix || order == ExpStepOrder_Natural) { callback(expression, part, index++, depth, context, userPntr); }
+		} break;
+		
+		default: AssertMsg(false, "Unhandled ExpPartType in StepThroughExpression_Helper"); break;
+	}
+	
+	return index - startIndex;
+}
+void StepThroughExpression(Expression_t* expression, ExpStepOrder_t order, ExpStepCallback_f* callback, ExpressionContext_t* context = nullptr, void* userPntr = nullptr)
+{
+	NotNull2(expression, expression->rootPart);
+	u64 numStepsTotal = StepThroughExpression_Helper(expression, expression->rootPart, order, callback, context, userPntr, 0, 0);
+	UNUSED(numStepsTotal);
+}
+
+struct ExpTypeCheckResult_t
+{
+	Result_t result;
+	u64 errorPartIndex;
+};
+
+// +==============================+
+// |     ExpTypeWalkCallback      |
+// +==============================+
+// void ExpressionTypeCheckWalk_Callback(Expression_t* expression, ExpPart_t* part, u64 callbackIndex, u64 depth, ExpressionContext_t* context, void* userPntr)
+EXP_STEP_CALLBACK(ExpressionTypeCheckWalk_Callback)
+{
+	NotNull3(expression, part, userPntr);
+	ExpTypeCheckResult_t* resultPntr = (ExpTypeCheckResult_t*)userPntr;
+	if (resultPntr->result != Result_None) { return; } //once we have an error, skip the rest of the callbacks
+	
+	switch (part->type)
+	{
+		case ExpPartType_Constant:
+		{
+			part->evalType = part->constantValue.type;
+		} break;
+		
+		case ExpPartType_Variable:
+		{
+			if (context == nullptr) { resultPntr->result = Result_MissingContext; resultPntr->errorPartIndex = part->index; break; }
+			ExpVariableDef_t* variableDef = VarArrayGet(&context->variableDefs, part->variableIndex, ExpVariableDef_t);
+			part->evalType = variableDef->type;
+		} break;
+		
+		case ExpPartType_Operator:
+		{
+			switch (part->opType)
+			{
+				// +==================================================+
+				// | TypeCheck Add/Subtract/Multiply/Divide Operators |
+				// +==================================================+
+				case ExpOp_Add:
+				case ExpOp_Subtract:
+				case ExpOp_Multiply:
+				case ExpOp_Divide:
+				{
+					NotNull2(part->child[0], part->child[1]);
+					ExpValueType_t leftOperandType = part->child[0]->evalType;
+					ExpValueType_t rightOperandType = part->child[1]->evalType;
+					Assert(leftOperandType != ExpValueType_None && rightOperandType != ExpValueType_None);
+					if (leftOperandType == rightOperandType)
+					{
+						if (IsExpValueTypeNumber(leftOperandType))
+						{
+							part->evalType = leftOperandType;
+						}
+						else
+						{
+							resultPntr->result = Result_InvalidLeftOperand;
+							resultPntr->errorPartIndex = part->index;
+						}
+					}
+					else if (IsExpValueTypeNumber(leftOperandType) && IsExpValueTypeNumber(rightOperandType))
+					{
+						//TODO: Should we be smarter about this somehow? Right now, any operator will result in a rather large type during type-check,
+						// because we can't be sure about the value that is stored in each operand and whether we will underflow/overflow if the operator is carried out
+						if (IsExpValueTypeFloat(leftOperandType) || IsExpValueTypeFloat(rightOperandType))
+						{
+							part->evalType = ExpValueType_R64;
+						}
+						else if (IsExpValueTypeSigned(leftOperandType) || IsExpValueTypeSigned(rightOperandType) || part->opType == ExpOp_Subtract)
+						{
+							part->evalType = ExpValueType_I64;
+						}
+						else
+						{
+							part->evalType = ExpValueType_U64;
+						}
+					}
+					else
+					{
+						//TODO: Are there any mismatching types that we accept for basic math operators?
+						resultPntr->result = Result_InvalidRightOperand;
+						resultPntr->errorPartIndex = part->index;
+					}
+				} break;
+				
+				//TODO: ExpOp_Modulo
+				//TODO: ExpOp_Equals
+				//TODO: ExpOp_NotEquals
+				//TODO: ExpOp_Or
+				//TODO: ExpOp_And
+				
+				// +==============================+
+				// |    TypeCheck Not Operator    |
+				// +==============================+
+				case ExpOp_Not:
+				{
+					NotNull(part->child[0]);
+					ExpValueType_t operandType = part->child[0]->evalType;
+					Assert(operandType != ExpValueType_None);
+					if (operandType == ExpValueType_Bool)
+					{
+						part->evalType = ExpValueType_Bool;
+					}
+					else if (IsExpValueTypeBoolable(operandType))
+					{
+						//The ! operator is able to convert things to bool
+						part->evalType = ExpValueType_Bool;
+					}
+					else
+					{
+						resultPntr->result = Result_InvalidRightOperand;
+						resultPntr->errorPartIndex = part->index;
+					}
+				} break;
+				
+				//TODO: ExpOp_BitwiseOr
+				//TODO: ExpOp_BitwiseAnd
+				//TODO: ExpOp_BitwiseXor
+				//TODO: ExpOp_BitwiseNot
+				//TODO: ExpOp_Ternary
+				//TODO: ExpOp_Assignment
+				
+				default: AssertMsg(false, "Unhandled ExpOp in ExpressionTypeCheckWalk_Callback"); break;
+			}
+		} break;
+		
+		case ExpPartType_Function:
+		{
+			if (context == nullptr) { resultPntr->result = Result_MissingContext; resultPntr->errorPartIndex = part->index; break; }
+			ExpFuncDef_t* functionDef = VarArrayGet(&context->functionDefs, part->functionIndex, ExpFuncDef_t);
+			Assert(part->childCount == functionDef->numArguments);
+			for (u64 aIndex = 0; aIndex < functionDef->numArguments; aIndex++)
+			{
+				ExpPart_t* argument = part->child[aIndex];
+				ExpFuncArg_t* argDef = &functionDef->arguments[aIndex];
+				NotNull(argument);
+				Assert(argument->evalType != ExpValueType_None);
+				if (!CanExpValueTypeConvertTo(argument->evalType, argDef->type))
+				{
+					resultPntr->result = Result_InvalidArgument;
+					resultPntr->errorPartIndex = part->index;
+					break;
+				}
+			}
+			if (resultPntr->result != Result_None) { break; }
+			part->evalType = functionDef->returnType;
+		} break;
+		
+		case ExpPartType_ParenthesisGroup:
+		{
+			NotNull(part->child[0]);
+			Assert(part->child[0]->evalType != ExpValueType_None);
+			part->evalType = part->child[0]->evalType;
+		} break;
+		
+		default: AssertMsg(false, "Unhandled ExpPartType in ExpressionTypeCheckWalk_Callback"); resultPntr->result = Result_Unknown; break;
+	}
+}
+//TODO: This should probably tell which part the type error occurred on!
+Result_t ExpressionTypeCheckWalk(Expression_t* expression, const ExpressionContext_t* context = nullptr, u64* errorPartIndex = nullptr)
+{
+	ExpTypeCheckResult_t result = {};
+	result.result = Result_None;
+	StepThroughExpression(expression, ExpStepOrder_Postfix, ExpressionTypeCheckWalk_Callback, (ExpressionContext_t*)context, &result);
+	if (result.result == Result_None) { result.result = Result_Success; }
+	SetOptionalOutPntr(errorPartIndex, result.errorPartIndex);
+	return result.result;
 }
 
 //TODO: Implement the rest of me!
