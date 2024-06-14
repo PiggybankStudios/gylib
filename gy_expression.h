@@ -21,6 +21,7 @@ Description:
 // +--------------------------------------------------------------+
 #define EXPRESSIONS_MAX_PART_CHILDREN     8 //aka max function argument count
 #define EXPRESSIONS_MAX_PARSE_STACK_SIZE  16
+#define EXPRESSIONS_MAX_EVAL_STACK_SIZE   16
 #define EXPRESSIONS_MAX_NUM_PARTS         128
 
 #define EXPRESSION_FUNC_DEFINITION(functionName) struct ExpValue_t functionName(MemArena_t* memArena, u64 numArgs, const struct ExpValue_t* args)
@@ -266,6 +267,7 @@ struct ExpValue_t
 struct ExpPart_t
 {
 	u64 index;
+	u64 tokenIndex;
 	ExpPartType_t type;
 	ExpValueType_t evalType;
 	u64 childCount;
@@ -463,7 +465,7 @@ inline bool IsExpValueTypeConstantCompat(ExpValueType_t type)
 }
 inline bool IsExpValueTypeBoolable(ExpValueType_t type)
 {
-	return (IsExpValueTypeNumber(type) || type == ExpValueType_Pointer);
+	return (type == ExpValueType_Bool || IsExpValueTypeNumber(type) || type == ExpValueType_Pointer);
 }
 inline bool CanExpValueTypeConvertTo(ExpValueType_t type, ExpValueType_t outType)
 {
@@ -475,6 +477,557 @@ inline bool CanExpValueTypeConvertTo(ExpValueType_t type, ExpValueType_t outType
 	// so it is going to call foul on anything that expects smaller than 64-bit types and has values being fed in through operators. And we have no way of "casting"
 	// from one type to another in the expression, so we can't appease the type checker if it's too strict.
 	return true;
+}
+inline u8 GetExpValueTypeByteSize(ExpValueType_t type)
+{
+	switch (type)
+	{
+		case ExpValueType_Void: return 0;
+		case ExpValueType_Bool: return sizeof(bool);
+		case ExpValueType_Pointer: return sizeof(void*);
+		case ExpValueType_String: return sizeof(MyStr_t);
+		case ExpValueType_R32: return 4;
+		case ExpValueType_R64: return 8;
+		case ExpValueType_I8: return 1;
+		case ExpValueType_I16: return 2;
+		case ExpValueType_I32: return 4;
+		case ExpValueType_I64: return 8;
+		case ExpValueType_U8: return 1;
+		case ExpValueType_U16: return 2;
+		case ExpValueType_U32: return 4;
+		case ExpValueType_U64: return 8;
+		default: return 0;
+	}
+}
+
+MyStr_t ExpValueToStr(ExpValue_t value, MemArena_t* memArena, bool includeType = false)
+{
+	MyStr_t result = MyStr_Empty;
+	if (includeType)
+	{
+		switch (value.type)
+		{
+			case ExpValueType_Void:    result = PrintInArenaStr(memArena, "Void"); break;
+			case ExpValueType_Bool:    result = PrintInArenaStr(memArena, "Bool %s",                  value.valueBool ? "True" : "False"); break;
+			case ExpValueType_Pointer: result = PrintInArenaStr(memArena, "Pointer[%llu] %p",         value.valuePntrTypeId, value.valuePntr); break;
+			case ExpValueType_String:  result = PrintInArenaStr(memArena, "String \"%.*s\"", StrPrint(value.valueStr)); break;
+			case ExpValueType_R32:     result = PrintInArenaStr(memArena, "R32 %g",                   value.valueR32); break;
+			case ExpValueType_R64:     result = PrintInArenaStr(memArena, "R64 %lg",                  value.valueR64); break;
+			case ExpValueType_I8:      result = PrintInArenaStr(memArena, "I8 %d",               (int)value.valueI8);  break;
+			case ExpValueType_I16:     result = PrintInArenaStr(memArena, "I16 %d",              (int)value.valueI16); break;
+			case ExpValueType_I32:     result = PrintInArenaStr(memArena, "I32 %d",              (int)value.valueI32); break;
+			case ExpValueType_I64:     result = PrintInArenaStr(memArena, "I64 %lld",                 value.valueI64); break;
+			case ExpValueType_U8:      result = PrintInArenaStr(memArena, "U8 %u",      (unsigned int)value.valueU8);  break;
+			case ExpValueType_U16:     result = PrintInArenaStr(memArena, "U16 %u",     (unsigned int)value.valueU16); break;
+			case ExpValueType_U32:     result = PrintInArenaStr(memArena, "U32 %u",     (unsigned int)value.valueU32); break;
+			case ExpValueType_U64:     result = PrintInArenaStr(memArena, "U64 %llu",                 value.valueU64); break;
+			default:                   result = PrintInArenaStr(memArena, "UnknownType %u", value.type); break;
+		}
+	}
+	else
+	{
+		switch (value.type)
+		{
+			case ExpValueType_Void:    result = PrintInArenaStr(memArena, "Void"); break;
+			case ExpValueType_Bool:    result = PrintInArenaStr(memArena, "%s",                  value.valueBool ? "True" : "False"); break;
+			case ExpValueType_Pointer: result = PrintInArenaStr(memArena, "%p",                 value.valuePntr); break;
+			case ExpValueType_String:  result = PrintInArenaStr(memArena, "\"%.*s\"",   StrPrint(value.valueStr)); break;
+			case ExpValueType_R32:     result = PrintInArenaStr(memArena, "%g",                  value.valueR32); break;
+			case ExpValueType_R64:     result = PrintInArenaStr(memArena, "%lg",                 value.valueR64); break;
+			case ExpValueType_I8:      result = PrintInArenaStr(memArena, "%d",             (int)value.valueI8);  break;
+			case ExpValueType_I16:     result = PrintInArenaStr(memArena, "%d",             (int)value.valueI16); break;
+			case ExpValueType_I32:     result = PrintInArenaStr(memArena, "%d",             (int)value.valueI32); break;
+			case ExpValueType_I64:     result = PrintInArenaStr(memArena, "%lld",                value.valueI64); break;
+			case ExpValueType_U8:      result = PrintInArenaStr(memArena, "%u",    (unsigned int)value.valueU8);  break;
+			case ExpValueType_U16:     result = PrintInArenaStr(memArena, "%u",    (unsigned int)value.valueU16); break;
+			case ExpValueType_U32:     result = PrintInArenaStr(memArena, "%u",    (unsigned int)value.valueU32); break;
+			case ExpValueType_U64:     result = PrintInArenaStr(memArena, "%llu",                value.valueU64); break;
+			default:                   result = PrintInArenaStr(memArena, "UnknownType"); break;
+		}
+	}
+	return result;
+}
+
+// +--------------------------------------------------------------+
+// |                       Value Conversion                       |
+// +--------------------------------------------------------------+
+ExpValueType_t GetExpResultTypeForMathOp(ExpValueType_t leftOperandType, ExpValueType_t rightOperandType, bool isSubtractOp, Result_t* reasonOut = nullptr)
+{
+	if (leftOperandType == rightOperandType)
+	{
+		if (IsExpValueTypeNumber(leftOperandType)) { return leftOperandType; }
+		else { SetOptionalOutPntr(reasonOut, Result_InvalidLeftOperand); return ExpValueType_None; }
+	}
+	else if (IsExpValueTypeNumber(leftOperandType) && IsExpValueTypeNumber(rightOperandType))
+	{
+		//TODO: Should we be smarter about this somehow? Right now, any operator will result in a rather large type during type-check,
+		// because we can't be sure about the value that is stored in each operand and whether we will underflow/overflow if the operator is carried out
+		if (IsExpValueTypeFloat(leftOperandType) || IsExpValueTypeFloat(rightOperandType)) { return ExpValueType_R64; }
+		else if (IsExpValueTypeSigned(leftOperandType) || IsExpValueTypeSigned(rightOperandType) || isSubtractOp) { return ExpValueType_I64; }
+		else { return ExpValueType_U64; }
+	}
+	else
+	{
+		//TODO: Are there any mismatching types that we accept for basic math operators?
+		SetOptionalOutPntr(reasonOut, Result_InvalidRightOperand); return ExpValueType_None;
+	}
+}
+ExpValueType_t GetExpIntegerTypeForBitwiseOp(ExpValueType_t leftOperandType, ExpValueType_t rightOperandType, bool isAndOp, Result_t* reasonOut = nullptr)
+{
+	if (!IsExpValueTypeInteger(leftOperandType)) { SetOptionalOutPntr(reasonOut, Result_InvalidLeftOperand); return ExpValueType_None; }
+	if (!IsExpValueTypeInteger(rightOperandType)) { SetOptionalOutPntr(reasonOut, Result_InvalidRightOperand); return ExpValueType_None; }
+	
+	if (leftOperandType == rightOperandType) { return leftOperandType; }
+	else
+	{
+		// NOTE: Signed integers sign bit isn't treated specially, but the result is signed if one side is signed and it is >= the other in byte size
+		bool resultIsSigned = false;
+		if (IsExpValueTypeSigned(leftOperandType) && GetExpValueTypeByteSize(leftOperandType) >= GetExpValueTypeByteSize(rightOperandType)) { resultIsSigned = true; }
+		else if (IsExpValueTypeSigned(rightOperandType) && GetExpValueTypeByteSize(rightOperandType) >= GetExpValueTypeByteSize(leftOperandType)) { resultIsSigned = true; }
+		
+		// NOTE: The & operator actually chooses the smaller type as the result because the bits involved in the larger type are guaranteed discarded
+		u8 resultByteSize = isAndOp ?
+			(u8)MinU32(GetExpValueTypeByteSize(leftOperandType), GetExpValueTypeByteSize(rightOperandType)) :
+			(u8)MaxU32(GetExpValueTypeByteSize(leftOperandType), GetExpValueTypeByteSize(rightOperandType));
+		switch (resultByteSize)
+		{
+			case 1: return (resultIsSigned ? ExpValueType_I8  : ExpValueType_U8);
+			case 2: return (resultIsSigned ? ExpValueType_I16 : ExpValueType_U16);
+			case 4: return (resultIsSigned ? ExpValueType_I32 : ExpValueType_U32);
+			case 8: return (resultIsSigned ? ExpValueType_I64 : ExpValueType_U64);
+			default: Assert(false); SetOptionalOutPntr(reasonOut, Result_Unknown); return ExpValueType_None;
+		}
+	}
+}
+ExpValueType_t GetExpCommonTypeForComparisonOp(ExpValueType_t leftOperandType, ExpValueType_t rightOperandType, Result_t* reasonOut = nullptr)
+{
+	if (leftOperandType == rightOperandType)
+	{
+		return leftOperandType;
+	}
+	else if (IsExpValueTypeNumber(leftOperandType) && IsExpValueTypeNumber(rightOperandType))
+	{
+		//TODO: Should we be smarter about this somehow? Right now, any operator will result in a rather large type during type-check,
+		// because we can't be sure about the value that is stored in each operand and whether we will underflow/overflow if the operator is carried out
+		if (IsExpValueTypeFloat(leftOperandType) || IsExpValueTypeFloat(rightOperandType)) { return ExpValueType_R64; }
+		else if (IsExpValueTypeSigned(leftOperandType) || IsExpValueTypeSigned(rightOperandType)) { return ExpValueType_I64; }
+		else { return ExpValueType_U64; }
+	}
+	else
+	{
+		//TODO: Are there any mismatching types that we accept for comparison operators?
+		SetOptionalOutPntr(reasonOut, Result_InvalidRightOperand); return ExpValueType_None;
+	}
+}
+
+ExpValue_t CastExpValue(ExpValue_t value, ExpValueType_t type)
+{
+	ExpValue_t result = value;
+	if (value.type == type) { return result; }
+	result.type = type;
+	
+	switch (value.type)
+	{
+		case ExpValueType_Bool:
+		{
+			switch (type)
+			{
+				case ExpValueType_R32: result.valueR32 = (r32)(value.valueBool ? 1.0f : 0.0f); break;
+				case ExpValueType_R64: result.valueR64 = (r64)(value.valueBool ? 1.0  : 0.0);  break;
+				case ExpValueType_U8:  result.valueU8  =  (u8)(value.valueBool ? 1    :   0);  break;
+				case ExpValueType_U16: result.valueU16 = (u16)(value.valueBool ? 1    :   0);  break;
+				case ExpValueType_U32: result.valueU32 = (u32)(value.valueBool ? 1    :   0);  break;
+				case ExpValueType_U64: result.valueU64 = (u64)(value.valueBool ? 1    :   0);  break;
+				case ExpValueType_I8:  result.valueI8  =  (i8)(value.valueBool ? 1    :   0);  break;
+				case ExpValueType_I16: result.valueI16 = (i16)(value.valueBool ? 1    :   0);  break;
+				case ExpValueType_I32: result.valueI32 = (i32)(value.valueBool ? 1    :   0);  break;
+				case ExpValueType_I64: result.valueI64 = (i64)(value.valueBool ? 1    :   0);  break;
+				//TODO: Can we support string conversion by doing "True" and "False"? Is that helpful?
+				default: AssertMsg(false, "Unsupported conversion in CastExpValue"); break;
+			}
+		} break;
+		
+		case ExpValueType_Pointer:
+		{
+			switch (type)
+			{
+				case ExpValueType_Bool: result.valueBool = (value.valuePntr != nullptr); break;
+				default: AssertMsg(false, "Unsupported conversion in CastExpValue"); break;
+			}
+		} break;
+		
+		case ExpValueType_String:
+		{
+			switch (type)
+			{
+				case ExpValueType_Bool: result.valueBool = !IsEmptyStr(value.valueStr); break;
+				default: AssertMsg(false, "Unsupported conversion in CastExpValue"); break;
+			}
+		} break;
+		
+		case ExpValueType_R32:
+		{
+			switch (type)
+			{
+				case ExpValueType_Bool: result.valueBool = (result.valueR32 != 0.0f); break;
+				case ExpValueType_R64:  result.valueR64  = (r64)result.valueR32;      break;
+				case ExpValueType_U8:   result.valueU8   =  (u8)result.valueR32;      break;
+				case ExpValueType_U16:  result.valueU16  = (u16)result.valueR32;      break;
+				case ExpValueType_U32:  result.valueU32  = (u32)result.valueR32;      break;
+				case ExpValueType_U64:  result.valueU64  = (u64)result.valueR32;      break;
+				case ExpValueType_I8:   result.valueI8   =  (i8)result.valueR32;      break;
+				case ExpValueType_I16:  result.valueI16  = (i16)result.valueR32;      break;
+				case ExpValueType_I32:  result.valueI32  = (i32)result.valueR32;      break;
+				case ExpValueType_I64:  result.valueI64  = (i64)result.valueR32;      break;
+				default: AssertMsg(false, "Unsupported conversion in CastExpValue");  break;
+			}
+		} break;
+		case ExpValueType_R64:
+		{
+			switch (type)
+			{
+				case ExpValueType_Bool: result.valueBool = (result.valueR64 != 0.0f); break;
+				case ExpValueType_R32:  result.valueR32  = (r32)result.valueR64;      break;
+				case ExpValueType_U8:   result.valueU8   =  (u8)result.valueR64;      break;
+				case ExpValueType_U16:  result.valueU16  = (u16)result.valueR64;      break;
+				case ExpValueType_U32:  result.valueU32  = (u32)result.valueR64;      break;
+				case ExpValueType_U64:  result.valueU64  = (u64)result.valueR64;      break;
+				case ExpValueType_I8:   result.valueI8   =  (i8)result.valueR64;      break;
+				case ExpValueType_I16:  result.valueI16  = (i16)result.valueR64;      break;
+				case ExpValueType_I32:  result.valueI32  = (i32)result.valueR64;      break;
+				case ExpValueType_I64:  result.valueI64  = (i64)result.valueR64;      break;
+				default: AssertMsg(false, "Unsupported conversion in CastExpValue");  break;
+			}
+		} break;
+		
+		case ExpValueType_I8:
+		{
+			switch (type)
+			{
+				case ExpValueType_Bool: result.valueBool = (result.valueI8 != 0.0f); break;
+				case ExpValueType_R32:  result.valueR32  = (r32)result.valueI8;      break;
+				case ExpValueType_R64:  result.valueR64  = (r64)result.valueI8;      break;
+				case ExpValueType_U8:   result.valueU8   =  (u8)result.valueI8;      break;
+				case ExpValueType_U16:  result.valueU16  = (u16)result.valueI8;      break;
+				case ExpValueType_U32:  result.valueU32  = (u32)result.valueI8;      break;
+				case ExpValueType_U64:  result.valueU64  = (u64)result.valueI8;      break;
+				case ExpValueType_I16:  result.valueI16  = (i16)result.valueI8;      break;
+				case ExpValueType_I32:  result.valueI32  = (i32)result.valueI8;      break;
+				case ExpValueType_I64:  result.valueI64  = (i64)result.valueI8;      break;
+				default: AssertMsg(false, "Unsupported conversion in CastExpValue");  break;
+			}
+		} break;
+		case ExpValueType_I16:
+		{
+			switch (type)
+			{
+				case ExpValueType_Bool: result.valueBool = (result.valueI16 != 0.0f); break;
+				case ExpValueType_R32:  result.valueR32  = (r32)result.valueI16;      break;
+				case ExpValueType_R64:  result.valueR64  = (r64)result.valueI16;      break;
+				case ExpValueType_U8:   result.valueU8   =  (u8)result.valueI16;      break;
+				case ExpValueType_U16:  result.valueU16  = (u16)result.valueI16;      break;
+				case ExpValueType_U32:  result.valueU32  = (u32)result.valueI16;      break;
+				case ExpValueType_U64:  result.valueU64  = (u64)result.valueI16;      break;
+				case ExpValueType_I8:   result.valueI8   =  (i8)result.valueI16;      break;
+				case ExpValueType_I32:  result.valueI32  = (i32)result.valueI16;      break;
+				case ExpValueType_I64:  result.valueI64  = (i64)result.valueI16;      break;
+				default: AssertMsg(false, "Unsupported conversion in CastExpValue");  break;
+			}
+		} break;
+		case ExpValueType_I32:
+		{
+			switch (type)
+			{
+				case ExpValueType_Bool: result.valueBool = (result.valueI32 != 0.0f); break;
+				case ExpValueType_R32:  result.valueR32  = (r32)result.valueI32;      break;
+				case ExpValueType_R64:  result.valueR64  = (r64)result.valueI32;      break;
+				case ExpValueType_U8:   result.valueU8   =  (u8)result.valueI32;      break;
+				case ExpValueType_U16:  result.valueU16  = (u16)result.valueI32;      break;
+				case ExpValueType_U32:  result.valueU32  = (u32)result.valueI32;      break;
+				case ExpValueType_U64:  result.valueU64  = (u64)result.valueI32;      break;
+				case ExpValueType_I8:   result.valueI8   =  (i8)result.valueI32;      break;
+				case ExpValueType_I16:  result.valueI16  = (i16)result.valueI32;      break;
+				case ExpValueType_I64:  result.valueI64  = (i64)result.valueI32;      break;
+				default: AssertMsg(false, "Unsupported conversion in CastExpValue");  break;
+			}
+		} break;
+		case ExpValueType_I64:
+		{
+			switch (type)
+			{
+				case ExpValueType_Bool: result.valueBool = (result.valueI64 != 0.0f); break;
+				case ExpValueType_R32:  result.valueR32  = (r32)result.valueI64;      break;
+				case ExpValueType_R64:  result.valueR64  = (r64)result.valueI64;      break;
+				case ExpValueType_U8:   result.valueU8   =  (u8)result.valueI64;      break;
+				case ExpValueType_U16:  result.valueU16  = (u16)result.valueI64;      break;
+				case ExpValueType_U32:  result.valueU32  = (u32)result.valueI64;      break;
+				case ExpValueType_U64:  result.valueU64  = (u64)result.valueI64;      break;
+				case ExpValueType_I8:   result.valueI8   =  (i8)result.valueI64;      break;
+				case ExpValueType_I16:  result.valueI16  = (i16)result.valueI64;      break;
+				case ExpValueType_I32:  result.valueI32  = (i32)result.valueI64;      break;
+				default: AssertMsg(false, "Unsupported conversion in CastExpValue");  break;
+			}
+		} break;
+		
+		case ExpValueType_U8:
+		{
+			switch (type)
+			{
+				case ExpValueType_Bool: result.valueBool = (result.valueU8 != 0.0f); break;
+				case ExpValueType_R32:  result.valueR32  = (r32)result.valueU8;      break;
+				case ExpValueType_R64:  result.valueR64  = (r64)result.valueU8;      break;
+				case ExpValueType_U16:  result.valueU16  = (u16)result.valueU8;      break;
+				case ExpValueType_U32:  result.valueU32  = (u32)result.valueU8;      break;
+				case ExpValueType_U64:  result.valueU64  = (u64)result.valueU8;      break;
+				case ExpValueType_I8:   result.valueI8   =  (i8)result.valueU8;      break;
+				case ExpValueType_I16:  result.valueI16  = (i16)result.valueU8;      break;
+				case ExpValueType_I32:  result.valueI32  = (i32)result.valueU8;      break;
+				case ExpValueType_I64:  result.valueI64  = (i64)result.valueU8;      break;
+				default: AssertMsg(false, "Unsupported conversion in CastExpValue");  break;
+			}
+		} break;
+		case ExpValueType_U16:
+		{
+			switch (type)
+			{
+				case ExpValueType_Bool: result.valueBool = (result.valueU16 != 0.0f); break;
+				case ExpValueType_R32:  result.valueR32  = (r32)result.valueU16;      break;
+				case ExpValueType_R64:  result.valueR64  = (r64)result.valueU16;      break;
+				case ExpValueType_U8:   result.valueU8   =  (u8)result.valueU16;      break;
+				case ExpValueType_U32:  result.valueU32  = (u32)result.valueU16;      break;
+				case ExpValueType_U64:  result.valueU64  = (u64)result.valueU16;      break;
+				case ExpValueType_I8:   result.valueI8   =  (i8)result.valueU16;      break;
+				case ExpValueType_I16:  result.valueI16  = (i16)result.valueU16;      break;
+				case ExpValueType_I32:  result.valueI32  = (i32)result.valueU16;      break;
+				case ExpValueType_I64:  result.valueI64  = (i64)result.valueU16;      break;
+				default: AssertMsg(false, "Unsupported conversion in CastExpValue");  break;
+			}
+		} break;
+		case ExpValueType_U32:
+		{
+			switch (type)
+			{
+				case ExpValueType_Bool: result.valueBool = (result.valueU32 != 0.0f); break;
+				case ExpValueType_R32:  result.valueR32  = (r32)result.valueU32;      break;
+				case ExpValueType_R64:  result.valueR64  = (r64)result.valueU32;      break;
+				case ExpValueType_U8:   result.valueU8   =  (u8)result.valueU32;      break;
+				case ExpValueType_U16:  result.valueU16  = (u16)result.valueU32;      break;
+				case ExpValueType_U64:  result.valueU64  = (u64)result.valueU32;      break;
+				case ExpValueType_I8:   result.valueI8   =  (i8)result.valueU32;      break;
+				case ExpValueType_I16:  result.valueI16  = (i16)result.valueU32;      break;
+				case ExpValueType_I32:  result.valueI32  = (i32)result.valueU32;      break;
+				case ExpValueType_I64:  result.valueI64  = (i64)result.valueU32;      break;
+				default: AssertMsg(false, "Unsupported conversion in CastExpValue");  break;
+			}
+		} break;
+		case ExpValueType_U64:
+		{
+			switch (type)
+			{
+				case ExpValueType_Bool: result.valueBool = (result.valueU64 != 0.0f); break;
+				case ExpValueType_R32:  result.valueR32  = (r32)result.valueU64;      break;
+				case ExpValueType_R64:  result.valueR64  = (r64)result.valueU64;      break;
+				case ExpValueType_U8:   result.valueU8   =  (u8)result.valueU64;      break;
+				case ExpValueType_U16:  result.valueU16  = (u16)result.valueU64;      break;
+				case ExpValueType_U32:  result.valueU32  = (u32)result.valueU64;      break;
+				case ExpValueType_I8:   result.valueI8   =  (i8)result.valueU64;      break;
+				case ExpValueType_I16:  result.valueI16  = (i16)result.valueU64;      break;
+				case ExpValueType_I32:  result.valueI32  = (i32)result.valueU64;      break;
+				case ExpValueType_I64:  result.valueI64  = (i64)result.valueU64;      break;
+				default: AssertMsg(false, "Unsupported conversion in CastExpValue");  break;
+			}
+		} break;
+		
+		default: AssertMsg(false, "Unsupported conversion in CastExpValue"); break;
+	}
+	
+	return result;
+}
+
+void WriteExpVariable_(ExpVariableDef_t* variableDef, u64 valueSize, const void* valuePntr)
+{
+	NotNull2(variableDef, valuePntr);
+	NotNull(variableDef->pntr);
+	switch (variableDef->type)
+	{
+		// case ExpValueType_Void:    
+		case ExpValueType_Bool:    Assert(valueSize == sizeof(bool));    *((bool*)variableDef->pntr)    = *(bool*)valuePntr;    break;
+		case ExpValueType_Pointer: Assert(valueSize == sizeof(void*));   *((void**)variableDef->pntr)   = *(void**)valuePntr;   break;
+		case ExpValueType_String:  Assert(valueSize == sizeof(MyStr_t)); *((MyStr_t*)variableDef->pntr) = *(MyStr_t*)valuePntr; break;
+		case ExpValueType_R32:     Assert(valueSize == sizeof(r32));     *((r32*)variableDef->pntr)     = *(r32*)valuePntr;     break;
+		case ExpValueType_R64:     Assert(valueSize == sizeof(r64));     *((r64*)variableDef->pntr)     = *(r64*)valuePntr;     break;
+		case ExpValueType_I8:      Assert(valueSize == sizeof(i8));      *((i8*)variableDef->pntr)      = *(i8*)valuePntr;      break;
+		case ExpValueType_I16:     Assert(valueSize == sizeof(i16));     *((i16*)variableDef->pntr)     = *(i16*)valuePntr;     break;
+		case ExpValueType_I32:     Assert(valueSize == sizeof(i32));     *((i32*)variableDef->pntr)     = *(i32*)valuePntr;     break;
+		case ExpValueType_I64:     Assert(valueSize == sizeof(i64));     *((i64*)variableDef->pntr)     = *(i64*)valuePntr;     break;
+		case ExpValueType_U8:      Assert(valueSize == sizeof(u8));      *((u8*)variableDef->pntr)      = *(u8*)valuePntr;      break;
+		case ExpValueType_U16:     Assert(valueSize == sizeof(u16));     *((u16*)variableDef->pntr)     = *(u16*)valuePntr;     break;
+		case ExpValueType_U32:     Assert(valueSize == sizeof(u32));     *((u32*)variableDef->pntr)     = *(u32*)valuePntr;     break;
+		case ExpValueType_U64:     Assert(valueSize == sizeof(u64));     *((u64*)variableDef->pntr)     = *(u64*)valuePntr;     break;
+		default: AssertMsg(false, "Unhandled ExpValueType in WriteExpVariable_"); break;
+	}
+}
+void WriteExpVariableBool(ExpVariableDef_t* variableDef, bool value)
+{
+	Assert(variableDef->type == ExpValueType_Bool);
+	WriteExpVariable_(variableDef, sizeof(value), &value);
+}
+void WriteExpVariablePointer(ExpVariableDef_t* variableDef, void* value)
+{
+	Assert(variableDef->type == ExpValueType_Pointer);
+	WriteExpVariable_(variableDef, sizeof(value), &value);
+}
+void WriteExpVariableString(ExpVariableDef_t* variableDef, MyStr_t value)
+{
+	Assert(variableDef->type == ExpValueType_String);
+	WriteExpVariable_(variableDef, sizeof(value), &value);
+}
+void WriteExpVariableR32(ExpVariableDef_t* variableDef, r32 value)
+{
+	Assert(variableDef->type == ExpValueType_R32);
+	WriteExpVariable_(variableDef, sizeof(value), &value);
+}
+void WriteExpVariableR64(ExpVariableDef_t* variableDef, r64 value)
+{
+	Assert(variableDef->type == ExpValueType_R64);
+	WriteExpVariable_(variableDef, sizeof(value), &value);
+}
+void WriteExpVariableI8(ExpVariableDef_t* variableDef, i8 value)
+{
+	Assert(variableDef->type == ExpValueType_I8);
+	WriteExpVariable_(variableDef, sizeof(value), &value);
+}
+void WriteExpVariableI16(ExpVariableDef_t* variableDef, i16 value)
+{
+	Assert(variableDef->type == ExpValueType_I16);
+	WriteExpVariable_(variableDef, sizeof(value), &value);
+}
+void WriteExpVariableI32(ExpVariableDef_t* variableDef, i32 value)
+{
+	Assert(variableDef->type == ExpValueType_I32);
+	WriteExpVariable_(variableDef, sizeof(value), &value);
+}
+void WriteExpVariableI64(ExpVariableDef_t* variableDef, i64 value)
+{
+	Assert(variableDef->type == ExpValueType_I64);
+	WriteExpVariable_(variableDef, sizeof(value), &value);
+}
+void WriteExpVariableU8(ExpVariableDef_t* variableDef, u8 value)
+{
+	Assert(variableDef->type == ExpValueType_U8);
+	WriteExpVariable_(variableDef, sizeof(value), &value);
+}
+void WriteExpVariableU16(ExpVariableDef_t* variableDef, u16 value)
+{
+	Assert(variableDef->type == ExpValueType_U16);
+	WriteExpVariable_(variableDef, sizeof(value), &value);
+}
+void WriteExpVariableU32(ExpVariableDef_t* variableDef, u32 value)
+{
+	Assert(variableDef->type == ExpValueType_U32);
+	WriteExpVariable_(variableDef, sizeof(value), &value);
+}
+void WriteExpVariableU64(ExpVariableDef_t* variableDef, u64 value)
+{
+	Assert(variableDef->type == ExpValueType_U64);
+	WriteExpVariable_(variableDef, sizeof(value), &value);
+}
+
+ExpValue_t ReadExpVariable_(ExpVariableDef_t* variableDef)
+{
+	ExpValue_t result = {};
+	result.type = variableDef->type;
+	switch (variableDef->type)
+	{
+		// case ExpValueType_Void:    
+		case ExpValueType_Bool:    result.valueBool = *((bool*)variableDef->pntr);    break;
+		case ExpValueType_Pointer: result.valuePntr = *((void**)variableDef->pntr);   break;
+		case ExpValueType_String:  result.valueStr  = *((MyStr_t*)variableDef->pntr); break;
+		case ExpValueType_R32:     result.valueR32  = *((r32*)variableDef->pntr);     break;
+		case ExpValueType_R64:     result.valueR64  = *((r64*)variableDef->pntr);     break;
+		case ExpValueType_I8:      result.valueI8   = *((i8*)variableDef->pntr);      break;
+		case ExpValueType_I16:     result.valueI16  = *((i16*)variableDef->pntr);     break;
+		case ExpValueType_I32:     result.valueI32  = *((i32*)variableDef->pntr);     break;
+		case ExpValueType_I64:     result.valueI64  = *((i64*)variableDef->pntr);     break;
+		case ExpValueType_U8:      result.valueU8   = *((u8*)variableDef->pntr);      break;
+		case ExpValueType_U16:     result.valueU16  = *((u16*)variableDef->pntr);     break;
+		case ExpValueType_U32:     result.valueU32  = *((u32*)variableDef->pntr);     break;
+		case ExpValueType_U64:     result.valueU64  = *((u64*)variableDef->pntr);     break;
+		default: AssertMsg(false, "Unhandled ExpValueType in ReadExpVariable_"); break;
+	}
+	return result;
+}
+bool ReadExpVariableBool(ExpVariableDef_t* variableDef)
+{
+	Assert(variableDef->type == ExpValueType_Bool);
+	ExpValue_t resultValue = ReadExpVariable_(variableDef);
+	return resultValue.valueBool;
+}
+void* ReadExpVariablePointer(ExpVariableDef_t* variableDef)
+{
+	Assert(variableDef->type == ExpValueType_Pointer);
+	ExpValue_t resultValue = ReadExpVariable_(variableDef);
+	return resultValue.valuePntr;
+}
+r32 ReadExpVariableR32(ExpVariableDef_t* variableDef)
+{
+	Assert(variableDef->type == ExpValueType_R32);
+	ExpValue_t resultValue = ReadExpVariable_(variableDef);
+	return resultValue.valueR32;
+}
+r64 ReadExpVariableR64(ExpVariableDef_t* variableDef)
+{
+	Assert(variableDef->type == ExpValueType_R64);
+	ExpValue_t resultValue = ReadExpVariable_(variableDef);
+	return resultValue.valueR64;
+}
+i8 ReadExpVariableI8(ExpVariableDef_t* variableDef)
+{
+	Assert(variableDef->type == ExpValueType_I8);
+	ExpValue_t resultValue = ReadExpVariable_(variableDef);
+	return resultValue.valueI8;
+}
+i16 ReadExpVariableI16(ExpVariableDef_t* variableDef)
+{
+	Assert(variableDef->type == ExpValueType_I16);
+	ExpValue_t resultValue = ReadExpVariable_(variableDef);
+	return resultValue.valueI16;
+}
+i32 ReadExpVariableI32(ExpVariableDef_t* variableDef)
+{
+	Assert(variableDef->type == ExpValueType_I32);
+	ExpValue_t resultValue = ReadExpVariable_(variableDef);
+	return resultValue.valueI32;
+}
+i64 ReadExpVariableI64(ExpVariableDef_t* variableDef)
+{
+	Assert(variableDef->type == ExpValueType_I64);
+	ExpValue_t resultValue = ReadExpVariable_(variableDef);
+	return resultValue.valueI64;
+}
+u8 ReadExpVariableU8(ExpVariableDef_t* variableDef)
+{
+	Assert(variableDef->type == ExpValueType_U8);
+	ExpValue_t resultValue = ReadExpVariable_(variableDef);
+	return resultValue.valueU8;
+}
+u16 ReadExpVariableU16(ExpVariableDef_t* variableDef)
+{
+	Assert(variableDef->type == ExpValueType_U16);
+	ExpValue_t resultValue = ReadExpVariable_(variableDef);
+	return resultValue.valueU16;
+}
+u32 ReadExpVariableU32(ExpVariableDef_t* variableDef)
+{
+	Assert(variableDef->type == ExpValueType_U32);
+	ExpValue_t resultValue = ReadExpVariable_(variableDef);
+	return resultValue.valueU32;
+}
+u64 ReadExpVariableU64(ExpVariableDef_t* variableDef)
+{
+	Assert(variableDef->type == ExpValueType_U64);
+	ExpValue_t resultValue = ReadExpVariable_(variableDef);
+	return resultValue.valueU64;
 }
 
 // +--------------------------------------------------------------+
@@ -500,7 +1053,7 @@ ExpTokenizer_t NewExpTokenizer(MyStr_t expressionStr)
 bool ExpTokenizerGetNext(ExpTokenizer_t* tokenizer, ExpToken_t* tokenOut, Result_t* errorOut = nullptr)
 {
 	NotNull(tokenizer);
-	if (tokenizer->currentIndex >= tokenizer->expressionStr.length) { SetOptionalOutPntr(errorOut, Result_Finished); return false; }
+	if (tokenizer->currentIndex >= tokenizer->expressionStr.length) { SetOptionalOutPntr(errorOut, Result_Success); return false; }
 	
 	//TODO: We probably want to check for and remove comments
 	
@@ -612,6 +1165,7 @@ bool ExpTokenizerGetNext(ExpTokenizer_t* tokenizer, ExpToken_t* tokenOut, Result
 				else if (c == '&' && nextChar == '=') { opStr.length = 2; }
 				else if (c == '^' && nextChar == '=') { opStr.length = 2; }
 				else if (c == '=' && nextChar == '=') { opStr.length = 2; }
+				else if (c == '!' && nextChar == '=') { opStr.length = 2; }
 			}
 			
 			tokenizer->currentIndex += opStr.length;
@@ -642,7 +1196,7 @@ bool ExpTokenizerGetNext(ExpTokenizer_t* tokenizer, ExpToken_t* tokenOut, Result
 		}
 	}
 	
-	SetOptionalOutPntr(errorOut, Result_Finished);
+	SetOptionalOutPntr(errorOut, Result_Success);
 	return false;
 }
 
@@ -654,7 +1208,7 @@ Result_t TryTokenizeExpressionStr(MyStr_t expressionStr, MemArena_t* memArena, E
 	
 	ExpTokenizer_t tokenizer = NewExpTokenizer(expressionStr);
 	while (ExpTokenizerGetNext(&tokenizer, nullptr, &result)) { tIndex++; }
-	if (result != Result_Finished) { return result; }
+	if (result != Result_Success) { return result; }
 	
 	SetOptionalOutPntr(numTokensOut, tIndex);
 	if (memArena == nullptr || tokensOut == nullptr) { return result; }
@@ -673,7 +1227,7 @@ Result_t TryTokenizeExpressionStr(MyStr_t expressionStr, MemArena_t* memArena, E
 		tokens[tIndex] = token;
 		tIndex++;
 	}
-	Assert(result == Result_Finished); //TODO: Maybe this should be Result_Success instead? So we match the good result of TryCreateExpressionFromTokens below
+	Assert(result == Result_Success); //TODO: Maybe this should be Result_Success instead? So we match the good result of TryCreateExpressionFromTokens below
 	Assert(tIndex == numTokens);
 	
 	SetOptionalOutPntr(tokensOut, tokens);
@@ -1067,7 +1621,7 @@ bool FindExpClosingParensToken(u64 numTokens, const ExpToken_t* tokens, u64 star
 // +--------------------------------------------------------------+
 // |                      Add Part Functions                      |
 // +--------------------------------------------------------------+
-ExpPart_t* AddExpPart(Expression_t* expression, ExpPartType_t type)
+ExpPart_t* AddExpPart(Expression_t* expression, u64 tokenIndex, ExpPartType_t type)
 {
 	NotNull(expression);
 	Assert(expression->numParts < EXPRESSIONS_MAX_NUM_PARTS);
@@ -1076,28 +1630,29 @@ ExpPart_t* AddExpPart(Expression_t* expression, ExpPartType_t type)
 	ClearPointer(result);
 	result->index = expression->numParts;
 	result->type = type;
+	result->tokenIndex = tokenIndex;
 	
 	expression->numParts++;
 	return result;
 }
-ExpPart_t* AddExpConstantString(Expression_t* expression, MyStr_t value)
+ExpPart_t* AddExpConstantString(Expression_t* expression, u64 tokenIndex, MyStr_t value)
 {
-	ExpPart_t* result = AddExpPart(expression, ExpPartType_Constant);
+	ExpPart_t* result = AddExpPart(expression, tokenIndex, ExpPartType_Constant);
 	if (result == nullptr) { return result; }
 	result->constantValue.type = ExpValueType_String;
 	result->constantValue.valueStr = ((expression->allocArena != nullptr) ? AllocString(expression->allocArena, &value) : value);
 	return result;
 }
-ExpPart_t* AddExpVariable(Expression_t* expression, u64 variableIndex)
+ExpPart_t* AddExpVariable(Expression_t* expression, u64 tokenIndex, u64 variableIndex)
 {
-	ExpPart_t* result = AddExpPart(expression, ExpPartType_Variable);
+	ExpPart_t* result = AddExpPart(expression, tokenIndex, ExpPartType_Variable);
 	if (result == nullptr) { return result; }
 	result->variableIndex = variableIndex;
 	return result;
 }
-ExpPart_t* AddExpOperator(Expression_t* expression, ExpOp_t opType, ExpPart_t* firstChild = nullptr, ExpPart_t* secondChild = nullptr, ExpPart_t* thirdChild = nullptr)
+ExpPart_t* AddExpOperator(Expression_t* expression, u64 tokenIndex, ExpOp_t opType, ExpPart_t* firstChild = nullptr, ExpPart_t* secondChild = nullptr, ExpPart_t* thirdChild = nullptr)
 {
-	ExpPart_t* result = AddExpPart(expression, ExpPartType_Operator);
+	ExpPart_t* result = AddExpPart(expression, tokenIndex, ExpPartType_Operator);
 	if (result == nullptr) { return result; }
 	result->opType = opType;
 	result->child[0] = firstChild;
@@ -1105,16 +1660,16 @@ ExpPart_t* AddExpOperator(Expression_t* expression, ExpOp_t opType, ExpPart_t* f
 	result->child[2] = thirdChild;
 	return result;
 }
-ExpPart_t* AddExpFunction(Expression_t* expression, u64 functionIndex)
+ExpPart_t* AddExpFunction(Expression_t* expression, u64 tokenIndex, u64 functionIndex)
 {
-	ExpPart_t* result = AddExpPart(expression, ExpPartType_Function);
+	ExpPart_t* result = AddExpPart(expression, tokenIndex, ExpPartType_Function);
 	if (result == nullptr) { return result; }
 	result->functionIndex = functionIndex;
 	return result;
 }
-ExpPart_t* AddExpParenthesisGroup(Expression_t* expression, ExpPart_t* childRoot)
+ExpPart_t* AddExpParenthesisGroup(Expression_t* expression, u64 tokenIndex, ExpPart_t* childRoot)
 {
-	ExpPart_t* result = AddExpPart(expression, ExpPartType_ParenthesisGroup);
+	ExpPart_t* result = AddExpPart(expression, tokenIndex, ExpPartType_ParenthesisGroup);
 	if (result == nullptr) { return result; }
 	result->childCount = 1;
 	result->child[0] = childRoot;
@@ -1146,7 +1701,7 @@ Result_t TryCreateExpressionFromTokens_Helper(Expression_t* expression, const Ex
 				ExpValue_t numberValue = ConvertExpNumberToken(token->str);
 				if (numberValue.type == ExpValueType_None) { return Result_InvalidConstant; }
 				
-				ExpPart_t* newNumberPart = AddExpPart(expression, ExpPartType_Constant);
+				ExpPart_t* newNumberPart = AddExpPart(expression, tIndex, ExpPartType_Constant);
 				newNumberPart->constantValue = numberValue;
 				PushAndConnectExpPart(&stack, newNumberPart);
 			} break;
@@ -1156,7 +1711,7 @@ Result_t TryCreateExpressionFromTokens_Helper(Expression_t* expression, const Ex
 			// +==============================+
 			case ExpTokenType_String:
 			{
-				ExpPart_t* newStrPart = AddExpConstantString(expression, token->str);
+				ExpPart_t* newStrPart = AddExpConstantString(expression, tIndex, token->str);
 				PushAndConnectExpPart(&stack, newStrPart);
 			} break;
 			
@@ -1199,13 +1754,13 @@ Result_t TryCreateExpressionFromTokens_Helper(Expression_t* expression, const Ex
 						if (remainingPortion != nullptr) { PushExpPart(&stack, remainingPortion); }
 					}
 					
-					ExpPart_t* newOpPart = AddExpOperator(expression, opType, leftOperand);
+					ExpPart_t* newOpPart = AddExpOperator(expression, tIndex, opType, leftOperand);
 					newOpPart->childCount = numOperands;
 					PushAndConnectExpPart(&stack, newOpPart);
 				}
 				else
 				{
-					ExpPart_t* newOpPart = AddExpOperator(expression, opType);
+					ExpPart_t* newOpPart = AddExpOperator(expression, tIndex, opType);
 					newOpPart->childCount = numOperands;
 					PushAndConnectExpPart(&stack, newOpPart);
 				}
@@ -1234,7 +1789,7 @@ Result_t TryCreateExpressionFromTokens_Helper(Expression_t* expression, const Ex
 					const ExpFuncDef_t* funcDef = FindExpFuncDef(context, token->str, functionPartProto.childCount, &funcDefIndex);
 					if (funcDef == nullptr) { return Result_UnknownFunction; }
 					
-					ExpPart_t* newFunctionPart = AddExpFunction(expression, funcDefIndex);
+					ExpPart_t* newFunctionPart = AddExpFunction(expression, tIndex, funcDefIndex);
 					MyMemCopy(&newFunctionPart->child[0], &functionPartProto.child[0], EXPRESSIONS_MAX_PART_CHILDREN * sizeof(ExpPart_t*));
 					newFunctionPart->childCount = functionPartProto.childCount;
 					PushAndConnectExpPart(&stack, newFunctionPart);
@@ -1247,7 +1802,7 @@ Result_t TryCreateExpressionFromTokens_Helper(Expression_t* expression, const Ex
 					const ExpVariableDef_t* variableDef = FindExpVariableDef(context, token->str, &variableDefIndex);
 					if (variableDef == nullptr) { return Result_UnknownVariable; }
 					
-					ExpPart_t* newVariablePart = AddExpVariable(expression, variableDefIndex);
+					ExpPart_t* newVariablePart = AddExpVariable(expression, tIndex, variableDefIndex);
 					PushAndConnectExpPart(&stack, newVariablePart);
 				}
 			} break;
@@ -1268,7 +1823,7 @@ Result_t TryCreateExpressionFromTokens_Helper(Expression_t* expression, const Ex
 				Result_t subResult = TryCreateExpressionFromTokens_Helper(expression, context, numTokensInParenthesis, &tokens[tIndex+1], &groupRootPart);
 				if (subResult != Result_Success) { return subResult; }
 				
-				ExpPart_t* newParensPart = AddExpParenthesisGroup(expression, groupRootPart);
+				ExpPart_t* newParensPart = AddExpParenthesisGroup(expression, tIndex, groupRootPart);
 				PushAndConnectExpPart(&stack, newParensPart);
 				
 				tIndex = endParenthesisIndex;
@@ -1316,8 +1871,7 @@ Result_t TryCreateExpressionFromTokens_Helper(Expression_t* expression, const Ex
 	}
 	else
 	{
-		//TODO: Better error code for this?
-		return Result_Failure;
+		return Result_MissingOperator;
 	}
 	
 	return Result_Success;
@@ -1417,9 +1971,9 @@ struct ExpTypeCheckResult_t
 	u64 errorPartIndex;
 };
 
-// +==============================+
-// |     ExpTypeWalkCallback      |
-// +==============================+
+// +==================================+
+// | ExpressionTypeCheckWalk_Callback |
+// +==================================+
 // void ExpressionTypeCheckWalk_Callback(Expression_t* expression, ExpPart_t* part, u64 callbackIndex, u64 depth, ExpressionContext_t* context, void* userPntr)
 EXP_STEP_CALLBACK(ExpressionTypeCheckWalk_Callback)
 {
@@ -1445,60 +1999,67 @@ EXP_STEP_CALLBACK(ExpressionTypeCheckWalk_Callback)
 		{
 			switch (part->opType)
 			{
-				// +==================================================+
-				// | TypeCheck Add/Subtract/Multiply/Divide Operators |
-				// +==================================================+
+				// +==========================================================+
+				// | TypeCheck Add/Subtract/Multiply/Divide/Modulo Operators  |
+				// +==========================================================+
 				case ExpOp_Add:
 				case ExpOp_Subtract:
 				case ExpOp_Multiply:
 				case ExpOp_Divide:
+				case ExpOp_Modulo:
 				{
 					NotNull2(part->child[0], part->child[1]);
 					ExpValueType_t leftOperandType = part->child[0]->evalType;
 					ExpValueType_t rightOperandType = part->child[1]->evalType;
 					Assert(leftOperandType != ExpValueType_None && rightOperandType != ExpValueType_None);
-					if (leftOperandType == rightOperandType)
+					Result_t mismatchReason = Result_None;
+					part->evalType = GetExpResultTypeForMathOp(leftOperandType, rightOperandType, (part->opType == ExpOp_Subtract), &mismatchReason);
+					if (part->evalType == ExpPartType_None)
 					{
-						if (IsExpValueTypeNumber(leftOperandType))
-						{
-							part->evalType = leftOperandType;
-						}
-						else
-						{
-							resultPntr->result = Result_InvalidLeftOperand;
-							resultPntr->errorPartIndex = part->index;
-						}
-					}
-					else if (IsExpValueTypeNumber(leftOperandType) && IsExpValueTypeNumber(rightOperandType))
-					{
-						//TODO: Should we be smarter about this somehow? Right now, any operator will result in a rather large type during type-check,
-						// because we can't be sure about the value that is stored in each operand and whether we will underflow/overflow if the operator is carried out
-						if (IsExpValueTypeFloat(leftOperandType) || IsExpValueTypeFloat(rightOperandType))
-						{
-							part->evalType = ExpValueType_R64;
-						}
-						else if (IsExpValueTypeSigned(leftOperandType) || IsExpValueTypeSigned(rightOperandType) || part->opType == ExpOp_Subtract)
-						{
-							part->evalType = ExpValueType_I64;
-						}
-						else
-						{
-							part->evalType = ExpValueType_U64;
-						}
-					}
-					else
-					{
-						//TODO: Are there any mismatching types that we accept for basic math operators?
-						resultPntr->result = Result_InvalidRightOperand;
+						resultPntr->result = mismatchReason;
 						resultPntr->errorPartIndex = part->index;
 					}
 				} break;
 				
-				//TODO: ExpOp_Modulo
-				//TODO: ExpOp_Equals
-				//TODO: ExpOp_NotEquals
-				//TODO: ExpOp_Or
-				//TODO: ExpOp_And
+				// +======================================+
+				// | TypeCheck Equals/NotEquals Operators |
+				// +======================================+
+				case ExpOp_Equals:
+				case ExpOp_NotEquals:
+				{
+					NotNull2(part->child[0], part->child[1]);
+					ExpValueType_t leftOperandType = part->child[0]->evalType;
+					ExpValueType_t rightOperandType = part->child[1]->evalType;
+					Assert(leftOperandType != ExpValueType_None && rightOperandType != ExpValueType_None);
+					Result_t mismatchReason = Result_None;
+					ExpValueType_t commonType = GetExpCommonTypeForComparisonOp(leftOperandType, rightOperandType, &mismatchReason);
+					if (commonType != ExpPartType_None)
+					{
+						part->evalType = ExpValueType_Bool;
+					}
+					else
+					{
+						resultPntr->result = mismatchReason;
+						resultPntr->errorPartIndex = part->index;
+					}
+				} break;
+				
+				// +==============================+
+				// |  TypeCheck Or/And Operators  |
+				// +==============================+
+				case ExpOp_Or:
+				case ExpOp_And:
+				{
+					NotNull2(part->child[0], part->child[1]);
+					ExpValueType_t leftOperandType = part->child[0]->evalType;
+					ExpValueType_t rightOperandType = part->child[1]->evalType;
+					Assert(leftOperandType != ExpValueType_None && rightOperandType != ExpValueType_None);
+					if (!IsExpValueTypeBoolable(leftOperandType)) { resultPntr->result = Result_InvalidLeftOperand; resultPntr->errorPartIndex = part->index; }
+					else if (!IsExpValueTypeBoolable(rightOperandType)) { resultPntr->result = Result_InvalidRightOperand; resultPntr->errorPartIndex = part->index; }
+					{
+						part->evalType = ExpValueType_Bool;
+					}
+				} break;
 				
 				// +==============================+
 				// |    TypeCheck Not Operator    |
@@ -1524,9 +2085,26 @@ EXP_STEP_CALLBACK(ExpressionTypeCheckWalk_Callback)
 					}
 				} break;
 				
-				//TODO: ExpOp_BitwiseOr
-				//TODO: ExpOp_BitwiseAnd
-				//TODO: ExpOp_BitwiseXor
+				// +========================================+
+				// | TypeCheck Bitwise Or/And/Xor Operators |
+				// +========================================+
+				case ExpOp_BitwiseOr:
+				case ExpOp_BitwiseAnd:
+				case ExpOp_BitwiseXor:
+				{
+					NotNull2(part->child[0], part->child[1]);
+					ExpValueType_t leftOperandType = part->child[0]->evalType;
+					ExpValueType_t rightOperandType = part->child[1]->evalType;
+					Assert(leftOperandType != ExpValueType_None && rightOperandType != ExpValueType_None);
+					Result_t mismatchReason = Result_None;
+					part->evalType = GetExpIntegerTypeForBitwiseOp(leftOperandType, rightOperandType, (part->opType == ExpOp_And), &mismatchReason);
+					if (part->evalType == ExpPartType_None)
+					{
+						resultPntr->result = mismatchReason;
+						resultPntr->errorPartIndex = part->index;
+					}
+				} break;
+				
 				//TODO: ExpOp_BitwiseNot
 				//TODO: ExpOp_Ternary
 				//TODO: ExpOp_Assignment
@@ -1576,6 +2154,402 @@ Result_t ExpressionTypeCheckWalk(Expression_t* expression, const ExpressionConte
 	if (result.result == Result_None) { result.result = Result_Success; }
 	SetOptionalOutPntr(errorPartIndex, result.errorPartIndex);
 	return result.result;
+}
+
+struct ExpEvaluateState_t
+{
+	u64 stackSize;
+	ExpValue_t stack[EXPRESSIONS_MAX_EVAL_STACK_SIZE];
+	Result_t result;
+};
+
+// +==============================+
+// | EvaluateExpression_Callback  |
+// +==============================+
+// void EvaluateExpression_Callback(Expression_t* expression, ExpPart_t* part, u64 callbackIndex, u64 depth, ExpressionContext_t* context, void* userPntr)
+EXP_STEP_CALLBACK(EvaluateExpression_Callback)
+{
+	NotNull3(expression, part, userPntr);
+	ExpEvaluateState_t* state = (ExpEvaluateState_t*)userPntr;
+	if (state->result != Result_None) { return; }
+	
+	switch (part->type)
+	{
+		case ExpPartType_Constant:
+		{
+			if (state->stackSize >= EXPRESSIONS_MAX_EVAL_STACK_SIZE) { state->result = Result_StackOverflow; return; }
+			state->stack[state->stackSize++] = part->constantValue;
+		} break;
+		
+		case ExpPartType_Variable:
+		{
+			if (state->stackSize >= EXPRESSIONS_MAX_EVAL_STACK_SIZE) { state->result = Result_StackOverflow; return; }
+			ExpVariableDef_t* variableDef = VarArrayGet(&context->variableDefs, part->variableIndex, ExpVariableDef_t);
+			state->stack[state->stackSize++] = ReadExpVariable_(variableDef);
+		} break;
+		
+		case ExpPartType_Operator:
+		{
+			u8 numOperands = GetExpOperandCount(part->opType);
+			if (state->stackSize < numOperands) { state->result = Result_InvalidStack; return; }
+			ExpValue_t topOperand = state->stack[state->stackSize-1]; state->stackSize--;
+			ExpValue_t nextOperand = {};
+			ExpValue_t finalOperand = {};
+			if (numOperands >= 2) { nextOperand = state->stack[state->stackSize-1]; state->stackSize--; }
+			if (numOperands >= 3) { finalOperand = state->stack[state->stackSize-1]; state->stackSize--; }
+			switch (part->opType)
+			{
+				// +========================================================+
+				// | Evaluate Add/Subtract/Multiply/Divide/Modulo Operators |
+				// +========================================================+
+				case ExpOp_Add:
+				case ExpOp_Subtract:
+				case ExpOp_Multiply:
+				case ExpOp_Divide:
+				case ExpOp_Modulo:
+				{
+					ExpValueType_t commonType = GetExpResultTypeForMathOp(nextOperand.type, topOperand.type, (part->opType == ExpOp_Subtract));
+					Assert(commonType != ExpValueType_None);
+					ExpValue_t leftOperand = CastExpValue(nextOperand, commonType);
+					ExpValue_t rightOperand = CastExpValue(topOperand, commonType);
+					
+					ExpValue_t result = {}; result.type = commonType;
+					if (part->opType == ExpOp_Add)
+					{
+						switch (commonType)
+						{
+							case ExpValueType_R32: result.valueR32 = leftOperand.valueR32 + rightOperand.valueR32; break;
+							case ExpValueType_R64: result.valueR64 = leftOperand.valueR64 + rightOperand.valueR64; break;
+							case ExpValueType_I8:  result.valueI8  = leftOperand.valueI8  + rightOperand.valueI8;  break;
+							case ExpValueType_I16: result.valueI16 = leftOperand.valueI16 + rightOperand.valueI16; break;
+							case ExpValueType_I32: result.valueI32 = leftOperand.valueI32 + rightOperand.valueI32; break;
+							case ExpValueType_I64: result.valueI64 = leftOperand.valueI64 + rightOperand.valueI64; break;
+							case ExpValueType_U8:  result.valueU8  = leftOperand.valueU8  + rightOperand.valueU8;  break;
+							case ExpValueType_U16: result.valueU16 = leftOperand.valueU16 + rightOperand.valueU16; break;
+							case ExpValueType_U32: result.valueU32 = leftOperand.valueU32 + rightOperand.valueU32; break;
+							case ExpValueType_U64: result.valueU64 = leftOperand.valueU64 + rightOperand.valueU64; break;
+							default: Assert(false); break;
+						}
+					}
+					else if (part->opType == ExpOp_Subtract)
+					{
+						switch (commonType)
+						{
+							case ExpValueType_R32: result.valueR32 = leftOperand.valueR32 - rightOperand.valueR32; break;
+							case ExpValueType_R64: result.valueR64 = leftOperand.valueR64 - rightOperand.valueR64; break;
+							case ExpValueType_I8:  result.valueI8  = leftOperand.valueI8  - rightOperand.valueI8;  break;
+							case ExpValueType_I16: result.valueI16 = leftOperand.valueI16 - rightOperand.valueI16; break;
+							case ExpValueType_I32: result.valueI32 = leftOperand.valueI32 - rightOperand.valueI32; break;
+							case ExpValueType_I64: result.valueI64 = leftOperand.valueI64 - rightOperand.valueI64; break;
+							case ExpValueType_U8:  result.valueU8  = leftOperand.valueU8  - rightOperand.valueU8;  break;
+							case ExpValueType_U16: result.valueU16 = leftOperand.valueU16 - rightOperand.valueU16; break;
+							case ExpValueType_U32: result.valueU32 = leftOperand.valueU32 - rightOperand.valueU32; break;
+							case ExpValueType_U64: result.valueU64 = leftOperand.valueU64 - rightOperand.valueU64; break;
+							default: Assert(false); break;
+						}
+					}
+					else if (part->opType == ExpOp_Multiply)
+					{
+						switch (commonType)
+						{
+							case ExpValueType_R32: result.valueR32 = leftOperand.valueR32 * rightOperand.valueR32; break;
+							case ExpValueType_R64: result.valueR64 = leftOperand.valueR64 * rightOperand.valueR64; break;
+							case ExpValueType_I8:  result.valueI8  = leftOperand.valueI8  * rightOperand.valueI8;  break;
+							case ExpValueType_I16: result.valueI16 = leftOperand.valueI16 * rightOperand.valueI16; break;
+							case ExpValueType_I32: result.valueI32 = leftOperand.valueI32 * rightOperand.valueI32; break;
+							case ExpValueType_I64: result.valueI64 = leftOperand.valueI64 * rightOperand.valueI64; break;
+							case ExpValueType_U8:  result.valueU8  = leftOperand.valueU8  * rightOperand.valueU8;  break;
+							case ExpValueType_U16: result.valueU16 = leftOperand.valueU16 * rightOperand.valueU16; break;
+							case ExpValueType_U32: result.valueU32 = leftOperand.valueU32 * rightOperand.valueU32; break;
+							case ExpValueType_U64: result.valueU64 = leftOperand.valueU64 * rightOperand.valueU64; break;
+							default: Assert(false); break;
+						}
+					}
+					else if (part->opType == ExpOp_Divide)
+					{
+						switch (commonType)
+						{
+							case ExpValueType_R32: result.valueR32 = leftOperand.valueR32 / rightOperand.valueR32; break;
+							case ExpValueType_R64: result.valueR64 = leftOperand.valueR64 / rightOperand.valueR64; break;
+							case ExpValueType_I8:  result.valueI8  = leftOperand.valueI8  / rightOperand.valueI8;  break;
+							case ExpValueType_I16: result.valueI16 = leftOperand.valueI16 / rightOperand.valueI16; break;
+							case ExpValueType_I32: result.valueI32 = leftOperand.valueI32 / rightOperand.valueI32; break;
+							case ExpValueType_I64: result.valueI64 = leftOperand.valueI64 / rightOperand.valueI64; break;
+							case ExpValueType_U8:  result.valueU8  = leftOperand.valueU8  / rightOperand.valueU8;  break;
+							case ExpValueType_U16: result.valueU16 = leftOperand.valueU16 / rightOperand.valueU16; break;
+							case ExpValueType_U32: result.valueU32 = leftOperand.valueU32 / rightOperand.valueU32; break;
+							case ExpValueType_U64: result.valueU64 = leftOperand.valueU64 / rightOperand.valueU64; break;
+							default: Assert(false); break;
+						}
+					}
+					else if (part->opType == ExpOp_Modulo)
+					{
+						switch (commonType)
+						{
+							case ExpValueType_R32: result.valueR32 = ModR32(leftOperand.valueR32, rightOperand.valueR32); break;
+							case ExpValueType_R64: result.valueR64 = ModR64(leftOperand.valueR64, rightOperand.valueR64); break;
+							case ExpValueType_I8:  result.valueI8  = leftOperand.valueI8  % rightOperand.valueI8;  break;
+							case ExpValueType_I16: result.valueI16 = leftOperand.valueI16 % rightOperand.valueI16; break;
+							case ExpValueType_I32: result.valueI32 = leftOperand.valueI32 % rightOperand.valueI32; break;
+							case ExpValueType_I64: result.valueI64 = leftOperand.valueI64 % rightOperand.valueI64; break;
+							case ExpValueType_U8:  result.valueU8  = leftOperand.valueU8  % rightOperand.valueU8;  break;
+							case ExpValueType_U16: result.valueU16 = leftOperand.valueU16 % rightOperand.valueU16; break;
+							case ExpValueType_U32: result.valueU32 = leftOperand.valueU32 % rightOperand.valueU32; break;
+							case ExpValueType_U64: result.valueU64 = leftOperand.valueU64 % rightOperand.valueU64; break;
+							default: Assert(false); break;
+						}
+					}
+					
+					state->stack[state->stackSize++] = result;
+				} break;
+				
+				// +======================================+
+				// | Evaluate Equals/NotEquals Operators  |
+				// +======================================+
+				case ExpOp_Equals:
+				case ExpOp_NotEquals:
+				{
+					ExpValueType_t commonType = GetExpCommonTypeForComparisonOp(nextOperand.type, topOperand.type);
+					Assert(commonType != ExpValueType_None);
+					ExpValue_t leftOperand = CastExpValue(nextOperand, commonType);
+					ExpValue_t rightOperand = CastExpValue(topOperand, commonType);
+					
+					ExpValue_t result = {};
+					result.type = ExpValueType_Bool;
+					switch (commonType)
+					{
+						case ExpValueType_Bool:    result.valueBool = (leftOperand.valueBool == rightOperand.valueBool); break;
+						case ExpValueType_Pointer: result.valueBool = (leftOperand.valuePntr == rightOperand.valuePntr); break;
+						case ExpValueType_String:  result.valueBool = StrEquals(leftOperand.valueStr, rightOperand.valueStr); break;
+						case ExpValueType_R32:     result.valueBool = (leftOperand.valueR32  == rightOperand.valueR32);  break;
+						case ExpValueType_R64:     result.valueBool = (leftOperand.valueR64  == rightOperand.valueR64);  break;
+						case ExpValueType_I8:      result.valueBool = (leftOperand.valueI8   == rightOperand.valueI8);   break;
+						case ExpValueType_I16:     result.valueBool = (leftOperand.valueI16  == rightOperand.valueI16);  break;
+						case ExpValueType_I32:     result.valueBool = (leftOperand.valueI32  == rightOperand.valueI32);  break;
+						case ExpValueType_I64:     result.valueBool = (leftOperand.valueI64  == rightOperand.valueI64);  break;
+						case ExpValueType_U8:      result.valueBool = (leftOperand.valueU8   == rightOperand.valueU8);   break;
+						case ExpValueType_U16:     result.valueBool = (leftOperand.valueU16  == rightOperand.valueU16);  break;
+						case ExpValueType_U32:     result.valueBool = (leftOperand.valueU32  == rightOperand.valueU32);  break;
+						case ExpValueType_U64:     result.valueBool = (leftOperand.valueU64  == rightOperand.valueU64);  break;
+						default: Assert(false); break;
+					}
+					if (part->opType == ExpOp_NotEquals) { result.valueBool = !result.valueBool; }
+					
+					state->stack[state->stackSize++] = result;
+				} break;
+				
+				// +==============================+
+				// |  Evaluate Or/And Operators   |
+				// +==============================+
+				case ExpOp_Or:
+				case ExpOp_And:
+				{
+					Assert(IsExpValueTypeBoolable(nextOperand.type) && IsExpValueTypeBoolable(topOperand.type));
+					ExpValue_t leftOperand = CastExpValue(nextOperand, ExpValueType_Bool);
+					ExpValue_t rightOperand = CastExpValue(topOperand, ExpValueType_Bool);
+					ExpValue_t result = {};
+					result.type = ExpValueType_Bool;
+					if (part->opType == ExpOp_Or)  { result.valueBool = (leftOperand.valueBool || rightOperand.valueBool); }
+					if (part->opType == ExpOp_And) { result.valueBool = (leftOperand.valueBool && rightOperand.valueBool); }
+					state->stack[state->stackSize++] = result;
+				} break;
+				
+				// +==============================+
+				// |    Evaluate Not Operator     |
+				// +==============================+
+				case ExpOp_Not:
+				{
+					ExpValue_t result = CastExpValue(topOperand, ExpValueType_Bool);
+					result.valueBool = !result.valueBool;
+					state->stack[state->stackSize++] = result;
+				} break;
+				
+				// +========================================+
+				// | Evaluate Bitwise Or/And/Xor Operators  |
+				// +========================================+
+				case ExpOp_BitwiseOr:
+				case ExpOp_BitwiseAnd:
+				case ExpOp_BitwiseXor:
+				{
+					ExpValueType_t resultType = GetExpIntegerTypeForBitwiseOp(nextOperand.type, topOperand.type, (part->opType == ExpOp_And));
+					Assert(resultType != ExpValueType_None);
+					ExpValue_t leftOperand = CastExpValue(nextOperand, resultType);
+					ExpValue_t rightOperand = CastExpValue(topOperand, resultType);
+					
+					ExpValue_t result = {};
+					result.type = resultType;
+					if (part->opType == ExpOp_BitwiseOr)
+					{
+						switch (resultType)
+						{
+							case ExpValueType_I8:  result.valueI8  = (leftOperand.valueI8  | rightOperand.valueI8);  break;
+							case ExpValueType_I16: result.valueI16 = (leftOperand.valueI16 | rightOperand.valueI16); break;
+							case ExpValueType_I32: result.valueI32 = (leftOperand.valueI32 | rightOperand.valueI32); break;
+							case ExpValueType_I64: result.valueI64 = (leftOperand.valueI64 | rightOperand.valueI64); break;
+							case ExpValueType_U8:  result.valueU8  = (leftOperand.valueU8  | rightOperand.valueU8);  break;
+							case ExpValueType_U16: result.valueU16 = (leftOperand.valueU16 | rightOperand.valueU16); break;
+							case ExpValueType_U32: result.valueU32 = (leftOperand.valueU32 | rightOperand.valueU32); break;
+							case ExpValueType_U64: result.valueU64 = (leftOperand.valueU64 | rightOperand.valueU64); break;
+							default: Assert(false); break;
+						}
+					}
+					else if (part->opType == ExpOp_BitwiseAnd)
+					{
+						switch (resultType)
+						{
+							case ExpValueType_I8:  result.valueI8  = (leftOperand.valueI8  & rightOperand.valueI8);  break;
+							case ExpValueType_I16: result.valueI16 = (leftOperand.valueI16 & rightOperand.valueI16); break;
+							case ExpValueType_I32: result.valueI32 = (leftOperand.valueI32 & rightOperand.valueI32); break;
+							case ExpValueType_I64: result.valueI64 = (leftOperand.valueI64 & rightOperand.valueI64); break;
+							case ExpValueType_U8:  result.valueU8  = (leftOperand.valueU8  & rightOperand.valueU8);  break;
+							case ExpValueType_U16: result.valueU16 = (leftOperand.valueU16 & rightOperand.valueU16); break;
+							case ExpValueType_U32: result.valueU32 = (leftOperand.valueU32 & rightOperand.valueU32); break;
+							case ExpValueType_U64: result.valueU64 = (leftOperand.valueU64 & rightOperand.valueU64); break;
+							default: Assert(false); break;
+						}
+					}
+					else if (part->opType == ExpOp_BitwiseXor)
+					{
+						switch (resultType)
+						{
+							case ExpValueType_I8:  result.valueI8  = (leftOperand.valueI8  ^ rightOperand.valueI8);  break;
+							case ExpValueType_I16: result.valueI16 = (leftOperand.valueI16 ^ rightOperand.valueI16); break;
+							case ExpValueType_I32: result.valueI32 = (leftOperand.valueI32 ^ rightOperand.valueI32); break;
+							case ExpValueType_I64: result.valueI64 = (leftOperand.valueI64 ^ rightOperand.valueI64); break;
+							case ExpValueType_U8:  result.valueU8  = (leftOperand.valueU8  ^ rightOperand.valueU8);  break;
+							case ExpValueType_U16: result.valueU16 = (leftOperand.valueU16 ^ rightOperand.valueU16); break;
+							case ExpValueType_U32: result.valueU32 = (leftOperand.valueU32 ^ rightOperand.valueU32); break;
+							case ExpValueType_U64: result.valueU64 = (leftOperand.valueU64 ^ rightOperand.valueU64); break;
+							default: Assert(false); break;
+						}
+					}
+					
+					state->stack[state->stackSize++] = result;
+				}
+				//TODO: ExpOp_BitwiseNot
+				//TODO: ExpOp_Ternary
+				//TODO: ExpOp_Assignment
+			}
+		} break;
+		
+		case ExpPartType_Function:
+		{
+			Unimplemented(); //TODO: Implement me!
+		} break;
+		
+		case ExpPartType_ParenthesisGroup:
+		{
+			 //We don't need to do anything for parenthesis at evaluation time
+		} break;
+		
+		default: AssertMsg(false, "Unhandled ExpPartType in EvaluateExpression_Callback"); break;
+	}
+}
+Result_t EvaluateExpression(Expression_t* expression, ExpressionContext_t* context = nullptr, ExpValue_t* valueOut = nullptr)
+{
+	ExpEvaluateState_t state = {};
+	state.stackSize = 0;
+	state.result = Result_None;
+	StepThroughExpression(expression, ExpStepOrder_Postfix, EvaluateExpression_Callback, (ExpressionContext_t*)context, &state);
+	if (state.stackSize == 0) { return Result_EmptyExpression; }
+	if (state.stackSize > 1) { return Result_InvalidStack; }
+	if (state.result == Result_None) { state.result = Result_Success; }
+	SetOptionalOutPntr(valueOut, state.stack[0]);
+	return state.result;
+}
+
+// +--------------------------------------------------------------+
+// |                     Ease of Use Wrappers                     |
+// +--------------------------------------------------------------+
+Result_t TryRunExpression(MyStr_t expressionStr, MemArena_t* scratchArena, ExpValue_t* valueOut = nullptr, ExpressionContext_t* context = nullptr)
+{
+	PushMemMark(scratchArena);
+	
+	ExpressionContext_t emptyContext = {};
+	if (context == nullptr) { context = &emptyContext; }
+	
+	u64 numTokens = 0;
+	ExpToken_t* tokens = nullptr;
+	Result_t tokenizeResult = TryTokenizeExpressionStr(expressionStr, scratchArena, &tokens, &numTokens);
+	if (tokenizeResult != Result_Success)
+	{
+		PopMemMark(scratchArena);
+		return tokenizeResult;
+	}
+	AssertIf(numTokens > 0, tokens != nullptr);
+	
+	Expression_t expression = {};
+	Result_t parseResult = TryCreateExpressionFromTokens(context, numTokens, tokens, &expression);
+	if (parseResult != Result_Success)
+	{
+		PopMemMark(scratchArena);
+		return parseResult;
+	}
+	
+	Result_t typeCheckResult = ExpressionTypeCheckWalk(&expression, context);
+	if (typeCheckResult != Result_Success)
+	{
+		PopMemMark(scratchArena);
+		return typeCheckResult;
+	}
+	
+	Result_t evaluateResult = EvaluateExpression(&expression, context, valueOut);
+	if (evaluateResult != Result_Success)
+	{
+		PopMemMark(scratchArena);
+		return evaluateResult;
+	}
+	
+	PopMemMark(scratchArena);
+	return Result_Success;
+}
+
+MyStr_t TryRunExpressionErrorStr(MyStr_t expressionStr, MemArena_t* scratchArena, ExpValue_t* valueOut = nullptr, ExpressionContext_t* context = nullptr)
+{
+	ExpressionContext_t emptyContext = {};
+	if (context == nullptr) { context = &emptyContext; }
+	
+	u64 numTokens = 0;
+	ExpToken_t* tokens = nullptr;
+	Result_t tokenizeResult = TryTokenizeExpressionStr(expressionStr, scratchArena, &tokens, &numTokens);
+	if (tokenizeResult != Result_Success)
+	{
+		//TODO: Can we get the character range where the syntax error occurred?
+		return PrintInArenaStr(scratchArena, "Invalid syntax: %s", GetResultStr(tokenizeResult));
+	}
+	AssertIf(numTokens > 0, tokens != nullptr);
+	
+	Expression_t expression = {};
+	Result_t parseResult = TryCreateExpressionFromTokens(context, numTokens, tokens, &expression);
+	if (parseResult != Result_Success)
+	{
+		//TODO: Can we get the character range where the parsing error occurred?
+		return PrintInArenaStr(scratchArena, "Invalid expression: %s", GetResultStr(parseResult));
+	}
+	
+	u64 errorPartIndex = 0;
+	Result_t typeCheckResult = ExpressionTypeCheckWalk(&expression, context, &errorPartIndex);
+	if (typeCheckResult != Result_Success)
+	{
+		ExpToken_t* errorToken = &tokens[expression.parts[errorPartIndex].tokenIndex];
+		return PrintInArenaStr(scratchArena, "Type check failure: %s on part[%llu] \"%.*s\"", GetResultStr(typeCheckResult), errorPartIndex, StrPrint(errorToken->str));
+	}
+	
+	Result_t evaluateResult = EvaluateExpression(&expression, context, valueOut);
+	if (evaluateResult != Result_Success)
+	{
+		return PrintInArenaStr(scratchArena, "Evaluation failed: %s", GetResultStr(evaluateResult));
+	}
+	
+	return MyStr_Empty;
+}
+
+ExpValue_t RunExpression(MyStr_t expressionStr, MemArena_t* scratchArena, ExpressionContext_t* context = nullptr)
+{
+	ExpValue_t value = {};
+	Result_t result = TryRunExpression(expressionStr, scratchArena, &value, context);
+	if (result != Result_Success) { value.type = ExpValueType_None; }
+	return value;
 }
 
 //TODO: Implement the rest of me!

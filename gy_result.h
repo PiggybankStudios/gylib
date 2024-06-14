@@ -121,6 +121,11 @@ enum Result_t
 	Result_EmptyArgument,
 	Result_InvalidArgument,
 	Result_MissingContext,
+	Result_EmptyExpression,
+	Result_InvalidStack,
+	Result_StackOverflow,
+	Result_InvalidSyntax,
+	Result_MissingOperator,
 	
 	Result_NumValues,
 };
@@ -233,6 +238,11 @@ const char* GetResultStr(Result_t enumValue)
 		case Result_EmptyArgument:                  return "EmptyArgument";
 		case Result_InvalidArgument:                return "InvalidArgument";
 		case Result_MissingContext:                 return "MissingContext";
+		case Result_EmptyExpression:                return "EmptyExpression";
+		case Result_InvalidStack:                   return "InvalidStack";
+		case Result_StackOverflow:                  return "StackOverflow";
+		case Result_InvalidSyntax:                  return "InvalidSyntax";
+		case Result_MissingOperator:                return "MissingOperator";
 		default: return "Unknown";
 	}
 }

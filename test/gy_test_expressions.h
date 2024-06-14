@@ -170,16 +170,12 @@ EXP_STEP_CALLBACK(GyTestCase_ExpStepCallback)
 	GyTestCase_PrintExpPartHelper(part, context, false);
 }
 
-void GyTestCase_PrintParse(const char* expressionStr, ExpressionContext_t* context = nullptr)
+void GyTestCase_PrintParse(MemArena_t* memArena, const char* expressionStr, ExpressionContext_t* context = nullptr)
 {
-	char stackArray[256];
-	MemArena_t stackArena;
-	InitMemArena_Buffer(&stackArena, sizeof(stackArray), &stackArray[0], true);
-	
 	u64 numTokens = 0;
 	ExpToken_t* tokens = nullptr;
-	Result_t tokenizeResult = TryTokenizeExpressionStr(NewStr(expressionStr), &stackArena, &tokens, &numTokens);
-	Assert(tokenizeResult == Result_Finished);
+	Result_t tokenizeResult = TryTokenizeExpressionStr(NewStr(expressionStr), memArena, &tokens, &numTokens);
+	Assert(tokenizeResult == Result_Success);
 	AssertIf(numTokens > 0, tokens != nullptr);
 	
 	ExpressionContext_t emptyContext = {};
@@ -201,6 +197,13 @@ void GyTestCase_PrintParse(const char* expressionStr, ExpressionContext_t* conte
 		GyTestCase_PrintExpPartHelper(&expression.parts[pIndex], context, true);
 	}
 	
+	// GyLibPrintLine_N("Expression \"%s\" Prefix Stepping:", expressionStr);
+	// StepThroughExpression(&expression, ExpStepOrder_Prefix, GyTestCase_ExpStepCallback, context);
+	// GyLibPrintLine_N("Expression \"%s\" Natural Stepping:", expressionStr);
+	// StepThroughExpression(&expression, ExpStepOrder_Natural, GyTestCase_ExpStepCallback, context);
+	GyLibPrintLine_N("Expression \"%s\" Postfix Stepping:", expressionStr);
+	StepThroughExpression(&expression, ExpStepOrder_Postfix, GyTestCase_ExpStepCallback, context);
+	
 	if (expression.rootPart != nullptr)
 	{
 		u64 errorPartIndex = 0;
@@ -213,14 +216,22 @@ void GyTestCase_PrintParse(const char* expressionStr, ExpressionContext_t* conte
 		{
 			GyLibPrintLine_E("Expression \"%s\" TypeCheck Failed: %s on Part[%llu] %s", expressionStr, GetResultStr(typeCheckResult), errorPartIndex, GetExpPartTypeStr(expression.parts[errorPartIndex].type));
 		}
+		
+		if (typeCheckResult == Result_Success)
+		{
+			ExpValue_t evaluatedValue = {};
+			Result_t evaluateResult = EvaluateExpression(&expression, context, &evaluatedValue);
+			if (evaluateResult == Result_Success)
+			{
+				MyStr_t evaluatedValueStr = ExpValueToStr(evaluatedValue, memArena, true);
+				GyLibPrintLine_I("\"%s\" => %.*s", expressionStr, StrPrint(evaluatedValueStr));
+			}
+			else
+			{
+				GyLibPrintLine_E("Expression \"%s\" Evaluation Failed! %s", expressionStr, GetResultStr(evaluateResult));
+			}
+		}
 	}
-	
-	GyLibPrintLine_N("Expression \"%s\" Prefix Stepping:", expressionStr);
-	StepThroughExpression(&expression, ExpStepOrder_Prefix, GyTestCase_ExpStepCallback, context);
-	GyLibPrintLine_N("Expression \"%s\" Natural Stepping:", expressionStr);
-	StepThroughExpression(&expression, ExpStepOrder_Natural, GyTestCase_ExpStepCallback, context);
-	GyLibPrintLine_N("Expression \"%s\" Postfix Stepping:", expressionStr);
-	StepThroughExpression(&expression, ExpStepOrder_Postfix, GyTestCase_ExpStepCallback, context);
 }
 
 void GyTest_Expressions(MemArena_t* memArena)
@@ -229,32 +240,32 @@ void GyTest_Expressions(MemArena_t* memArena)
 	// |                       Tokenizer Tests                        |
 	// +--------------------------------------------------------------+
 	{
-		GyTestCase_ExpTokenizer("", Result_Finished, 0, nullptr, nullptr);
-		GyTestCase_ExpTokenizer(" \t     \t\t\t\t\t   \t\t ", Result_Finished, 0, nullptr, nullptr);
+		GyTestCase_ExpTokenizer("", Result_Success, 0, nullptr, nullptr);
+		GyTestCase_ExpTokenizer(" \t     \t\t\t\t\t   \t\t ", Result_Success, 0, nullptr, nullptr);
 		
 		ExpTokenType_t tokenTypes1[] = { ExpTokenType_Identifier, ExpTokenType_Operator, ExpTokenType_Identifier, ExpTokenType_Operator, ExpTokenType_Number };
 		const char* tokenStrs1[]  = { "a", "+", "b", "*", "100" };
-		GyTestCase_ExpTokenizer("a + b * 100", Result_Finished, ArrayCount(tokenTypes1), tokenTypes1, tokenStrs1);
+		GyTestCase_ExpTokenizer("a + b * 100", Result_Success, ArrayCount(tokenTypes1), tokenTypes1, tokenStrs1);
 		
 		ExpTokenType_t tokenTypes2[] = { ExpTokenType_Identifier, ExpTokenType_Operator, ExpTokenType_Identifier, ExpTokenType_Operator, ExpTokenType_Identifier, ExpTokenType_Operator, ExpTokenType_Identifier, ExpTokenType_Operator, ExpTokenType_Identifier, ExpTokenType_Operator, ExpTokenType_Identifier, ExpTokenType_Operator, ExpTokenType_Identifier };
 		const char* tokenStrs2[]  = { "a", "+", "b", "-", "c", "*", "d", "/", "e", "%", "f", "^", "g" };
-		GyTestCase_ExpTokenizer("a+b-c*d/e%f^g", Result_Finished, ArrayCount(tokenTypes2), tokenTypes2, tokenStrs2);
+		GyTestCase_ExpTokenizer("a+b-c*d/e%f^g", Result_Success, ArrayCount(tokenTypes2), tokenTypes2, tokenStrs2);
 		
 		ExpTokenType_t tokenTypes3[] = { ExpTokenType_Number, ExpTokenType_Operator, ExpTokenType_Number, ExpTokenType_Operator, ExpTokenType_Number, ExpTokenType_Operator, ExpTokenType_Number, ExpTokenType_Operator, ExpTokenType_Number, ExpTokenType_Operator, ExpTokenType_Number, ExpTokenType_Operator, ExpTokenType_Identifier, ExpTokenType_Operator, ExpTokenType_Number };
 		const char* tokenStrs3[]  = { "1", "+", "2", "-", "3", "*", "4", "/", "5", "%", "6", "^", "a", "-", "8" };
-		GyTestCase_ExpTokenizer("1+2-3*4/5%6^a-8", Result_Finished, ArrayCount(tokenTypes3), tokenTypes3, tokenStrs3);
+		GyTestCase_ExpTokenizer("1+2-3*4/5%6^a-8", Result_Success, ArrayCount(tokenTypes3), tokenTypes3, tokenStrs3);
 		
 		ExpTokenType_t tokenTypes4[] = { ExpTokenType_Identifier, ExpTokenType_Operator, ExpTokenType_Number, ExpTokenType_Operator, ExpTokenType_Identifier, ExpTokenType_Operator, ExpTokenType_Identifier, ExpTokenType_Operator, ExpTokenType_Operator, ExpTokenType_Identifier, ExpTokenType_Operator, ExpTokenType_Operator, ExpTokenType_Identifier, ExpTokenType_Operator, ExpTokenType_Identifier, ExpTokenType_Operator, ExpTokenType_Identifier, ExpTokenType_Operator, ExpTokenType_Identifier };
 		const char* tokenStrs4[]  = { "a", "&&", "1", "||", "b", "==", "c", "&&", "!", "d", "&&", "~", "e", "^", "f", "|", "g", "&", "h" };
-		GyTestCase_ExpTokenizer("a && 1 || b == c && !d && ~e ^ f | g & h", Result_Finished, ArrayCount(tokenTypes4), tokenTypes4, tokenStrs4);
+		GyTestCase_ExpTokenizer("a && 1 || b == c && !d && ~e ^ f | g & h", Result_Success, ArrayCount(tokenTypes4), tokenTypes4, tokenStrs4);
 		
 		ExpTokenType_t tokenTypes5[] = { ExpTokenType_Number, ExpTokenType_Operator, ExpTokenType_Number, ExpTokenType_Operator, ExpTokenType_Number, ExpTokenType_Operator, ExpTokenType_Number, ExpTokenType_Operator, ExpTokenType_Number };
 		const char* tokenStrs5[]  = { "-1", "+", ".0", "-", "-1.02", "+", "7.", "+", "1234567890.1234567890" };
-		GyTestCase_ExpTokenizer("-1 + .0 --1.02 + 7. + 1234567890.1234567890", Result_Finished, ArrayCount(tokenTypes5), tokenTypes5, tokenStrs5);
+		GyTestCase_ExpTokenizer("-1 + .0 --1.02 + 7. + 1234567890.1234567890", Result_Success, ArrayCount(tokenTypes5), tokenTypes5, tokenStrs5);
 		
 		ExpTokenType_t tokenTypes6[] = { ExpTokenType_Identifier, ExpTokenType_Operator, ExpTokenType_Identifier, ExpTokenType_Operator, ExpTokenType_Identifier };
 		const char* tokenStrs6[]  = { "_var1", "+", "____", "-", "abcdefghijklmnopqrstuvwxyz_0123456789" };
-		GyTestCase_ExpTokenizer("_var1 + ____ - abcdefghijklmnopqrstuvwxyz_0123456789", Result_Finished, ArrayCount(tokenTypes6), tokenTypes6, tokenStrs6);
+		GyTestCase_ExpTokenizer("_var1 + ____ - abcdefghijklmnopqrstuvwxyz_0123456789", Result_Success, ArrayCount(tokenTypes6), tokenTypes6, tokenStrs6);
 		
 		ExpTokenType_t tokenTypes7[] = { ExpTokenType_Identifier };
 		const char* tokenStrs7[]  = { "foo" };
@@ -262,7 +273,7 @@ void GyTest_Expressions(MemArena_t* memArena)
 		
 		ExpTokenType_t tokenTypes8[] = { ExpTokenType_Identifier, ExpTokenType_Operator, ExpTokenType_String };
 		const char* tokenStrs8[]  = { "var", "=", "str\\\"ing" };
-		GyTestCase_ExpTokenizer("var = \"str\\\"ing\"", Result_Finished, ArrayCount(tokenTypes8), tokenTypes8, tokenStrs8);
+		GyTestCase_ExpTokenizer("var = \"str\\\"ing\"", Result_Success, ArrayCount(tokenTypes8), tokenTypes8, tokenStrs8);
 		
 		GyTestCase_ExpTokenizer("12var", Result_InvalidIdentifier, 0, nullptr, nullptr);
 		GyTestCase_ExpTokenizer("12.3f", Result_InvalidIdentifier, 0, nullptr, nullptr);
@@ -314,12 +325,15 @@ void GyTest_Expressions(MemArena_t* memArena)
 	ExpressionContext_t testContext = {};
 	CreateVarArray(&testContext.variableDefs, memArena, sizeof(ExpVariableDef_t));
 	CreateVarArray(&testContext.functionDefs, memArena, sizeof(ExpFuncDef_t));
-	ExpVariableDef_t* fooDef = VarArrayAdd(&testContext.variableDefs, ExpVariableDef_t); ClearPointer(fooDef); fooDef->type = ExpValueType_R32; fooDef->name = NewStr("foo");
-	ExpVariableDef_t* barDef = VarArrayAdd(&testContext.variableDefs, ExpVariableDef_t); ClearPointer(barDef); barDef->type = ExpValueType_R32; barDef->name = NewStr("bar");
+	r32 foo = 14.0f;
+	r32 bar = 3.14159f;
+	ExpVariableDef_t* fooDef = VarArrayAdd(&testContext.variableDefs, ExpVariableDef_t); ClearPointer(fooDef); fooDef->type = ExpValueType_R32; fooDef->name = NewStr("foo"); fooDef->pntr = &foo;
+	ExpVariableDef_t* barDef = VarArrayAdd(&testContext.variableDefs, ExpVariableDef_t); ClearPointer(barDef); barDef->type = ExpValueType_R32; barDef->name = NewStr("bar"); barDef->pntr = &bar;
 	ExpFuncDef_t* actionDef = VarArrayAdd(&testContext.functionDefs, ExpFuncDef_t); ClearPointer(actionDef); actionDef->returnType = ExpValueType_R32; actionDef->name = NewStr("action"); actionDef->numArguments = 1; actionDef->arguments[0].type = ExpValueType_R32;
 	
-	GyTestCase_PrintParse("3 + 15 * 1500");
-	GyTestCase_PrintParse("action(3 + bar*foo) * 1500", &testContext);
+	GyTestCase_PrintParse(memArena, "115 ^ 256");
+	// GyTestCase_PrintParse(memArena, "foo + 15 * bar", &testContext);
+	// GyTestCase_PrintParse(memArena, "action(3 + bar*foo) * 1500", &testContext);
 	
 	FreeVarArray(&testContext.variableDefs);
 	FreeVarArray(&testContext.functionDefs);
