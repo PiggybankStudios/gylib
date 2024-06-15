@@ -331,7 +331,8 @@ void GyTest_Expressions(MemArena_t* memArena)
 	ExpVariableDef_t* barDef = VarArrayAdd(&testContext.variableDefs, ExpVariableDef_t); ClearPointer(barDef); barDef->type = ExpValueType_R32; barDef->name = NewStr("bar"); barDef->pntr = &bar;
 	ExpFuncDef_t* actionDef = VarArrayAdd(&testContext.functionDefs, ExpFuncDef_t); ClearPointer(actionDef); actionDef->returnType = ExpValueType_R32; actionDef->name = NewStr("action"); actionDef->numArguments = 1; actionDef->arguments[0].type = ExpValueType_R32;
 	
-	GyTestCase_PrintParse(memArena, "false ? \"first\" : false ? \"hello\" : \"World\"");
+	GyTestCase_PrintParse(memArena, "foo = 4 + 5", &testContext);
+	GyLibPrintLine_I("Foo is now %g", foo);
 	// GyTestCase_PrintParse(memArena, "foo + 15 * bar", &testContext);
 	// GyTestCase_PrintParse(memArena, "action(3 + bar*foo) * 1500", &testContext);
 	
