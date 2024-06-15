@@ -118,6 +118,7 @@ enum Result_t
 	Result_UnknownVariable,
 	Result_UnknownFunction,
 	Result_TooManyArguments,
+	Result_MissingArguments,
 	Result_EmptyArgument,
 	Result_InvalidArgument,
 	Result_MissingContext,
@@ -237,6 +238,7 @@ const char* GetResultStr(Result_t enumValue)
 		case Result_UnknownVariable:                return "UnknownVariable";
 		case Result_UnknownFunction:                return "UnknownFunction";
 		case Result_TooManyArguments:               return "TooManyArguments";
+		case Result_MissingArguments:               return "MissingArguments";
 		case Result_EmptyArgument:                  return "EmptyArgument";
 		case Result_InvalidArgument:                return "InvalidArgument";
 		case Result_MissingContext:                 return "MissingContext";

@@ -18,9 +18,7 @@ Description:
 //   false ? false ? "second" : "third" : "first"
 // Maybe the ternary operator needs to be higher precedence than itself?
 
-//TODO: Add functions for building ExpContext_t easily
 //TODO: Implement BitwiseNot operator
-//TODO: Add support for function calling using our own calling convention
 //TODO: Add proper support for optional arguments on functions
 //TODO: Add PIGGEN support for registering a function as callback by expressions
 //TODO: We need to return more error information from Evaluate, Parse, and Tokenize so that the error reporting can tell you where in the expression the problem occurred
@@ -34,6 +32,10 @@ Description:
 //TODO: Add support for named constants like pi?
 //TODO: Does the negation operator work on variables? What about a subtraction operator that is right next to a number literal?
 //TODO: Ternary operators should be higher precedence than themselves? So we can chain them together without parenthesis?
+//TODO: Add support for multiple contexts being combined together without needing to merge the variable and function def lists into a single space in memory. Maybe make them a linked list?
+//TODO: Add a deep copy function so we can duplicate and Expression_t or move it somewhere else in memory
+//TODO: Figure out exactly how we are going to manage TypeId value and enforcement!
+//TODO: Function overrides with same argument counts and different typed arguments do not currently work!
 
 #ifndef _GY_EXPRESSION_H
 #define _GY_EXPRESSION_H
@@ -46,7 +48,7 @@ Description:
 #define EXPRESSIONS_MAX_EVAL_STACK_SIZE   16
 #define EXPRESSIONS_MAX_NUM_PARTS         128
 
-#define EXPRESSION_FUNC_DEFINITION(functionName) struct ExpValue_t functionName(MemArena_t* memArena, u64 numArgs, const struct ExpValue_t* args)
+#define EXPRESSION_FUNC_DEFINITION(functionName) struct ExpValue_t functionName(struct Expression_t* expression, struct ExpContext_t* context, u64 numArgs, const struct ExpValue_t* args)
 typedef EXPRESSION_FUNC_DEFINITION(ExpressionFunc_f);
 
 // +--------------------------------------------------------------+
@@ -375,8 +377,11 @@ struct ExpFuncDef_t
 struct ExpContext_t
 {
 	MemArena_t* allocArena;
+	bool allocateStrings;
 	VarArray_t variableDefs; //ExpVariableDef_t
 	VarArray_t functionDefs; //ExpFuncDef_t
+	// Turns on some functionality that makes debug console experience better, at the expense of conflicting with functionality that would be used for other expressions that are usually used to produce a value
+	bool isConsoleInput;
 };
 
 struct Expression_t
@@ -404,6 +409,23 @@ struct ExpTokenizer_t
 typedef EXP_STEP_CALLBACK(ExpStepCallback_f);
 
 // +--------------------------------------------------------------+
+// |                            Macros                            |
+// +--------------------------------------------------------------+
+#define EXP_GET_ARG_BOOL(index, argName) Assert(numArgs >= ((index)+1) && args != nullptr && args[index].type == ExpValueType_Bool);    bool    argName = args[index].valueBool
+// #define EXP_GET_ARG_PNTR(index, argName) Assert(numArgs >= ((index)+1) && args != nullptr && args[index].type == ExpValueType_Pointer); void*   argName = args[index].valuePntr //TODO: Implement this with a typeId check somehow?
+#define EXP_GET_ARG_STR(index, argName)  Assert(numArgs >= ((index)+1) && args != nullptr && args[index].type == ExpValueType_String);  MyStr_t argName = args[index].valueStr
+#define EXP_GET_ARG_R32(index, argName)  Assert(numArgs >= ((index)+1) && args != nullptr && args[index].type == ExpValueType_R32);     r32     argName = args[index].valueR32
+#define EXP_GET_ARG_R64(index, argName)  Assert(numArgs >= ((index)+1) && args != nullptr && args[index].type == ExpValueType_R64);     r64     argName = args[index].valueR64
+#define EXP_GET_ARG_I8(index, argName)   Assert(numArgs >= ((index)+1) && args != nullptr && args[index].type == ExpValueType_I8);      i8      argName = args[index].valueI8
+#define EXP_GET_ARG_I16(index, argName)  Assert(numArgs >= ((index)+1) && args != nullptr && args[index].type == ExpValueType_I16);     i16     argName = args[index].valueI16
+#define EXP_GET_ARG_I32(index, argName)  Assert(numArgs >= ((index)+1) && args != nullptr && args[index].type == ExpValueType_I32);     i32     argName = args[index].valueI32
+#define EXP_GET_ARG_I64(index, argName)  Assert(numArgs >= ((index)+1) && args != nullptr && args[index].type == ExpValueType_I64);     i64     argName = args[index].valueI32
+#define EXP_GET_ARG_U8(index, argName)   Assert(numArgs >= ((index)+1) && args != nullptr && args[index].type == ExpValueType_U8);      u8      argName = args[index].valueU8
+#define EXP_GET_ARG_U16(index, argName)  Assert(numArgs >= ((index)+1) && args != nullptr && args[index].type == ExpValueType_U16);     u16     argName = args[index].valueU16
+#define EXP_GET_ARG_U32(index, argName)  Assert(numArgs >= ((index)+1) && args != nullptr && args[index].type == ExpValueType_U32);     u32     argName = args[index].valueU32
+#define EXP_GET_ARG_U64(index, argName)  Assert(numArgs >= ((index)+1) && args != nullptr && args[index].type == ExpValueType_U64);     u64     argName = args[index].valueU64
+
+// +--------------------------------------------------------------+
 // |                         Header Only                          |
 // +--------------------------------------------------------------+
 #ifdef GYLIB_HEADER_ONLY
@@ -429,6 +451,115 @@ void FreeExpression(Expression_t* expression)
 		if (part->type == ExpPartType_Constant) { FreeExpValue(expression->allocArena, &part->constantValue); }
 	}
 	ClearPointer(expression);
+}
+
+// +--------------------------------------------------------------+
+// |                        New Functions                         |
+// +--------------------------------------------------------------+
+ExpValue_t NewExpValueVoid()
+{
+	ExpValue_t result = {};
+	result.type = ExpValueType_Void;
+	return result;
+}
+ExpValue_t NewExpValueBool(bool value)
+{
+	ExpValue_t result = {};
+	result.type = ExpValueType_Bool;
+	result.valueBool = value;
+	return result;
+}
+ExpValue_t NewExpValueStr(MyStr_t value)
+{
+	ExpValue_t result = {};
+	result.type = ExpValueType_String;
+	result.valueStr = value;
+	return result;
+}
+ExpValue_t NewExpValueStr(const char* valueNt)
+{
+	ExpValue_t result = {};
+	result.type = ExpValueType_String;
+	result.valueStr = NewStr(valueNt);
+	return result;
+}
+ExpValue_t NewExpValuePntr(u64 typeId, void* value)
+{
+	ExpValue_t result = {};
+	result.type = ExpValueType_Pointer;
+	result.valuePntrTypeId = typeId;
+	result.valuePntr = value;
+	return result;
+}
+ExpValue_t NewExpValueR32(r32 value)
+{
+	ExpValue_t result = {};
+	result.type = ExpValueType_R32;
+	result.valueR32 = value;
+	return result;
+}
+ExpValue_t NewExpValueR64(r64 value)
+{
+	ExpValue_t result = {};
+	result.type = ExpValueType_R64;
+	result.valueR64 = value;
+	return result;
+}
+ExpValue_t NewExpValueI8(i8 value)
+{
+	ExpValue_t result = {};
+	result.type = ExpValueType_I8;
+	result.valueI8 = value;
+	return result;
+}
+ExpValue_t NewExpValueI16(i16 value)
+{
+	ExpValue_t result = {};
+	result.type = ExpValueType_I16;
+	result.valueI16 = value;
+	return result;
+}
+ExpValue_t NewExpValueI32(i32 value)
+{
+	ExpValue_t result = {};
+	result.type = ExpValueType_I32;
+	result.valueI32 = value;
+	return result;
+}
+ExpValue_t NewExpValueI64(i64 value)
+{
+	ExpValue_t result = {};
+	result.type = ExpValueType_I64;
+	result.valueI64 = value;
+	return result;
+}
+ExpValue_t NewExpValueU8(u8 value)
+{
+	ExpValue_t result = {};
+	result.type = ExpValueType_U8;
+	result.valueU8 = value;
+	return result;
+}
+ExpValue_t NewExpValueU16(u16 value)
+{
+	ExpValue_t result = {};
+	result.type = ExpValueType_U16;
+	result.valueU16 = value;
+	return result;
+}
+ExpValue_t NewExpValueU32(u32 value)
+{
+	ExpValue_t result = {};
+	result.type = ExpValueType_U32;
+	result.valueU32 = value;
+	return result;
+}
+ExpValue_t NewExpValueU64(u64 value)
+{
+	ExpValue_t result = {};
+	result.type = ExpValueType_U64;
+	result.valueU64 = value;
+	return result;
 }
 
 // +--------------------------------------------------------------+
@@ -570,11 +701,22 @@ inline bool CanExpValueTypeConvertTo(ExpValueType_t type, ExpValueType_t outType
 	if (!IsExpValueTypeNumber(type)) { return false; } //only numbers have automatic conversion
 	if (!IsExpValueTypeNumber(outType)) { return false; } //only numbers have automatic conversion
 	if (IsExpValueTypeFloat(type) && !IsExpValueTypeFloat(outType)) { return false; } // disallow float -> integer conversion
-	//TODO: Do we want to be strict about any particular number conversions here? Our type checking has no static analysis for bubbling up real constant values,
-	// so it is going to call foul on anything that expects smaller than 64-bit types and has values being fed in through operators. And we have no way of "casting"
-	// from one type to another in the expression, so we can't appease the type checker if it's too strict.
 	return true;
 }
+inline bool CanCastExpValueTo(ExpValueType_t valueType, ExpValueType_t type)
+{
+	if (valueType == type) { return true; }
+	if (IsExpValueTypeNumber(valueType) && IsExpValueTypeNumber(type)) { return true; }
+	if (valueType == ExpValueType_Bool && IsExpValueTypeNumber(type)) { return true; }
+	if (type == ExpValueType_Bool && (IsExpValueTypeNumber(type) || type == ExpValueType_Pointer || type == ExpValueType_String)) { return true; }
+	//TODO: We could be strict about float -> integer conversion?
+	//TODO: We could be strict about larger number types being cast down to smaller ones?
+	//TODO: Do we want to be strict about any particular number conversions here? Our type checking has no static analysis for bubbling up real constant values,
+	// so if we are strict it is going to call foul on anything that expects smaller than 64-bit types and has values being fed in through operators.
+	// And we have no way of "casting" from one type to another in the expression, so we can't appease the type checker if it's too strict.
+	return false;
+}
+
 inline u8 GetExpValueTypeByteSize(ExpValueType_t type)
 {
 	switch (type)
@@ -651,7 +793,7 @@ MyStr_t ExpValueToStr(ExpValue_t value, MemArena_t* memArena, bool includeType =
 void FreeExpContext(ExpContext_t* context)
 {
 	NotNull(context);
-	if (context->variableDefs.length > 0)
+	if (context->variableDefs.length > 0 && context->allocateStrings)
 	{
 		NotNull(context->allocArena);
 		VarArrayLoop(&context->variableDefs, vIndex)
@@ -661,7 +803,7 @@ void FreeExpContext(ExpContext_t* context)
 		}
 	}
 	FreeVarArray(&context->variableDefs);
-	if (context->functionDefs.length > 0)
+	if (context->functionDefs.length > 0 && context->allocateStrings)
 	{
 		NotNull(context->allocArena);
 		VarArrayLoop(&context->functionDefs, fIndex)
@@ -677,15 +819,52 @@ void FreeExpContext(ExpContext_t* context)
 	FreeVarArray(&context->functionDefs);
 	ClearPointer(context);
 }
-void InitExpContext(MemArena_t* memArena, ExpContext_t* contextOut)
+void InitExpContext(MemArena_t* memArena, ExpContext_t* contextOut, bool allocateStrings = true)
 {
 	NotNull2(memArena, contextOut);
 	ClearPointer(contextOut);
 	contextOut->allocArena = memArena;
+	contextOut->allocateStrings = allocateStrings;
 	CreateVarArray(&contextOut->variableDefs, memArena, sizeof(ExpVariableDef_t));
 	CreateVarArray(&contextOut->functionDefs, memArena, sizeof(ExpFuncDef_t));
 }
 
+ExpVariableDef_t* FindExpVariableDef(ExpContext_t* context, MyStr_t variableName, u64* indexOut = nullptr)
+{
+	VarArrayLoop(&context->variableDefs, vIndex)
+	{
+		VarArrayLoopGet(ExpVariableDef_t, variableDef, &context->variableDefs, vIndex);
+		if (StrEquals(variableDef->name, variableName))
+		{
+			SetOptionalOutPntr(indexOut, vIndex);
+			return variableDef;
+		}
+	}
+	return nullptr;
+}
+const ExpVariableDef_t* FindExpVariableDef(const ExpContext_t* context, MyStr_t variableName, u64* indexOut = nullptr) //const variant
+{
+	return (const ExpVariableDef_t*)FindExpVariableDef((ExpContext_t*)context, variableName, indexOut);
+}
+ExpFuncDef_t* FindExpFuncDef(ExpContext_t* context, MyStr_t functionName, u64 numArguments = UINT64_MAX, u64* indexOut = nullptr)
+{
+	VarArrayLoop(&context->functionDefs, fIndex)
+	{
+		VarArrayLoopGet(ExpFuncDef_t, functionDef, &context->functionDefs, fIndex);
+		if (StrEquals(functionDef->name, functionName) && (numArguments == UINT64_MAX || functionDef->numArguments == numArguments))
+		{
+			SetOptionalOutPntr(indexOut, fIndex);
+			return functionDef;
+		}
+	}
+	return nullptr;
+}
+const ExpFuncDef_t* FindExpFuncDef(const ExpContext_t* context, MyStr_t functionName, u64 numArguments = UINT64_MAX, u64* indexOut = nullptr) //const variant
+{
+	return (const ExpFuncDef_t*)FindExpFuncDef((ExpContext_t*)context, functionName, numArguments, indexOut);
+}
+
+//TODO: These should probably make sure that there are no naming conflicts!
 ExpVariableDef_t* AddExpVariableDef_(ExpContext_t* context, MyStr_t variableName, ExpValueType_t type, u64 pntrSize, void* pntr)
 {
 	NotNull2(context, pntr);
@@ -695,7 +874,7 @@ ExpVariableDef_t* AddExpVariableDef_(ExpContext_t* context, MyStr_t variableName
 	NotNull(newDef);
 	ClearPointer(newDef);
 	newDef->type = type;
-	newDef->name = AllocString(context->allocArena, &variableName);
+	newDef->name = context->allocateStrings ? AllocString(context->allocArena, &variableName) : variableName;
 	Assert(pntrSize == GetExpValueTypeByteSize(type));
 	newDef->pntr = pntr;
 	return newDef;
@@ -727,6 +906,7 @@ ExpVariableDef_t* AddExpVariableDefU32(ExpContext_t*  context, const char* varia
 ExpVariableDef_t* AddExpVariableDefU64(ExpContext_t*  context, MyStr_t     variableName,   u64* pntr)     { return AddExpVariableDef_(context, variableName,           ExpValueType_U64,     sizeof(u64),     (void*)pntr); }
 ExpVariableDef_t* AddExpVariableDefU64(ExpContext_t*  context, const char* variableNameNt, u64* pntr)     { return AddExpVariableDef_(context, NewStr(variableNameNt), ExpValueType_U64,     sizeof(u64),     (void*)pntr); }
 
+//TODO: These should probably make sure that there are no naming conflicts!
 ExpFuncDef_t* AddExpFuncDef(ExpContext_t* context, ExpValueType_t returnType, MyStr_t functionName, ExpressionFunc_f* functionPntr)
 {
 	NotNull(context);
@@ -735,7 +915,7 @@ ExpFuncDef_t* AddExpFuncDef(ExpContext_t* context, ExpValueType_t returnType, My
 	ExpFuncDef_t* newDef = VarArrayAdd(&context->functionDefs, ExpFuncDef_t);
 	NotNull(newDef);
 	ClearPointer(newDef);
-	newDef->name = AllocString(context->allocArena, &functionName);
+	newDef->name = context->allocateStrings ? AllocString(context->allocArena, &functionName) : functionName;
 	newDef->returnType = returnType;
 	newDef->numArguments = 0;
 	newDef->pntr = functionPntr;
@@ -746,6 +926,7 @@ ExpFuncDef_t* AddExpFuncDef(ExpContext_t* context, ExpValueType_t returnType, co
 	return AddExpFuncDef(context, returnType, NewStr(functionNameNt), functionPntr);
 }
 
+//TODO: These should probably make sure that there are no naming conflicts!
 ExpFuncArg_t* AddExpFuncArg(ExpContext_t* context, ExpFuncDef_t* funcDef, ExpValueType_t argumentType, MyStr_t argumentName)
 {
 	NotNull2(context, funcDef);
@@ -756,7 +937,7 @@ ExpFuncArg_t* AddExpFuncArg(ExpContext_t* context, ExpFuncDef_t* funcDef, ExpVal
 	NotNull(newArg);
 	ClearPointer(newArg);
 	newArg->type = argumentType;
-	newArg->name = AllocString(context->allocArena, &argumentName);
+	newArg->name = context->allocateStrings ? AllocString(context->allocArena, &argumentName) : argumentName;
 	newArg->isOptional = false; //TODO: Implement handling of this!
 	return newArg;
 }
@@ -770,12 +951,12 @@ ExpFuncArg_t* AddExpFuncArg(ExpContext_t* context, ExpFuncDef_t* funcDef, ExpVal
 // +--------------------------------------------------------------+
 ExpValueType_t GetExpResultTypeForMathOp(ExpValueType_t leftOperandType, ExpValueType_t rightOperandType, bool isSubtractOp, Result_t* reasonOut = nullptr)
 {
-	if (leftOperandType == rightOperandType)
+	/*if (leftOperandType == rightOperandType)
 	{
 		if (IsExpValueTypeNumber(leftOperandType)) { return leftOperandType; }
 		else { SetOptionalOutPntr(reasonOut, Result_InvalidLeftOperand); return ExpValueType_None; }
 	}
-	else if (IsExpValueTypeNumber(leftOperandType) && IsExpValueTypeNumber(rightOperandType))
+	else */if (IsExpValueTypeNumber(leftOperandType) && IsExpValueTypeNumber(rightOperandType))
 	{
 		//TODO: Should we be smarter about this somehow? Right now, any operator will result in a rather large type during type-check,
 		// because we can't be sure about the value that is stored in each operand and whether we will underflow/overflow if the operator is carried out
@@ -866,15 +1047,6 @@ ExpValueType_t GetExpCommonTypeForComparisonOp(ExpValueType_t leftOperandType, E
 		SetOptionalOutPntr(reasonOut, Result_InvalidRightOperand);
 		return ExpValueType_None;
 	}
-}
-
-bool CanCastExpValueTo(ExpValueType_t valueType, ExpValueType_t type)
-{
-	if (valueType == type) { return true; }
-	if (IsExpValueTypeNumber(valueType) && IsExpValueTypeNumber(type)) { return true; }
-	if (valueType == ExpValueType_Bool && IsExpValueTypeNumber(type)) { return true; }
-	if (type == ExpValueType_Bool && (IsExpValueTypeNumber(type) || type == ExpValueType_Pointer || type == ExpValueType_String)) { return true; }
-	return false;
 }
 
 ExpValue_t CastExpValue(ExpValue_t value, ExpValueType_t type)
@@ -1391,6 +1563,14 @@ bool ExpTokenizerGetNext(ExpTokenizer_t* tokenizer, ExpToken_t* tokenOut, Result
 			SetOptionalOutPntr(tokenOut, tokenizer->prevToken);
 			return true;
 		}
+		else if (c == ',')
+		{
+			MyStr_t charStr = NewStr(1, &tokenizer->expressionStr.chars[tokenizer->currentIndex]);
+			tokenizer->currentIndex += charStr.length;
+			tokenizer->prevToken = NewExpToken(ExpTokenType_Comma, charStr);
+			SetOptionalOutPntr(tokenOut, tokenizer->prevToken);
+			return true;
+		}
 		else if (IsCharNumeric(c) || (((treatNegativeAsSignage && c == '-') || c == '.') && IsCharNumeric(nextChar)))
 		{
 			MyStr_t numberStr = NewStr(1, &tokenizer->expressionStr.chars[tokenizer->currentIndex]);
@@ -1648,40 +1828,6 @@ MyStr_t EscapeExpressionStr(MemArena_t* memArena, MyStr_t string)
 // +--------------------------------------------------------------+
 // |                       Parsing Helpers                        |
 // +--------------------------------------------------------------+
-ExpVariableDef_t* FindExpVariableDef(ExpContext_t* context, MyStr_t variableName, u64* indexOut = nullptr)
-{
-	VarArrayLoop(&context->variableDefs, vIndex)
-	{
-		VarArrayLoopGet(ExpVariableDef_t, variableDef, &context->variableDefs, vIndex);
-		if (StrEquals(variableDef->name, variableName))
-		{
-			SetOptionalOutPntr(indexOut, vIndex);
-			return variableDef;
-		}
-	}
-	return nullptr;
-}
-const ExpVariableDef_t* FindExpVariableDef(const ExpContext_t* context, MyStr_t variableName, u64* indexOut = nullptr) //const variant
-{
-	return (const ExpVariableDef_t*)FindExpVariableDef((ExpContext_t*)context, variableName, indexOut);
-}
-ExpFuncDef_t* FindExpFuncDef(ExpContext_t* context, MyStr_t functionName, u64 numArguments = UINT64_MAX, u64* indexOut = nullptr)
-{
-	VarArrayLoop(&context->functionDefs, fIndex)
-	{
-		VarArrayLoopGet(ExpFuncDef_t, functionDef, &context->functionDefs, fIndex);
-		if (StrEquals(functionDef->name, functionName) && (numArguments == UINT64_MAX || functionDef->numArguments == numArguments))
-		{
-			SetOptionalOutPntr(indexOut, fIndex);
-			return functionDef;
-		}
-	}
-	return nullptr;
-}
-const ExpFuncDef_t* FindExpFuncDef(const ExpContext_t* context, MyStr_t functionName, u64 numArguments = UINT64_MAX, u64* indexOut = nullptr) //const variant
-{
-	return (const ExpFuncDef_t*)FindExpFuncDef((ExpContext_t*)context, functionName, numArguments, indexOut);
-}
 
 void PushExpPart(ExpPartStack_t* stack, ExpPart_t* partPntr)
 {
@@ -2115,8 +2261,15 @@ Result_t TryCreateExpressionFromTokens_Helper(Expression_t* expression, const Ex
 						if (subResult != Result_Success) { return subResult; }
 						
 						u64 funcDefIndex = 0;
+						// ExpFuncDef_t* FindExpFuncDef(ExpressionContext_t* context, MyStr_t functionName, u64 numArguments = UINT64_MAX, u64* indexOut = nullptr)
 						const ExpFuncDef_t* funcDef = FindExpFuncDef(context, token->str, functionPartProto.childCount, &funcDefIndex);
-						if (funcDef == nullptr) { return Result_UnknownFunction; }
+						if (funcDef == nullptr)
+						{
+							const ExpFuncDef_t* anyArgCountFuncDef = FindExpFuncDef(context, token->str);
+							return anyArgCountFuncDef != nullptr ?
+								(functionPartProto.childCount > anyArgCountFuncDef->numArguments ? Result_TooManyArguments : Result_MissingArguments) :
+								Result_UnknownFunction;
+						}
 						
 						ExpPart_t* newFunctionPart = AddExpFunction(expression, tIndex, funcDefIndex);
 						MyMemCopy(&newFunctionPart->child[0], &functionPartProto.child[0], EXPRESSIONS_MAX_PART_CHILDREN * sizeof(ExpPart_t*));
@@ -2192,7 +2345,7 @@ Result_t TryCreateExpressionFromTokens_Helper(Expression_t* expression, const Ex
 			functionPart->child[functionArgIndex++] = argument;
 			functionPart->childCount = functionArgIndex;
 		}
-		else { return Result_EmptyArgument; }
+		else if (functionArgIndex > 0) { return Result_EmptyArgument; }
 	}
 	else if (stack.length == 1)
 	{
@@ -2214,20 +2367,12 @@ Result_t TryCreateExpressionFromTokens(const ExpContext_t* context, u64 numToken
 	NotNull2(context, expressionOut);
 	AssertIf(numTokens > 0, tokens != nullptr);
 	
-	Expression_t expression = {};
-	expression.allocArena = memArena;
-	expression.numParts = 0;
+	ClearPointer(expressionOut);
+	expressionOut->allocArena = memArena;
+	expressionOut->numParts = 0;
 	
-	Result_t result = TryCreateExpressionFromTokens_Helper(&expression, context, numTokens, tokens, &expression.rootPart);
-	
-	if (result == Result_Success)
-	{
-		MyMemCopy(expressionOut, &expression, sizeof(Expression_t));
-	}
-	else
-	{
-		FreeExpression(&expression);
-	}
+	Result_t result = TryCreateExpressionFromTokens_Helper(expressionOut, context, numTokens, tokens, &expressionOut->rootPart);
+	if (result != Result_Success) { FreeExpression(expressionOut); }
 	
 	return result;
 }
@@ -2519,6 +2664,9 @@ EXP_STEP_CALLBACK(ExpressionTypeCheckWalk_Callback)
 			}
 		} break;
 		
+		// +==============================+
+		// |   TypeCheck Function Part    |
+		// +==============================+
 		case ExpPartType_Function:
 		{
 			if (context == nullptr) { state->result = Result_MissingContext; state->errorPartIndex = part->index; break; }
@@ -2530,7 +2678,7 @@ EXP_STEP_CALLBACK(ExpressionTypeCheckWalk_Callback)
 				ExpFuncArg_t* argDef = &functionDef->arguments[aIndex];
 				NotNull(argument);
 				Assert(argument->evalType != ExpValueType_None);
-				if (!CanExpValueTypeConvertTo(argument->evalType, argDef->type))
+				if (!CanCastExpValueTo(argument->evalType, argDef->type))
 				{
 					state->result = Result_InvalidArgument;
 					state->errorPartIndex = part->index;
@@ -2541,6 +2689,9 @@ EXP_STEP_CALLBACK(ExpressionTypeCheckWalk_Callback)
 			part->evalType = functionDef->returnType;
 		} break;
 		
+		// +==============================+
+		// |  TypeCheck Parenthesis Part  |
+		// +==============================+
 		case ExpPartType_ParenthesisGroup:
 		{
 			NotNull(part->child[0]);
@@ -2744,8 +2895,19 @@ EXP_STEP_CALLBACK(EvaluateExpression_Callback)
 		case ExpPartType_Variable:
 		{
 			if (state->stackSize >= EXPRESSIONS_MAX_EVAL_STACK_SIZE) { state->result = Result_StackOverflow; return; }
+			Assert(context != nullptr && part->variableIndex < context->variableDefs.length);
 			ExpVariableDef_t* variableDef = VarArrayGet(&context->variableDefs, part->variableIndex, ExpVariableDef_t);
-			state->stack[state->stackSize++] = ReadExpVariable_(variableDef);
+			if (context->isConsoleInput && expression->rootPart == part && expression->numParts == 1 && variableDef->type == ExpValueType_Bool)
+			{
+				// When a boolean variable is the entire expression, we actually implicitely toggle the value (but only in debug console input contexts)
+				bool currentValue = ReadExpVariableBool(variableDef);
+				WriteExpVariableBool(variableDef, !currentValue);
+				state->stack[state->stackSize++] = NewExpValueBool(!currentValue);
+			}
+			else
+			{
+				state->stack[state->stackSize++] = ReadExpVariable_(variableDef);
+			}
 		} break;
 		
 		// +==============================+
@@ -3011,9 +3173,34 @@ EXP_STEP_CALLBACK(EvaluateExpression_Callback)
 			}
 		} break;
 		
+		// +==============================+
+		// |    Evaluate Function Part    |
+		// +==============================+
 		case ExpPartType_Function:
 		{
-			Unimplemented(); //TODO: Implement me!
+			Assert(context != nullptr && part->functionIndex < context->functionDefs.length);
+			ExpFuncDef_t* funcDef = VarArrayGet(&context->functionDefs, part->functionIndex, ExpFuncDef_t);
+			Assert(funcDef->numArguments == part->childCount);
+			Assert(funcDef->pntr != nullptr);
+			u64 numArgs = funcDef->numArguments;
+			if (state->stackSize < numArgs) { state->result = Result_InvalidStack; return; }
+			
+			//We need an array here so we can pop the arguments off the stack and arrange them in the reverse order so we can pass them all as a pointer to the function
+			ExpValue_t arguments[EXPRESSIONS_MAX_PART_CHILDREN];
+			for (u64 aIndex = 0; aIndex < numArgs; aIndex++)
+			{
+				arguments[numArgs-1 - aIndex] = state->stack[state->stackSize-1];
+				state->stackSize--;
+			}
+			for (u64 aIndex = 0; aIndex < numArgs; aIndex++)
+			{
+				Assert(CanCastExpValueTo(arguments[aIndex].type, funcDef->arguments[aIndex].type));
+				arguments[aIndex] = CastExpValue(arguments[aIndex], funcDef->arguments[aIndex].type);
+			}
+			
+			ExpValue_t funcResult = funcDef->pntr(expression, context, numArgs, &arguments[0]);
+			
+			state->stack[state->stackSize++] = funcResult;
 		} break;
 		
 		case ExpPartType_ParenthesisGroup:
@@ -3206,7 +3393,7 @@ ExpFuncDef_t
 ExpContext_t
 Expression_t
 @Functions
-ExpValue_t EXPRESSION_FUNC_DEFINITION(MemArena_t* memArena, u64 numArgs, const ExpValue_t* args)
+ExpValue_t EXPRESSION_FUNC_DEFINITION(Expression_t* expression, ExpContext_t* context, u64 numArgs, const struct ExpValue_t* args)
 const char* GetExpValueTypeStr(ExpValueType_t enumValue)
 const char* GetExpOpStr(ExpOp_t enumValue)
 const char* GetExpPartTypeStr(ExpPartType_t enumValue)
