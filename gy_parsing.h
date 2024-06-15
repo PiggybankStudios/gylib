@@ -96,7 +96,7 @@ const char* GetTryParseFailureReasonStr(TryParseFailureReason_t reason)
 	bool TryParseR32(MyStr_t str, r32* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowSuffix = true, bool allowInfinity = false);
 	template <class enum_t> bool TryParseEnum(MyStr_t str, enum_t* valueOut, enum_t enumCount, const char* (*getEnumStrFunc)(enum_t), TryParseFailureReason_t* reasonOut = nullptr);
 	template <class enum_t> bool TryParseBitfieldEnum(MyStr_t str, enum_t* valueOut, enum_t enumCount, const char* (*getEnumStrFunc)(enum_t), TryParseFailureReason_t* reasonOut = nullptr);
-	bool TryParseBool(MyStr_t str, bool* valueOut, TryParseFailureReason_t* reasonOut = nullptr);
+	bool TryParseBool(MyStr_t str, bool* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool strict = false);
 	bool TryParseDir2(MyStr_t str, Dir2_t* valueOut, TryParseFailureReason_t* reasonOut = nullptr);
 	bool TryParseDir3(MyStr_t str, Dir3_t* valueOut, TryParseFailureReason_t* reasonOut = nullptr);
 	bool TryParseV2i(MyStr_t str, v2i* valueOut, TryParseFailureReason_t* reasonOut = nullptr);
@@ -466,29 +466,29 @@ bool TryParseBitfieldEnum(MyStr_t str, enum_t* valueOut, enum_t enumCount, const
 // +--------------------------------------------------------------+
 // |                      Parse Other Types                       |
 // +--------------------------------------------------------------+
-bool TryParseBool(MyStr_t str, bool* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
+bool TryParseBool(MyStr_t str, bool* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool strict = false)
 {
 	NotNullStr(&str);
 	TrimWhitespace(&str);
 	bool result = false;
-	if      (StrEqualsIgnoreCase(str, "true"))     { result = true;  }
-	else if (StrEqualsIgnoreCase(str, "false"))    { result = false; }
-	else if (StrEqualsIgnoreCase(str, "t"))        { result = true;  }
-	else if (StrEqualsIgnoreCase(str, "f"))        { result = false; }
-	else if (StrEqualsIgnoreCase(str, "1"))        { result = true;  }
-	else if (StrEqualsIgnoreCase(str, "0"))        { result = false; }
-	else if (StrEqualsIgnoreCase(str, "yes"))      { result = true;  }
-	else if (StrEqualsIgnoreCase(str, "no"))       { result = false; }
-	else if (StrEqualsIgnoreCase(str, "y"))        { result = true;  }
-	else if (StrEqualsIgnoreCase(str, "n"))        { result = false; }
-	else if (StrEqualsIgnoreCase(str, "on"))       { result = true;  }
-	else if (StrEqualsIgnoreCase(str, "off"))      { result = false; }
-	else if (StrEqualsIgnoreCase(str, "enable"))   { result = true;  }
-	else if (StrEqualsIgnoreCase(str, "disable"))  { result = false; }
-	else if (StrEqualsIgnoreCase(str, "enabled"))  { result = true;  }
-	else if (StrEqualsIgnoreCase(str, "disabled")) { result = false; }
-	else if (StrEqualsIgnoreCase(str, "high"))     { result = true;  }
-	else if (StrEqualsIgnoreCase(str, "low"))      { result = false; }
+	if      (StrEqualsIgnoreCase(str, "true"))         { result = true;  }
+	else if (StrEqualsIgnoreCase(str, "false"))        { result = false; }
+	else if (StrEqualsIgnoreCase(str, "t") && !strict) { result = true;  }
+	else if (StrEqualsIgnoreCase(str, "f") && !strict) { result = false; }
+	else if (StrEqualsIgnoreCase(str, "1") && !strict) { result = true;  }
+	else if (StrEqualsIgnoreCase(str, "0") && !strict) { result = false; }
+	else if (StrEqualsIgnoreCase(str, "yes"))          { result = true;  }
+	else if (StrEqualsIgnoreCase(str, "no"))           { result = false; }
+	else if (StrEqualsIgnoreCase(str, "y") && !strict) { result = true;  }
+	else if (StrEqualsIgnoreCase(str, "n") && !strict) { result = false; }
+	else if (StrEqualsIgnoreCase(str, "on"))           { result = true;  }
+	else if (StrEqualsIgnoreCase(str, "off"))          { result = false; }
+	else if (StrEqualsIgnoreCase(str, "enable"))       { result = true;  }
+	else if (StrEqualsIgnoreCase(str, "disable"))      { result = false; }
+	else if (StrEqualsIgnoreCase(str, "enabled"))      { result = true;  }
+	else if (StrEqualsIgnoreCase(str, "disabled"))     { result = false; }
+	else if (StrEqualsIgnoreCase(str, "high"))         { result = true;  }
+	else if (StrEqualsIgnoreCase(str, "low"))          { result = false; }
 	else
 	{
 		if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_UnknownString; }
@@ -1132,7 +1132,7 @@ bool TryParseR64(MyStr_t str, r64* valueOut, TryParseFailureReason_t* reasonOut 
 bool TryParseR32(MyStr_t str, r32* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool allowSuffix = true, bool allowInfinity = false)
 bool TryParseEnum(MyStr_t str, enum_t* valueOut, enum_t enumCount, GetEnumStr_f* getEnumStrFunc, TryParseFailureReason_t* reasonOut = nullptr)
 bool TryParseBitfieldEnum(MyStr_t str, enum_t* valueOut, enum_t enumCount, GetEnumStr_f* getEnumStrFunc, TryParseFailureReason_t* reasonOut = nullptr)
-bool TryParseBool(MyStr_t str, bool* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
+bool TryParseBool(MyStr_t str, bool* valueOut, TryParseFailureReason_t* reasonOut = nullptr, bool strict = false)
 bool TryParseDir2(MyStr_t str, Dir2_t* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
 bool TryParseDir3(MyStr_t str, Dir3_t* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
 bool TryParseV2i(MyStr_t str, v2i* valueOut, TryParseFailureReason_t* reasonOut = nullptr)
