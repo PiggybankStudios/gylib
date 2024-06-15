@@ -13,6 +13,11 @@ Description:
 	** with the right-hand side being an expression 
 */
 
+//TODO: The following expressions don't quite act like we want?
+//   false ? "first" : false ? "second" : "third"
+//   false ? false ? "second" : "third" : "first"
+// Maybe the ternary operator needs to be higher precedence than itself?
+
 #ifndef _GY_EXPRESSION_H
 #define _GY_EXPRESSION_H
 
@@ -47,6 +52,7 @@ enum ExpValueType_t
 	ExpValueType_U16,
 	ExpValueType_U32,
 	ExpValueType_U64,
+	//TODO: Should we add v2, v3, v2i, v3i here?
 	ExpValueType_NumTypes,
 };
 
@@ -87,6 +93,10 @@ enum ExpOp_t
 	ExpOp_Modulo,
 	ExpOp_Equals,
 	ExpOp_NotEquals,
+	ExpOp_GreaterThan,
+	ExpOp_GreaterThanOrEqual,
+	ExpOp_LessThan,
+	ExpOp_LessThanOrEqual,
 	ExpOp_Or,
 	ExpOp_And,
 	ExpOp_Not,
@@ -107,23 +117,27 @@ const char* GetExpOpStr(ExpOp_t enumValue)
 {
 	switch (enumValue)
 	{
-		case ExpOp_None:       return "None";
-		case ExpOp_Add:        return "Add";
-		case ExpOp_Subtract:   return "Subtract";
-		case ExpOp_Multiply:   return "Multiply";
-		case ExpOp_Divide:     return "Divide";
-		case ExpOp_Modulo:     return "Modulo";
-		case ExpOp_Equals:     return "Equals";
-		case ExpOp_NotEquals:  return "NotEquals";
-		case ExpOp_Or:         return "Or";
-		case ExpOp_And:        return "And";
-		case ExpOp_Not:        return "Not";
-		case ExpOp_BitwiseOr:  return "BitwiseOr";
-		case ExpOp_BitwiseAnd: return "BitwiseAnd";
-		case ExpOp_BitwiseXor: return "BitwiseXor";
-		case ExpOp_BitwiseNot: return "BitwiseNot";
-		case ExpOp_Ternary:    return "Ternary";
-		case ExpOp_Assignment: return "Assignment";
+		case ExpOp_None:               return "None";
+		case ExpOp_Add:                return "Add";
+		case ExpOp_Subtract:           return "Subtract";
+		case ExpOp_Multiply:           return "Multiply";
+		case ExpOp_Divide:             return "Divide";
+		case ExpOp_Modulo:             return "Modulo";
+		case ExpOp_Equals:             return "Equals";
+		case ExpOp_NotEquals:          return "NotEquals";
+		case ExpOp_GreaterThan:        return "GreaterThan";
+		case ExpOp_GreaterThanOrEqual: return "GreaterThanOrEqual";
+		case ExpOp_LessThan:           return "LessThan";
+		case ExpOp_LessThanOrEqual:    return "LessThanOrEqual";
+		case ExpOp_Or:                 return "Or";
+		case ExpOp_And:                return "And";
+		case ExpOp_Not:                return "Not";
+		case ExpOp_BitwiseOr:          return "BitwiseOr";
+		case ExpOp_BitwiseAnd:         return "BitwiseAnd";
+		case ExpOp_BitwiseXor:         return "BitwiseXor";
+		case ExpOp_BitwiseNot:         return "BitwiseNot";
+		case ExpOp_Ternary:            return "Ternary";
+		case ExpOp_Assignment:         return "Assignment";
 		default: return "Unknown";
 	}
 }
@@ -131,22 +145,26 @@ const char* GetExpOpSyntaxStr(ExpOp_t enumValue, bool secondPart = false)
 {
 	switch (enumValue)
 	{
-		case ExpOp_Add:        return "+";
-		case ExpOp_Subtract:   return "-";
-		case ExpOp_Multiply:   return "*";
-		case ExpOp_Divide:     return "/";
-		case ExpOp_Modulo:     return "%";
-		case ExpOp_Equals:     return "==";
-		case ExpOp_NotEquals:  return "!=";
-		case ExpOp_Or:         return "||";
-		case ExpOp_And:        return "&&";
-		case ExpOp_Not:        return "!";
-		case ExpOp_BitwiseOr:  return "|";
-		case ExpOp_BitwiseAnd: return "&";
-		case ExpOp_BitwiseXor: return "^";
-		case ExpOp_BitwiseNot: return "~";
-		case ExpOp_Ternary:    return (secondPart ? ":" : "?");
-		case ExpOp_Assignment: return "=";
+		case ExpOp_Add:                return "+";
+		case ExpOp_Subtract:           return "-";
+		case ExpOp_Multiply:           return "*";
+		case ExpOp_Divide:             return "/";
+		case ExpOp_Modulo:             return "%";
+		case ExpOp_Equals:             return "==";
+		case ExpOp_NotEquals:          return "!=";
+		case ExpOp_GreaterThan:        return ">";
+		case ExpOp_GreaterThanOrEqual: return ">=";
+		case ExpOp_LessThan:           return "<";
+		case ExpOp_LessThanOrEqual:    return "<=";
+		case ExpOp_Or:                 return "||";
+		case ExpOp_And:                return "&&";
+		case ExpOp_Not:                return "!";
+		case ExpOp_BitwiseOr:          return "|";
+		case ExpOp_BitwiseAnd:         return "&";
+		case ExpOp_BitwiseXor:         return "^";
+		case ExpOp_BitwiseNot:         return "~";
+		case ExpOp_Ternary:            return (secondPart ? ":" : "?");
+		case ExpOp_Assignment:         return "=";
 		default: return nullptr;
 	}
 }
@@ -272,6 +290,9 @@ struct ExpPart_t
 	ExpValueType_t evalType;
 	u64 childCount;
 	ExpPart_t* child[EXPRESSIONS_MAX_PART_CHILDREN];
+	//locked children are ones that can't be stolen by later higher precedence operators, because a syntactically element already occurred to distance them from later operators
+	//left-hand children are always locked in (because the operator came after). The first branch of a ternary operator gets locked in when we find a ':' character
+	bool childLocked[EXPRESSIONS_MAX_PART_CHILDREN];
 	// ExpPartType_Constant
 	ExpValue_t constantValue;
 	// ExpPartType_Operator
@@ -379,22 +400,26 @@ u8 GetExpOperandCount(ExpOp_t opType)
 {
 	switch (opType)
 	{
-		case ExpOp_Add:        return 2;
-		case ExpOp_Subtract:   return 2;
-		case ExpOp_Multiply:   return 2;
-		case ExpOp_Divide:     return 2;
-		case ExpOp_Modulo:     return 2;
-		case ExpOp_Equals:     return 2;
-		case ExpOp_NotEquals:  return 2;
-		case ExpOp_Or:         return 2;
-		case ExpOp_And:        return 2;
-		case ExpOp_Not:        return 1;
-		case ExpOp_BitwiseOr:  return 2;
-		case ExpOp_BitwiseAnd: return 2;
-		case ExpOp_BitwiseXor: return 2;
-		case ExpOp_BitwiseNot: return 1;
-		case ExpOp_Ternary:    return 3;
-		case ExpOp_Assignment: return 2;
+		case ExpOp_Add:                return 2;
+		case ExpOp_Subtract:           return 2;
+		case ExpOp_Multiply:           return 2;
+		case ExpOp_Divide:             return 2;
+		case ExpOp_Modulo:             return 2;
+		case ExpOp_Equals:             return 2;
+		case ExpOp_NotEquals:          return 2;
+		case ExpOp_GreaterThan:        return 2;
+		case ExpOp_GreaterThanOrEqual: return 2;
+		case ExpOp_LessThan:           return 2;
+		case ExpOp_LessThanOrEqual:    return 2;
+		case ExpOp_Or:                 return 2;
+		case ExpOp_And:                return 2;
+		case ExpOp_Not:                return 1;
+		case ExpOp_BitwiseOr:          return 2;
+		case ExpOp_BitwiseAnd:         return 2;
+		case ExpOp_BitwiseXor:         return 2;
+		case ExpOp_BitwiseNot:         return 1;
+		case ExpOp_Ternary:            return 3;
+		case ExpOp_Assignment:         return 2;
 		default: AssertMsg(false, "Unhandled ExpOp value in GetExpOperandCount"); return 0;
 	}
 }
@@ -403,26 +428,31 @@ u8 GetExpOpPrecedence(ExpOp_t opType)
 {
 	switch (opType)
 	{
-		case ExpOp_Add:        return 5;
-		case ExpOp_Subtract:   return 5;
-		case ExpOp_Multiply:   return 6;
-		case ExpOp_Divide:     return 6;
-		case ExpOp_Modulo:     return 7;
-		case ExpOp_Equals:     return 4;
-		case ExpOp_NotEquals:  return 4;
-		case ExpOp_Or:         return 3;
-		case ExpOp_And:        return 3;
-		case ExpOp_Not:        return 3;
-		case ExpOp_BitwiseOr:  return 8;
-		case ExpOp_BitwiseAnd: return 8;
-		case ExpOp_BitwiseXor: return 8;
-		case ExpOp_BitwiseNot: return 8;
-		case ExpOp_Ternary:    return 2;
-		case ExpOp_Assignment: return 1;
+		case ExpOp_Add:                return 5;
+		case ExpOp_Subtract:           return 5;
+		case ExpOp_Multiply:           return 6;
+		case ExpOp_Divide:             return 6;
+		case ExpOp_Modulo:             return 7;
+		case ExpOp_Equals:             return 4;
+		case ExpOp_GreaterThan:        return 4;
+		case ExpOp_GreaterThanOrEqual: return 4;
+		case ExpOp_LessThan:           return 4;
+		case ExpOp_LessThanOrEqual:    return 4;
+		case ExpOp_NotEquals:          return 4;
+		case ExpOp_Or:                 return 3;
+		case ExpOp_And:                return 3;
+		case ExpOp_Not:                return 3;
+		case ExpOp_BitwiseOr:          return 8;
+		case ExpOp_BitwiseAnd:         return 8;
+		case ExpOp_BitwiseXor:         return 8;
+		case ExpOp_BitwiseNot:         return 8;
+		case ExpOp_Ternary:            return 2;
+		case ExpOp_Assignment:         return 1;
 		default: return 0;
 	}
 }
 
+// Basically are all operands filled in, or is the part any other type besides operator
 bool IsExpPartReadyToBeOperand(const ExpPart_t* expPart)
 {
 	NotNull(expPart);
@@ -431,6 +461,21 @@ bool IsExpPartReadyToBeOperand(const ExpPart_t* expPart)
 		u8 numOperands = GetExpOperandCount(expPart->opType);
 		for (u8 oIndex = 0; oIndex < numOperands; oIndex++)
 		{
+			if (expPart->child[oIndex] == nullptr) { return false; }
+		}
+	}
+	return true;
+}
+
+bool CanExpPartProduceLeftHandOperand(const ExpPart_t* expPart)
+{
+	NotNull(expPart);
+	if (expPart->type == ExpPartType_Operator)
+	{
+		u8 numOperands = GetExpOperandCount(expPart->opType);
+		for (u8 oIndex = 0; oIndex < numOperands; oIndex++)
+		{
+			if (expPart->child[oIndex] != nullptr && !expPart->childLocked[oIndex]) { return true; }
 			if (expPart->child[oIndex] == nullptr) { return false; }
 		}
 	}
@@ -465,7 +510,7 @@ inline bool IsExpValueTypeConstantCompat(ExpValueType_t type)
 }
 inline bool IsExpValueTypeBoolable(ExpValueType_t type)
 {
-	return (type == ExpValueType_Bool || IsExpValueTypeNumber(type) || type == ExpValueType_Pointer);
+	return (type == ExpValueType_Bool || IsExpValueTypeNumber(type) || type == ExpValueType_Pointer || type == ExpValueType_String);
 }
 inline bool CanExpValueTypeConvertTo(ExpValueType_t type, ExpValueType_t outType)
 {
@@ -549,6 +594,25 @@ MyStr_t ExpValueToStr(ExpValue_t value, MemArena_t* memArena, bool includeType =
 }
 
 // +--------------------------------------------------------------+
+// |                      Context Functions                       |
+// +--------------------------------------------------------------+
+void FreeExpContext(ExpressionContext_t* context)
+{
+	NotNull(context);
+	FreeVarArray(&context->variableDefs);
+	FreeVarArray(&context->functionDefs);
+	ClearPointer(context);
+}
+void InitExpContext(MemArena_t* memArena, ExpressionContext_t* contextOut)
+{
+	NotNull2(memArena, contextOut);
+	ClearPointer(contextOut);
+	contextOut->allocArena = memArena;
+	CreateVarArray(&contextOut->variableDefs, memArena, sizeof(ExpVariableDef_t));
+	CreateVarArray(&contextOut->functionDefs, memArena, sizeof(ExpFuncDef_t));
+}
+
+// +--------------------------------------------------------------+
 // |                       Value Conversion                       |
 // +--------------------------------------------------------------+
 ExpValueType_t GetExpResultTypeForMathOp(ExpValueType_t leftOperandType, ExpValueType_t rightOperandType, bool isSubtractOp, Result_t* reasonOut = nullptr)
@@ -569,7 +633,35 @@ ExpValueType_t GetExpResultTypeForMathOp(ExpValueType_t leftOperandType, ExpValu
 	else
 	{
 		//TODO: Are there any mismatching types that we accept for basic math operators?
-		SetOptionalOutPntr(reasonOut, Result_InvalidRightOperand); return ExpValueType_None;
+		SetOptionalOutPntr(reasonOut, Result_InvalidRightOperand);
+		return ExpValueType_None;
+	}
+}
+ExpValueType_t GetExpResultTypeForTernaryOp(ExpValueType_t trueOperandType, ExpValueType_t falseOperandType, Result_t* reasonOut = nullptr)
+{
+	if (trueOperandType == falseOperandType) { return trueOperandType; }
+	else if (IsExpValueTypeNumber(trueOperandType) && IsExpValueTypeNumber(falseOperandType))
+	{
+		if (IsExpValueTypeFloat(trueOperandType) || IsExpValueTypeFloat(falseOperandType)) { return ExpValueType_R64; }
+		else
+		{
+			bool resultIsSigned = (IsExpValueTypeSigned(trueOperandType) || IsExpValueTypeSigned(falseOperandType));
+			u8 resultByteSize = (u8)MaxU32(GetExpValueTypeByteSize(trueOperandType), GetExpValueTypeByteSize(falseOperandType));
+			switch (resultByteSize)
+			{
+				case 1: return (resultIsSigned ? ExpValueType_I8  : ExpValueType_U8);
+				case 2: return (resultIsSigned ? ExpValueType_I16 : ExpValueType_U16);
+				case 4: return (resultIsSigned ? ExpValueType_I32 : ExpValueType_U32);
+				case 8: return (resultIsSigned ? ExpValueType_I64 : ExpValueType_U64);
+				default: Assert(false); SetOptionalOutPntr(reasonOut, Result_Unknown); return ExpValueType_None;
+			}
+		}
+	}
+	else
+	{
+		//TODO: Are there any mismatching types that we accept for ternary operators?
+		SetOptionalOutPntr(reasonOut, Result_MismatchedOperandTypes);
+		return ExpValueType_None;
 	}
 }
 ExpValueType_t GetExpIntegerTypeForBitwiseOp(ExpValueType_t leftOperandType, ExpValueType_t rightOperandType, bool isAndOp, Result_t* reasonOut = nullptr)
@@ -599,10 +691,12 @@ ExpValueType_t GetExpIntegerTypeForBitwiseOp(ExpValueType_t leftOperandType, Exp
 		}
 	}
 }
-ExpValueType_t GetExpCommonTypeForComparisonOp(ExpValueType_t leftOperandType, ExpValueType_t rightOperandType, Result_t* reasonOut = nullptr)
+ExpValueType_t GetExpCommonTypeForComparisonOp(ExpValueType_t leftOperandType, ExpValueType_t rightOperandType, bool isStraightEqualityOp, Result_t* reasonOut = nullptr)
 {
 	if (leftOperandType == rightOperandType)
 	{
+		if (leftOperandType == ExpValueType_Void) { SetOptionalOutPntr(reasonOut, Result_InvalidLeftOperand); return ExpValueType_None; }
+		if (leftOperandType == ExpValueType_String && !isStraightEqualityOp) { SetOptionalOutPntr(reasonOut, Result_InvalidLeftOperand); return ExpValueType_None; }
 		return leftOperandType;
 	}
 	else if (IsExpValueTypeNumber(leftOperandType) && IsExpValueTypeNumber(rightOperandType))
@@ -616,7 +710,8 @@ ExpValueType_t GetExpCommonTypeForComparisonOp(ExpValueType_t leftOperandType, E
 	else
 	{
 		//TODO: Are there any mismatching types that we accept for comparison operators?
-		SetOptionalOutPntr(reasonOut, Result_InvalidRightOperand); return ExpValueType_None;
+		SetOptionalOutPntr(reasonOut, Result_InvalidRightOperand);
+		return ExpValueType_None;
 	}
 }
 
@@ -1150,7 +1245,7 @@ bool ExpTokenizerGetNext(ExpTokenizer_t* tokenizer, ExpToken_t* tokenOut, Result
 			return true;
 			
 		}
-		else if (c == '+' || c == '-' || c == '/' || c == '*' || c == '|' || c == '&' || c == '^' || c == '%' || c == '!' || c == '?' || c == ':' || c == '=' || c == '~')
+		else if (c == '+' || c == '-' || c == '/' || c == '*' || c == '|' || c == '&' || c == '^' || c == '%' || c == '!' || c == '?' || c == ':' || c == '=' || c == '~' || c == '>' || c == '<')
 		{
 			MyStr_t opStr = NewStr(1, &tokenizer->expressionStr.chars[tokenizer->currentIndex]);
 			if (tokenizer->currentIndex+1 < tokenizer->expressionStr.length)
@@ -1166,6 +1261,8 @@ bool ExpTokenizerGetNext(ExpTokenizer_t* tokenizer, ExpToken_t* tokenOut, Result
 				else if (c == '^' && nextChar == '=') { opStr.length = 2; }
 				else if (c == '=' && nextChar == '=') { opStr.length = 2; }
 				else if (c == '!' && nextChar == '=') { opStr.length = 2; }
+				else if (c == '>' && nextChar == '=') { opStr.length = 2; }
+				else if (c == '<' && nextChar == '=') { opStr.length = 2; }
 			}
 			
 			tokenizer->currentIndex += opStr.length;
@@ -1212,6 +1309,7 @@ Result_t TryTokenizeExpressionStr(MyStr_t expressionStr, MemArena_t* memArena, E
 	
 	SetOptionalOutPntr(numTokensOut, tIndex);
 	if (memArena == nullptr || tokensOut == nullptr) { return result; }
+	if (tIndex == 0) { return Result_EmptyExpression; }
 	
 	u64 numTokens = tIndex;
 	ExpToken_t* tokens = AllocArray(memArena, ExpToken_t, numTokens);
@@ -1575,12 +1673,22 @@ ExpPart_t* SplitExpPartTreeWithPrecedenceAtLeast(ExpPart_t* leftPart, ExpOp_t op
 	else
 	{
 		u8 numOperands = GetExpOperandCount(leftPart->opType);
+		u8 rightOpIndex = numOperands-1;
+		while (rightOpIndex > 1 && leftPart->child[rightOpIndex] == nullptr && !leftPart->childLocked[rightOpIndex]) { rightOpIndex--; }
 		Assert(numOperands > 0);
-		ExpPart_t* rightMostOperand = leftPart->child[numOperands-1];
-		leftPart->child[numOperands-1] = nullptr;
-		ExpPart_t* result = SplitExpPartTreeWithPrecedenceAtLeast(rightMostOperand, opType, &leftPart->child[numOperands-1]);
-		SetOptionalOutPntr(remainingPortionOut, leftPart);
-		return result;
+		if (!leftPart->childLocked[rightOpIndex])
+		{
+			ExpPart_t* rightMostOperand = leftPart->child[rightOpIndex];
+			leftPart->child[numOperands-1] = nullptr;
+			ExpPart_t* result = SplitExpPartTreeWithPrecedenceAtLeast(rightMostOperand, opType, &leftPart->child[rightOpIndex]);
+			SetOptionalOutPntr(remainingPortionOut, leftPart);
+			return result;
+		}
+		else
+		{
+			SetOptionalOutPntr(remainingPortionOut, nullptr);
+			return leftPart;
+		}
 	}
 }
 
@@ -1656,6 +1764,7 @@ ExpPart_t* AddExpOperator(Expression_t* expression, u64 tokenIndex, ExpOp_t opTy
 	if (result == nullptr) { return result; }
 	result->opType = opType;
 	result->child[0] = firstChild;
+	result->childLocked[0] = (firstChild != nullptr);
 	result->child[1] = secondChild;
 	result->child[2] = thirdChild;
 	return result;
@@ -1691,6 +1800,25 @@ Result_t TryCreateExpressionFromTokens_Helper(Expression_t* expression, const Ex
 	for (u64 tIndex = 0; tIndex < numTokens; tIndex++)
 	{
 		const ExpToken_t* token = &tokens[tIndex];
+		
+		// If we have a ternary operator at the top of the stack with 2/3 children filled out, then we should expect to find it's secondary operator token next
+		// The only exceptions is a higher precedence operator being next and stealing our second (non-locked) child as it's left-hand operand
+		ExpPart_t* prevPart = PeekExpPart(&stack);
+		bool expectingTernaryOpSecondPart = false;
+		if (prevPart != nullptr && prevPart->type == ExpPartType_Operator &&
+			GetExpOperandCount(prevPart->opType) == 3 && !prevPart->childLocked[1] &&
+			prevPart->child[0] != nullptr && prevPart->child[1] != nullptr && prevPart->child[2] == nullptr)
+		{
+			expectingTernaryOpSecondPart = true;
+			const char* secondOpStr = GetExpOpSyntaxStr(prevPart->opType, true);
+			if (token->type != ExpTokenType_Operator) { return Result_MissingOperator; }
+			else if (StrEquals(token->str, secondOpStr))
+			{
+				prevPart->childLocked[1] = true;
+				continue;
+			}
+		}
+		
 		switch (token->type)
 		{
 			// +==============================+
@@ -1738,7 +1866,7 @@ Result_t TryCreateExpressionFromTokens_Helper(Expression_t* expression, const Ex
 					ExpPart_t* leftOperand = PopExpPart(&stack);
 					NotNull(leftOperand);
 					
-					if (!IsExpPartReadyToBeOperand(leftOperand))
+					if (!IsExpPartReadyToBeOperand(leftOperand) && !CanExpPartProduceLeftHandOperand(leftOperand))
 					{
 						//If the part to the left is not fully complete, then we have some kind of syntax error (like two binary operators in a row)
 						return Result_InvalidLeftOperand;
@@ -1751,6 +1879,7 @@ Result_t TryCreateExpressionFromTokens_Helper(Expression_t* expression, const Ex
 						//      (either the entire thing, or keep descending right-most until we find an operator with equal or higher precedence, or a constant)
 						ExpPart_t* remainingPortion = nullptr;
 						leftOperand = SplitExpPartTreeWithPrecedenceAtLeast(leftOperand, opType, &remainingPortion);
+						if (leftOperand == nullptr) { return Result_InvalidLeftOperand; }
 						if (remainingPortion != nullptr) { PushExpPart(&stack, remainingPortion); }
 					}
 					
@@ -1773,37 +1902,54 @@ Result_t TryCreateExpressionFromTokens_Helper(Expression_t* expression, const Ex
 			{
 				//TODO: Maybe we should add support for named constants like "pi" where the identifier produces a constant part rather than a reference to something in the context
 				
-				const ExpToken_t* nextToken = (tIndex+1 < numTokens) ? &tokens[tIndex+1] : nullptr;
-				if (nextToken != nullptr && nextToken->type == ExpTokenType_Parenthesis && nextToken->str.length == 1 && nextToken->str.chars[0] == '(')
+				if (StrEqualsIgnoreCase(token->str, "true"))
 				{
-					//If the next token is an open parenthesis, then this is a function call
-					u64 endParenthesisIndex = 0;
-					if (!FindExpClosingParensToken(numTokens, tokens, tIndex+2, &endParenthesisIndex)) { return Result_MismatchParenthesis; }
-					u64 numTokensInParenthesis = endParenthesisIndex - (tIndex+2);
-					
-					ExpPart_t functionPartProto = {};
-					Result_t subResult = TryCreateExpressionFromTokens_Helper(expression, context, numTokensInParenthesis, &tokens[tIndex+2], nullptr, &functionPartProto);
-					if (subResult != Result_Success) { return subResult; }
-					
-					u64 funcDefIndex = 0;
-					const ExpFuncDef_t* funcDef = FindExpFuncDef(context, token->str, functionPartProto.childCount, &funcDefIndex);
-					if (funcDef == nullptr) { return Result_UnknownFunction; }
-					
-					ExpPart_t* newFunctionPart = AddExpFunction(expression, tIndex, funcDefIndex);
-					MyMemCopy(&newFunctionPart->child[0], &functionPartProto.child[0], EXPRESSIONS_MAX_PART_CHILDREN * sizeof(ExpPart_t*));
-					newFunctionPart->childCount = functionPartProto.childCount;
-					PushAndConnectExpPart(&stack, newFunctionPart);
-					
-					tIndex = endParenthesisIndex;
+					ExpPart_t* newBoolPart = AddExpPart(expression, tIndex, ExpPartType_Constant);
+					newBoolPart->constantValue.type = ExpValueType_Bool;
+					newBoolPart->constantValue.valueBool = true;
+					PushAndConnectExpPart(&stack, newBoolPart);
+				}
+				else if (StrEqualsIgnoreCase(token->str, "false"))
+				{
+					ExpPart_t* newBoolPart = AddExpPart(expression, tIndex, ExpPartType_Constant);
+					newBoolPart->constantValue.type = ExpValueType_Bool;
+					newBoolPart->constantValue.valueBool = false;
+					PushAndConnectExpPart(&stack, newBoolPart);
 				}
 				else
 				{
-					u64 variableDefIndex = 0;
-					const ExpVariableDef_t* variableDef = FindExpVariableDef(context, token->str, &variableDefIndex);
-					if (variableDef == nullptr) { return Result_UnknownVariable; }
-					
-					ExpPart_t* newVariablePart = AddExpVariable(expression, tIndex, variableDefIndex);
-					PushAndConnectExpPart(&stack, newVariablePart);
+					const ExpToken_t* nextToken = (tIndex+1 < numTokens) ? &tokens[tIndex+1] : nullptr;
+					if (nextToken != nullptr && nextToken->type == ExpTokenType_Parenthesis && nextToken->str.length == 1 && nextToken->str.chars[0] == '(')
+					{
+						//If the next token is an open parenthesis, then this is a function call
+						u64 endParenthesisIndex = 0;
+						if (!FindExpClosingParensToken(numTokens, tokens, tIndex+2, &endParenthesisIndex)) { return Result_MismatchParenthesis; }
+						u64 numTokensInParenthesis = endParenthesisIndex - (tIndex+2);
+						
+						ExpPart_t functionPartProto = {};
+						Result_t subResult = TryCreateExpressionFromTokens_Helper(expression, context, numTokensInParenthesis, &tokens[tIndex+2], nullptr, &functionPartProto);
+						if (subResult != Result_Success) { return subResult; }
+						
+						u64 funcDefIndex = 0;
+						const ExpFuncDef_t* funcDef = FindExpFuncDef(context, token->str, functionPartProto.childCount, &funcDefIndex);
+						if (funcDef == nullptr) { return Result_UnknownFunction; }
+						
+						ExpPart_t* newFunctionPart = AddExpFunction(expression, tIndex, funcDefIndex);
+						MyMemCopy(&newFunctionPart->child[0], &functionPartProto.child[0], EXPRESSIONS_MAX_PART_CHILDREN * sizeof(ExpPart_t*));
+						newFunctionPart->childCount = functionPartProto.childCount;
+						PushAndConnectExpPart(&stack, newFunctionPart);
+						
+						tIndex = endParenthesisIndex;
+					}
+					else
+					{
+						u64 variableDefIndex = 0;
+						const ExpVariableDef_t* variableDef = FindExpVariableDef(context, token->str, &variableDefIndex);
+						if (variableDef == nullptr) { return Result_UnknownVariable; }
+						
+						ExpPart_t* newVariablePart = AddExpVariable(expression, tIndex, variableDefIndex);
+						PushAndConnectExpPart(&stack, newVariablePart);
+					}
 				}
 			} break;
 			
@@ -2021,18 +2167,22 @@ EXP_STEP_CALLBACK(ExpressionTypeCheckWalk_Callback)
 					}
 				} break;
 				
-				// +======================================+
-				// | TypeCheck Equals/NotEquals Operators |
-				// +======================================+
+				// +============================================================+
+				// | TypeCheck Equals/NotEquals/GreaterThan/LessThan Operators  |
+				// +============================================================+
 				case ExpOp_Equals:
 				case ExpOp_NotEquals:
+				case ExpOp_GreaterThan:
+				case ExpOp_GreaterThanOrEqual:
+				case ExpOp_LessThan:
+				case ExpOp_LessThanOrEqual:
 				{
 					NotNull2(part->child[0], part->child[1]);
 					ExpValueType_t leftOperandType = part->child[0]->evalType;
 					ExpValueType_t rightOperandType = part->child[1]->evalType;
 					Assert(leftOperandType != ExpValueType_None && rightOperandType != ExpValueType_None);
 					Result_t mismatchReason = Result_None;
-					ExpValueType_t commonType = GetExpCommonTypeForComparisonOp(leftOperandType, rightOperandType, &mismatchReason);
+					ExpValueType_t commonType = GetExpCommonTypeForComparisonOp(leftOperandType, rightOperandType, (part->opType == ExpOp_Equals || part->opType == ExpOp_NotEquals), &mismatchReason);
 					if (commonType != ExpPartType_None)
 					{
 						part->evalType = ExpValueType_Bool;
@@ -2106,7 +2256,35 @@ EXP_STEP_CALLBACK(ExpressionTypeCheckWalk_Callback)
 				} break;
 				
 				//TODO: ExpOp_BitwiseNot
-				//TODO: ExpOp_Ternary
+				
+				// +==============================+
+				// |  TypeCheck Ternary Operator  |
+				// +==============================+
+				case ExpOp_Ternary:
+				{
+					NotNull3(part->child[0], part->child[1], part->child[2]);
+					ExpValueType_t conditionType = part->child[0]->evalType;
+					ExpValueType_t trueOperandType = part->child[1]->evalType;
+					ExpValueType_t falseOperandType = part->child[2]->evalType;
+					Assert(conditionType != ExpValueType_None && trueOperandType != ExpValueType_None && falseOperandType != ExpValueType_None);
+					if (!IsExpValueTypeBoolable(conditionType))
+					{
+						resultPntr->result = Result_InvalidCondition;
+						resultPntr->errorPartIndex = part->index;
+					}
+					else
+					{
+						// Ternary operators do not combine their true and false values BUT during this typecheck pass we don't know whether the condition is true or not, so we need to report some common type that both sides could be cast to
+						Result_t mismatchReason = Result_None;
+						part->evalType = GetExpResultTypeForTernaryOp(trueOperandType, falseOperandType, &mismatchReason);
+						if (part->evalType == ExpPartType_None)
+						{
+							resultPntr->result = mismatchReason;
+							resultPntr->errorPartIndex = part->index;
+						}
+					}
+				} break;
+				
 				//TODO: ExpOp_Assignment
 				
 				default: AssertMsg(false, "Unhandled ExpOp in ExpressionTypeCheckWalk_Callback"); break;
@@ -2192,6 +2370,7 @@ EXP_STEP_CALLBACK(EvaluateExpression_Callback)
 		{
 			u8 numOperands = GetExpOperandCount(part->opType);
 			if (state->stackSize < numOperands) { state->result = Result_InvalidStack; return; }
+			// I know "top", "next" and "final" are not normally how we name variables like this. But since we are popping off in opossite order, I couldn't easily name them "first" "second" third" without doing some shuffling as we decide to pop 2 or 3 operators in the if statements below
 			ExpValue_t topOperand = state->stack[state->stackSize-1]; state->stackSize--;
 			ExpValue_t nextOperand = {};
 			ExpValue_t finalOperand = {};
@@ -2309,7 +2488,7 @@ EXP_STEP_CALLBACK(EvaluateExpression_Callback)
 				case ExpOp_Equals:
 				case ExpOp_NotEquals:
 				{
-					ExpValueType_t commonType = GetExpCommonTypeForComparisonOp(nextOperand.type, topOperand.type);
+					ExpValueType_t commonType = GetExpCommonTypeForComparisonOp(nextOperand.type, topOperand.type, true);
 					Assert(commonType != ExpValueType_None);
 					ExpValue_t leftOperand = CastExpValue(nextOperand, commonType);
 					ExpValue_t rightOperand = CastExpValue(topOperand, commonType);
@@ -2334,6 +2513,101 @@ EXP_STEP_CALLBACK(EvaluateExpression_Callback)
 						default: Assert(false); break;
 					}
 					if (part->opType == ExpOp_NotEquals) { result.valueBool = !result.valueBool; }
+					
+					state->stack[state->stackSize++] = result;
+				} break;
+				
+				// +==========================================+
+				// | Evaluate GreaterThan/LessThan Operators  |
+				// +==========================================+
+				case ExpOp_GreaterThan:
+				case ExpOp_GreaterThanOrEqual:
+				case ExpOp_LessThan:
+				case ExpOp_LessThanOrEqual:
+				{
+					ExpValueType_t commonType = GetExpCommonTypeForComparisonOp(nextOperand.type, topOperand.type, false);
+					Assert(commonType != ExpValueType_None);
+					ExpValue_t leftOperand = CastExpValue(nextOperand, commonType);
+					ExpValue_t rightOperand = CastExpValue(topOperand, commonType);
+					
+					ExpValue_t result = {};
+					result.type = ExpValueType_Bool;
+					if (part->opType == ExpOp_GreaterThan)
+					{
+						switch (commonType)
+						{
+							case ExpValueType_Bool:    result.valueBool = (leftOperand.valueBool > rightOperand.valueBool); break;
+							case ExpValueType_Pointer: result.valueBool = (leftOperand.valuePntr > rightOperand.valuePntr); break;
+							case ExpValueType_R32:     result.valueBool = (leftOperand.valueR32  > rightOperand.valueR32);  break;
+							case ExpValueType_R64:     result.valueBool = (leftOperand.valueR64  > rightOperand.valueR64);  break;
+							case ExpValueType_I8:      result.valueBool = (leftOperand.valueI8   > rightOperand.valueI8);   break;
+							case ExpValueType_I16:     result.valueBool = (leftOperand.valueI16  > rightOperand.valueI16);  break;
+							case ExpValueType_I32:     result.valueBool = (leftOperand.valueI32  > rightOperand.valueI32);  break;
+							case ExpValueType_I64:     result.valueBool = (leftOperand.valueI64  > rightOperand.valueI64);  break;
+							case ExpValueType_U8:      result.valueBool = (leftOperand.valueU8   > rightOperand.valueU8);   break;
+							case ExpValueType_U16:     result.valueBool = (leftOperand.valueU16  > rightOperand.valueU16);  break;
+							case ExpValueType_U32:     result.valueBool = (leftOperand.valueU32  > rightOperand.valueU32);  break;
+							case ExpValueType_U64:     result.valueBool = (leftOperand.valueU64  > rightOperand.valueU64);  break;
+							default: Assert(false); break;
+						}
+					}
+					else if (part->opType == ExpOp_GreaterThanOrEqual)
+					{
+						switch (commonType)
+						{
+							case ExpValueType_Bool:    result.valueBool = (leftOperand.valueBool >= rightOperand.valueBool); break;
+							case ExpValueType_Pointer: result.valueBool = (leftOperand.valuePntr >= rightOperand.valuePntr); break;
+							case ExpValueType_R32:     result.valueBool = (leftOperand.valueR32  >= rightOperand.valueR32);  break;
+							case ExpValueType_R64:     result.valueBool = (leftOperand.valueR64  >= rightOperand.valueR64);  break;
+							case ExpValueType_I8:      result.valueBool = (leftOperand.valueI8   >= rightOperand.valueI8);   break;
+							case ExpValueType_I16:     result.valueBool = (leftOperand.valueI16  >= rightOperand.valueI16);  break;
+							case ExpValueType_I32:     result.valueBool = (leftOperand.valueI32  >= rightOperand.valueI32);  break;
+							case ExpValueType_I64:     result.valueBool = (leftOperand.valueI64  >= rightOperand.valueI64);  break;
+							case ExpValueType_U8:      result.valueBool = (leftOperand.valueU8   >= rightOperand.valueU8);   break;
+							case ExpValueType_U16:     result.valueBool = (leftOperand.valueU16  >= rightOperand.valueU16);  break;
+							case ExpValueType_U32:     result.valueBool = (leftOperand.valueU32  >= rightOperand.valueU32);  break;
+							case ExpValueType_U64:     result.valueBool = (leftOperand.valueU64  >= rightOperand.valueU64);  break;
+							default: Assert(false); break;
+						}
+					}
+					else if (part->opType == ExpOp_LessThan)
+					{
+						switch (commonType)
+						{
+							case ExpValueType_Bool:    result.valueBool = (leftOperand.valueBool < rightOperand.valueBool); break;
+							case ExpValueType_Pointer: result.valueBool = (leftOperand.valuePntr < rightOperand.valuePntr); break;
+							case ExpValueType_R32:     result.valueBool = (leftOperand.valueR32  < rightOperand.valueR32);  break;
+							case ExpValueType_R64:     result.valueBool = (leftOperand.valueR64  < rightOperand.valueR64);  break;
+							case ExpValueType_I8:      result.valueBool = (leftOperand.valueI8   < rightOperand.valueI8);   break;
+							case ExpValueType_I16:     result.valueBool = (leftOperand.valueI16  < rightOperand.valueI16);  break;
+							case ExpValueType_I32:     result.valueBool = (leftOperand.valueI32  < rightOperand.valueI32);  break;
+							case ExpValueType_I64:     result.valueBool = (leftOperand.valueI64  < rightOperand.valueI64);  break;
+							case ExpValueType_U8:      result.valueBool = (leftOperand.valueU8   < rightOperand.valueU8);   break;
+							case ExpValueType_U16:     result.valueBool = (leftOperand.valueU16  < rightOperand.valueU16);  break;
+							case ExpValueType_U32:     result.valueBool = (leftOperand.valueU32  < rightOperand.valueU32);  break;
+							case ExpValueType_U64:     result.valueBool = (leftOperand.valueU64  < rightOperand.valueU64);  break;
+							default: Assert(false); break;
+						}
+					}
+					else if (part->opType == ExpOp_LessThanOrEqual)
+					{
+						switch (commonType)
+						{
+							case ExpValueType_Bool:    result.valueBool = (leftOperand.valueBool <= rightOperand.valueBool); break;
+							case ExpValueType_Pointer: result.valueBool = (leftOperand.valuePntr <= rightOperand.valuePntr); break;
+							case ExpValueType_R32:     result.valueBool = (leftOperand.valueR32  <= rightOperand.valueR32);  break;
+							case ExpValueType_R64:     result.valueBool = (leftOperand.valueR64  <= rightOperand.valueR64);  break;
+							case ExpValueType_I8:      result.valueBool = (leftOperand.valueI8   <= rightOperand.valueI8);   break;
+							case ExpValueType_I16:     result.valueBool = (leftOperand.valueI16  <= rightOperand.valueI16);  break;
+							case ExpValueType_I32:     result.valueBool = (leftOperand.valueI32  <= rightOperand.valueI32);  break;
+							case ExpValueType_I64:     result.valueBool = (leftOperand.valueI64  <= rightOperand.valueI64);  break;
+							case ExpValueType_U8:      result.valueBool = (leftOperand.valueU8   <= rightOperand.valueU8);   break;
+							case ExpValueType_U16:     result.valueBool = (leftOperand.valueU16  <= rightOperand.valueU16);  break;
+							case ExpValueType_U32:     result.valueBool = (leftOperand.valueU32  <= rightOperand.valueU32);  break;
+							case ExpValueType_U64:     result.valueBool = (leftOperand.valueU64  <= rightOperand.valueU64);  break;
+							default: Assert(false); break;
+						}
+					}
 					
 					state->stack[state->stackSize++] = result;
 				} break;
@@ -2425,9 +2699,24 @@ EXP_STEP_CALLBACK(EvaluateExpression_Callback)
 					}
 					
 					state->stack[state->stackSize++] = result;
-				}
+				} break;
+				
 				//TODO: ExpOp_BitwiseNot
-				//TODO: ExpOp_Ternary
+				
+				// +==============================+
+				// |  Evaluate Ternary Operator   |
+				// +==============================+
+				case ExpOp_Ternary:
+				{
+					Assert(IsExpValueTypeBoolable(finalOperand.type));
+					ExpValue_t conditionValue = CastExpValue(finalOperand, ExpValueType_Bool);
+					ExpValueType_t resultType = GetExpResultTypeForTernaryOp(nextOperand.type, topOperand.type);
+					Assert(resultType != ExpValueType_None);
+					ExpValue_t trueResult = CastExpValue(nextOperand, resultType);
+					ExpValue_t falseResult = CastExpValue(topOperand, resultType);
+					state->stack[state->stackSize++] = conditionValue.valueBool ? trueResult : falseResult;
+				} break;
+				
 				//TODO: ExpOp_Assignment
 			}
 		} break;
