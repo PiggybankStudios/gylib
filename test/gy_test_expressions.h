@@ -57,7 +57,7 @@ void GyTestCase_ExpNumberConversion(const char* numberStr, ExpValueType_t expect
 	AssertIf(expectedType == ExpValueType_U64, expValue.valueU64 == (u64)expectedValueInt);
 }
 
-void GyTestCase_PrintExpPartHelper(const ExpPart_t* expPart, const ExpressionContext_t* context, bool printChildren)
+void GyTestCase_PrintExpPartHelper(const ExpPart_t* expPart, const ExpContext_t* context, bool printChildren)
 {
 	switch (expPart->type)
 	{
@@ -163,14 +163,14 @@ void GyTestCase_PrintExpPartHelper(const ExpPart_t* expPart, const ExpressionCon
 	}
 }
 
-// void GyTestCase_ExpStepCallback(Expression_t* expression, ExpPart_t* part, u64 callbackIndex, u64 depth, ExpressionContext_t* context, void* userPntr)
+// void GyTestCase_ExpStepCallback(Expression_t* expression, ExpPart_t* part, u64 callbackIndex, u64 depth, ExpContext_t* context, void* userPntr)
 EXP_STEP_CALLBACK(GyTestCase_ExpStepCallback)
 {
 	// GyLibPrintLine_D("Callback[%llu] (depth=%llu)", callbackIndex, depth);
 	GyTestCase_PrintExpPartHelper(part, context, false);
 }
 
-void GyTestCase_PrintParse(MemArena_t* memArena, const char* expressionStr, ExpressionContext_t* context = nullptr)
+void GyTestCase_PrintParse(MemArena_t* memArena, const char* expressionStr, ExpContext_t* context = nullptr)
 {
 	u64 numTokens = 0;
 	ExpToken_t* tokens = nullptr;
@@ -178,7 +178,7 @@ void GyTestCase_PrintParse(MemArena_t* memArena, const char* expressionStr, Expr
 	Assert(tokenizeResult == Result_Success);
 	AssertIf(numTokens > 0, tokens != nullptr);
 	
-	ExpressionContext_t emptyContext = {};
+	ExpContext_t emptyContext = {};
 	if (context == nullptr) { context = &emptyContext; }
 	
 	Expression_t expression = {};
@@ -322,14 +322,14 @@ void GyTest_Expressions(MemArena_t* memArena)
 	GyTestCase_ExpNumberConversion("0000.1", ExpValueType_R32, 0, 0.1f);
 	GyTestCase_ExpNumberConversion("0000.001", ExpValueType_R32, 0, 0.001f);
 	
-	ExpressionContext_t testContext = {};
-	CreateVarArray(&testContext.variableDefs, memArena, sizeof(ExpVariableDef_t));
-	CreateVarArray(&testContext.functionDefs, memArena, sizeof(ExpFuncDef_t));
 	r32 foo = 14.0f;
 	r32 bar = 3.14159f;
-	ExpVariableDef_t* fooDef = VarArrayAdd(&testContext.variableDefs, ExpVariableDef_t); ClearPointer(fooDef); fooDef->type = ExpValueType_R32; fooDef->name = NewStr("foo"); fooDef->pntr = &foo;
-	ExpVariableDef_t* barDef = VarArrayAdd(&testContext.variableDefs, ExpVariableDef_t); ClearPointer(barDef); barDef->type = ExpValueType_R32; barDef->name = NewStr("bar"); barDef->pntr = &bar;
-	ExpFuncDef_t* actionDef = VarArrayAdd(&testContext.functionDefs, ExpFuncDef_t); ClearPointer(actionDef); actionDef->returnType = ExpValueType_R32; actionDef->name = NewStr("action"); actionDef->numArguments = 1; actionDef->arguments[0].type = ExpValueType_R32;
+	ExpContext_t testContext = {};
+	InitExpContext(memArena, &testContext);
+	AddExpVariableDefR32(&testContext, "foo", &foo);
+	AddExpVariableDefR32(&testContext, "bar", &bar);
+	ExpFuncDef_t* actionDef = AddExpFuncDef(&testContext, ExpValueType_R32, "action", nullptr);
+	AddExpFuncArg(&testContext, actionDef, ExpValueType_R32, "arg1");
 	
 	GyTestCase_PrintParse(memArena, "foo = 4 + 5", &testContext);
 	GyLibPrintLine_I("Foo is now %g", foo);
