@@ -18,6 +18,15 @@ Description:
 //   false ? false ? "second" : "third" : "first"
 // Maybe the ternary operator needs to be higher precedence than itself?
 
+//TODO: These expressions are failing:
+//		"(bool)0 + 1 || false"
+//		"(bool)0 + (bool)1 || false"
+//		"false + true || false"
+//		"(false + true) || false"
+//		"((bool)0 + (bool)1) || false"
+//		"((bool)0 || (bool)1) || false"
+
+
 //TODO: Implement BitwiseNot operator
 //TODO: Add proper support for optional arguments on functions
 //TODO: Add PIGGEN support for registering a function as callback by expressions
@@ -29,6 +38,7 @@ Description:
 //TODO: Add support for semicolons and producing multiple expressions from a single string
 //TODO: Bitwise operators on bools should be allowed? Also make sure that |= and &= work when assigning a bool
 //TODO: Add support for read-only variables?
+//TODO: Add support for variables that are backed by getters and/or setters instead of a pntr to the value
 //TODO: Add support for named constants like pi?
 //TODO: Does the negation operator work on variables? What about a subtraction operator that is right next to a number literal?
 //TODO: Ternary operators should be higher precedence than themselves? So we can chain them together without parenthesis?
@@ -219,6 +229,7 @@ enum ExpPartType_t
 	ExpPartType_Operator,
 	ExpPartType_Function,
 	ExpPartType_ParenthesisGroup,
+	ExpPartType_TypeCast,
 	ExpPartType_NumTypes,
 };
 
@@ -235,6 +246,7 @@ const char* GetExpPartTypeStr(ExpPartType_t enumValue)
 		case ExpPartType_Operator:         return "Operator";
 		case ExpPartType_Function:         return "Function";
 		case ExpPartType_ParenthesisGroup: return "ParenthesisGroup";
+		case ExpPartType_TypeCast:         return "TypeCast";
 		default: return "Unknown";
 	}
 }
@@ -342,6 +354,8 @@ struct ExpPart_t
 	u64 variableIndex;
 	// ExpPartType_Function
 	u64 functionIndex;
+	// ExpPartType_TypeCast
+	ExpValueType_t castType;
 };
 
 struct ExpPartStack_t
@@ -712,7 +726,7 @@ inline bool CanCastExpValueTo(ExpValueType_t valueType, ExpValueType_t type)
 	if (valueType == type) { return true; }
 	if (IsExpValueTypeNumber(valueType) && IsExpValueTypeNumber(type)) { return true; }
 	if (valueType == ExpValueType_Bool && IsExpValueTypeNumber(type)) { return true; }
-	if (type == ExpValueType_Bool && (IsExpValueTypeNumber(type) || type == ExpValueType_Pointer || type == ExpValueType_String)) { return true; }
+	if (type == ExpValueType_Bool && (IsExpValueTypeNumber(valueType) || valueType == ExpValueType_Pointer || valueType == ExpValueType_String)) { return true; }
 	//TODO: We could be strict about float -> integer conversion?
 	//TODO: We could be strict about larger number types being cast down to smaller ones?
 	//TODO: Do we want to be strict about any particular number conversions here? Our type checking has no static analysis for bubbling up real constant values,
@@ -1888,6 +1902,14 @@ void PushAndConnectExpPart(ExpPartStack_t* stack, ExpPart_t* partPntr)
 				}
 			}
 		}
+		if (prevPart->type == ExpPartType_TypeCast && IsExpPartReadyToBeOperand(partPntr) && prevPart->child[0] == nullptr)
+		{
+			prevPart->child[0] = partPntr;
+			prevPart->childLocked[0] = true;
+			PopExpPart(stack);
+			PushAndConnectExpPart(stack, prevPart);
+			return;
+		}
 	}
 	
 	PushExpPart(stack, partPntr);
@@ -2306,12 +2328,28 @@ Result_t TryCreateExpressionFromTokens_Helper(Expression_t* expression, const Ex
 				if (!FindExpClosingParensToken(numTokens, tokens, tIndex+1, &endParenthesisIndex)) { return Result_MismatchParenthesis; }
 				u64 numTokensInParenthesis = endParenthesisIndex - (tIndex+1);
 				
-				ExpPart_t* groupRootPart = nullptr;
-				Result_t subResult = TryCreateExpressionFromTokens_Helper(expression, context, numTokensInParenthesis, &tokens[tIndex+1], &groupRootPart);
-				if (subResult != Result_Success) { return subResult; }
+				bool isTypeCast = false;
+				if (numTokensInParenthesis == 1 && tokens[tIndex+1].type == ExpTokenType_Identifier)
+				{
+					ExpValueType_t castType = ExpValueType_None;
+					if (TryParseEnum(tokens[tIndex+1].str, &castType, ExpValueType_NumTypes, GetExpValueTypeStr))
+					{
+						ExpPart_t* newTypeCastPart = AddExpPart(expression, tIndex+1, ExpPartType_TypeCast);
+						newTypeCastPart->castType = castType;
+						PushAndConnectExpPart(&stack, newTypeCastPart);
+						isTypeCast = true;
+					}
+				}
 				
-				ExpPart_t* newParensPart = AddExpParenthesisGroup(expression, tIndex, groupRootPart);
-				PushAndConnectExpPart(&stack, newParensPart);
+				if (!isTypeCast)
+				{
+					ExpPart_t* groupRootPart = nullptr;
+					Result_t subResult = TryCreateExpressionFromTokens_Helper(expression, context, numTokensInParenthesis, &tokens[tIndex+1], &groupRootPart);
+					if (subResult != Result_Success) { return subResult; }
+					
+					ExpPart_t* newParensPart = AddExpParenthesisGroup(expression, tIndex, groupRootPart);
+					PushAndConnectExpPart(&stack, newParensPart);
+				}
 				
 				tIndex = endParenthesisIndex;
 			} break;
@@ -2430,6 +2468,13 @@ u64 StepThroughExpression_Helper(Expression_t* expression, ExpPart_t* part, ExpS
 			if (order == ExpStepOrder_Prefix) { callback(expression, part, index++, depth, context, userPntr); }
 			index += StepThroughExpression_Helper(expression, part->child[0], order, callback, context, userPntr, index, depth+1);
 			if (order == ExpStepOrder_Postfix || order == ExpStepOrder_Natural) { callback(expression, part, index++, depth, context, userPntr); }
+		} break;
+		
+		case ExpPartType_TypeCast:
+		{
+			if (order == ExpStepOrder_Prefix || order == ExpStepOrder_Natural) { callback(expression, part, index++, depth, context, userPntr); }
+			index += StepThroughExpression_Helper(expression, part->child[0], order, callback, context, userPntr, index, depth+1);
+			if (order == ExpStepOrder_Postfix) { callback(expression, part, index++, depth, context, userPntr); }
 		} break;
 		
 		default: AssertMsg(false, "Unhandled ExpPartType in StepThroughExpression_Helper"); break;
@@ -2701,6 +2746,22 @@ EXP_STEP_CALLBACK(ExpressionTypeCheckWalk_Callback)
 			NotNull(part->child[0]);
 			Assert(part->child[0]->evalType != ExpValueType_None);
 			part->evalType = part->child[0]->evalType;
+		} break;
+		
+		// +==============================+
+		// |   TypeCheck TypeCast Part    |
+		// +==============================+
+		case ExpPartType_TypeCast:
+		{
+			NotNull(part->child[0]);
+			Assert(part->child[0]->evalType != ExpValueType_None);
+			if (!CanCastExpValueTo(part->child[0]->evalType, part->castType))
+			{
+				state->result = Result_InvalidCast;
+				state->errorPartIndex = part->index;
+				break;
+			}
+			part->evalType = part->castType;
 		} break;
 		
 		default: AssertMsg(false, "Unhandled ExpPartType in ExpressionTypeCheckWalk_Callback"); state->result = Result_Unknown; break;
@@ -3210,6 +3271,21 @@ EXP_STEP_CALLBACK(EvaluateExpression_Callback)
 		case ExpPartType_ParenthesisGroup:
 		{
 			 //We don't need to do anything for parenthesis at evaluation time
+		} break;
+		
+		// +==============================+
+		// |    Evaluate TypeCast Part    |
+		// +==============================+
+		case ExpPartType_TypeCast:
+		{
+			if (state->stackSize < 1) { state->result = Result_InvalidStack; return; }
+			ExpValue_t operand = state->stack[state->stackSize-1];
+			state->stackSize--;
+			
+			Assert(CanCastExpValueTo(operand.type, part->castType));
+			ExpValue_t castValue = CastExpValue(operand, part->castType);
+			
+			state->stack[state->stackSize++] = castValue;
 		} break;
 		
 		default: AssertMsg(false, "Unhandled ExpPartType in EvaluateExpression_Callback"); break;

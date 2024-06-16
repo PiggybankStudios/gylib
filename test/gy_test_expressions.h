@@ -338,10 +338,10 @@ void GyTest_Expressions(MemArena_t* memArena)
 	ExpFuncDef_t* actionDef = AddExpFuncDef(&testContext, ExpValueType_R32, "action", Action_Exp);
 	AddExpFuncArg(&testContext, actionDef, ExpValueType_R32, "arg1");
 	
-	GyTestCase_PrintParse(memArena, "foo = 4 + 5", &testContext);
-	GyLibPrintLine_I("Foo is now %g", foo);
-	GyTestCase_PrintParse(memArena, "action(3 + 2)", &testContext);
-	// GyTestCase_PrintParse(memArena, "action(3 + bar*foo) * 1500", &testContext);
+	// GyTestCase_PrintParse(memArena, "foo = 4 + 5", &testContext);
+	// GyLibPrintLine_I("Foo is now %g", foo);
+	// GyTestCase_PrintParse(memArena, "action(3 + 2)", &testContext);
+	GyTestCase_PrintParse(memArena, "(u32)5");
 	
 	FreeVarArray(&testContext.variableDefs);
 	FreeVarArray(&testContext.functionDefs);
