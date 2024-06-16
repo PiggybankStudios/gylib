@@ -54,7 +54,8 @@ Description:
 // +--------------------------------------------------------------+
 // |                     Defines and Typedefs                     |
 // +--------------------------------------------------------------+
-#define EXPRESSIONS_MAX_PART_CHILDREN     8 //aka max function argument count
+#define EXPRESSIONS_MAX_PART_CHILDREN     8
+#define EXPRESSIONS_MAX_FUNC_ARGS         EXPRESSIONS_MAX_PART_CHILDREN
 #define EXPRESSIONS_MAX_PARSE_STACK_SIZE  16
 #define EXPRESSIONS_MAX_EVAL_STACK_SIZE   16
 #define EXPRESSIONS_MAX_NUM_PARTS         128
@@ -388,7 +389,7 @@ struct ExpFuncDef_t
 	MyStr_t name;
 	MyStr_t documentation;
 	u64 numArguments;
-	ExpFuncArg_t arguments[EXPRESSIONS_MAX_PART_CHILDREN];
+	ExpFuncArg_t arguments[EXPRESSIONS_MAX_FUNC_ARGS];
 	ExpressionFunc_f* pntr;
 };
 
@@ -808,6 +809,18 @@ MyStr_t ExpValueToStr(ExpValue_t value, MemArena_t* memArena, bool includeType =
 // +--------------------------------------------------------------+
 // |                      Context Functions                       |
 // +--------------------------------------------------------------+
+void FreeExpFuncDef(ExpFuncDef_t* funcDef, MemArena_t* allocArena)
+{
+	NotNull2(funcDef, allocArena);
+	FreeString(allocArena, &funcDef->name);
+	FreeString(allocArena, &funcDef->documentation);
+	for (u64 aIndex = 0; aIndex < funcDef->numArguments; aIndex++)
+	{
+		FreeString(allocArena, &funcDef->arguments[aIndex].name);
+		FreeString(allocArena, &funcDef->arguments[aIndex].documentation);
+	}
+	ClearPointer(funcDef);
+}
 void FreeExpContext(ExpContext_t* context)
 {
 	NotNull(context);
@@ -828,13 +841,7 @@ void FreeExpContext(ExpContext_t* context)
 		VarArrayLoop(&context->functionDefs, fIndex)
 		{
 			VarArrayLoopGet(ExpFuncDef_t, funcDef, &context->functionDefs, fIndex);
-			FreeString(context->allocArena, &funcDef->name);
-			FreeString(context->allocArena, &funcDef->documentation);
-			for (u64 aIndex = 0; aIndex < funcDef->numArguments; aIndex++)
-			{
-				FreeString(context->allocArena, &funcDef->arguments[aIndex].name);
-				FreeString(context->allocArena, &funcDef->arguments[aIndex].documentation);
-			}
+			FreeExpFuncDef(funcDef, context->allocArena);
 		}
 	}
 	FreeVarArray(&context->functionDefs);
@@ -955,7 +962,7 @@ ExpFuncArg_t* AddExpFuncArg(ExpContext_t* context, ExpFuncDef_t* funcDef, ExpVal
 	NotNull2(context, funcDef);
 	NotNullStr(&argumentName);
 	Assert(argumentType != ExpValueType_None && argumentType != ExpValueType_Void);
-	Assert(funcDef->numArguments < EXPRESSIONS_MAX_PART_CHILDREN);
+	Assert(funcDef->numArguments < EXPRESSIONS_MAX_FUNC_ARGS);
 	ExpFuncArg_t* newArg = &funcDef->arguments[funcDef->numArguments++];
 	NotNull(newArg);
 	ClearPointer(newArg);
@@ -2298,7 +2305,7 @@ Result_t TryCreateExpressionFromTokens_Helper(Expression_t* expression, const Ex
 						}
 						
 						ExpPart_t* newFunctionPart = AddExpFunction(expression, tIndex, funcDefIndex);
-						MyMemCopy(&newFunctionPart->child[0], &functionPartProto.child[0], EXPRESSIONS_MAX_PART_CHILDREN * sizeof(ExpPart_t*));
+						MyMemCopy(&newFunctionPart->child[0], &functionPartProto.child[0], EXPRESSIONS_MAX_FUNC_ARGS * sizeof(ExpPart_t*));
 						newFunctionPart->childCount = functionPartProto.childCount;
 						PushAndConnectExpPart(&stack, newFunctionPart);
 						
@@ -2360,7 +2367,7 @@ Result_t TryCreateExpressionFromTokens_Helper(Expression_t* expression, const Ex
 			case ExpTokenType_Comma:
 			{
 				if (functionPart == nullptr) { return Result_InvalidOperator; }
-				if (functionArgIndex >= EXPRESSIONS_MAX_PART_CHILDREN) { return Result_TooManyArguments; }
+				if (functionArgIndex >= EXPRESSIONS_MAX_FUNC_ARGS) { return Result_TooManyArguments; }
 				
 				if (stack.length == 1)
 				{
@@ -2378,7 +2385,7 @@ Result_t TryCreateExpressionFromTokens_Helper(Expression_t* expression, const Ex
 	
 	if (functionPart != nullptr)
 	{
-		if (functionArgIndex >= EXPRESSIONS_MAX_PART_CHILDREN) { return Result_TooManyArguments; }
+		if (functionArgIndex >= EXPRESSIONS_MAX_FUNC_ARGS) { return Result_TooManyArguments; }
 		
 		if (stack.length == 1)
 		{
@@ -2416,6 +2423,97 @@ Result_t TryCreateExpressionFromTokens(const ExpContext_t* context, u64 numToken
 	Result_t result = TryCreateExpressionFromTokens_Helper(expressionOut, context, numTokens, tokens, &expressionOut->rootPart);
 	if (result != Result_Success) { FreeExpression(expressionOut); }
 	
+	return result;
+}
+
+// +--------------------------------------------------------------+
+// |                      Definition Parsing                      |
+// +--------------------------------------------------------------+
+Result_t TryCreateExpFuncDefFromTokens(u64 numTokens, const ExpToken_t* tokens, ExpFuncDef_t* funcDefOut, MemArena_t* memArena = nullptr)
+{
+	AssertIf(numTokens > 0, tokens != nullptr);
+	NotNull(funcDefOut);
+	ClearPointer(funcDefOut);
+	
+	u64 tIndex = 0;
+	if (tIndex >= numTokens) { return Result_EmptyExpression; }
+	const ExpToken_t* returnTypeToken = &tokens[tIndex++];
+	if (returnTypeToken->type != ExpTokenType_Identifier) { return Result_MissingType; }
+	if (!TryParseEnum(returnTypeToken->str, &funcDefOut->returnType, ExpValueType_NumTypes, GetExpValueTypeStr)) { return Result_InvalidIdentifier; }
+	
+	if (tIndex >= numTokens) { return Result_MissingName; }
+	const ExpToken_t* nameToken = &tokens[tIndex++];
+	if (returnTypeToken->type != ExpTokenType_Identifier) { return Result_MissingName; }
+	
+	if (tIndex >= numTokens) { return Result_MissingOperator; }
+	const ExpToken_t* openParensToken = &tokens[tIndex++];
+	if (openParensToken->type != ExpTokenType_Parenthesis || !StrEquals(openParensToken->str, "(")) { return Result_MissingOperator; }
+	
+	funcDefOut->name = (memArena != nullptr) ? AllocString(memArena, &nameToken->str) : nameToken->str;
+	
+	bool expectingArg = false;
+	while (tIndex < numTokens && tokens[tIndex].type != ExpTokenType_Parenthesis)
+	{
+		const ExpToken_t* token1 = &tokens[tIndex];
+		const ExpToken_t* token2 = (tIndex+1 < numTokens) ? &tokens[tIndex] : nullptr;
+		
+		if (token1->type == ExpTokenType_Identifier && token2 != nullptr && token2->type == ExpTokenType_Identifier)
+		{
+			ExpValueType_t argType = ExpValueType_None;
+			if (!TryParseEnum(token1->str, &argType, ExpValueType_NumTypes, GetExpValueTypeStr))
+			{
+				if (memArena != nullptr) { FreeExpFuncDef(funcDefOut, memArena); }
+				return Result_InvalidIdentifier;
+			}
+			
+			if (funcDefOut->numArguments >= EXPRESSIONS_MAX_FUNC_ARGS)
+			{
+				if (memArena != nullptr) { FreeExpFuncDef(funcDefOut, memArena); }
+				return Result_TooManyArguments;
+			}
+			
+			ExpFuncArg_t* argument = &funcDefOut->arguments[funcDefOut->numArguments++];
+			argument->type = argType;
+			argument->name = (memArena != nullptr) ? AllocString(memArena, &token2->str) : token2->str;
+			
+			if (tIndex+2 < numTokens && tokens[tIndex+2].type == ExpTokenType_Comma)
+			{
+				tIndex += 3;
+				expectingArg = true;
+			}
+			else
+			{
+				tIndex += 2;
+				break;
+			}
+		}
+		else
+		{
+			if (memArena != nullptr) { FreeExpFuncDef(funcDefOut, memArena); }
+			return Result_InvalidSyntax;
+		}
+	}
+	if (tIndex >= numTokens || tokens[tIndex].type != ExpTokenType_Parenthesis || !StrEquals(tokens[tIndex].str, ")"))
+	{
+		if (memArena != nullptr) { FreeExpFuncDef(funcDefOut, memArena); }
+		return Result_MismatchParenthesis;
+	}
+	tIndex++;
+	
+	if (tIndex < numTokens)
+	{
+		if (memArena != nullptr) { FreeExpFuncDef(funcDefOut, memArena); }
+		return Result_UnknownExtension;
+	}
+	
+	return Result_Success;
+}
+
+ExpFuncDef_t CreateExpFuncDefFromTokens(u64 numTokens, const ExpToken_t* tokens, MemArena_t* memArena = nullptr)
+{
+	ExpFuncDef_t result = {};
+	Result_t error = TryCreateExpFuncDefFromTokens(numTokens, tokens, &result, memArena);
+	Assert(error == Result_Success);
 	return result;
 }
 
@@ -3251,7 +3349,7 @@ EXP_STEP_CALLBACK(EvaluateExpression_Callback)
 			if (state->stackSize < numArgs) { state->result = Result_InvalidStack; return; }
 			
 			//We need an array here so we can pop the arguments off the stack and arrange them in the reverse order so we can pass them all as a pointer to the function
-			ExpValue_t arguments[EXPRESSIONS_MAX_PART_CHILDREN];
+			ExpValue_t arguments[EXPRESSIONS_MAX_FUNC_ARGS];
 			for (u64 aIndex = 0; aIndex < numArgs; aIndex++)
 			{
 				arguments[numArgs-1 - aIndex] = state->stack[state->stackSize-1];
@@ -3307,10 +3405,81 @@ Result_t EvaluateExpression(Expression_t* expression, ExpContext_t* context = nu
 // +--------------------------------------------------------------+
 // |                     Ease of Use Wrappers                     |
 // +--------------------------------------------------------------+
+Result_t TryAddExpFuncDefByStr(ExpContext_t* context, MemArena_t* scratchArena, MyStr_t funcDefString, ExpressionFunc_f* functionPntr, MyStr_t documentation = MyStr_Empty_Const)
+{
+	NotNull2(context, scratchArena);
+	AssertIf(context->allocateStrings, context->allocArena != nullptr && context->allocArena != scratchArena);
+	PushMemMark(scratchArena);
+	
+	u64 numTokens = 0;
+	ExpToken_t* tokens = nullptr;
+	Result_t tokenizeResult = TryTokenizeExpressionStr(funcDefString, scratchArena, &tokens, &numTokens);
+	if (tokenizeResult != Result_Success)
+	{
+		PopMemMark(scratchArena);
+		return tokenizeResult;
+	}
+	AssertIf(numTokens > 0, tokens != nullptr);
+	
+	ExpFuncDef_t funcDef = {};
+	Result_t parseResult = TryCreateExpFuncDefFromTokens(numTokens, tokens, &funcDef, context->allocateStrings ? context->allocArena : nullptr);
+	if (parseResult != Result_Success)
+	{
+		PopMemMark(scratchArena);
+		return parseResult;
+	}
+	
+	funcDef.pntr = functionPntr;
+	//TODO: Should we somehow split up the documentation string into pieces, with documentation for each argument?
+	funcDef.documentation = (context->allocateStrings && !IsEmptyStr(documentation)) ? AllocString(context->allocArena, &documentation) : documentation;
+	
+	ExpFuncDef_t* newFuncDefSpace = VarArrayAdd(&context->functionDefs, ExpFuncDef_t);
+	NotNull(newFuncDefSpace);
+	MyMemCopy(newFuncDefSpace, &funcDef, sizeof(ExpFuncDef_t));
+	
+	PopMemMark(scratchArena);
+	return Result_Success;
+}
+
+MyStr_t TryAddExpFuncDefByStrErrorStr(ExpContext_t* context, MemArena_t* scratchArena, MyStr_t funcDefString, ExpressionFunc_f* functionPntr, MyStr_t documentation = MyStr_Empty_Const)
+{
+	NotNull2(context, scratchArena);
+	AssertIf(context->allocateStrings, context->allocArena != nullptr && context->allocArena != scratchArena);
+	
+	u64 numTokens = 0;
+	ExpToken_t* tokens = nullptr;
+	Result_t tokenizeResult = TryTokenizeExpressionStr(funcDefString, scratchArena, &tokens, &numTokens);
+	if (tokenizeResult != Result_Success)
+	{
+		//TODO: Can we get the character range where the syntax error occurred?
+		return PrintInArenaStr(scratchArena, "Invalid syntax: %s", GetResultStr(tokenizeResult));
+	}
+	AssertIf(numTokens > 0, tokens != nullptr);
+	
+	ExpFuncDef_t funcDef = {};
+	Result_t parseResult = TryCreateExpFuncDefFromTokens(numTokens, tokens, &funcDef, context->allocateStrings ? context->allocArena : nullptr);
+	if (parseResult != Result_Success)
+	{
+		//TODO: Can we get the character range where the parsing error occurred?
+		return PrintInArenaStr(scratchArena, "Invalid definition: %s", GetResultStr(parseResult));
+	}
+	
+	funcDef.pntr = functionPntr;
+	//TODO: Should we somehow split up the documentation string into piece, with documentation for each argument?
+	funcDef.documentation = (context->allocateStrings && !IsEmptyStr(documentation)) ? AllocString(context->allocArena, &documentation) : documentation;
+	
+	ExpFuncDef_t* newFuncDefSpace = VarArrayAdd(&context->functionDefs, ExpFuncDef_t);
+	NotNull(newFuncDefSpace);
+	MyMemCopy(newFuncDefSpace, &funcDef, sizeof(ExpFuncDef_t));
+	
+	return MyStr_Empty;
+}
+
 Result_t TryRunExpression(MyStr_t expressionStr, MemArena_t* scratchArena, ExpValue_t* valueOut = nullptr, ExpContext_t* context = nullptr)
 {
 	PushMemMark(scratchArena);
 	
+	//TODO: Do we actually need to do this?
 	ExpContext_t emptyContext = {};
 	if (context == nullptr) { context = &emptyContext; }
 	
