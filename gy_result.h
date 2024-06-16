@@ -131,6 +131,7 @@ enum Result_t
 	Result_MismatchedOperandTypes,
 	Result_InvalidCast,
 	Result_MissingType,
+	Result_ReadOnly,
 	
 	Result_NumValues,
 };
@@ -253,6 +254,7 @@ const char* GetResultStr(Result_t enumValue)
 		case Result_MismatchedOperandTypes:         return "MismatchedOperandTypes";
 		case Result_InvalidCast:                    return "InvalidCast";
 		case Result_MissingType:                    return "MissingType";
+		case Result_ReadOnly:                       return "ReadOnly";
 		default: return "Unknown";
 	}
 }

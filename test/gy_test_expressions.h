@@ -156,6 +156,18 @@ void GyTestCase_PrintExpPartHelper(const ExpPart_t* expPart, const ExpContext_t*
 			}
 		} break;
 		
+		case ExpPartType_TypeCast:
+		{
+			if (expPart->child[0] != nullptr)
+			{
+				GyLibPrintLine_I("\tPart[%llu] TypeCast( Part[%llu] (%s) )", expPart->index, expPart->child[0]->index, GetExpPartTypeStr(expPart->child[0]->type));
+			}
+			else
+			{
+				GyLibPrintLine_E("\tPart[%llu] TypeCast( Empty )", expPart->index);
+			}
+		} break;
+		
 		default:
 		{
 			GyLibPrintLine_E("\tPart[%llu] UnknownType %d", expPart->index, expPart->type);
@@ -333,8 +345,8 @@ void GyTest_Expressions(MemArena_t* memArena)
 	r32 bar = 3.14159f;
 	ExpContext_t testContext = {};
 	InitExpContext(memArena, &testContext);
-	AddExpVariableDefR32(&testContext, "foo", &foo);
-	AddExpVariableDefR32(&testContext, "bar", &bar);
+	AddExpVariableDefR32(&testContext, true, "foo", &foo);
+	AddExpVariableDefR32(&testContext, true, "bar", &bar);
 	ExpFuncDef_t* actionDef = AddExpFuncDef(&testContext, ExpValueType_R32, "action", Action_Exp);
 	AddExpFuncArg(&testContext, actionDef, ExpValueType_R32, "arg1");
 	

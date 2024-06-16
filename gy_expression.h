@@ -26,27 +26,34 @@ Description:
 //		"((bool)0 + (bool)1) || false"
 //		"((bool)0 || (bool)1) || false"
 
+//TODO: We should add a way to report what part of an expression the user is currently typing so that the autocomplete in the debug console can serve contextual suggestions (and replace a sub-portion of the typed text when used)
+//TODO: Remove old parsing logic for debug commands, in favor of completely using expression parsing
+//TODO: Add auto-complete behavior using the information produced by expression functions made above
+
+//TODO: Add support for named constants like pi?
+//TODO: Add support for variables that are backed by getters and/or setters instead of a pntr to the value
+//TODO: Add a deep copy function so we can duplicate and Expression_t or move it somewhere else in memory
+//TODO: Add support for multiple contexts being combined together without needing to merge the variable and function def lists into a single space in memory. Maybe make them a linked list?
 
 //TODO: Implement BitwiseNot operator
 //TODO: Add proper support for optional arguments on functions
 //TODO: Add PIGGEN support for registering a function as callback by expressions
 //TODO: We need to return more error information from Evaluate, Parse, and Tokenize so that the error reporting can tell you where in the expression the problem occurred
-//TODO: We should add a way to report what part of an expression the user is currently typing so that the autocomplete in the debug console can serve contextual suggestions (and replace a sub-portion of the typed text when used)
 //TODO: Should/Could we add support for composite types like v2, v3, v2i, v3i, rec, reci?
-//TODO: Add some syntax for doing type casts, this should allow us to be more strict during type checking and prevent some unintended information loss
 //TODO: Add comment syntax to the language (strip them out during tokenization)
 //TODO: Add support for semicolons and producing multiple expressions from a single string
 //TODO: Bitwise operators on bools should be allowed? Also make sure that |= and &= work when assigning a bool
-//TODO: Add support for read-only variables?
-//TODO: Add support for variables that are backed by getters and/or setters instead of a pntr to the value
-//TODO: Add support for named constants like pi?
 //TODO: Does the negation operator work on variables? What about a subtraction operator that is right next to a number literal?
 //TODO: Ternary operators should be higher precedence than themselves? So we can chain them together without parenthesis?
-//TODO: Add support for multiple contexts being combined together without needing to merge the variable and function def lists into a single space in memory. Maybe make them a linked list?
-//TODO: Add a deep copy function so we can duplicate and Expression_t or move it somewhere else in memory
 //TODO: Figure out exactly how we are going to manage TypeId value and enforcement!
 //TODO: Function overrides with same argument counts and different typed arguments do not currently work!
 //TODO: Add a way to register "enum" types with the ExpContext so that enum values can be parsed without the need for quotes and with parse-time type checking and boiling down to integer values
+//TODO: Now that we have type casting, we can be more strict in the type checking phase?
+//TODO: Can we define restrictions on number arguments to be within a particular range? Also maybe strings not empty and pointers not null?
+//TODO: Should we allow strings defined with ' ' characters? So we can use them inside string literals without escaping?
+//TODO: Should we allow suffixes to large numbers, like 1kB or 8MB meaning 1024 and 8388608? Or maybe we should just register functions like "u64 kilo(u64 num_kilobytes)"
+//TODO: Can we make the variable and function name lookups faster by building a hash table during context creation?
+//TODO: Update the Autocomplete Dictionary at the bottom of the file, and the GYLIB_HEADER_ONLY section
 
 #ifndef _GY_EXPRESSION_H
 #define _GY_EXPRESSION_H
@@ -367,6 +374,7 @@ struct ExpPartStack_t
 
 struct ExpVariableDef_t
 {
+	bool isReadOnly;
 	ExpValueType_t type;
 	u64 pntrTypeId; //Only used to ValueType_Pointer
 	MyStr_t name;
@@ -401,6 +409,7 @@ struct ExpContext_t
 	VarArray_t functionDefs; //ExpFuncDef_t
 	// Turns on some functionality that makes debug console experience better, at the expense of conflicting with functionality that would be used for other expressions that are usually used to produce a value
 	bool isConsoleInput;
+	MemArena_t* scratch; //Optional scratch arena pointer, meant to be used as a place to put strings that only need to last as long as the evaluation of a particular expression
 };
 
 struct Expression_t
@@ -893,7 +902,7 @@ const ExpFuncDef_t* FindExpFuncDef(const ExpContext_t* context, MyStr_t function
 }
 
 //TODO: These should probably make sure that there are no naming conflicts!
-ExpVariableDef_t* AddExpVariableDef_(ExpContext_t* context, MyStr_t variableName, ExpValueType_t type, u64 pntrSize, void* pntr, MyStr_t documentation = MyStr_Empty_Const)
+ExpVariableDef_t* AddExpVariableDef_(ExpContext_t* context, bool writeable, MyStr_t variableName, ExpValueType_t type, u64 pntrSize, const void* pntr, MyStr_t documentation = MyStr_Empty_Const)
 {
 	NotNull2(context, pntr);
 	NotNullStr(&variableName);
@@ -901,39 +910,40 @@ ExpVariableDef_t* AddExpVariableDef_(ExpContext_t* context, MyStr_t variableName
 	ExpVariableDef_t* newDef = VarArrayAdd(&context->variableDefs, ExpVariableDef_t);
 	NotNull(newDef);
 	ClearPointer(newDef);
+	newDef->isReadOnly = !writeable;
 	newDef->type = type;
 	newDef->name = context->allocateStrings ? AllocString(context->allocArena, &variableName) : variableName;
 	if (!IsEmptyStr(documentation)) { newDef->documentation = context->allocateStrings ? AllocString(context->allocArena, &documentation) : documentation; }
 	Assert(pntrSize == GetExpValueTypeByteSize(type));
-	newDef->pntr = pntr;
+	newDef->pntr = (void*)pntr;
 	return newDef;
 }
-ExpVariableDef_t* AddExpVariableDefBool(ExpContext_t* context, MyStr_t     variableName,   bool* pntr,    MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, variableName,           ExpValueType_Bool,    sizeof(bool),    (void*)pntr, documentation);           }
-ExpVariableDef_t* AddExpVariableDefBool(ExpContext_t* context, const char* variableNameNt, bool* pntr,    const char* documentationNt = "")          { return AddExpVariableDef_(context, NewStr(variableNameNt), ExpValueType_Bool,    sizeof(bool),    (void*)pntr, NewStr(documentationNt)); }
-ExpVariableDef_t* AddExpVariableDefPntr(ExpContext_t* context, MyStr_t     variableName,   void** pntr,   MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, variableName,           ExpValueType_Pointer, sizeof(void*),   (void*)pntr, documentation);           }
-ExpVariableDef_t* AddExpVariableDefPntr(ExpContext_t* context, const char* variableNameNt, void** pntr,   const char* documentationNt = "")          { return AddExpVariableDef_(context, NewStr(variableNameNt), ExpValueType_Pointer, sizeof(void*),   (void*)pntr, NewStr(documentationNt)); }
-ExpVariableDef_t* AddExpVariableDefStr(ExpContext_t*  context, MyStr_t     variableName,   MyStr_t* pntr, MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, variableName,           ExpValueType_String,  sizeof(MyStr_t), (void*)pntr, documentation);           }
-ExpVariableDef_t* AddExpVariableDefStr(ExpContext_t*  context, const char* variableNameNt, MyStr_t* pntr, const char* documentationNt = "")          { return AddExpVariableDef_(context, NewStr(variableNameNt), ExpValueType_String,  sizeof(MyStr_t), (void*)pntr, NewStr(documentationNt)); }
-ExpVariableDef_t* AddExpVariableDefR32(ExpContext_t*  context, MyStr_t     variableName,   r32* pntr,     MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, variableName,           ExpValueType_R32,     sizeof(r32),     (void*)pntr, documentation);           }
-ExpVariableDef_t* AddExpVariableDefR32(ExpContext_t*  context, const char* variableNameNt, r32* pntr,     const char* documentationNt = "")          { return AddExpVariableDef_(context, NewStr(variableNameNt), ExpValueType_R32,     sizeof(r32),     (void*)pntr, NewStr(documentationNt)); }
-ExpVariableDef_t* AddExpVariableDefR64(ExpContext_t*  context, MyStr_t     variableName,   r64* pntr,     MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, variableName,           ExpValueType_R64,     sizeof(r64),     (void*)pntr, documentation);           }
-ExpVariableDef_t* AddExpVariableDefR64(ExpContext_t*  context, const char* variableNameNt, r64* pntr,     const char* documentationNt = "")          { return AddExpVariableDef_(context, NewStr(variableNameNt), ExpValueType_R64,     sizeof(r64),     (void*)pntr, NewStr(documentationNt)); }
-ExpVariableDef_t* AddExpVariableDefI8(ExpContext_t*   context, MyStr_t     variableName,   i8*  pntr,     MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, variableName,           ExpValueType_I8,      sizeof(i8),      (void*)pntr, documentation);           }
-ExpVariableDef_t* AddExpVariableDefI8(ExpContext_t*   context, const char* variableNameNt, i8*  pntr,     const char* documentationNt = "")          { return AddExpVariableDef_(context, NewStr(variableNameNt), ExpValueType_I8,      sizeof(i8),      (void*)pntr, NewStr(documentationNt)); }
-ExpVariableDef_t* AddExpVariableDefI16(ExpContext_t*  context, MyStr_t     variableName,   i16* pntr,     MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, variableName,           ExpValueType_I16,     sizeof(i16),     (void*)pntr, documentation);           }
-ExpVariableDef_t* AddExpVariableDefI16(ExpContext_t*  context, const char* variableNameNt, i16* pntr,     const char* documentationNt = "")          { return AddExpVariableDef_(context, NewStr(variableNameNt), ExpValueType_I16,     sizeof(i16),     (void*)pntr, NewStr(documentationNt)); }
-ExpVariableDef_t* AddExpVariableDefI32(ExpContext_t*  context, MyStr_t     variableName,   i32* pntr,     MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, variableName,           ExpValueType_I32,     sizeof(i32),     (void*)pntr, documentation);           }
-ExpVariableDef_t* AddExpVariableDefI32(ExpContext_t*  context, const char* variableNameNt, i32* pntr,     const char* documentationNt = "")          { return AddExpVariableDef_(context, NewStr(variableNameNt), ExpValueType_I32,     sizeof(i32),     (void*)pntr, NewStr(documentationNt)); }
-ExpVariableDef_t* AddExpVariableDefI64(ExpContext_t*  context, MyStr_t     variableName,   i64* pntr,     MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, variableName,           ExpValueType_I64,     sizeof(i64),     (void*)pntr, documentation);           }
-ExpVariableDef_t* AddExpVariableDefI64(ExpContext_t*  context, const char* variableNameNt, i64* pntr,     const char* documentationNt = "")          { return AddExpVariableDef_(context, NewStr(variableNameNt), ExpValueType_I64,     sizeof(i64),     (void*)pntr, NewStr(documentationNt)); }
-ExpVariableDef_t* AddExpVariableDefU8(ExpContext_t*   context, MyStr_t     variableName,   u8*  pntr,     MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, variableName,           ExpValueType_U8,      sizeof(u8),      (void*)pntr, documentation);           }
-ExpVariableDef_t* AddExpVariableDefU8(ExpContext_t*   context, const char* variableNameNt, u8*  pntr,     const char* documentationNt = "")          { return AddExpVariableDef_(context, NewStr(variableNameNt), ExpValueType_U8,      sizeof(u8),      (void*)pntr, NewStr(documentationNt)); }
-ExpVariableDef_t* AddExpVariableDefU16(ExpContext_t*  context, MyStr_t     variableName,   u16* pntr,     MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, variableName,           ExpValueType_U16,     sizeof(u16),     (void*)pntr, documentation);           }
-ExpVariableDef_t* AddExpVariableDefU16(ExpContext_t*  context, const char* variableNameNt, u16* pntr,     const char* documentationNt = "")          { return AddExpVariableDef_(context, NewStr(variableNameNt), ExpValueType_U16,     sizeof(u16),     (void*)pntr, NewStr(documentationNt)); }
-ExpVariableDef_t* AddExpVariableDefU32(ExpContext_t*  context, MyStr_t     variableName,   u32* pntr,     MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, variableName,           ExpValueType_U32,     sizeof(u32),     (void*)pntr, documentation);           }
-ExpVariableDef_t* AddExpVariableDefU32(ExpContext_t*  context, const char* variableNameNt, u32* pntr,     const char* documentationNt = "")          { return AddExpVariableDef_(context, NewStr(variableNameNt), ExpValueType_U32,     sizeof(u32),     (void*)pntr, NewStr(documentationNt)); }
-ExpVariableDef_t* AddExpVariableDefU64(ExpContext_t*  context, MyStr_t     variableName,   u64* pntr,     MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, variableName,           ExpValueType_U64,     sizeof(u64),     (void*)pntr, documentation);           }
-ExpVariableDef_t* AddExpVariableDefU64(ExpContext_t*  context, const char* variableNameNt, u64* pntr,     const char* documentationNt = "")          { return AddExpVariableDef_(context, NewStr(variableNameNt), ExpValueType_U64,     sizeof(u64),     (void*)pntr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefBool(ExpContext_t* context, bool writeable, MyStr_t     variableName,   const bool* pntr,    MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_Bool,    sizeof(bool),    (const void*)pntr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefBool(ExpContext_t* context, bool writeable, const char* variableNameNt, const bool* pntr,    const char* documentationNt = "")          { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_Bool,    sizeof(bool),    (const void*)pntr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefPntr(ExpContext_t* context, bool writeable, MyStr_t     variableName,   const void** pntr,   MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_Pointer, sizeof(void*),   (const void*)pntr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefPntr(ExpContext_t* context, bool writeable, const char* variableNameNt, const void** pntr,   const char* documentationNt = "")          { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_Pointer, sizeof(void*),   (const void*)pntr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefStr(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const MyStr_t* pntr, MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_String,  sizeof(MyStr_t), (const void*)pntr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefStr(ExpContext_t*  context, bool writeable, const char* variableNameNt, const MyStr_t* pntr, const char* documentationNt = "")          { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_String,  sizeof(MyStr_t), (const void*)pntr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefR32(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const r32* pntr,     MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_R32,     sizeof(r32),     (const void*)pntr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefR32(ExpContext_t*  context, bool writeable, const char* variableNameNt, const r32* pntr,     const char* documentationNt = "")          { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_R32,     sizeof(r32),     (const void*)pntr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefR64(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const r64* pntr,     MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_R64,     sizeof(r64),     (const void*)pntr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefR64(ExpContext_t*  context, bool writeable, const char* variableNameNt, const r64* pntr,     const char* documentationNt = "")          { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_R64,     sizeof(r64),     (const void*)pntr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefI8(ExpContext_t*   context, bool writeable, MyStr_t     variableName,   const i8*  pntr,     MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_I8,      sizeof(i8),      (const void*)pntr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefI8(ExpContext_t*   context, bool writeable, const char* variableNameNt, const i8*  pntr,     const char* documentationNt = "")          { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_I8,      sizeof(i8),      (const void*)pntr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefI16(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const i16* pntr,     MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_I16,     sizeof(i16),     (const void*)pntr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefI16(ExpContext_t*  context, bool writeable, const char* variableNameNt, const i16* pntr,     const char* documentationNt = "")          { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_I16,     sizeof(i16),     (const void*)pntr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefI32(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const i32* pntr,     MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_I32,     sizeof(i32),     (const void*)pntr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefI32(ExpContext_t*  context, bool writeable, const char* variableNameNt, const i32* pntr,     const char* documentationNt = "")          { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_I32,     sizeof(i32),     (const void*)pntr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefI64(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const i64* pntr,     MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_I64,     sizeof(i64),     (const void*)pntr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefI64(ExpContext_t*  context, bool writeable, const char* variableNameNt, const i64* pntr,     const char* documentationNt = "")          { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_I64,     sizeof(i64),     (const void*)pntr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefU8(ExpContext_t*   context, bool writeable, MyStr_t     variableName,   const u8*  pntr,     MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_U8,      sizeof(u8),      (const void*)pntr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefU8(ExpContext_t*   context, bool writeable, const char* variableNameNt, const u8*  pntr,     const char* documentationNt = "")          { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_U8,      sizeof(u8),      (const void*)pntr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefU16(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const u16* pntr,     MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_U16,     sizeof(u16),     (const void*)pntr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefU16(ExpContext_t*  context, bool writeable, const char* variableNameNt, const u16* pntr,     const char* documentationNt = "")          { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_U16,     sizeof(u16),     (const void*)pntr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefU32(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const u32* pntr,     MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_U32,     sizeof(u32),     (const void*)pntr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefU32(ExpContext_t*  context, bool writeable, const char* variableNameNt, const u32* pntr,     const char* documentationNt = "")          { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_U32,     sizeof(u32),     (const void*)pntr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefU64(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const u64* pntr,     MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_U64,     sizeof(u64),     (const void*)pntr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefU64(ExpContext_t*  context, bool writeable, const char* variableNameNt, const u64* pntr,     const char* documentationNt = "")          { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_U64,     sizeof(u64),     (const void*)pntr, NewStr(documentationNt)); }
 
 //TODO: These should probably make sure that there are no naming conflicts!
 ExpFuncDef_t* AddExpFuncDef(ExpContext_t* context, ExpValueType_t returnType, MyStr_t functionName, ExpressionFunc_f* functionPntr, MyStr_t documentation = MyStr_Empty_Const)
@@ -2800,6 +2810,11 @@ EXP_STEP_CALLBACK(ExpressionTypeCheckWalk_Callback)
 							state->result = Result_InvalidRightOperand;
 							state->errorPartIndex = part->index;
 						}
+						else if (variableDef->isReadOnly)
+						{
+							state->result = Result_ReadOnly;
+							state->errorPartIndex = part->index;
+						}
 						else
 						{
 							part->evalType = variableDef->type;
@@ -3060,7 +3075,7 @@ EXP_STEP_CALLBACK(EvaluateExpression_Callback)
 			if (state->stackSize >= EXPRESSIONS_MAX_EVAL_STACK_SIZE) { state->result = Result_StackOverflow; return; }
 			Assert(context != nullptr && part->variableIndex < context->variableDefs.length);
 			ExpVariableDef_t* variableDef = VarArrayGet(&context->variableDefs, part->variableIndex, ExpVariableDef_t);
-			if (context->isConsoleInput && expression->rootPart == part && expression->numParts == 1 && variableDef->type == ExpValueType_Bool)
+			if (context->isConsoleInput && expression->rootPart == part && expression->numParts == 1 && variableDef->type == ExpValueType_Bool && !variableDef->isReadOnly)
 			{
 				// When a boolean variable is the entire expression, we actually implicitely toggle the value (but only in debug console input contexts)
 				bool currentValue = ReadExpVariableBool(variableDef);
@@ -3316,6 +3331,7 @@ EXP_STEP_CALLBACK(EvaluateExpression_Callback)
 					Assert(context != nullptr && part->child[0]->variableIndex < context->variableDefs.length);
 					ExpVariableDef_t* variableDef = VarArrayGet(&context->variableDefs, part->child[0]->variableIndex, ExpVariableDef_t);
 					Assert(nextOperand.type == variableDef->type);
+					Assert(!variableDef->isReadOnly);
 					ExpValue_t currentValue = nextOperand;
 					Assert(CanCastExpValueTo(topOperand.type, variableDef->type));
 					ExpValue_t newValue = CastExpValue(topOperand, variableDef->type);
