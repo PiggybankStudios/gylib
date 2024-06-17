@@ -22,6 +22,7 @@ enum Result_t
 	Result_Unknown,
 	Result_Finished,
 	
+	Result_Empty,
 	Result_FunctionMissing,
 	Result_NotAFunction,
 	Result_Exception,
@@ -122,7 +123,6 @@ enum Result_t
 	Result_EmptyArgument,
 	Result_InvalidArgument,
 	Result_MissingContext,
-	Result_EmptyExpression,
 	Result_InvalidStack,
 	Result_StackOverflow,
 	Result_InvalidSyntax,
@@ -145,6 +145,7 @@ const char* GetResultStr(Result_t enumValue)
 		case Result_Failure:                        return "Failure";
 		case Result_Unknown:                        return "Unknown";
 		case Result_Finished:                       return "Finished";
+		case Result_Empty:                          return "Empty";
 		case Result_FunctionMissing:                return "FunctionMissing";
 		case Result_NotAFunction:                   return "NotAFunction";
 		case Result_Exception:                      return "Exception";
@@ -245,7 +246,6 @@ const char* GetResultStr(Result_t enumValue)
 		case Result_EmptyArgument:                  return "EmptyArgument";
 		case Result_InvalidArgument:                return "InvalidArgument";
 		case Result_MissingContext:                 return "MissingContext";
-		case Result_EmptyExpression:                return "EmptyExpression";
 		case Result_InvalidStack:                   return "InvalidStack";
 		case Result_StackOverflow:                  return "StackOverflow";
 		case Result_InvalidSyntax:                  return "InvalidSyntax";

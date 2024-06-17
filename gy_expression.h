@@ -35,6 +35,7 @@ Description:
 //TODO: Add a deep copy function so we can duplicate and Expression_t or move it somewhere else in memory
 //TODO: Add support for multiple contexts being combined together without needing to merge the variable and function def lists into a single space in memory. Maybe make them a linked list?
 
+//TODO: Add support for functions overloads with different types but same number of arguments
 //TODO: Implement BitwiseNot operator
 //TODO: Add proper support for optional arguments on functions
 //TODO: Add PIGGEN support for registering a function as callback by expressions
@@ -54,6 +55,12 @@ Description:
 //TODO: Should we allow suffixes to large numbers, like 1kB or 8MB meaning 1024 and 8388608? Or maybe we should just register functions like "u64 kilo(u64 num_kilobytes)"
 //TODO: Can we make the variable and function name lookups faster by building a hash table during context creation?
 //TODO: Update the Autocomplete Dictionary at the bottom of the file, and the GYLIB_HEADER_ONLY section
+
+//TODO: Add nullpter constant support
+//TODO: Add support for typing numbers in hexadecimal
+//TODO: Add ++ and -- operators?
+//TODO: Should we short-circuit && and || operators when left-hand side is false/true?
+//TODO: Should we add a "dump" function to the base language? Or maybe we just leave that up to the context?
 
 #ifndef _GY_EXPRESSION_H
 #define _GY_EXPRESSION_H
@@ -630,6 +637,8 @@ u8 GetExpOperandCount(ExpOp_t opType)
 
 u8 GetExpOpPrecedence(ExpOp_t opType)
 {
+	// A higher precedence number means the operations happens sooner (if you imagine taking an expression and collapsing it one operator at a time until we are left with a single value)
+	// Since we parse left->right, higher precedence operators will "steal" operands from lower precedence operators to their left. See SplitExpPartTreeWithPrecedenceAtLeast
 	switch (opType)
 	{
 		case ExpOp_Add:                  return 5;
@@ -637,14 +646,14 @@ u8 GetExpOpPrecedence(ExpOp_t opType)
 		case ExpOp_Multiply:             return 6;
 		case ExpOp_Divide:               return 6;
 		case ExpOp_Modulo:               return 7;
-		case ExpOp_Equals:               return 4;
+		case ExpOp_Equals:               return 4; //TODO: Should this be lower priority thant comparisons?
 		case ExpOp_GreaterThan:          return 4;
 		case ExpOp_GreaterThanOrEqual:   return 4;
 		case ExpOp_LessThan:             return 4;
 		case ExpOp_LessThanOrEqual:      return 4;
-		case ExpOp_NotEquals:            return 4;
+		case ExpOp_NotEquals:            return 4; //TODO: Should this be lower priority thant comparisons?
 		case ExpOp_Or:                   return 3;
-		case ExpOp_And:                  return 3;
+		case ExpOp_And:                  return 3; //TODO: Should this be higher priority than Or? Do people actually expect that behavior?
 		case ExpOp_Not:                  return 3;
 		case ExpOp_BitwiseOr:            return 8;
 		case ExpOp_BitwiseAnd:           return 8;
@@ -1542,7 +1551,7 @@ ExpTokenizer_t NewExpTokenizer(MyStr_t expressionStr)
 	return result;
 }
 
-bool ExpTokenizerGetNext(ExpTokenizer_t* tokenizer, ExpToken_t* tokenOut, Result_t* errorOut = nullptr)
+bool ExpTokenizerGetNext(ExpTokenizer_t* tokenizer, ExpToken_t* tokenOut, Result_t* errorOut = nullptr, bool allowErrors = false)
 {
 	NotNull(tokenizer);
 	if (tokenizer->currentIndex >= tokenizer->expressionStr.length) { SetOptionalOutPntr(errorOut, Result_Success); return false; }
@@ -1589,9 +1598,9 @@ bool ExpTokenizerGetNext(ExpTokenizer_t* tokenizer, ExpToken_t* tokenOut, Result
 			{
 				tokenizer->currentIndex = tokenizer->expressionStr.length;
 				SetOptionalOutPntr(errorOut, Result_MissingQuote);
-				return false;
+				if (!allowErrors) { return false; }
 			}
-			tokenizer->currentIndex += 1 + str.length + 1;
+			tokenizer->currentIndex += 1 + str.length + (foundClosingQuote ? 1 : 0);
 			tokenizer->prevToken = NewExpToken(ExpTokenType_String, str);
 			SetOptionalOutPntr(tokenOut, tokenizer->prevToken);
 			return true;
@@ -1640,7 +1649,7 @@ bool ExpTokenizerGetNext(ExpTokenizer_t* tokenizer, ExpToken_t* tokenOut, Result
 					}
 					SetOptionalOutPntr(errorOut, Result_InvalidIdentifier);
 					tokenizer->currentIndex += numberStr.length;
-					return false;
+					if (!allowErrors) { return false; }
 				}
 			}
 			
@@ -1694,7 +1703,7 @@ bool ExpTokenizerGetNext(ExpTokenizer_t* tokenizer, ExpToken_t* tokenOut, Result
 		{
 			SetOptionalOutPntr(errorOut, Result_InvalidChar);
 			tokenizer->currentIndex++;
-			return false;
+			if (!allowErrors) { return false; }
 		}
 	}
 	
@@ -1702,19 +1711,19 @@ bool ExpTokenizerGetNext(ExpTokenizer_t* tokenizer, ExpToken_t* tokenOut, Result
 	return false;
 }
 
-Result_t TryTokenizeExpressionStr(MyStr_t expressionStr, MemArena_t* memArena, ExpToken_t** tokensOut, u64* numTokensOut)
+Result_t TryTokenizeExpressionStr(MyStr_t expressionStr, MemArena_t* memArena, ExpToken_t** tokensOut, u64* numTokensOut, bool allowErrors = false)
 {
 	NotNullStr(expressionStr);
 	Result_t result = Result_None;
 	u64 tIndex = 0;
 	
 	ExpTokenizer_t tokenizer = NewExpTokenizer(expressionStr);
-	while (ExpTokenizerGetNext(&tokenizer, nullptr, &result)) { tIndex++; }
-	if (result != Result_Success) { return result; }
+	while (ExpTokenizerGetNext(&tokenizer, nullptr, &result, allowErrors)) { tIndex++; }
+	if (result != Result_Success && !allowErrors) { return result; }
 	
 	SetOptionalOutPntr(numTokensOut, tIndex);
 	if (memArena == nullptr || tokensOut == nullptr) { return result; }
-	if (tIndex == 0) { return Result_EmptyExpression; }
+	if (tIndex == 0) { return Result_Empty; }
 	
 	u64 numTokens = tIndex;
 	ExpToken_t* tokens = AllocArray(memArena, ExpToken_t, numTokens);
@@ -1724,23 +1733,23 @@ Result_t TryTokenizeExpressionStr(MyStr_t expressionStr, MemArena_t* memArena, E
 	tIndex = 0;
 	result = Result_None;
 	ExpToken_t token;
-	while (ExpTokenizerGetNext(&tokenizer, &token, &result))
+	while (ExpTokenizerGetNext(&tokenizer, &token, &result, allowErrors))
 	{
 		Assert(tIndex < numTokens);
 		tokens[tIndex] = token;
 		tIndex++;
 	}
-	Assert(result == Result_Success); //TODO: Maybe this should be Result_Success instead? So we match the good result of TryCreateExpressionFromTokens below
+	Assert(allowErrors || result == Result_Success);
 	Assert(tIndex == numTokens);
 	
 	SetOptionalOutPntr(tokensOut, tokens);
 	return result;
 }
-ExpToken_t* TokenizeExpressionStr(MyStr_t expressionStr, MemArena_t* memArena, u64* numTokensOut, Result_t* resultOut = nullptr)
+ExpToken_t* TokenizeExpressionStr(MyStr_t expressionStr, MemArena_t* memArena, u64* numTokensOut, Result_t* resultOut = nullptr, bool allowErrors = false)
 {
 	ExpToken_t* tokens = nullptr;
 	u64 numTokens = 0;
-	Result_t result = TryTokenizeExpressionStr(expressionStr, memArena, &tokens, &numTokens);
+	Result_t result = TryTokenizeExpressionStr(expressionStr, memArena, &tokens, &numTokens, allowErrors);
 	SetOptionalOutPntr(numTokensOut, numTokens);
 	SetOptionalOutPntr(resultOut, result);
 	return tokens;
@@ -2446,7 +2455,7 @@ Result_t TryCreateExpFuncDefFromTokens(u64 numTokens, const ExpToken_t* tokens, 
 	ClearPointer(funcDefOut);
 	
 	u64 tIndex = 0;
-	if (tIndex >= numTokens) { return Result_EmptyExpression; }
+	if (tIndex >= numTokens) { return Result_Empty; }
 	const ExpToken_t* returnTypeToken = &tokens[tIndex++];
 	if (returnTypeToken->type != ExpTokenType_Identifier) { return Result_MissingType; }
 	if (!TryParseEnum(returnTypeToken->str, &funcDefOut->returnType, ExpValueType_NumTypes, GetExpValueTypeStr)) { return Result_InvalidIdentifier; }
@@ -3411,7 +3420,7 @@ Result_t EvaluateExpression(Expression_t* expression, ExpContext_t* context = nu
 	state.stackSize = 0;
 	state.result = Result_None;
 	StepThroughExpression(expression, ExpStepOrder_Postfix, EvaluateExpression_Callback, (ExpContext_t*)context, &state);
-	if (state.stackSize == 0) { return Result_EmptyExpression; }
+	if (state.stackSize == 0) { return Result_Empty; }
 	if (state.stackSize > 1) { return Result_InvalidStack; }
 	if (state.result == Result_None) { state.result = Result_Success; }
 	SetOptionalOutPntr(valueOut, state.stack[0]);
@@ -3583,7 +3592,253 @@ ExpValue_t RunExpression(MyStr_t expressionStr, MemArena_t* scratchArena, ExpCon
 	return value;
 }
 
-//TODO: Implement the rest of me!
+// +--------------------------------------------------------------+
+// |                    Autocomplete Functions                    |
+// +--------------------------------------------------------------+
+struct ExpAutocompleteInfo_t
+{
+	const ExpContext_t* context;
+	MyStr_t expressionStr;
+	u64 cursorIndex;
+	
+	i64 parensBeginIndex;
+	i64 parensEndIndex;
+	
+	bool isBetweenTokens; //=|
+	bool isInsideToken;   // |== Only one of these should be true at a time
+	bool isNextToToken;   //=|
+	bool insideFuncArgs;
+	bool funcDefFound;
+	bool isAtBeginning;
+	bool isAtEnd;
+	
+	//if not isAtBeginning
+	u64 prevTokenIndex;
+	u64 prevTokenStartIndex;
+	u64 prevTokenEndIndex;
+	ExpTokenType_t prevTokenType;
+	
+	//if not isAtEnd
+	u64 nextTokenIndex;
+	u64 nextTokenStartIndex;
+	u64 nextTokenEndIndex;
+	ExpTokenType_t nextTokenType;
+	
+	//if isInsideToken or isNextToToken (aka not isBetweenTokens)
+	u64 currentTokenIndex;
+	u64 currentTokenStartIndex;
+	u64 currentTokenEndIndex;
+	u64 currentTokenCursorIndex;
+	ExpTokenType_t currentTokenType;
+	MyStr_t currentTokenStr;
+	
+	//if insideFuncArgs
+	u64 currentFuncNameStartIndex;
+	u64 currentFuncNameEndIndex;
+	MyStr_t currentFuncNameStr;
+	u64 currentFuncArgCount; //this may not match the ExpFuncDef exactly, it's just based on how many commas the user has typed in this scope
+	u64 currentFuncArgIndex;
+	
+	//if funcDefFound
+	u64 currentFuncDefIndex;
+};
+
+bool IsTokenHigherPriorityForAutocomplete(const ExpToken_t* newToken, const ExpToken_t* oldToken)
+{
+	NotNull2(newToken, oldToken);
+	if (newToken->type == oldToken->type) { return false; }
+	if (newToken->type == ExpTokenType_Identifier) { return true; }
+	return false;
+}
+
+//TODO: Test that this function works!
+void GetExpAutocompleteInfo(MyStr_t expressionStr, u64 cursorIndex, MemArena_t* scratchArena, ExpAutocompleteInfo_t* infoOut, const ExpContext_t* context = nullptr)
+{
+	NotNull2(scratchArena, infoOut);
+	NotNullStr(&expressionStr);
+	Assert(cursorIndex <= expressionStr.length);
+	PushMemMark(scratchArena);
+	
+	ClearPointer(infoOut);
+	infoOut->context = context;
+	infoOut->expressionStr = expressionStr;
+	infoOut->cursorIndex = cursorIndex;
+	infoOut->parensBeginIndex = -1;
+	infoOut->parensEndIndex = -1;
+	
+	u64 numTokens = 0;
+	ExpToken_t* tokens = nullptr;
+	Result_t tokenizeResult = TryTokenizeExpressionStr(expressionStr, scratchArena, &tokens, &numTokens, true);
+	Assert(tokenizeResult != Result_AllocFailure);
+	if (tokenizeResult == Result_Empty) { PopMemMark(scratchArena); return; }
+	
+	ExpToken_t* currentTokenPntr = nullptr;
+	ExpToken_t* prevTokenPntr = nullptr;
+	ExpToken_t* nextTokenPntr = nullptr;
+	for (u64 tIndex = 0; tIndex < numTokens; tIndex++)
+	{
+		ExpToken_t* token = &tokens[tIndex];
+		Assert(IsPntrInsideRange(token->str.chars, expressionStr.chars, expressionStr.length));
+		u64 tokenStartIndex = (u64)(token->str.chars - expressionStr.chars);
+		u64 tokenEndIndex = tokenStartIndex + token->str.length;
+		if (IsPntrInsideRange(expressionStr.chars + cursorIndex, token->str.chars, token->str.length, true))
+		{
+			if (currentTokenPntr == nullptr || IsTokenHigherPriorityForAutocomplete(token, currentTokenPntr))
+			{
+				currentTokenPntr = token;
+				infoOut->currentTokenIndex = tIndex;
+			}
+		}
+		if (tokenStartIndex < cursorIndex)
+		{
+			prevTokenPntr = token;
+			infoOut->prevTokenIndex = tIndex;
+		}
+		if (tokenStartIndex >= cursorIndex && nextTokenPntr == nullptr)
+		{
+			nextTokenPntr = token;
+			infoOut->nextTokenIndex = tIndex;
+		}
+	}
+	AssertIf(prevTokenPntr != nullptr && nextTokenPntr != nullptr, infoOut->prevTokenIndex+1 == infoOut->nextTokenIndex);
+	
+	if (prevTokenPntr != nullptr)
+	{
+		infoOut->prevTokenStartIndex = (u64)(prevTokenPntr->str.chars - expressionStr.chars);
+		infoOut->prevTokenEndIndex = infoOut->prevTokenStartIndex + prevTokenPntr->str.length;
+		infoOut->prevTokenType = prevTokenPntr->type;
+	}
+	else { infoOut->isAtBeginning = true; }
+	
+	if (nextTokenPntr != nullptr)
+	{
+		infoOut->nextTokenStartIndex = (u64)(nextTokenPntr->str.chars - expressionStr.chars);
+		infoOut->nextTokenEndIndex = infoOut->nextTokenStartIndex + nextTokenPntr->str.length;
+		infoOut->nextTokenType = nextTokenPntr->type;
+	}
+	else { infoOut->isAtEnd = true; }
+	
+	if (currentTokenPntr != nullptr)
+	{
+		infoOut->currentTokenStartIndex = (u64)(currentTokenPntr->str.chars - expressionStr.chars);
+		infoOut->currentTokenEndIndex = infoOut->currentTokenStartIndex + currentTokenPntr->str.length;
+		infoOut->currentTokenCursorIndex = cursorIndex - infoOut->currentTokenStartIndex;
+		infoOut->isInsideToken = (infoOut->currentTokenCursorIndex > 0 && infoOut->currentTokenCursorIndex < currentTokenPntr->str.length);
+		infoOut->isNextToToken = !infoOut->isInsideToken;
+		infoOut->currentTokenType = currentTokenPntr->type;
+		infoOut->currentTokenStr = currentTokenPntr->str;
+	}
+	else { infoOut->isBetweenTokens = true; }
+	
+	if (prevTokenPntr != nullptr)
+	{
+		u64 numNextCommasAtLocalScope = 0;
+		u64 nextCloseParensIndex = 0;
+		ExpToken_t* nextCloseParens = nullptr;
+		u64 parensLevel = 0;
+		for (u64 tIndex = infoOut->nextTokenIndex; tIndex < numTokens; tIndex++)
+		{
+			ExpToken_t* token = &tokens[tIndex];
+			if (token->type == ExpTokenType_Parenthesis)
+			{
+				if (StrEquals(token->str, ")"))
+				{
+					if (parensLevel == 0)
+					{
+						nextCloseParens = token;
+						nextCloseParensIndex = tIndex;
+						break;
+					}
+					else { parensLevel--; }
+				}
+				else if (StrEquals(token->str, "(")) { parensLevel++; }
+			}
+		}
+		if (nextCloseParens != nullptr)
+		{
+			infoOut->parensEndIndex = (i64)(nextCloseParens->str.chars - expressionStr.chars);
+		}
+		
+		u64 numPrevCommasAtLocalScope = 0;
+		u64 prevOpenParensIndex = 0;
+		ExpToken_t* prevOpenParens = nullptr;
+		parensLevel = 0;
+		for (u64 tIndex = infoOut->prevTokenIndex+1; tIndex > 0; tIndex--)
+		{
+			ExpToken_t* token = &tokens[tIndex-1];
+			if (token->type == ExpTokenType_Parenthesis)
+			{
+				if (StrEquals(token->str, "("))
+				{
+					if (parensLevel == 0)
+					{
+						prevOpenParens = token;
+						prevOpenParensIndex = tIndex-1;
+						break;
+					}
+					else { parensLevel--; }
+				}
+				else if (StrEquals(token->str, ")")) { parensLevel++; }
+			}
+			else if (token->type == ExpTokenType_Comma && parensLevel == 0)
+			{
+				numPrevCommasAtLocalScope++;
+			}
+		}
+		if (prevOpenParens != nullptr)
+		{
+			infoOut->parensBeginIndex = (i64)(prevOpenParens->str.chars - expressionStr.chars);
+		}
+		
+		if (prevOpenParens != nullptr && prevOpenParensIndex > 0 && tokens[prevOpenParensIndex-1].type == ExpTokenType_Identifier)
+		{
+			ExpToken_t* funcNameToken = &tokens[prevOpenParensIndex-1];
+			infoOut->insideFuncArgs = true;
+			infoOut->currentFuncNameStartIndex = (u64)(funcNameToken->str.chars - expressionStr.chars);
+			infoOut->currentFuncNameEndIndex = infoOut->currentFuncNameStartIndex + funcNameToken->str.length;
+			infoOut->currentFuncNameStr = funcNameToken->str;
+			
+			infoOut->currentFuncArgIndex = numPrevCommasAtLocalScope;
+			infoOut->currentFuncArgCount = numPrevCommasAtLocalScope + numNextCommasAtLocalScope;
+			if (infoOut->currentFuncArgCount == 0 && nextCloseParens != nullptr && nextCloseParensIndex > prevOpenParensIndex+1)
+			{
+				// If there are any more tokens typed between the open and close parens, then we must be entering at least 1 argument
+				// This should help us switch between showing no argument overload and 1+ argument overloads
+				infoOut->currentFuncArgCount++;
+			}
+			
+			//TODO: We should probably prioritize the FuncDef that has the least number of arguments while still being >= the number of arguments expected
+			u64 matchingFuncDefIndex = 0;
+			ExpFuncDef_t* matchingFuncDef = nullptr;
+			VarArrayLoop(&context->functionDefs, fIndex)
+			{
+				VarArrayLoopGet(ExpFuncDef_t, functionDef, &context->functionDefs, fIndex);
+				if (StrEquals(functionDef->name, funcNameToken->str))
+				{
+					if (functionDef->numArguments >= infoOut->currentFuncArgCount)
+					{
+						matchingFuncDef = functionDef;
+						matchingFuncDefIndex = fIndex;
+						break;
+					}
+					else if (matchingFuncDef == nullptr || matchingFuncDef->numArguments < functionDef->numArguments)
+					{
+						//If we don't find a function with that many arguments, at least fall back to finding the function with the right name with the most arguments
+						matchingFuncDef = functionDef;
+						matchingFuncDefIndex = fIndex;
+					}
+				}
+			}
+			if (matchingFuncDef != nullptr)
+			{
+				infoOut->funcDefFound = true;
+				infoOut->currentFuncDefIndex = matchingFuncDefIndex;
+			}
+		}
+	}
+	
+	PopMemMark(scratchArena);
+}
 
 #endif GYLIB_HEADER_ONLY
 
