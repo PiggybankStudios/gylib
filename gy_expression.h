@@ -55,8 +55,9 @@ Description:
 //TODO: Should we allow suffixes to large numbers, like 1kB or 8MB meaning 1024 and 8388608? Or maybe we should just register functions like "u64 kilo(u64 num_kilobytes)"
 //TODO: Can we make the variable and function name lookups faster by building a hash table during context creation?
 //TODO: Update the Autocomplete Dictionary at the bottom of the file, and the GYLIB_HEADER_ONLY section
+//TODO: Should we make an identifier automatically call a argumentless function if isConsoleInput and no () is typed?
 
-//TODO: Add nullpter constant support
+//TODO: Add nullptr constant support
 //TODO: Add support for typing numbers in hexadecimal
 //TODO: Add ++ and -- operators?
 //TODO: Should we short-circuit && and || operators when left-hand side is false/true?
@@ -103,6 +104,7 @@ enum ExpValueType_t
 
 #ifdef GYLIB_HEADER_ONLY
 const char* GetExpValueTypeStr(ExpValueType_t enumValue);
+const char* GetExpValueTypeStrLower(ExpValueType_t enumValue);
 #else
 const char* GetExpValueTypeStr(ExpValueType_t enumValue)
 {
@@ -123,6 +125,28 @@ const char* GetExpValueTypeStr(ExpValueType_t enumValue)
 		case ExpValueType_U16:     return "U16";
 		case ExpValueType_U32:     return "U32";
 		case ExpValueType_U64:     return "U64";
+		default: return "Unknown";
+	}
+}
+const char* GetExpValueTypeStrLower(ExpValueType_t enumValue)
+{
+	switch (enumValue)
+	{
+		case ExpValueType_None:    return "none";
+		case ExpValueType_Void:    return "void";
+		case ExpValueType_Bool:    return "bool";
+		case ExpValueType_Pointer: return "pointer";
+		case ExpValueType_String:  return "string";
+		case ExpValueType_R32:     return "r32";
+		case ExpValueType_R64:     return "r64";
+		case ExpValueType_I8:      return "i8";
+		case ExpValueType_I16:     return "i16";
+		case ExpValueType_I32:     return "i32";
+		case ExpValueType_I64:     return "i64";
+		case ExpValueType_U8:      return "u8";
+		case ExpValueType_U16:     return "u16";
+		case ExpValueType_U32:     return "u32";
+		case ExpValueType_U64:     return "u64";
 		default: return "Unknown";
 	}
 }
@@ -488,6 +512,69 @@ void FreeExpression(Expression_t* expression)
 	ClearPointer(expression);
 }
 
+void FreeExpFuncDef(ExpFuncDef_t* funcDef, MemArena_t* allocArena)
+{
+	NotNull2(funcDef, allocArena);
+	FreeString(allocArena, &funcDef->name);
+	FreeString(allocArena, &funcDef->documentation);
+	for (u64 aIndex = 0; aIndex < funcDef->numArguments; aIndex++)
+	{
+		FreeString(allocArena, &funcDef->arguments[aIndex].name);
+		FreeString(allocArena, &funcDef->arguments[aIndex].documentation);
+	}
+	ClearPointer(funcDef);
+}
+
+void FreeExpContext(ExpContext_t* context)
+{
+	NotNull(context);
+	if (context->variableDefs.length > 0 && context->allocateStrings)
+	{
+		NotNull(context->allocArena);
+		VarArrayLoop(&context->variableDefs, vIndex)
+		{
+			VarArrayLoopGet(ExpVariableDef_t, varDef, &context->variableDefs, vIndex);
+			FreeString(context->allocArena, &varDef->name);
+			FreeString(context->allocArena, &varDef->documentation);
+		}
+	}
+	FreeVarArray(&context->variableDefs);
+	if (context->functionDefs.length > 0 && context->allocateStrings)
+	{
+		NotNull(context->allocArena);
+		VarArrayLoop(&context->functionDefs, fIndex)
+		{
+			VarArrayLoopGet(ExpFuncDef_t, funcDef, &context->functionDefs, fIndex);
+			FreeExpFuncDef(funcDef, context->allocArena);
+		}
+	}
+	FreeVarArray(&context->functionDefs);
+	ClearPointer(context);
+}
+
+// +--------------------------------------------------------------+
+// |                        Copy Functions                        |
+// +--------------------------------------------------------------+
+void CopyExpFuncDef(ExpFuncDef_t* dest, ExpFuncDef_t* source, MemArena_t* memArena = nullptr)
+{
+	NotNull2(dest, source);
+	MyMemCopy(dest, source, sizeof(ExpFuncDef_t));
+	if (memArena != nullptr)
+	{
+		dest->name = AllocString(memArena, &dest->name);
+		dest->documentation = AllocString(memArena, &dest->documentation);
+		for (u64 aIndex = 0; aIndex < dest->numArguments; aIndex++)
+		{
+			dest->arguments[aIndex].name = AllocString(memArena, &dest->arguments[aIndex].name);
+			dest->arguments[aIndex].documentation = AllocString(memArena, &dest->arguments[aIndex].documentation);
+		}
+	}
+}
+
+//TODO: Add CopyExpVariableDef
+//TODO: Add CopyExpContext
+//TODO: Add CopyExpression
+
 // +--------------------------------------------------------------+
 // |                        New Functions                         |
 // +--------------------------------------------------------------+
@@ -827,44 +914,6 @@ MyStr_t ExpValueToStr(ExpValue_t value, MemArena_t* memArena, bool includeType =
 // +--------------------------------------------------------------+
 // |                      Context Functions                       |
 // +--------------------------------------------------------------+
-void FreeExpFuncDef(ExpFuncDef_t* funcDef, MemArena_t* allocArena)
-{
-	NotNull2(funcDef, allocArena);
-	FreeString(allocArena, &funcDef->name);
-	FreeString(allocArena, &funcDef->documentation);
-	for (u64 aIndex = 0; aIndex < funcDef->numArguments; aIndex++)
-	{
-		FreeString(allocArena, &funcDef->arguments[aIndex].name);
-		FreeString(allocArena, &funcDef->arguments[aIndex].documentation);
-	}
-	ClearPointer(funcDef);
-}
-void FreeExpContext(ExpContext_t* context)
-{
-	NotNull(context);
-	if (context->variableDefs.length > 0 && context->allocateStrings)
-	{
-		NotNull(context->allocArena);
-		VarArrayLoop(&context->variableDefs, vIndex)
-		{
-			VarArrayLoopGet(ExpVariableDef_t, varDef, &context->variableDefs, vIndex);
-			FreeString(context->allocArena, &varDef->name);
-			FreeString(context->allocArena, &varDef->documentation);
-		}
-	}
-	FreeVarArray(&context->variableDefs);
-	if (context->functionDefs.length > 0 && context->allocateStrings)
-	{
-		NotNull(context->allocArena);
-		VarArrayLoop(&context->functionDefs, fIndex)
-		{
-			VarArrayLoopGet(ExpFuncDef_t, funcDef, &context->functionDefs, fIndex);
-			FreeExpFuncDef(funcDef, context->allocArena);
-		}
-	}
-	FreeVarArray(&context->functionDefs);
-	ClearPointer(context);
-}
 void InitExpContext(MemArena_t* memArena, ExpContext_t* contextOut, bool allocateStrings = true)
 {
 	NotNull2(memArena, contextOut);
@@ -1646,6 +1695,7 @@ bool ExpTokenizerGetNext(ExpTokenizer_t* tokenizer, ExpToken_t* tokenOut, Result
 					{
 						char nextIdentChar = tokenizer->expressionStr.chars[tokenizer->currentIndex + numberStr.length];
 						if (IsCharAlphaNumeric(nextIdentChar) || nextIdentChar == '_') { numberStr.length++; }
+						else { break; }
 					}
 					SetOptionalOutPntr(errorOut, Result_InvalidIdentifier);
 					tokenizer->currentIndex += numberStr.length;
@@ -2474,7 +2524,7 @@ Result_t TryCreateExpFuncDefFromTokens(u64 numTokens, const ExpToken_t* tokens, 
 	while (tIndex < numTokens && tokens[tIndex].type != ExpTokenType_Parenthesis)
 	{
 		const ExpToken_t* token1 = &tokens[tIndex];
-		const ExpToken_t* token2 = (tIndex+1 < numTokens) ? &tokens[tIndex] : nullptr;
+		const ExpToken_t* token2 = (tIndex+1 < numTokens) ? &tokens[tIndex+1] : nullptr;
 		
 		if (token1->type == ExpTokenType_Identifier && token2 != nullptr && token2->type == ExpTokenType_Identifier)
 		{
@@ -3500,6 +3550,43 @@ MyStr_t TryAddExpFuncDefByStrErrorStr(ExpContext_t* context, MemArena_t* scratch
 	return MyStr_Empty;
 }
 
+Result_t ValidateExpression(MyStr_t expressionStr, MemArena_t* scratchArena, ExpContext_t* context = nullptr)
+{
+	PushMemMark(scratchArena);
+	
+	//TODO: Do we actually need to do this?
+	ExpContext_t emptyContext = {};
+	if (context == nullptr) { context = &emptyContext; }
+	
+	u64 numTokens = 0;
+	ExpToken_t* tokens = nullptr;
+	Result_t tokenizeResult = TryTokenizeExpressionStr(expressionStr, scratchArena, &tokens, &numTokens);
+	if (tokenizeResult != Result_Success)
+	{
+		PopMemMark(scratchArena);
+		return tokenizeResult;
+	}
+	AssertIf(numTokens > 0, tokens != nullptr);
+	
+	Expression_t expression = {};
+	Result_t parseResult = TryCreateExpressionFromTokens(context, numTokens, tokens, &expression);
+	if (parseResult != Result_Success)
+	{
+		PopMemMark(scratchArena);
+		return parseResult;
+	}
+	
+	Result_t typeCheckResult = ExpressionTypeCheckWalk(&expression, context);
+	if (typeCheckResult != Result_Success)
+	{
+		PopMemMark(scratchArena);
+		return typeCheckResult;
+	}
+	
+	PopMemMark(scratchArena);
+	return Result_Success;
+}
+
 Result_t TryRunExpression(MyStr_t expressionStr, MemArena_t* scratchArena, ExpValue_t* valueOut = nullptr, ExpContext_t* context = nullptr)
 {
 	PushMemMark(scratchArena);
@@ -3678,7 +3765,7 @@ void GetExpAutocompleteInfo(MyStr_t expressionStr, u64 cursorIndex, MemArena_t* 
 	for (u64 tIndex = 0; tIndex < numTokens; tIndex++)
 	{
 		ExpToken_t* token = &tokens[tIndex];
-		Assert(IsPntrInsideRange(token->str.chars, expressionStr.chars, expressionStr.length));
+		Assert(IsPntrInsideRange(token->str.chars, expressionStr.chars, expressionStr.length, true));
 		u64 tokenStartIndex = (u64)(token->str.chars - expressionStr.chars);
 		u64 tokenEndIndex = tokenStartIndex + token->str.length;
 		if (IsPntrInsideRange(expressionStr.chars + cursorIndex, token->str.chars, token->str.length, true))
