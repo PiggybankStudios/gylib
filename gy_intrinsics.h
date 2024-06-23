@@ -1201,6 +1201,7 @@ inline r64 InverseLerpR64(r64 start, r64 end, r64 value, bool clamp = false)
 }
 
 //TODO: Rename to FractionalPart
+//TODO: This returns what I think is an unexpected result for negative numbers. For example DecimalPartR32(-7.2f) = 0.8f
 // +==============================+
 // |         DecimalPart          |
 // +==============================+

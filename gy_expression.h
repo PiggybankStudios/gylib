@@ -26,12 +26,7 @@ Description:
 //		"((bool)0 + (bool)1) || false"
 //		"((bool)0 || (bool)1) || false"
 
-//TODO: We should add a way to report what part of an expression the user is currently typing so that the autocomplete in the debug console can serve contextual suggestions (and replace a sub-portion of the typed text when used)
-//TODO: Remove old parsing logic for debug commands, in favor of completely using expression parsing
-//TODO: Add auto-complete behavior using the information produced by expression functions made above
-
 //TODO: Add support for named constants like pi?
-//TODO: Add support for variables that are backed by getters and/or setters instead of a pntr to the value
 //TODO: Add a deep copy function so we can duplicate and Expression_t or move it somewhere else in memory
 //TODO: Add support for multiple contexts being combined together without needing to merge the variable and function def lists into a single space in memory. Maybe make them a linked list?
 
@@ -77,6 +72,34 @@ Description:
 
 #define EXPRESSION_FUNC_DEFINITION(functionName) struct ExpValue_t functionName(struct Expression_t* expression, struct ExpContext_t* context, u64 numArgs, const struct ExpValue_t* args)
 typedef EXPRESSION_FUNC_DEFINITION(ExpressionFunc_f);
+#define EXPRESSION_VAR_GETTER(type, functionName) type functionName(struct Expression_t* expression, struct ExpContext_t* context, struct ExpVariableDef_t* variableDef)
+typedef EXPRESSION_VAR_GETTER(bool,    ExpGetterBool_f);
+typedef EXPRESSION_VAR_GETTER(void*,   ExpGetterPntr_f);
+typedef EXPRESSION_VAR_GETTER(MyStr_t, ExpGetterStr_f);
+typedef EXPRESSION_VAR_GETTER(r32,     ExpGetterR32_f);
+typedef EXPRESSION_VAR_GETTER(r64,     ExpGetterR64_f);
+typedef EXPRESSION_VAR_GETTER(i8,      ExpGetterI8_f);
+typedef EXPRESSION_VAR_GETTER(i16,     ExpGetterI16_f);
+typedef EXPRESSION_VAR_GETTER(i32,     ExpGetterI32_f);
+typedef EXPRESSION_VAR_GETTER(i64,     ExpGetterI64_f);
+typedef EXPRESSION_VAR_GETTER(u8,      ExpGetterU8_f);
+typedef EXPRESSION_VAR_GETTER(u16,     ExpGetterU16_f);
+typedef EXPRESSION_VAR_GETTER(u32,     ExpGetterU32_f);
+typedef EXPRESSION_VAR_GETTER(u64,     ExpGetterU64_f);
+#define EXPRESSION_VAR_SETTER(type, functionName) void functionName(struct Expression_t* expression, struct ExpContext_t* context, struct ExpVariableDef_t* variableDef, type newValue)
+typedef EXPRESSION_VAR_SETTER(bool,    ExpSetterBool_f);
+typedef EXPRESSION_VAR_SETTER(void*,   ExpSetterPntr_f);
+typedef EXPRESSION_VAR_SETTER(MyStr_t, ExpSetterStr_f);
+typedef EXPRESSION_VAR_SETTER(r32,     ExpSetterR32_f);
+typedef EXPRESSION_VAR_SETTER(r64,     ExpSetterR64_f);
+typedef EXPRESSION_VAR_SETTER(i8,      ExpSetterI8_f);
+typedef EXPRESSION_VAR_SETTER(i16,     ExpSetterI16_f);
+typedef EXPRESSION_VAR_SETTER(i32,     ExpSetterI32_f);
+typedef EXPRESSION_VAR_SETTER(i64,     ExpSetterI64_f);
+typedef EXPRESSION_VAR_SETTER(u8,      ExpSetterU8_f);
+typedef EXPRESSION_VAR_SETTER(u16,     ExpSetterU16_f);
+typedef EXPRESSION_VAR_SETTER(u32,     ExpSetterU32_f);
+typedef EXPRESSION_VAR_SETTER(u64,     ExpSetterU64_f);
 
 // +--------------------------------------------------------------+
 // |                         Enumerations                         |
@@ -411,6 +434,15 @@ struct ExpVariableDef_t
 	MyStr_t name;
 	MyStr_t documentation;
 	void* pntr;
+	void* getter;
+	void* setter;
+};
+
+struct ExpConstantDef_t
+{
+	ExpValue_t value;
+	MyStr_t name;
+	MyStr_t documentation;
 };
 
 struct ExpFuncArg_t
@@ -436,6 +468,7 @@ struct ExpContext_t
 {
 	MemArena_t* allocArena;
 	bool allocateStrings;
+	VarArray_t constantDefs; //ExpConstantDef_t
 	VarArray_t variableDefs; //ExpVariableDef_t
 	VarArray_t functionDefs; //ExpFuncDef_t
 	// Turns on some functionality that makes debug console experience better, at the expense of conflicting with functionality that would be used for other expressions that are usually used to produce a value
@@ -467,6 +500,67 @@ struct ExpTokenizer_t
 #define EXP_STEP_CALLBACK(functionName) void functionName(Expression_t* expression, ExpPart_t* part, u64 callbackIndex, u64 depth, ExpContext_t* context, void* userPntr)
 typedef EXP_STEP_CALLBACK(ExpStepCallback_f);
 
+struct ExpTypeCheckState_t
+{
+	Result_t result;
+	u64 errorPartIndex;
+};
+
+struct ExpEvaluateState_t
+{
+	u64 stackSize;
+	ExpValue_t stack[EXPRESSIONS_MAX_EVAL_STACK_SIZE];
+	Result_t result;
+};
+
+struct ExpAutocompleteInfo_t
+{
+	const ExpContext_t* context;
+	MyStr_t expressionStr;
+	u64 cursorIndex;
+	
+	i64 parensBeginIndex;
+	i64 parensEndIndex;
+	
+	bool isBetweenTokens; //=|
+	bool isInsideToken;   // |== Only one of these should be true at a time
+	bool isNextToToken;   //=|
+	bool insideFuncArgs;
+	bool funcDefFound;
+	bool isAtBeginning;
+	bool isAtEnd;
+	
+	//if not isAtBeginning
+	u64 prevTokenIndex;
+	u64 prevTokenStartIndex;
+	u64 prevTokenEndIndex;
+	ExpTokenType_t prevTokenType;
+	
+	//if not isAtEnd
+	u64 nextTokenIndex;
+	u64 nextTokenStartIndex;
+	u64 nextTokenEndIndex;
+	ExpTokenType_t nextTokenType;
+	
+	//if isInsideToken or isNextToToken (aka not isBetweenTokens)
+	u64 currentTokenIndex;
+	u64 currentTokenStartIndex;
+	u64 currentTokenEndIndex;
+	u64 currentTokenCursorIndex;
+	ExpTokenType_t currentTokenType;
+	MyStr_t currentTokenStr;
+	
+	//if insideFuncArgs
+	u64 currentFuncNameStartIndex;
+	u64 currentFuncNameEndIndex;
+	MyStr_t currentFuncNameStr;
+	u64 currentFuncArgCount; //this may not match the ExpFuncDef exactly, it's just based on how many commas the user has typed in this scope
+	u64 currentFuncArgIndex;
+	
+	//if funcDefFound
+	u64 currentFuncDefIndex;
+};
+
 // +--------------------------------------------------------------+
 // |                            Macros                            |
 // +--------------------------------------------------------------+
@@ -489,6 +583,205 @@ typedef EXP_STEP_CALLBACK(ExpStepCallback_f);
 // +--------------------------------------------------------------+
 #ifdef GYLIB_HEADER_ONLY
 	void FreeExpValue(MemArena_t* allocArena, ExpValue_t* value);
+	void FreeExpression(Expression_t* expression);
+	void FreeExpFuncDef(ExpFuncDef_t* funcDef, MemArena_t* allocArena);
+	void FreeExpContext(ExpContext_t* context);
+	void CopyExpFuncDef(ExpFuncDef_t* dest, ExpFuncDef_t* source, MemArena_t* memArena = nullptr);
+	ExpValue_t NewExpValueVoid();
+	ExpValue_t NewExpValueBool(bool value);
+	ExpValue_t NewExpValueStr(MyStr_t value);
+	ExpValue_t NewExpValueStr(const char* valueNt);
+	ExpValue_t NewExpValuePntr(u64 typeId, void* value);
+	ExpValue_t NewExpValueR32(r32 value);
+	ExpValue_t NewExpValueR64(r64 value);
+	ExpValue_t NewExpValueI8(i8 value);
+	ExpValue_t NewExpValueI16(i16 value);
+	ExpValue_t NewExpValueI32(i32 value);
+	ExpValue_t NewExpValueI64(i64 value);
+	ExpValue_t NewExpValueU8(u8 value);
+	ExpValue_t NewExpValueU16(u16 value);
+	ExpValue_t NewExpValueU32(u32 value);
+	ExpValue_t NewExpValueU64(u64 value);
+	u8 GetExpOperandCount(ExpOp_t opType);
+	u8 GetExpOpPrecedence(ExpOp_t opType);
+	bool IsExpPartReadyToBeOperand(const ExpPart_t* expPart);
+	bool CanExpPartProduceLeftHandOperand(const ExpPart_t* expPart);
+	inline bool IsExpValueTypeInteger(ExpValueType_t type);
+	inline bool IsExpValueTypeFloat(ExpValueType_t type);
+	inline bool IsExpValueTypeSigned(ExpValueType_t type);
+	inline bool IsExpValueTypeNumber(ExpValueType_t type);
+	inline bool IsExpValueTypeConstantCompat(ExpValueType_t type);
+	inline bool IsExpValueTypeBoolable(ExpValueType_t type);
+	inline bool CanExpValueTypeConvertTo(ExpValueType_t type, ExpValueType_t outType);
+	inline bool CanCastExpValueTo(ExpValueType_t valueType, ExpValueType_t type);
+	inline u8 GetExpValueTypeByteSize(ExpValueType_t type);
+	MyStr_t ExpValueToStr(ExpValue_t value, MemArena_t* memArena, bool includeType = false);
+	void InitExpContext(MemArena_t* memArena, ExpContext_t* contextOut, bool allocateStrings = true);
+	ExpConstantDef_t* FindExpConstantDef(ExpContext_t* context, MyStr_t constantName, u64* indexOut = nullptr);
+	const ExpConstantDef_t* FindExpConstantDef(const ExpContext_t* context, MyStr_t constantName, u64* indexOut = nullptr);
+	ExpVariableDef_t* FindExpVariableDef(ExpContext_t* context, MyStr_t variableName, u64* indexOut = nullptr);
+	const ExpVariableDef_t* FindExpVariableDef(const ExpContext_t* context, MyStr_t variableName, u64* indexOut = nullptr);
+	ExpFuncDef_t* FindExpFuncDef(ExpContext_t* context, MyStr_t functionName, u64 numArguments = UINT64_MAX, u64* indexOut = nullptr);
+	const ExpFuncDef_t* FindExpFuncDef(const ExpContext_t* context, MyStr_t functionName, u64 numArguments = UINT64_MAX, u64* indexOut = nullptr);
+	ExpConstantDef_t* AddExpConstantDef(ExpContext_t* context, MyStr_t constantName, ExpValue_t value, MyStr_t documentation = MyStr_Empty_Const);
+	ExpConstantDef_t* AddExpConstantDef(ExpContext_t* context, const char* constantNameNt, ExpValue_t value, const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDef_(ExpContext_t* context, bool writeable, MyStr_t variableName, ExpValueType_t type, u64 pntrSize, const void* pntr, MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefFuncs_(ExpContext_t* context, MyStr_t variableName, ExpValueType_t type, void* getter, void* setter, MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefBool(ExpContext_t* context, bool writeable, MyStr_t     variableName,   const bool* pntr,    MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefBool(ExpContext_t* context, bool writeable, const char* variableNameNt, const bool* pntr,    const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefBool(ExpContext_t* context, MyStr_t     variableName,   ExpGetterBool_f* getter, MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefBool(ExpContext_t* context, const char* variableNameNt, ExpGetterBool_f* getter, const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefBool(ExpContext_t* context, MyStr_t     variableName,   ExpGetterBool_f* getter, ExpSetterBool_f* setter, MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefBool(ExpContext_t* context, const char* variableNameNt, ExpGetterBool_f* getter, ExpSetterBool_f* setter, const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefPntr(ExpContext_t* context, bool writeable, MyStr_t     variableName,   const void** pntr,   MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefPntr(ExpContext_t* context, bool writeable, const char* variableNameNt, const void** pntr,   const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefPntr(ExpContext_t* context, MyStr_t     variableName,   ExpGetterPntr_f* getter, MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefPntr(ExpContext_t* context, const char* variableNameNt, ExpGetterPntr_f* getter, const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefPntr(ExpContext_t* context, MyStr_t     variableName,   ExpGetterPntr_f* getter, ExpSetterPntr_f* setter, MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefPntr(ExpContext_t* context, const char* variableNameNt, ExpGetterPntr_f* getter, ExpSetterPntr_f* setter, const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefStr(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const MyStr_t* pntr, MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefStr(ExpContext_t*  context, bool writeable, const char* variableNameNt, const MyStr_t* pntr, const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefStr(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterStr_f* getter, MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefStr(ExpContext_t*  context, const char* variableNameNt, ExpGetterStr_f* getter, const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefStr(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterStr_f* getter, ExpSetterStr_f* setter, MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefStr(ExpContext_t*  context, const char* variableNameNt, ExpGetterStr_f* getter, ExpSetterStr_f* setter, const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefR32(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const r32* pntr,     MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefR32(ExpContext_t*  context, bool writeable, const char* variableNameNt, const r32* pntr,     const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefR32(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterR32_f* getter, MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefR32(ExpContext_t*  context, const char* variableNameNt, ExpGetterR32_f* getter, const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefR32(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterR32_f* getter, ExpSetterR32_f* setter, MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefR32(ExpContext_t*  context, const char* variableNameNt, ExpGetterR32_f* getter, ExpSetterR32_f* setter, const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefR64(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const r64* pntr,     MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefR64(ExpContext_t*  context, bool writeable, const char* variableNameNt, const r64* pntr,     const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefR64(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterR64_f* getter, MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefR64(ExpContext_t*  context, const char* variableNameNt, ExpGetterR64_f* getter, const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefR64(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterR64_f* getter, ExpSetterR64_f* setter, MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefR64(ExpContext_t*  context, const char* variableNameNt, ExpGetterR64_f* getter, ExpSetterR64_f* setter, const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefI8(ExpContext_t*   context, bool writeable, MyStr_t     variableName,   const i8*  pntr,     MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefI8(ExpContext_t*   context, bool writeable, const char* variableNameNt, const i8*  pntr,     const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefI8(ExpContext_t*   context, MyStr_t     variableName,   ExpGetterI8_f* getter, MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefI8(ExpContext_t*   context, const char* variableNameNt, ExpGetterI8_f* getter, const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefI8(ExpContext_t*   context, MyStr_t     variableName,   ExpGetterI8_f* getter, ExpSetterI8_f* setter, MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefI8(ExpContext_t*   context, const char* variableNameNt, ExpGetterI8_f* getter, ExpSetterI8_f* setter, const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefI16(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const i16* pntr,     MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefI16(ExpContext_t*  context, bool writeable, const char* variableNameNt, const i16* pntr,     const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefI16(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterI16_f* getter, MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefI16(ExpContext_t*  context, const char* variableNameNt, ExpGetterI16_f* getter, const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefI16(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterI16_f* getter, ExpSetterI16_f* setter, MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefI16(ExpContext_t*  context, const char* variableNameNt, ExpGetterI16_f* getter, ExpSetterI16_f* setter, const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefI32(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const i32* pntr,     MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefI32(ExpContext_t*  context, bool writeable, const char* variableNameNt, const i32* pntr,     const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefI32(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterI32_f* getter, MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefI32(ExpContext_t*  context, const char* variableNameNt, ExpGetterI32_f* getter, const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefI32(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterI32_f* getter, ExpSetterI32_f* setter, MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefI32(ExpContext_t*  context, const char* variableNameNt, ExpGetterI32_f* getter, ExpSetterI32_f* setter, const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefI64(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const i64* pntr,     MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefI64(ExpContext_t*  context, bool writeable, const char* variableNameNt, const i64* pntr,     const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefI64(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterI64_f* getter, MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefI64(ExpContext_t*  context, const char* variableNameNt, ExpGetterI64_f* getter, const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefI64(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterI64_f* getter, ExpSetterI64_f* setter, MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefI64(ExpContext_t*  context, const char* variableNameNt, ExpGetterI64_f* getter, ExpSetterI64_f* setter, const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefU8(ExpContext_t*   context, bool writeable, MyStr_t     variableName,   const u8*  pntr,     MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefU8(ExpContext_t*   context, bool writeable, const char* variableNameNt, const u8*  pntr,     const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefU8(ExpContext_t*   context, MyStr_t     variableName,   ExpGetterU8_f* getter, MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefU8(ExpContext_t*   context, const char* variableNameNt, ExpGetterU8_f* getter, const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefU8(ExpContext_t*   context, MyStr_t     variableName,   ExpGetterU8_f* getter, ExpSetterU8_f* setter, MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefU8(ExpContext_t*   context, const char* variableNameNt, ExpGetterU8_f* getter, ExpSetterU8_f* setter, const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefU16(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const u16* pntr,     MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefU16(ExpContext_t*  context, bool writeable, const char* variableNameNt, const u16* pntr,     const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefU16(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterU16_f* getter, MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefU16(ExpContext_t*  context, const char* variableNameNt, ExpGetterU16_f* getter, const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefU16(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterU16_f* getter, ExpSetterU16_f* setter, MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefU16(ExpContext_t*  context, const char* variableNameNt, ExpGetterU16_f* getter, ExpSetterU16_f* setter, const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefU32(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const u32* pntr,     MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefU32(ExpContext_t*  context, bool writeable, const char* variableNameNt, const u32* pntr,     const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefU32(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterU32_f* getter, MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefU32(ExpContext_t*  context, const char* variableNameNt, ExpGetterU32_f* getter, const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefU32(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterU32_f* getter, ExpSetterU32_f* setter, MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefU32(ExpContext_t*  context, const char* variableNameNt, ExpGetterU32_f* getter, ExpSetterU32_f* setter, const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefU64(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const u64* pntr,     MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefU64(ExpContext_t*  context, bool writeable, const char* variableNameNt, const u64* pntr,     const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefU64(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterU64_f* getter, MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefU64(ExpContext_t*  context, const char* variableNameNt, ExpGetterU64_f* getter, const char* documentationNt = "");
+	ExpVariableDef_t* AddExpVariableDefU64(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterU64_f* getter, ExpSetterU64_f* setter, MyStr_t documentation = MyStr_Empty_Const);
+	ExpVariableDef_t* AddExpVariableDefU64(ExpContext_t*  context, const char* variableNameNt, ExpGetterU64_f* getter, ExpSetterU64_f* setter, const char* documentationNt = "");
+	ExpFuncDef_t* AddExpFuncDef(ExpContext_t* context, ExpValueType_t returnType, MyStr_t functionName, ExpressionFunc_f* functionPntr, MyStr_t documentation = MyStr_Empty_Const);
+	ExpFuncDef_t* AddExpFuncDef(ExpContext_t* context, ExpValueType_t returnType, const char* functionNameNt, ExpressionFunc_f* functionPntr, const char* documentationNt = "");
+	ExpFuncArg_t* AddExpFuncArg(ExpContext_t* context, ExpFuncDef_t* funcDef, ExpValueType_t argumentType, MyStr_t argumentName, MyStr_t documentation = MyStr_Empty_Const);
+	ExpFuncArg_t* AddExpFuncArg(ExpContext_t* context, ExpFuncDef_t* funcDef, ExpValueType_t argumentType, const char* argumentNameNt, const char* documentationNt = "");
+	ExpValueType_t GetExpResultTypeForMathOp(ExpValueType_t leftOperandType, ExpValueType_t rightOperandType, bool isSubtractOp, Result_t* reasonOut = nullptr);
+	ExpValueType_t GetExpResultTypeForTernaryOp(ExpValueType_t trueOperandType, ExpValueType_t falseOperandType, Result_t* reasonOut = nullptr);
+	ExpValueType_t GetExpIntegerTypeForBitwiseOp(ExpValueType_t leftOperandType, ExpValueType_t rightOperandType, bool isAndOp, Result_t* reasonOut = nullptr);
+	ExpValueType_t GetExpCommonTypeForComparisonOp(ExpValueType_t leftOperandType, ExpValueType_t rightOperandType, bool isStraightEqualityOp, Result_t* reasonOut = nullptr);
+	ExpValue_t CastExpValue(ExpValue_t value, ExpValueType_t type);
+	void WriteExpVariable_(ExpVariableDef_t* variableDef, u64 valueSize, const void* valuePntr);
+	void WriteExpVariable(ExpVariableDef_t* variableDef, ExpValue_t value);
+	void WriteExpVariableBool(ExpVariableDef_t* variableDef, bool value);
+	void WriteExpVariablePointer(ExpVariableDef_t* variableDef, void* value);
+	void WriteExpVariableString(ExpVariableDef_t* variableDef, MyStr_t value);
+	void WriteExpVariableR32(ExpVariableDef_t* variableDef, r32 value);
+	void WriteExpVariableR64(ExpVariableDef_t* variableDef, r64 value);
+	void WriteExpVariableI8(ExpVariableDef_t* variableDef, i8 value);
+	void WriteExpVariableI16(ExpVariableDef_t* variableDef, i16 value);
+	void WriteExpVariableI32(ExpVariableDef_t* variableDef, i32 value);
+	void WriteExpVariableI64(ExpVariableDef_t* variableDef, i64 value);
+	void WriteExpVariableU8(ExpVariableDef_t* variableDef, u8 value);
+	void WriteExpVariableU16(ExpVariableDef_t* variableDef, u16 value);
+	void WriteExpVariableU32(ExpVariableDef_t* variableDef, u32 value);
+	void WriteExpVariableU64(ExpVariableDef_t* variableDef, u64 value);
+	ExpValue_t ReadExpVariable_(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr);
+	bool ReadExpVariableBool(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr);
+	void* ReadExpVariablePointer(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr);
+	r32 ReadExpVariableR32(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr);
+	r64 ReadExpVariableR64(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr);
+	i8 ReadExpVariableI8(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr);
+	i16 ReadExpVariableI16(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr);
+	i32 ReadExpVariableI32(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr);
+	i64 ReadExpVariableI64(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr);
+	u8 ReadExpVariableU8(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr);
+	u16 ReadExpVariableU16(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr);
+	u32 ReadExpVariableU32(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr);
+	u64 ReadExpVariableU64(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr);
+	ExpToken_t NewExpToken(ExpTokenType_t type, MyStr_t tokenStr);
+	ExpTokenizer_t NewExpTokenizer(MyStr_t expressionStr);
+	bool ExpTokenizerGetNext(ExpTokenizer_t* tokenizer, ExpToken_t* tokenOut, Result_t* errorOut = nullptr, bool allowErrors = false);
+	Result_t TryTokenizeExpressionStr(MyStr_t expressionStr, MemArena_t* memArena, ExpToken_t** tokensOut, u64* numTokensOut, bool allowErrors = false);
+	ExpToken_t* TokenizeExpressionStr(MyStr_t expressionStr, MemArena_t* memArena, u64* numTokensOut, Result_t* resultOut = nullptr, bool allowErrors = false);
+	MyStr_t UnescapeExpressionStr(MemArena_t* memArena, MyStr_t string);
+	MyStr_t EscapeExpressionStr(MemArena_t* memArena, MyStr_t string);
+	void PushExpPart(ExpPartStack_t* stack, ExpPart_t* partPntr);
+	ExpPart_t* PopExpPart(ExpPartStack_t* stack);
+	ExpPart_t* PeekExpPart(ExpPartStack_t* stack);
+	void PushAndConnectExpPart(ExpPartStack_t* stack, ExpPart_t* partPntr);
+	ExpValue_t ConvertExpNumberToken(MyStr_t numberStr);
+	ExpPart_t* SplitExpPartTreeWithPrecedenceAtLeast(ExpPart_t* leftPart, ExpOp_t opType, ExpPart_t** remainingPortionOut);
+	bool FindExpClosingParensToken(u64 numTokens, const ExpToken_t* tokens, u64 startIndex, u64* indexOut);
+	ExpPart_t* AddExpPart(Expression_t* expression, u64 tokenIndex, ExpPartType_t type);
+	ExpPart_t* AddExpConstantString(Expression_t* expression, u64 tokenIndex, MyStr_t value);
+	ExpPart_t* AddExpVariable(Expression_t* expression, u64 tokenIndex, u64 variableIndex);
+	ExpPart_t* AddExpOperator(Expression_t* expression, u64 tokenIndex, ExpOp_t opType, ExpPart_t* firstChild = nullptr, ExpPart_t* secondChild = nullptr, ExpPart_t* thirdChild = nullptr);
+	ExpPart_t* AddExpFunction(Expression_t* expression, u64 tokenIndex, u64 functionIndex);
+	ExpPart_t* AddExpParenthesisGroup(Expression_t* expression, u64 tokenIndex, ExpPart_t* childRoot);
+	Result_t TryCreateExpressionFromTokens_Helper(Expression_t* expression, const ExpContext_t* context, u64 numTokens, const ExpToken_t* tokens, ExpPart_t** rootOut, ExpPart_t* functionPart = nullptr);
+	Result_t TryCreateExpressionFromTokens(const ExpContext_t* context, u64 numTokens, const ExpToken_t* tokens, Expression_t* expressionOut, MemArena_t* memArena = nullptr);
+	Result_t TryCreateExpFuncDefFromTokens(u64 numTokens, const ExpToken_t* tokens, ExpFuncDef_t* funcDefOut, MemArena_t* memArena = nullptr);
+	ExpFuncDef_t CreateExpFuncDefFromTokens(u64 numTokens, const ExpToken_t* tokens, MemArena_t* memArena = nullptr);
+	u64 StepThroughExpression_Helper(Expression_t* expression, ExpPart_t* part, ExpStepOrder_t order, ExpStepCallback_f* callback, ExpContext_t* context, void* userPntr, u64 startIndex, u64 depth);
+	void StepThroughExpression(Expression_t* expression, ExpStepOrder_t order, ExpStepCallback_f* callback, ExpContext_t* context = nullptr, void* userPntr = nullptr);
+	Result_t ExpressionTypeCheckWalk(Expression_t* expression, const ExpContext_t* context = nullptr, u64* errorPartIndex = nullptr);
+	ExpValue_t PerformMathOpOnExpValues(ExpValue_t leftOperand, ExpOp_t opType, ExpValue_t rightOperand);
+	Result_t EvaluateExpression(Expression_t* expression, ExpContext_t* context = nullptr, ExpValue_t* valueOut = nullptr);
+	Result_t TryAddExpFuncDefByStr(ExpContext_t* context, MemArena_t* scratchArena, MyStr_t funcDefString, ExpressionFunc_f* functionPntr, MyStr_t documentation = MyStr_Empty_Const);
+	MyStr_t TryAddExpFuncDefByStrErrorStr(ExpContext_t* context, MemArena_t* scratchArena, MyStr_t funcDefString, ExpressionFunc_f* functionPntr, MyStr_t documentation = MyStr_Empty_Const);
+	void AddExpFuncDefByStr(ExpContext_t* context, MemArena_t* scratchArena, MyStr_t funcDefString, ExpressionFunc_f* functionPntr, MyStr_t documentation = MyStr_Empty_Const);
+	Result_t ValidateExpression(MyStr_t expressionStr, MemArena_t* scratchArena, ExpContext_t* context = nullptr);
+	Result_t TryRunExpression(MyStr_t expressionStr, MemArena_t* scratchArena, ExpValue_t* valueOut = nullptr, ExpContext_t* context = nullptr);
+	MyStr_t TryRunExpressionErrorStr(MyStr_t expressionStr, MemArena_t* scratchArena, ExpValue_t* valueOut = nullptr, ExpContext_t* context = nullptr);
+	ExpValue_t RunExpression(MyStr_t expressionStr, MemArena_t* scratchArena, ExpContext_t* context = nullptr);
+	bool IsTokenHigherPriorityForAutocomplete(const ExpToken_t* newToken, const ExpToken_t* oldToken);
+	void GetExpAutocompleteInfo(MyStr_t expressionStr, u64 cursorIndex, MemArena_t* scratchArena, ExpAutocompleteInfo_t* infoOut, const ExpContext_t* context = nullptr);
+	void AddStdLibraryFuncsToExpContext(ExpContext_t* context, MemArena_t* scratchArena);
+	void AddStdLibraryConstantsToExpContext(ExpContext_t* context);
 #else
 
 // +--------------------------------------------------------------+
@@ -528,6 +821,18 @@ void FreeExpFuncDef(ExpFuncDef_t* funcDef, MemArena_t* allocArena)
 void FreeExpContext(ExpContext_t* context)
 {
 	NotNull(context);
+	if (context->constantDefs.length > 0 && context->allocateStrings)
+	{
+		NotNull(context->allocArena);
+		VarArrayLoop(&context->constantDefs, cIndex)
+		{
+			VarArrayLoopGet(ExpConstantDef_t, constantDef, &context->constantDefs, cIndex);
+			FreeExpValue(context->allocArena, &constantDef->value);
+			FreeString(context->allocArena, &constantDef->name);
+			FreeString(context->allocArena, &constantDef->documentation);
+		}
+	}
+	FreeVarArray(&context->constantDefs);
 	if (context->variableDefs.length > 0 && context->allocateStrings)
 	{
 		NotNull(context->allocArena);
@@ -874,8 +1179,8 @@ MyStr_t ExpValueToStr(ExpValue_t value, MemArena_t* memArena, bool includeType =
 			case ExpValueType_Bool:    result = PrintInArenaStr(memArena, "Bool %s",                  value.valueBool ? "True" : "False"); break;
 			case ExpValueType_Pointer: result = PrintInArenaStr(memArena, "Pointer[%llu] %p",         value.valuePntrTypeId, value.valuePntr); break;
 			case ExpValueType_String:  result = PrintInArenaStr(memArena, "String \"%.*s\"", StrPrint(value.valueStr)); break;
-			case ExpValueType_R32:     result = PrintInArenaStr(memArena, "R32 %g",                   value.valueR32); break;
-			case ExpValueType_R64:     result = PrintInArenaStr(memArena, "R64 %lg",                  value.valueR64); break;
+			case ExpValueType_R32:     result = PrintInArenaStr(memArena, "R32 %f",                   value.valueR32); break;
+			case ExpValueType_R64:     result = PrintInArenaStr(memArena, "R64 %f",                   value.valueR64); break;
 			case ExpValueType_I8:      result = PrintInArenaStr(memArena, "I8 %d",               (int)value.valueI8);  break;
 			case ExpValueType_I16:     result = PrintInArenaStr(memArena, "I16 %d",              (int)value.valueI16); break;
 			case ExpValueType_I32:     result = PrintInArenaStr(memArena, "I32 %d",              (int)value.valueI32); break;
@@ -895,8 +1200,8 @@ MyStr_t ExpValueToStr(ExpValue_t value, MemArena_t* memArena, bool includeType =
 			case ExpValueType_Bool:    result = PrintInArenaStr(memArena, "%s",                  value.valueBool ? "True" : "False"); break;
 			case ExpValueType_Pointer: result = PrintInArenaStr(memArena, "%p",                 value.valuePntr); break;
 			case ExpValueType_String:  result = PrintInArenaStr(memArena, "\"%.*s\"",   StrPrint(value.valueStr)); break;
-			case ExpValueType_R32:     result = PrintInArenaStr(memArena, "%g",                  value.valueR32); break;
-			case ExpValueType_R64:     result = PrintInArenaStr(memArena, "%lg",                 value.valueR64); break;
+			case ExpValueType_R32:     result = PrintInArenaStr(memArena, "%f",                  value.valueR32); break;
+			case ExpValueType_R64:     result = PrintInArenaStr(memArena, "%f",                  value.valueR64); break;
 			case ExpValueType_I8:      result = PrintInArenaStr(memArena, "%d",             (int)value.valueI8);  break;
 			case ExpValueType_I16:     result = PrintInArenaStr(memArena, "%d",             (int)value.valueI16); break;
 			case ExpValueType_I32:     result = PrintInArenaStr(memArena, "%d",             (int)value.valueI32); break;
@@ -920,10 +1225,28 @@ void InitExpContext(MemArena_t* memArena, ExpContext_t* contextOut, bool allocat
 	ClearPointer(contextOut);
 	contextOut->allocArena = memArena;
 	contextOut->allocateStrings = allocateStrings;
+	CreateVarArray(&contextOut->constantDefs, memArena, sizeof(ExpConstantDef_t));
 	CreateVarArray(&contextOut->variableDefs, memArena, sizeof(ExpVariableDef_t));
 	CreateVarArray(&contextOut->functionDefs, memArena, sizeof(ExpFuncDef_t));
 }
 
+ExpConstantDef_t* FindExpConstantDef(ExpContext_t* context, MyStr_t constantName, u64* indexOut = nullptr)
+{
+	VarArrayLoop(&context->constantDefs, cIndex)
+	{
+		VarArrayLoopGet(ExpConstantDef_t, constantDef, &context->constantDefs, cIndex);
+		if (StrEquals(constantDef->name, constantName))
+		{
+			SetOptionalOutPntr(indexOut, cIndex);
+			return constantDef;
+		}
+	}
+	return nullptr;
+}
+const ExpConstantDef_t* FindExpConstantDef(const ExpContext_t* context, MyStr_t constantName, u64* indexOut = nullptr) //const variant
+{
+	return (const ExpConstantDef_t*)FindExpConstantDef((ExpContext_t*)context, constantName, indexOut);
+}
 ExpVariableDef_t* FindExpVariableDef(ExpContext_t* context, MyStr_t variableName, u64* indexOut = nullptr)
 {
 	VarArrayLoop(&context->variableDefs, vIndex)
@@ -959,6 +1282,26 @@ const ExpFuncDef_t* FindExpFuncDef(const ExpContext_t* context, MyStr_t function
 	return (const ExpFuncDef_t*)FindExpFuncDef((ExpContext_t*)context, functionName, numArguments, indexOut);
 }
 
+//TODO: This should probably make sure that there are no naming conflicts!
+ExpConstantDef_t* AddExpConstantDef(ExpContext_t* context, MyStr_t constantName, ExpValue_t value, MyStr_t documentation = MyStr_Empty_Const)
+{
+	NotNull(context);
+	NotNullStr(&constantName);
+	Assert(value.type != ExpValueType_None && value.type != ExpValueType_Void);
+	ExpConstantDef_t* newDef = VarArrayAdd(&context->constantDefs, ExpConstantDef_t);
+	NotNull(newDef);
+	ClearPointer(newDef);
+	newDef->value = value;
+	if (context->allocateStrings && value.type == ExpValueType_String) { newDef->value.valueStr = AllocString(context->allocArena, &newDef->value.valueStr); }
+	newDef->name = context->allocateStrings ? AllocString(context->allocArena, &constantName) : constantName;
+	if (!IsEmptyStr(documentation)) { newDef->documentation = context->allocateStrings ? AllocString(context->allocArena, &documentation) : documentation; }
+	return newDef;
+}
+ExpConstantDef_t* AddExpConstantDef(ExpContext_t* context, const char* constantNameNt, ExpValue_t value, const char* documentationNt = "")
+{
+	return AddExpConstantDef(context, NewStr(constantNameNt), value, NewStr(documentationNt));
+}
+
 //TODO: These should probably make sure that there are no naming conflicts!
 ExpVariableDef_t* AddExpVariableDef_(ExpContext_t* context, bool writeable, MyStr_t variableName, ExpValueType_t type, u64 pntrSize, const void* pntr, MyStr_t documentation = MyStr_Empty_Const)
 {
@@ -976,32 +1319,113 @@ ExpVariableDef_t* AddExpVariableDef_(ExpContext_t* context, bool writeable, MySt
 	newDef->pntr = (void*)pntr;
 	return newDef;
 }
-ExpVariableDef_t* AddExpVariableDefBool(ExpContext_t* context, bool writeable, MyStr_t     variableName,   const bool* pntr,    MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_Bool,    sizeof(bool),    (const void*)pntr, documentation);           }
-ExpVariableDef_t* AddExpVariableDefBool(ExpContext_t* context, bool writeable, const char* variableNameNt, const bool* pntr,    const char* documentationNt = "")          { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_Bool,    sizeof(bool),    (const void*)pntr, NewStr(documentationNt)); }
-ExpVariableDef_t* AddExpVariableDefPntr(ExpContext_t* context, bool writeable, MyStr_t     variableName,   const void** pntr,   MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_Pointer, sizeof(void*),   (const void*)pntr, documentation);           }
-ExpVariableDef_t* AddExpVariableDefPntr(ExpContext_t* context, bool writeable, const char* variableNameNt, const void** pntr,   const char* documentationNt = "")          { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_Pointer, sizeof(void*),   (const void*)pntr, NewStr(documentationNt)); }
-ExpVariableDef_t* AddExpVariableDefStr(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const MyStr_t* pntr, MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_String,  sizeof(MyStr_t), (const void*)pntr, documentation);           }
-ExpVariableDef_t* AddExpVariableDefStr(ExpContext_t*  context, bool writeable, const char* variableNameNt, const MyStr_t* pntr, const char* documentationNt = "")          { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_String,  sizeof(MyStr_t), (const void*)pntr, NewStr(documentationNt)); }
-ExpVariableDef_t* AddExpVariableDefR32(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const r32* pntr,     MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_R32,     sizeof(r32),     (const void*)pntr, documentation);           }
-ExpVariableDef_t* AddExpVariableDefR32(ExpContext_t*  context, bool writeable, const char* variableNameNt, const r32* pntr,     const char* documentationNt = "")          { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_R32,     sizeof(r32),     (const void*)pntr, NewStr(documentationNt)); }
-ExpVariableDef_t* AddExpVariableDefR64(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const r64* pntr,     MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_R64,     sizeof(r64),     (const void*)pntr, documentation);           }
-ExpVariableDef_t* AddExpVariableDefR64(ExpContext_t*  context, bool writeable, const char* variableNameNt, const r64* pntr,     const char* documentationNt = "")          { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_R64,     sizeof(r64),     (const void*)pntr, NewStr(documentationNt)); }
-ExpVariableDef_t* AddExpVariableDefI8(ExpContext_t*   context, bool writeable, MyStr_t     variableName,   const i8*  pntr,     MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_I8,      sizeof(i8),      (const void*)pntr, documentation);           }
-ExpVariableDef_t* AddExpVariableDefI8(ExpContext_t*   context, bool writeable, const char* variableNameNt, const i8*  pntr,     const char* documentationNt = "")          { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_I8,      sizeof(i8),      (const void*)pntr, NewStr(documentationNt)); }
-ExpVariableDef_t* AddExpVariableDefI16(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const i16* pntr,     MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_I16,     sizeof(i16),     (const void*)pntr, documentation);           }
-ExpVariableDef_t* AddExpVariableDefI16(ExpContext_t*  context, bool writeable, const char* variableNameNt, const i16* pntr,     const char* documentationNt = "")          { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_I16,     sizeof(i16),     (const void*)pntr, NewStr(documentationNt)); }
-ExpVariableDef_t* AddExpVariableDefI32(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const i32* pntr,     MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_I32,     sizeof(i32),     (const void*)pntr, documentation);           }
-ExpVariableDef_t* AddExpVariableDefI32(ExpContext_t*  context, bool writeable, const char* variableNameNt, const i32* pntr,     const char* documentationNt = "")          { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_I32,     sizeof(i32),     (const void*)pntr, NewStr(documentationNt)); }
-ExpVariableDef_t* AddExpVariableDefI64(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const i64* pntr,     MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_I64,     sizeof(i64),     (const void*)pntr, documentation);           }
-ExpVariableDef_t* AddExpVariableDefI64(ExpContext_t*  context, bool writeable, const char* variableNameNt, const i64* pntr,     const char* documentationNt = "")          { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_I64,     sizeof(i64),     (const void*)pntr, NewStr(documentationNt)); }
-ExpVariableDef_t* AddExpVariableDefU8(ExpContext_t*   context, bool writeable, MyStr_t     variableName,   const u8*  pntr,     MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_U8,      sizeof(u8),      (const void*)pntr, documentation);           }
-ExpVariableDef_t* AddExpVariableDefU8(ExpContext_t*   context, bool writeable, const char* variableNameNt, const u8*  pntr,     const char* documentationNt = "")          { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_U8,      sizeof(u8),      (const void*)pntr, NewStr(documentationNt)); }
-ExpVariableDef_t* AddExpVariableDefU16(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const u16* pntr,     MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_U16,     sizeof(u16),     (const void*)pntr, documentation);           }
-ExpVariableDef_t* AddExpVariableDefU16(ExpContext_t*  context, bool writeable, const char* variableNameNt, const u16* pntr,     const char* documentationNt = "")          { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_U16,     sizeof(u16),     (const void*)pntr, NewStr(documentationNt)); }
-ExpVariableDef_t* AddExpVariableDefU32(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const u32* pntr,     MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_U32,     sizeof(u32),     (const void*)pntr, documentation);           }
-ExpVariableDef_t* AddExpVariableDefU32(ExpContext_t*  context, bool writeable, const char* variableNameNt, const u32* pntr,     const char* documentationNt = "")          { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_U32,     sizeof(u32),     (const void*)pntr, NewStr(documentationNt)); }
-ExpVariableDef_t* AddExpVariableDefU64(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const u64* pntr,     MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_U64,     sizeof(u64),     (const void*)pntr, documentation);           }
-ExpVariableDef_t* AddExpVariableDefU64(ExpContext_t*  context, bool writeable, const char* variableNameNt, const u64* pntr,     const char* documentationNt = "")          { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_U64,     sizeof(u64),     (const void*)pntr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefFuncs_(ExpContext_t* context, MyStr_t variableName, ExpValueType_t type, void* getter, void* setter, MyStr_t documentation = MyStr_Empty_Const)
+{
+	NotNull2(context, getter);
+	NotNullStr(&variableName);
+	Assert(type != ExpValueType_None && type != ExpValueType_Void);
+	ExpVariableDef_t* newDef = VarArrayAdd(&context->variableDefs, ExpVariableDef_t);
+	NotNull(newDef);
+	ClearPointer(newDef);
+	newDef->isReadOnly = (setter != nullptr);
+	newDef->type = type;
+	newDef->name = context->allocateStrings ? AllocString(context->allocArena, &variableName) : variableName;
+	if (!IsEmptyStr(documentation)) { newDef->documentation = context->allocateStrings ? AllocString(context->allocArena, &documentation) : documentation; }
+	newDef->getter = getter;
+	newDef->setter = setter;
+	return newDef;
+}
+
+ExpVariableDef_t* AddExpVariableDefBool(ExpContext_t* context, bool writeable, MyStr_t     variableName,   const bool* pntr,    MyStr_t documentation = MyStr_Empty_Const)              { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_Bool,    sizeof(bool),    (const void*)pntr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefBool(ExpContext_t* context, bool writeable, const char* variableNameNt, const bool* pntr,    const char* documentationNt = "")                       { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_Bool,    sizeof(bool),    (const void*)pntr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefBool(ExpContext_t* context, MyStr_t     variableName,   ExpGetterBool_f* getter, MyStr_t documentation = MyStr_Empty_Const)                          { return AddExpVariableDefFuncs_(context,       variableName,           ExpValueType_Bool,    (void*)getter,             nullptr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefBool(ExpContext_t* context, const char* variableNameNt, ExpGetterBool_f* getter, const char* documentationNt = "")                                   { return AddExpVariableDefFuncs_(context,       NewStr(variableNameNt), ExpValueType_Bool,    (void*)getter,             nullptr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefBool(ExpContext_t* context, MyStr_t     variableName,   ExpGetterBool_f* getter, ExpSetterBool_f* setter, MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDefFuncs_(context,       variableName,           ExpValueType_Bool,    (void*)getter,       (void*)setter, documentation);           }
+ExpVariableDef_t* AddExpVariableDefBool(ExpContext_t* context, const char* variableNameNt, ExpGetterBool_f* getter, ExpSetterBool_f* setter, const char* documentationNt = "")          { return AddExpVariableDefFuncs_(context,       NewStr(variableNameNt), ExpValueType_Bool,    (void*)getter,       (void*)setter, NewStr(documentationNt)); }
+
+ExpVariableDef_t* AddExpVariableDefPntr(ExpContext_t* context, bool writeable, MyStr_t     variableName,   const void** pntr,   MyStr_t documentation = MyStr_Empty_Const)              { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_Pointer, sizeof(void*),   (const void*)pntr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefPntr(ExpContext_t* context, bool writeable, const char* variableNameNt, const void** pntr,   const char* documentationNt = "")                       { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_Pointer, sizeof(void*),   (const void*)pntr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefPntr(ExpContext_t* context, MyStr_t     variableName,   ExpGetterPntr_f* getter, MyStr_t documentation = MyStr_Empty_Const)                          { return AddExpVariableDefFuncs_(context,       variableName,           ExpValueType_Pointer, (void*)getter,             nullptr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefPntr(ExpContext_t* context, const char* variableNameNt, ExpGetterPntr_f* getter, const char* documentationNt = "")                                   { return AddExpVariableDefFuncs_(context,       NewStr(variableNameNt), ExpValueType_Pointer, (void*)getter,             nullptr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefPntr(ExpContext_t* context, MyStr_t     variableName,   ExpGetterPntr_f* getter, ExpSetterPntr_f* setter, MyStr_t documentation = MyStr_Empty_Const) { return AddExpVariableDefFuncs_(context,       variableName,           ExpValueType_Pointer, (void*)getter,       (void*)setter, documentation);           }
+ExpVariableDef_t* AddExpVariableDefPntr(ExpContext_t* context, const char* variableNameNt, ExpGetterPntr_f* getter, ExpSetterPntr_f* setter, const char* documentationNt = "")          { return AddExpVariableDefFuncs_(context,       NewStr(variableNameNt), ExpValueType_Pointer, (void*)getter,       (void*)setter, NewStr(documentationNt)); }
+
+ExpVariableDef_t* AddExpVariableDefStr(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const MyStr_t* pntr, MyStr_t documentation = MyStr_Empty_Const)              { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_String,  sizeof(MyStr_t), (const void*)pntr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefStr(ExpContext_t*  context, bool writeable, const char* variableNameNt, const MyStr_t* pntr, const char* documentationNt = "")                       { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_String,  sizeof(MyStr_t), (const void*)pntr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefStr(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterStr_f* getter, MyStr_t documentation = MyStr_Empty_Const)                           { return AddExpVariableDefFuncs_(context,       variableName,           ExpValueType_String,  (void*)getter,             nullptr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefStr(ExpContext_t*  context, const char* variableNameNt, ExpGetterStr_f* getter, const char* documentationNt = "")                                    { return AddExpVariableDefFuncs_(context,       NewStr(variableNameNt), ExpValueType_String,  (void*)getter,             nullptr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefStr(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterStr_f* getter, ExpSetterStr_f* setter, MyStr_t documentation = MyStr_Empty_Const)   { return AddExpVariableDefFuncs_(context,       variableName,           ExpValueType_String,  (void*)getter,       (void*)setter, documentation);           }
+ExpVariableDef_t* AddExpVariableDefStr(ExpContext_t*  context, const char* variableNameNt, ExpGetterStr_f* getter, ExpSetterStr_f* setter, const char* documentationNt = "")            { return AddExpVariableDefFuncs_(context,       NewStr(variableNameNt), ExpValueType_String,  (void*)getter,       (void*)setter, NewStr(documentationNt)); }
+
+ExpVariableDef_t* AddExpVariableDefR32(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const r32* pntr,     MyStr_t documentation = MyStr_Empty_Const)              { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_R32,     sizeof(r32),     (const void*)pntr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefR32(ExpContext_t*  context, bool writeable, const char* variableNameNt, const r32* pntr,     const char* documentationNt = "")                       { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_R32,     sizeof(r32),     (const void*)pntr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefR32(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterR32_f* getter, MyStr_t documentation = MyStr_Empty_Const)                           { return AddExpVariableDefFuncs_(context,       variableName,           ExpValueType_R32,     (void*)getter,             nullptr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefR32(ExpContext_t*  context, const char* variableNameNt, ExpGetterR32_f* getter, const char* documentationNt = "")                                    { return AddExpVariableDefFuncs_(context,       NewStr(variableNameNt), ExpValueType_R32,     (void*)getter,             nullptr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefR32(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterR32_f* getter, ExpSetterR32_f* setter, MyStr_t documentation = MyStr_Empty_Const)   { return AddExpVariableDefFuncs_(context,       variableName,           ExpValueType_R32,     (void*)getter,       (void*)setter, documentation);           }
+ExpVariableDef_t* AddExpVariableDefR32(ExpContext_t*  context, const char* variableNameNt, ExpGetterR32_f* getter, ExpSetterR32_f* setter, const char* documentationNt = "")            { return AddExpVariableDefFuncs_(context,       NewStr(variableNameNt), ExpValueType_R32,     (void*)getter,       (void*)setter, NewStr(documentationNt)); }
+
+ExpVariableDef_t* AddExpVariableDefR64(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const r64* pntr,     MyStr_t documentation = MyStr_Empty_Const)              { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_R64,     sizeof(r64),     (const void*)pntr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefR64(ExpContext_t*  context, bool writeable, const char* variableNameNt, const r64* pntr,     const char* documentationNt = "")                       { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_R64,     sizeof(r64),     (const void*)pntr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefR64(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterR64_f* getter, MyStr_t documentation = MyStr_Empty_Const)                           { return AddExpVariableDefFuncs_(context,       variableName,           ExpValueType_R64,     (void*)getter,             nullptr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefR64(ExpContext_t*  context, const char* variableNameNt, ExpGetterR64_f* getter, const char* documentationNt = "")                                    { return AddExpVariableDefFuncs_(context,       NewStr(variableNameNt), ExpValueType_R64,     (void*)getter,             nullptr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefR64(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterR64_f* getter, ExpSetterR64_f* setter, MyStr_t documentation = MyStr_Empty_Const)   { return AddExpVariableDefFuncs_(context,       variableName,           ExpValueType_R64,     (void*)getter,       (void*)setter, documentation);           }
+ExpVariableDef_t* AddExpVariableDefR64(ExpContext_t*  context, const char* variableNameNt, ExpGetterR64_f* getter, ExpSetterR64_f* setter, const char* documentationNt = "")            { return AddExpVariableDefFuncs_(context,       NewStr(variableNameNt), ExpValueType_R64,     (void*)getter,       (void*)setter, NewStr(documentationNt)); }
+
+ExpVariableDef_t* AddExpVariableDefI8(ExpContext_t*   context, bool writeable, MyStr_t     variableName,   const i8*  pntr,     MyStr_t documentation = MyStr_Empty_Const)              { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_I8,      sizeof(i8),      (const void*)pntr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefI8(ExpContext_t*   context, bool writeable, const char* variableNameNt, const i8*  pntr,     const char* documentationNt = "")                       { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_I8,      sizeof(i8),      (const void*)pntr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefI8(ExpContext_t*   context, MyStr_t     variableName,   ExpGetterI8_f* getter, MyStr_t documentation = MyStr_Empty_Const)                            { return AddExpVariableDefFuncs_(context,       variableName,           ExpValueType_I8,      (void*)getter,             nullptr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefI8(ExpContext_t*   context, const char* variableNameNt, ExpGetterI8_f* getter, const char* documentationNt = "")                                     { return AddExpVariableDefFuncs_(context,       NewStr(variableNameNt), ExpValueType_I8,      (void*)getter,             nullptr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefI8(ExpContext_t*   context, MyStr_t     variableName,   ExpGetterI8_f* getter, ExpSetterI8_f* setter, MyStr_t documentation = MyStr_Empty_Const)     { return AddExpVariableDefFuncs_(context,       variableName,           ExpValueType_I8,      (void*)getter,       (void*)setter, documentation);           }
+ExpVariableDef_t* AddExpVariableDefI8(ExpContext_t*   context, const char* variableNameNt, ExpGetterI8_f* getter, ExpSetterI8_f* setter, const char* documentationNt = "")              { return AddExpVariableDefFuncs_(context,       NewStr(variableNameNt), ExpValueType_I8,      (void*)getter,       (void*)setter, NewStr(documentationNt)); }
+
+ExpVariableDef_t* AddExpVariableDefI16(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const i16* pntr,     MyStr_t documentation = MyStr_Empty_Const)              { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_I16,     sizeof(i16),     (const void*)pntr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefI16(ExpContext_t*  context, bool writeable, const char* variableNameNt, const i16* pntr,     const char* documentationNt = "")                       { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_I16,     sizeof(i16),     (const void*)pntr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefI16(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterI16_f* getter, MyStr_t documentation = MyStr_Empty_Const)                           { return AddExpVariableDefFuncs_(context,       variableName,           ExpValueType_I16,     (void*)getter,             nullptr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefI16(ExpContext_t*  context, const char* variableNameNt, ExpGetterI16_f* getter, const char* documentationNt = "")                                    { return AddExpVariableDefFuncs_(context,       NewStr(variableNameNt), ExpValueType_I16,     (void*)getter,             nullptr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefI16(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterI16_f* getter, ExpSetterI16_f* setter, MyStr_t documentation = MyStr_Empty_Const)   { return AddExpVariableDefFuncs_(context,       variableName,           ExpValueType_I16,     (void*)getter,       (void*)setter, documentation);           }
+ExpVariableDef_t* AddExpVariableDefI16(ExpContext_t*  context, const char* variableNameNt, ExpGetterI16_f* getter, ExpSetterI16_f* setter, const char* documentationNt = "")            { return AddExpVariableDefFuncs_(context,       NewStr(variableNameNt), ExpValueType_I16,     (void*)getter,       (void*)setter, NewStr(documentationNt)); }
+
+ExpVariableDef_t* AddExpVariableDefI32(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const i32* pntr,     MyStr_t documentation = MyStr_Empty_Const)              { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_I32,     sizeof(i32),     (const void*)pntr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefI32(ExpContext_t*  context, bool writeable, const char* variableNameNt, const i32* pntr,     const char* documentationNt = "")                       { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_I32,     sizeof(i32),     (const void*)pntr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefI32(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterI32_f* getter, MyStr_t documentation = MyStr_Empty_Const)                           { return AddExpVariableDefFuncs_(context,       variableName,           ExpValueType_I32,     (void*)getter,             nullptr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefI32(ExpContext_t*  context, const char* variableNameNt, ExpGetterI32_f* getter, const char* documentationNt = "")                                    { return AddExpVariableDefFuncs_(context,       NewStr(variableNameNt), ExpValueType_I32,     (void*)getter,             nullptr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefI32(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterI32_f* getter, ExpSetterI32_f* setter, MyStr_t documentation = MyStr_Empty_Const)   { return AddExpVariableDefFuncs_(context,       variableName,           ExpValueType_I32,     (void*)getter,       (void*)setter, documentation);           }
+ExpVariableDef_t* AddExpVariableDefI32(ExpContext_t*  context, const char* variableNameNt, ExpGetterI32_f* getter, ExpSetterI32_f* setter, const char* documentationNt = "")            { return AddExpVariableDefFuncs_(context,       NewStr(variableNameNt), ExpValueType_I32,     (void*)getter,       (void*)setter, NewStr(documentationNt)); }
+
+ExpVariableDef_t* AddExpVariableDefI64(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const i64* pntr,     MyStr_t documentation = MyStr_Empty_Const)              { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_I64,     sizeof(i64),     (const void*)pntr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefI64(ExpContext_t*  context, bool writeable, const char* variableNameNt, const i64* pntr,     const char* documentationNt = "")                       { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_I64,     sizeof(i64),     (const void*)pntr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefI64(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterI64_f* getter, MyStr_t documentation = MyStr_Empty_Const)                           { return AddExpVariableDefFuncs_(context,       variableName,           ExpValueType_I64,     (void*)getter,             nullptr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefI64(ExpContext_t*  context, const char* variableNameNt, ExpGetterI64_f* getter, const char* documentationNt = "")                                    { return AddExpVariableDefFuncs_(context,       NewStr(variableNameNt), ExpValueType_I64,     (void*)getter,             nullptr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefI64(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterI64_f* getter, ExpSetterI64_f* setter, MyStr_t documentation = MyStr_Empty_Const)   { return AddExpVariableDefFuncs_(context,       variableName,           ExpValueType_I64,     (void*)getter,       (void*)setter, documentation);           }
+ExpVariableDef_t* AddExpVariableDefI64(ExpContext_t*  context, const char* variableNameNt, ExpGetterI64_f* getter, ExpSetterI64_f* setter, const char* documentationNt = "")            { return AddExpVariableDefFuncs_(context,       NewStr(variableNameNt), ExpValueType_I64,     (void*)getter,       (void*)setter, NewStr(documentationNt)); }
+
+ExpVariableDef_t* AddExpVariableDefU8(ExpContext_t*   context, bool writeable, MyStr_t     variableName,   const u8*  pntr,     MyStr_t documentation = MyStr_Empty_Const)              { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_U8,      sizeof(u8),      (const void*)pntr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefU8(ExpContext_t*   context, bool writeable, const char* variableNameNt, const u8*  pntr,     const char* documentationNt = "")                       { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_U8,      sizeof(u8),      (const void*)pntr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefU8(ExpContext_t*   context, MyStr_t     variableName,   ExpGetterU8_f* getter, MyStr_t documentation = MyStr_Empty_Const)                            { return AddExpVariableDefFuncs_(context,       variableName,           ExpValueType_U8,      (void*)getter,             nullptr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefU8(ExpContext_t*   context, const char* variableNameNt, ExpGetterU8_f* getter, const char* documentationNt = "")                                     { return AddExpVariableDefFuncs_(context,       NewStr(variableNameNt), ExpValueType_U8,      (void*)getter,             nullptr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefU8(ExpContext_t*   context, MyStr_t     variableName,   ExpGetterU8_f* getter, ExpSetterU8_f* setter, MyStr_t documentation = MyStr_Empty_Const)     { return AddExpVariableDefFuncs_(context,       variableName,           ExpValueType_U8,      (void*)getter,       (void*)setter, documentation);           }
+ExpVariableDef_t* AddExpVariableDefU8(ExpContext_t*   context, const char* variableNameNt, ExpGetterU8_f* getter, ExpSetterU8_f* setter, const char* documentationNt = "")              { return AddExpVariableDefFuncs_(context,       NewStr(variableNameNt), ExpValueType_U8,      (void*)getter,       (void*)setter, NewStr(documentationNt)); }
+
+ExpVariableDef_t* AddExpVariableDefU16(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const u16* pntr,     MyStr_t documentation = MyStr_Empty_Const)              { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_U16,     sizeof(u16),     (const void*)pntr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefU16(ExpContext_t*  context, bool writeable, const char* variableNameNt, const u16* pntr,     const char* documentationNt = "")                       { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_U16,     sizeof(u16),     (const void*)pntr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefU16(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterU16_f* getter, MyStr_t documentation = MyStr_Empty_Const)                           { return AddExpVariableDefFuncs_(context,       variableName,           ExpValueType_U16,     (void*)getter,             nullptr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefU16(ExpContext_t*  context, const char* variableNameNt, ExpGetterU16_f* getter, const char* documentationNt = "")                                    { return AddExpVariableDefFuncs_(context,       NewStr(variableNameNt), ExpValueType_U16,     (void*)getter,             nullptr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefU16(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterU16_f* getter, ExpSetterU16_f* setter, MyStr_t documentation = MyStr_Empty_Const)   { return AddExpVariableDefFuncs_(context,       variableName,           ExpValueType_U16,     (void*)getter,       (void*)setter, documentation);           }
+ExpVariableDef_t* AddExpVariableDefU16(ExpContext_t*  context, const char* variableNameNt, ExpGetterU16_f* getter, ExpSetterU16_f* setter, const char* documentationNt = "")            { return AddExpVariableDefFuncs_(context,       NewStr(variableNameNt), ExpValueType_U16,     (void*)getter,       (void*)setter, NewStr(documentationNt)); }
+
+ExpVariableDef_t* AddExpVariableDefU32(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const u32* pntr,     MyStr_t documentation = MyStr_Empty_Const)              { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_U32,     sizeof(u32),     (const void*)pntr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefU32(ExpContext_t*  context, bool writeable, const char* variableNameNt, const u32* pntr,     const char* documentationNt = "")                       { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_U32,     sizeof(u32),     (const void*)pntr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefU32(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterU32_f* getter, MyStr_t documentation = MyStr_Empty_Const)                           { return AddExpVariableDefFuncs_(context,       variableName,           ExpValueType_U32,     (void*)getter,             nullptr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefU32(ExpContext_t*  context, const char* variableNameNt, ExpGetterU32_f* getter, const char* documentationNt = "")                                    { return AddExpVariableDefFuncs_(context,       NewStr(variableNameNt), ExpValueType_U32,     (void*)getter,             nullptr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefU32(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterU32_f* getter, ExpSetterU32_f* setter, MyStr_t documentation = MyStr_Empty_Const)   { return AddExpVariableDefFuncs_(context,       variableName,           ExpValueType_U32,     (void*)getter,       (void*)setter, documentation);           }
+ExpVariableDef_t* AddExpVariableDefU32(ExpContext_t*  context, const char* variableNameNt, ExpGetterU32_f* getter, ExpSetterU32_f* setter, const char* documentationNt = "")            { return AddExpVariableDefFuncs_(context,       NewStr(variableNameNt), ExpValueType_U32,     (void*)getter,       (void*)setter, NewStr(documentationNt)); }
+
+ExpVariableDef_t* AddExpVariableDefU64(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const u64* pntr,     MyStr_t documentation = MyStr_Empty_Const)              { return AddExpVariableDef_(context, writeable, variableName,           ExpValueType_U64,     sizeof(u64),     (const void*)pntr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefU64(ExpContext_t*  context, bool writeable, const char* variableNameNt, const u64* pntr,     const char* documentationNt = "")                       { return AddExpVariableDef_(context, writeable, NewStr(variableNameNt), ExpValueType_U64,     sizeof(u64),     (const void*)pntr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefU64(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterU64_f* getter, MyStr_t documentation = MyStr_Empty_Const)                           { return AddExpVariableDefFuncs_(context,       variableName,           ExpValueType_U64,     (void*)getter,             nullptr, documentation);           }
+ExpVariableDef_t* AddExpVariableDefU64(ExpContext_t*  context, const char* variableNameNt, ExpGetterU64_f* getter, const char* documentationNt = "")                                    { return AddExpVariableDefFuncs_(context,       NewStr(variableNameNt), ExpValueType_U64,     (void*)getter,             nullptr, NewStr(documentationNt)); }
+ExpVariableDef_t* AddExpVariableDefU64(ExpContext_t*  context, MyStr_t     variableName,   ExpGetterU64_f* getter, ExpSetterU64_f* setter, MyStr_t documentation = MyStr_Empty_Const)   { return AddExpVariableDefFuncs_(context,       variableName,           ExpValueType_U64,     (void*)getter,       (void*)setter, documentation);           }
+ExpVariableDef_t* AddExpVariableDefU64(ExpContext_t*  context, const char* variableNameNt, ExpGetterU64_f* getter, ExpSetterU64_f* setter, const char* documentationNt = "")            { return AddExpVariableDefFuncs_(context,       NewStr(variableNameNt), ExpValueType_U64,     (void*)getter,       (void*)setter, NewStr(documentationNt)); }
 
 //TODO: These should probably make sure that there are no naming conflicts!
 ExpFuncDef_t* AddExpFuncDef(ExpContext_t* context, ExpValueType_t returnType, MyStr_t functionName, ExpressionFunc_f* functionPntr, MyStr_t documentation = MyStr_Empty_Const)
@@ -1483,100 +1907,125 @@ void WriteExpVariableU64(ExpVariableDef_t* variableDef, u64 value)
 	WriteExpVariable_(variableDef, sizeof(value), &value);
 }
 
-ExpValue_t ReadExpVariable_(ExpVariableDef_t* variableDef)
+ExpValue_t ReadExpVariable_(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr)
 {
+	NotNull2(expression, variableDef);
 	ExpValue_t result = {};
 	result.type = variableDef->type;
-	switch (variableDef->type)
+	if (variableDef->pntr != nullptr)
 	{
-		// case ExpValueType_Void:    
-		case ExpValueType_Bool:    result.valueBool = *((bool*)variableDef->pntr);    break;
-		case ExpValueType_Pointer: result.valuePntr = *((void**)variableDef->pntr);   break;
-		case ExpValueType_String:  result.valueStr  = *((MyStr_t*)variableDef->pntr); break;
-		case ExpValueType_R32:     result.valueR32  = *((r32*)variableDef->pntr);     break;
-		case ExpValueType_R64:     result.valueR64  = *((r64*)variableDef->pntr);     break;
-		case ExpValueType_I8:      result.valueI8   = *((i8*)variableDef->pntr);      break;
-		case ExpValueType_I16:     result.valueI16  = *((i16*)variableDef->pntr);     break;
-		case ExpValueType_I32:     result.valueI32  = *((i32*)variableDef->pntr);     break;
-		case ExpValueType_I64:     result.valueI64  = *((i64*)variableDef->pntr);     break;
-		case ExpValueType_U8:      result.valueU8   = *((u8*)variableDef->pntr);      break;
-		case ExpValueType_U16:     result.valueU16  = *((u16*)variableDef->pntr);     break;
-		case ExpValueType_U32:     result.valueU32  = *((u32*)variableDef->pntr);     break;
-		case ExpValueType_U64:     result.valueU64  = *((u64*)variableDef->pntr);     break;
-		default: AssertMsg(false, "Unhandled ExpValueType in ReadExpVariable_"); break;
+		switch (variableDef->type)
+		{
+			// case ExpValueType_Void:    
+			case ExpValueType_Bool:    result.valueBool = *((bool*)variableDef->pntr);    break;
+			case ExpValueType_Pointer: result.valuePntr = *((void**)variableDef->pntr);   break;
+			case ExpValueType_String:  result.valueStr  = *((MyStr_t*)variableDef->pntr); break;
+			case ExpValueType_R32:     result.valueR32  = *((r32*)variableDef->pntr);     break;
+			case ExpValueType_R64:     result.valueR64  = *((r64*)variableDef->pntr);     break;
+			case ExpValueType_I8:      result.valueI8   = *((i8*)variableDef->pntr);      break;
+			case ExpValueType_I16:     result.valueI16  = *((i16*)variableDef->pntr);     break;
+			case ExpValueType_I32:     result.valueI32  = *((i32*)variableDef->pntr);     break;
+			case ExpValueType_I64:     result.valueI64  = *((i64*)variableDef->pntr);     break;
+			case ExpValueType_U8:      result.valueU8   = *((u8*)variableDef->pntr);      break;
+			case ExpValueType_U16:     result.valueU16  = *((u16*)variableDef->pntr);     break;
+			case ExpValueType_U32:     result.valueU32  = *((u32*)variableDef->pntr);     break;
+			case ExpValueType_U64:     result.valueU64  = *((u64*)variableDef->pntr);     break;
+			default: AssertMsg(false, "Unhandled ExpValueType in ReadExpVariable_"); break;
+		}
+	}
+	else if (variableDef->getter != nullptr)
+	{
+		switch (variableDef->type)
+		{
+			// case ExpValueType_Void:    
+			case ExpValueType_Bool:    result.valueBool = ((ExpGetterBool_f*)variableDef->getter)(expression, context, variableDef); break;
+			case ExpValueType_Pointer: result.valuePntr = ((ExpGetterPntr_f*)variableDef->getter)(expression, context, variableDef); break;
+			case ExpValueType_String:  result.valueStr  = ((ExpGetterStr_f*)variableDef->getter)(expression,  context, variableDef); break;
+			case ExpValueType_R32:     result.valueR32  = ((ExpGetterR32_f*)variableDef->getter)(expression,  context, variableDef); break;
+			case ExpValueType_R64:     result.valueR64  = ((ExpGetterR64_f*)variableDef->getter)(expression,  context, variableDef); break;
+			case ExpValueType_I8:      result.valueI8   = ((ExpGetterI8_f*)variableDef->getter)(expression,   context, variableDef); break;
+			case ExpValueType_I16:     result.valueI16  = ((ExpGetterI16_f*)variableDef->getter)(expression,  context, variableDef); break;
+			case ExpValueType_I32:     result.valueI32  = ((ExpGetterI32_f*)variableDef->getter)(expression,  context, variableDef); break;
+			case ExpValueType_I64:     result.valueI64  = ((ExpGetterI64_f*)variableDef->getter)(expression,  context, variableDef); break;
+			case ExpValueType_U8:      result.valueU8   = ((ExpGetterU8_f*)variableDef->getter)(expression,   context, variableDef); break;
+			case ExpValueType_U16:     result.valueU16  = ((ExpGetterU16_f*)variableDef->getter)(expression,  context, variableDef); break;
+			case ExpValueType_U32:     result.valueU32  = ((ExpGetterU32_f*)variableDef->getter)(expression,  context, variableDef); break;
+			case ExpValueType_U64:     result.valueU64  = ((ExpGetterU64_f*)variableDef->getter)(expression,  context, variableDef); break;
+			default: AssertMsg(false, "Unhandled ExpValueType in ReadExpVariable_"); break;
+		}
 	}
 	return result;
 }
-bool ReadExpVariableBool(ExpVariableDef_t* variableDef)
+bool ReadExpVariableBool(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr)
 {
 	Assert(variableDef->type == ExpValueType_Bool);
-	ExpValue_t resultValue = ReadExpVariable_(variableDef);
+	ExpValue_t resultValue = ReadExpVariable_(expression, variableDef, context);
 	return resultValue.valueBool;
 }
-void* ReadExpVariablePointer(ExpVariableDef_t* variableDef)
+void* ReadExpVariablePointer(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr)
 {
 	Assert(variableDef->type == ExpValueType_Pointer);
-	ExpValue_t resultValue = ReadExpVariable_(variableDef);
+	ExpValue_t resultValue = ReadExpVariable_(expression, variableDef, context);
 	return resultValue.valuePntr;
 }
-r32 ReadExpVariableR32(ExpVariableDef_t* variableDef)
+r32 ReadExpVariableR32(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr)
 {
 	Assert(variableDef->type == ExpValueType_R32);
-	ExpValue_t resultValue = ReadExpVariable_(variableDef);
+	ExpValue_t resultValue = ReadExpVariable_(expression, variableDef, context);
 	return resultValue.valueR32;
 }
-r64 ReadExpVariableR64(ExpVariableDef_t* variableDef)
+r64 ReadExpVariableR64(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr)
 {
 	Assert(variableDef->type == ExpValueType_R64);
-	ExpValue_t resultValue = ReadExpVariable_(variableDef);
+	ExpValue_t resultValue = ReadExpVariable_(expression, variableDef, context);
 	return resultValue.valueR64;
 }
-i8 ReadExpVariableI8(ExpVariableDef_t* variableDef)
+i8 ReadExpVariableI8(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr)
 {
 	Assert(variableDef->type == ExpValueType_I8);
-	ExpValue_t resultValue = ReadExpVariable_(variableDef);
+	ExpValue_t resultValue = ReadExpVariable_(expression, variableDef, context);
 	return resultValue.valueI8;
 }
-i16 ReadExpVariableI16(ExpVariableDef_t* variableDef)
+i16 ReadExpVariableI16(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr)
 {
 	Assert(variableDef->type == ExpValueType_I16);
-	ExpValue_t resultValue = ReadExpVariable_(variableDef);
+	ExpValue_t resultValue = ReadExpVariable_(expression, variableDef, context);
 	return resultValue.valueI16;
 }
-i32 ReadExpVariableI32(ExpVariableDef_t* variableDef)
+i32 ReadExpVariableI32(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr)
 {
 	Assert(variableDef->type == ExpValueType_I32);
-	ExpValue_t resultValue = ReadExpVariable_(variableDef);
+	ExpValue_t resultValue = ReadExpVariable_(expression, variableDef, context);
 	return resultValue.valueI32;
 }
-i64 ReadExpVariableI64(ExpVariableDef_t* variableDef)
+i64 ReadExpVariableI64(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr)
 {
 	Assert(variableDef->type == ExpValueType_I64);
-	ExpValue_t resultValue = ReadExpVariable_(variableDef);
+	ExpValue_t resultValue = ReadExpVariable_(expression, variableDef, context);
 	return resultValue.valueI64;
 }
-u8 ReadExpVariableU8(ExpVariableDef_t* variableDef)
+u8 ReadExpVariableU8(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr)
 {
 	Assert(variableDef->type == ExpValueType_U8);
-	ExpValue_t resultValue = ReadExpVariable_(variableDef);
+	ExpValue_t resultValue = ReadExpVariable_(expression, variableDef, context);
 	return resultValue.valueU8;
 }
-u16 ReadExpVariableU16(ExpVariableDef_t* variableDef)
+u16 ReadExpVariableU16(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr)
 {
 	Assert(variableDef->type == ExpValueType_U16);
-	ExpValue_t resultValue = ReadExpVariable_(variableDef);
+	ExpValue_t resultValue = ReadExpVariable_(expression, variableDef, context);
 	return resultValue.valueU16;
 }
-u32 ReadExpVariableU32(ExpVariableDef_t* variableDef)
+u32 ReadExpVariableU32(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr)
 {
 	Assert(variableDef->type == ExpValueType_U32);
-	ExpValue_t resultValue = ReadExpVariable_(variableDef);
+	ExpValue_t resultValue = ReadExpVariable_(expression, variableDef, context);
 	return resultValue.valueU32;
 }
-u64 ReadExpVariableU64(ExpVariableDef_t* variableDef)
+u64 ReadExpVariableU64(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr)
 {
 	Assert(variableDef->type == ExpValueType_U64);
-	ExpValue_t resultValue = ReadExpVariable_(variableDef);
+	ExpValue_t resultValue = ReadExpVariable_(expression, variableDef, context);
 	return resultValue.valueU64;
 }
 
@@ -2382,12 +2831,31 @@ Result_t TryCreateExpressionFromTokens_Helper(Expression_t* expression, const Ex
 					}
 					else
 					{
-						u64 variableDefIndex = 0;
-						const ExpVariableDef_t* variableDef = FindExpVariableDef(context, token->str, &variableDefIndex);
-						if (variableDef == nullptr) { return Result_UnknownVariable; }
-						
-						ExpPart_t* newVariablePart = AddExpVariable(expression, tIndex, variableDefIndex);
-						PushAndConnectExpPart(&stack, newVariablePart);
+						u64 constantDefIndex = 0;
+						const ExpConstantDef_t* constantDef = FindExpConstantDef(context, token->str, &constantDefIndex);
+						if (constantDef != nullptr)
+						{
+							if (constantDef->value.type == ExpValueType_String)
+							{
+								ExpPart_t* newConstantPart = AddExpConstantString(expression, tIndex, constantDef->value.valueStr);
+								PushAndConnectExpPart(&stack, newConstantPart);
+							}
+							else
+							{
+								ExpPart_t* newConstantPart = AddExpPart(expression, tIndex, ExpPartType_Constant);
+								newConstantPart->constantValue = constantDef->value;
+								PushAndConnectExpPart(&stack, newConstantPart);
+							}
+						}
+						else
+						{
+							u64 variableDefIndex = 0;
+							const ExpVariableDef_t* variableDef = FindExpVariableDef(context, token->str, &variableDefIndex);
+							if (variableDef == nullptr) { return Result_UnknownVariable; }
+							
+							ExpPart_t* newVariablePart = AddExpVariable(expression, tIndex, variableDefIndex);
+							PushAndConnectExpPart(&stack, newVariablePart);
+						}
 					}
 				}
 			} break;
@@ -2655,12 +3123,6 @@ void StepThroughExpression(Expression_t* expression, ExpStepOrder_t order, ExpSt
 	u64 numStepsTotal = StepThroughExpression_Helper(expression, expression->rootPart, order, callback, context, userPntr, 0, 0);
 	UNUSED(numStepsTotal);
 }
-
-struct ExpTypeCheckState_t
-{
-	Result_t result;
-	u64 errorPartIndex;
-};
 
 // +==================================+
 // | ExpressionTypeCheckWalk_Callback |
@@ -3098,13 +3560,6 @@ ExpValue_t PerformMathOpOnExpValues(ExpValue_t leftOperand, ExpOp_t opType, ExpV
 	return result;
 }
 
-struct ExpEvaluateState_t
-{
-	u64 stackSize;
-	ExpValue_t stack[EXPRESSIONS_MAX_EVAL_STACK_SIZE];
-	Result_t result;
-};
-
 // +==============================+
 // | EvaluateExpression_Callback  |
 // +==============================+
@@ -3137,13 +3592,13 @@ EXP_STEP_CALLBACK(EvaluateExpression_Callback)
 			if (context->isConsoleInput && expression->rootPart == part && expression->numParts == 1 && variableDef->type == ExpValueType_Bool && !variableDef->isReadOnly)
 			{
 				// When a boolean variable is the entire expression, we actually implicitely toggle the value (but only in debug console input contexts)
-				bool currentValue = ReadExpVariableBool(variableDef);
+				bool currentValue = ReadExpVariableBool(expression, variableDef, context);
 				WriteExpVariableBool(variableDef, !currentValue);
 				state->stack[state->stackSize++] = NewExpValueBool(!currentValue);
 			}
 			else
 			{
-				state->stack[state->stackSize++] = ReadExpVariable_(variableDef);
+				state->stack[state->stackSize++] = ReadExpVariable_(expression, variableDef, context);
 			}
 		} break;
 		
@@ -3515,6 +3970,10 @@ Result_t TryAddExpFuncDefByStr(ExpContext_t* context, MemArena_t* scratchArena, 
 	PopMemMark(scratchArena);
 	return Result_Success;
 }
+Result_t TryAddExpFuncDefByStr(ExpContext_t* context, MemArena_t* scratchArena, const char* funcDefStringNt, ExpressionFunc_f* functionPntr, const char* documentationNt = "")
+{
+	return TryAddExpFuncDefByStr(context, scratchArena, NewStr(funcDefStringNt), functionPntr, NewStr(documentationNt));
+}
 
 MyStr_t TryAddExpFuncDefByStrErrorStr(ExpContext_t* context, MemArena_t* scratchArena, MyStr_t funcDefString, ExpressionFunc_f* functionPntr, MyStr_t documentation = MyStr_Empty_Const)
 {
@@ -3548,6 +4007,20 @@ MyStr_t TryAddExpFuncDefByStrErrorStr(ExpContext_t* context, MemArena_t* scratch
 	MyMemCopy(newFuncDefSpace, &funcDef, sizeof(ExpFuncDef_t));
 	
 	return MyStr_Empty;
+}
+MyStr_t TryAddExpFuncDefByStrErrorStr(ExpContext_t* context, MemArena_t* scratchArena, const char* funcDefStringNt, ExpressionFunc_f* functionPntr, const char* documentationNt = "")
+{
+	return TryAddExpFuncDefByStrErrorStr(context, scratchArena, NewStr(funcDefStringNt), functionPntr, NewStr(documentationNt));
+}
+
+void AddExpFuncDefByStr(ExpContext_t* context, MemArena_t* scratchArena, MyStr_t funcDefString, ExpressionFunc_f* functionPntr, MyStr_t documentation = MyStr_Empty_Const)
+{
+	Result_t result = TryAddExpFuncDefByStr(context, scratchArena, funcDefString, functionPntr, documentation);
+	Assert(result == Result_Success);
+}
+void AddExpFuncDefByStr(ExpContext_t* context, MemArena_t* scratchArena, const char* funcDefStringNt, ExpressionFunc_f* functionPntr, const char* documentationNt = "")
+{
+	AddExpFuncDefByStr(context, scratchArena, NewStr(funcDefStringNt), functionPntr, NewStr(documentationNt));
 }
 
 Result_t ValidateExpression(MyStr_t expressionStr, MemArena_t* scratchArena, ExpContext_t* context = nullptr)
@@ -3682,54 +4155,6 @@ ExpValue_t RunExpression(MyStr_t expressionStr, MemArena_t* scratchArena, ExpCon
 // +--------------------------------------------------------------+
 // |                    Autocomplete Functions                    |
 // +--------------------------------------------------------------+
-struct ExpAutocompleteInfo_t
-{
-	const ExpContext_t* context;
-	MyStr_t expressionStr;
-	u64 cursorIndex;
-	
-	i64 parensBeginIndex;
-	i64 parensEndIndex;
-	
-	bool isBetweenTokens; //=|
-	bool isInsideToken;   // |== Only one of these should be true at a time
-	bool isNextToToken;   //=|
-	bool insideFuncArgs;
-	bool funcDefFound;
-	bool isAtBeginning;
-	bool isAtEnd;
-	
-	//if not isAtBeginning
-	u64 prevTokenIndex;
-	u64 prevTokenStartIndex;
-	u64 prevTokenEndIndex;
-	ExpTokenType_t prevTokenType;
-	
-	//if not isAtEnd
-	u64 nextTokenIndex;
-	u64 nextTokenStartIndex;
-	u64 nextTokenEndIndex;
-	ExpTokenType_t nextTokenType;
-	
-	//if isInsideToken or isNextToToken (aka not isBetweenTokens)
-	u64 currentTokenIndex;
-	u64 currentTokenStartIndex;
-	u64 currentTokenEndIndex;
-	u64 currentTokenCursorIndex;
-	ExpTokenType_t currentTokenType;
-	MyStr_t currentTokenStr;
-	
-	//if insideFuncArgs
-	u64 currentFuncNameStartIndex;
-	u64 currentFuncNameEndIndex;
-	MyStr_t currentFuncNameStr;
-	u64 currentFuncArgCount; //this may not match the ExpFuncDef exactly, it's just based on how many commas the user has typed in this scope
-	u64 currentFuncArgIndex;
-	
-	//if funcDefFound
-	u64 currentFuncDefIndex;
-};
-
 bool IsTokenHigherPriorityForAutocomplete(const ExpToken_t* newToken, const ExpToken_t* oldToken)
 {
 	NotNull2(newToken, oldToken);
@@ -3927,6 +4352,119 @@ void GetExpAutocompleteInfo(MyStr_t expressionStr, u64 cursorIndex, MemArena_t* 
 	PopMemMark(scratchArena);
 }
 
+// +--------------------------------------------------------------+
+// |                  Standard Function Library                   |
+// +--------------------------------------------------------------+
+EXPRESSION_FUNC_DEFINITION(Square_Glue)               { EXP_GET_ARG_R32(0, value); return NewExpValueR32(Square(value)); }
+EXPRESSION_FUNC_DEFINITION(Cube_Glue)                 { EXP_GET_ARG_R32(0, value); return NewExpValueR32(Cube(value)); }
+EXPRESSION_FUNC_DEFINITION(Sin_Glue)                  { EXP_GET_ARG_R32(0, angle); return NewExpValueR32(SinR32(angle)); }
+EXPRESSION_FUNC_DEFINITION(Cos_Glue)                  { EXP_GET_ARG_R32(0, angle); return NewExpValueR32(CosR32(angle)); }
+EXPRESSION_FUNC_DEFINITION(Tan_Glue)                  { EXP_GET_ARG_R32(0, angle); return NewExpValueR32(TanR32(angle)); }
+EXPRESSION_FUNC_DEFINITION(Asin_Glue)                 { EXP_GET_ARG_R32(0, value); return NewExpValueR32(AsinR32(value)); }
+EXPRESSION_FUNC_DEFINITION(Acos_Glue)                 { EXP_GET_ARG_R32(0, value); return NewExpValueR32(AcosR32(value)); }
+EXPRESSION_FUNC_DEFINITION(Atan2_Glue)                { EXP_GET_ARG_R32(0, y); EXP_GET_ARG_R32(1, x); return NewExpValueR32(AtanR32(y, x)); }
+EXPRESSION_FUNC_DEFINITION(Atan_Glue)                 { EXP_GET_ARG_R32(0, value); return NewExpValueR32(AtanJoinedR32(value)); }
+EXPRESSION_FUNC_DEFINITION(ToRadians_Glue)            { EXP_GET_ARG_R32(0, degrees); return NewExpValueR32(ToRadians32(degrees)); }
+EXPRESSION_FUNC_DEFINITION(ToDegrees_Glue)            { EXP_GET_ARG_R32(0, radians); return NewExpValueR32(ToDegrees32(radians)); }
+EXPRESSION_FUNC_DEFINITION(Kilo_Glue)                 { EXP_GET_ARG_U64(0, numKilobytes); return NewExpValueU64(Kilobytes(numKilobytes)); }
+EXPRESSION_FUNC_DEFINITION(Mega_Glue)                 { EXP_GET_ARG_U64(0, numMegabytes); return NewExpValueU64(Megabytes(numMegabytes)); }
+EXPRESSION_FUNC_DEFINITION(Giga_Glue)                 { EXP_GET_ARG_U64(0, numGigabytes); return NewExpValueU64(Gigabytes(numGigabytes)); }
+EXPRESSION_FUNC_DEFINITION(Tera_Glue)                 { EXP_GET_ARG_U64(0, numTerabytes); return NewExpValueU64(Terabytes(numTerabytes)); }
+EXPRESSION_FUNC_DEFINITION(Min_Glue)                  { EXP_GET_ARG_I64(0, value1); EXP_GET_ARG_I64(1, value2); return NewExpValueI64(MinI64(value1, value2)); }
+EXPRESSION_FUNC_DEFINITION(Max_Glue)                  { EXP_GET_ARG_I64(0, value1); EXP_GET_ARG_I64(1, value2); return NewExpValueI64(MaxI64(value1, value2)); }
+EXPRESSION_FUNC_DEFINITION(Abs_Glue)                  { EXP_GET_ARG_R32(0, value); return NewExpValueR32(AbsR32(value)); }
+EXPRESSION_FUNC_DEFINITION(Round_Glue)                { EXP_GET_ARG_R32(0, value); return NewExpValueR32(RoundR32(value)); }
+EXPRESSION_FUNC_DEFINITION(Roundi_Glue)               { EXP_GET_ARG_R32(0, value); return NewExpValueI64(RoundR32i(value)); }
+EXPRESSION_FUNC_DEFINITION(Floor_Glue)                { EXP_GET_ARG_R32(0, value); return NewExpValueR32(FloorR32(value)); }
+EXPRESSION_FUNC_DEFINITION(Ceil_Glue)                 { EXP_GET_ARG_R32(0, value); return NewExpValueR32(CeilR32(value)); }
+EXPRESSION_FUNC_DEFINITION(Saw_Glue)                  { EXP_GET_ARG_R32(0, angle); return NewExpValueR32(SawR32(angle)); }
+EXPRESSION_FUNC_DEFINITION(Pow_Glue)                  { EXP_GET_ARG_R32(0, value); EXP_GET_ARG_R32(1, power); return NewExpValueR32(PowR32(value, power)); }
+EXPRESSION_FUNC_DEFINITION(Ln_Glue)                   { EXP_GET_ARG_R32(0, value); return NewExpValueR32(LnR32(value)); }
+EXPRESSION_FUNC_DEFINITION(Log2_Glue)                 { EXP_GET_ARG_R32(0, value); return NewExpValueR32(Log2R32(value)); }
+EXPRESSION_FUNC_DEFINITION(Log10_Glue)                { EXP_GET_ARG_R32(0, value); return NewExpValueR32(Log10R32(value)); }
+EXPRESSION_FUNC_DEFINITION(Sqrt_Glue)                 { EXP_GET_ARG_R32(0, value); return NewExpValueR32(SqrtR32(value)); }
+EXPRESSION_FUNC_DEFINITION(Cbrt_Glue)                 { EXP_GET_ARG_R32(0, value); return NewExpValueR32(CbrtR32(value)); }
+EXPRESSION_FUNC_DEFINITION(SignOf_Glue)               { EXP_GET_ARG_R32(0, value); return NewExpValueR32(SignOfR32(value)); }
+EXPRESSION_FUNC_DEFINITION(Clamp_Glue)                { EXP_GET_ARG_R32(0, value); EXP_GET_ARG_R32(1, min); EXP_GET_ARG_R32(2, max); return NewExpValueR32(ClampR32(value, min, max)); }
+EXPRESSION_FUNC_DEFINITION(Lerp_Glue)                 { EXP_GET_ARG_R32(0, val1); EXP_GET_ARG_R32(1, val2); EXP_GET_ARG_R32(2, amount); return NewExpValueR32(LerpR32(val1, val2, amount)); }
+EXPRESSION_FUNC_DEFINITION(LerpClamp_Glue)            { EXP_GET_ARG_R32(0, val1); EXP_GET_ARG_R32(1, val2); EXP_GET_ARG_R32(2, amount); return NewExpValueR32(LerpClampR32(val1, val2, amount)); }
+EXPRESSION_FUNC_DEFINITION(DecimalPart_Glue)          { EXP_GET_ARG_R32(0, value); return NewExpValueR32(DecimalPartR32(value)); }
+EXPRESSION_FUNC_DEFINITION(BasicallyEqual_Glue)       { EXP_GET_ARG_R32(0, value1); EXP_GET_ARG_R32(1, value2); return NewExpValueBool(BasicallyEqualR32(value1, value2)); }
+EXPRESSION_FUNC_DEFINITION(BasicallyGreaterThan_Glue) { EXP_GET_ARG_R32(0, value1); EXP_GET_ARG_R32(1, value2); return NewExpValueBool(BasicallyGreaterThanR32(value1, value2)); }
+EXPRESSION_FUNC_DEFINITION(BasicallyLessThan_Glue)    { EXP_GET_ARG_R32(0, value1); EXP_GET_ARG_R32(1, value2); return NewExpValueBool(BasicallyLessThanR32(value1, value2)); }
+EXPRESSION_FUNC_DEFINITION(BasicallyBetween_Glue)     { EXP_GET_ARG_R32(0, value); EXP_GET_ARG_R32(1, min); EXP_GET_ARG_R32(2, max); return NewExpValueBool(BasicallyBetweenR32(value, min, max)); }
+EXPRESSION_FUNC_DEFINITION(IsInfinite_Glue)           { EXP_GET_ARG_R32(0, value); return NewExpValueR32(IsInfiniteR32(value)); }
+EXPRESSION_FUNC_DEFINITION(RoundUpTo_Glue)            { EXP_GET_ARG_U64(0, value); EXP_GET_ARG_U64(0, chunkSize); return NewExpValueU64(RoundUpToU64(value, chunkSize)); }
+EXPRESSION_FUNC_DEFINITION(SubAnimAmount_Glue)        { EXP_GET_ARG_R32(0, animAmount); EXP_GET_ARG_R32(1, subPieceStart); EXP_GET_ARG_R32(2, subPieceEnd); return NewExpValueR32(SubAnimAmountR32(animAmount, subPieceStart, subPieceEnd)); }
+EXPRESSION_FUNC_DEFINITION(AngleFix_Glue)             { EXP_GET_ARG_R32(0, angle); return NewExpValueR32(AngleFixR32(angle)); }
+EXPRESSION_FUNC_DEFINITION(AngleDiff_Glue)            { EXP_GET_ARG_R32(0, left); EXP_GET_ARG_R32(0, right); return NewExpValueR32(AngleDiffR32(left, right)); }
+EXPRESSION_FUNC_DEFINITION(AngleOpposite_Glue)        { EXP_GET_ARG_R32(0, angle); return NewExpValueR32(AngleOppositeR32(angle)); }
+EXPRESSION_FUNC_DEFINITION(AngleLerp_Glue)            { EXP_GET_ARG_R32(0, angleFrom); EXP_GET_ARG_R32(1, angleTo); EXP_GET_ARG_R32(2, amount); return NewExpValueR32(AngleLerpR32(angleFrom, angleTo, amount)); }
+void AddStdLibraryFuncsToExpContext(ExpContext_t* context, MemArena_t* scratchArena)
+{
+	AddExpFuncDefByStr(context, scratchArena, "r32 square(r32 value)",                                      Square_Glue,               "Returns value*value");
+	AddExpFuncDefByStr(context, scratchArena, "r32 cube(r32 value)",                                        Cube_Glue,                 "Returns value*value*value");
+	AddExpFuncDefByStr(context, scratchArena, "r32 sin(r32 angle)",                                         Sin_Glue,                  "Returns the sine of the angle (angle is in radians)");
+	AddExpFuncDefByStr(context, scratchArena, "r32 cos(r32 angle)",                                         Cos_Glue,                  "Returns the cosine of the angle (angle is in radians)");
+	AddExpFuncDefByStr(context, scratchArena, "r32 tan(r32 angle)",                                         Tan_Glue,                  "Returns the tangent of the angle (angle is in radians)");
+	AddExpFuncDefByStr(context, scratchArena, "r32 asin(r32 value)",                                        Asin_Glue,                 "Returns the arcsine of the value, as radians");
+	AddExpFuncDefByStr(context, scratchArena, "r32 acos(r32 value)",                                        Acos_Glue,                 "Returns the arccosine of the value, as radians");
+	AddExpFuncDefByStr(context, scratchArena, "r32 atan2(r32 y, r32 x)",                                    Atan2_Glue,                "Returns the arctangent of y/x, as radians");
+	AddExpFuncDefByStr(context, scratchArena, "r32 atan(r32 value)",                                        Atan_Glue,                 "Returns the arctangent of the value, as radians");
+	AddExpFuncDefByStr(context, scratchArena, "r32 to_radians(r32 degrees)",                                ToRadians_Glue,            "Converts degrees -> radians");
+	AddExpFuncDefByStr(context, scratchArena, "r32 to_degrees(r32 radians)",                                ToDegrees_Glue,            "Converts radians -> degrees");
+	AddExpFuncDefByStr(context, scratchArena, "u64 kilo(u64 num_kilobytes)",                                Kilo_Glue,                 "Multiplies the input number by 1024 (aka 1kB)");
+	AddExpFuncDefByStr(context, scratchArena, "u64 mega(u64 num_megabytes)",                                Mega_Glue,                 "Multiplies the input number by 1024*1024 (aka 1MB)");
+	AddExpFuncDefByStr(context, scratchArena, "u64 giga(u64 num_gigabytes)",                                Giga_Glue,                 "Multiplies the input number by 1024*1024*1024 (aka 1GB)");
+	AddExpFuncDefByStr(context, scratchArena, "u64 tera(u64 num_terabytes)",                                Tera_Glue,                 "Multiplies the input number by 1024*1024*1024*1024 (aka 1TB)");
+	AddExpFuncDefByStr(context, scratchArena, "i64 min(i64 value1, i64 value2)",                            Min_Glue,                  "Returns the minimum of the two values");
+	AddExpFuncDefByStr(context, scratchArena, "i64 max(i64 value1, i64 value2)",                            Max_Glue,                  "Returns the maximum of the two values");
+	AddExpFuncDefByStr(context, scratchArena, "r32 abs(r32 value)",                                         Abs_Glue,                  "Returns the absolute value of the input");
+	AddExpFuncDefByStr(context, scratchArena, "r32 round(r32 value)",                                       Round_Glue,                "Rounds the input to the nearest whole number");
+	AddExpFuncDefByStr(context, scratchArena, "i64 roundi(r32 value)",                                      Roundi_Glue,               "Rounds the input to the nearest whole number (and returns the result as an i64)");
+	AddExpFuncDefByStr(context, scratchArena, "r32 floor(r32 value)",                                       Floor_Glue,                "Returns the closest whole number that is <= the input");
+	AddExpFuncDefByStr(context, scratchArena, "r32 ceil(r32 value)",                                        Ceil_Glue,                 "Returns the closest whole number that is >= the input");
+	AddExpFuncDefByStr(context, scratchArena, "r32 saw(r32 angle)",                                         Saw_Glue,                  "Acts like sin(angle) but returns a sawtooth waveform instead");
+	AddExpFuncDefByStr(context, scratchArena, "r32 pow(r32 value, r32 power)",                              Pow_Glue,                  "Returns a number raised to a power");
+	AddExpFuncDefByStr(context, scratchArena, "r32 ln(r32 value)",                                          Ln_Glue,                   "Returns the natural log of the value");
+	AddExpFuncDefByStr(context, scratchArena, "r32 log2(r32 value)",                                        Log2_Glue,                 "Returns the base-2 log of the value");
+	AddExpFuncDefByStr(context, scratchArena, "r32 log10(r32 value)",                                       Log10_Glue,                "Returns the base-10 log of the value");
+	AddExpFuncDefByStr(context, scratchArena, "r32 sqrt(r32 value)",                                        Sqrt_Glue,                 "Returns the square root of the value");
+	AddExpFuncDefByStr(context, scratchArena, "r32 cbrt(r32 value)",                                        Cbrt_Glue,                 "Returns the cube root of the value");
+	AddExpFuncDefByStr(context, scratchArena, "r32 sign(r32 value)",                                        SignOf_Glue,               "Returns -1 or 1 based on whether the input is positive or negative (returns 0 for 0)");
+	AddExpFuncDefByStr(context, scratchArena, "r32 clamp(r32 value, r32 min, r32 max)",                     Clamp_Glue,                "Returns the input number, but if outside range will return min or max");
+	AddExpFuncDefByStr(context, scratchArena, "r32 lerp(r32 val1, r32 val2, r32 amount)",                   Lerp_Glue,                 "Returns some value between val1 and val2 with amount specifying a percentage in the range [0, 1] to interpolate between val1 and val2");
+	AddExpFuncDefByStr(context, scratchArena, "r32 lerp_clamp(r32 val1, r32 val2, r32 amount)",             LerpClamp_Glue,            "Same as lerp but will clamp the value to be between val1 and val2, so inputs outside the range [0, 1] for amount won't produce unexpected values");
+	AddExpFuncDefByStr(context, scratchArena, "r32 fract(r32 value)",                                       DecimalPart_Glue,          "Returns the decimal portion of the input number. Ex: 7.234 = 0.234");
+	AddExpFuncDefByStr(context, scratchArena, "bool equalf(r32 value1, r32 value2)",                        BasicallyEqual_Glue,       "Compares two floating point numbers to see if they are == (with a small tolerance for rounding errors)");
+	AddExpFuncDefByStr(context, scratchArena, "bool greaterf(r32 value1, r32 value2)",                      BasicallyGreaterThan_Glue, "Compares two floating point numbers to see if they are >= (with a small tolerance for rounding errors)");
+	AddExpFuncDefByStr(context, scratchArena, "bool lessf(r32 value1, r32 value2)",                         BasicallyLessThan_Glue,    "Compares two floating point numbers to see if they are <= (with a small tolerance for rounding errors)");
+	AddExpFuncDefByStr(context, scratchArena, "bool betweenf(r32 value, r32 min, r32 max)",                 BasicallyBetween_Glue,     "Checks that the value is within the range [min, max] (with a small tolerance for rounding errors)");
+	AddExpFuncDefByStr(context, scratchArena, "bool is_infinite(r32 value)",                                IsInfinite_Glue,           "Returns true if the value is +infinity or -infinity or NaN");
+	AddExpFuncDefByStr(context, scratchArena, "u64 round_up_to(u64 value, u64 chunkSize)",                  RoundUpTo_Glue,            "Divides some value by chunkSize and returns the division, with remainders causing a round up");
+	AddExpFuncDefByStr(context, scratchArena, "r32 sub_anim_amount(r32 input, r32 sub_start, r32 sub_end)", SubAnimAmount_Glue,        "Given some input in the range [0, 1] and a sub-range within that input, this will produce a new [0, 1] value that is mapped to that sub-range");
+	AddExpFuncDefByStr(context, scratchArena, "r32 angle_fix(r32 angle)",                                   AngleFix_Glue,             "Brings a float storing radians within the range of [0, 2*pi) while maintaining the angle value");
+	AddExpFuncDefByStr(context, scratchArena, "r32 angle_diff(r32 left, r32 right)",                        AngleDiff_Glue,            "Finds the smallest signed difference between two angles, shortest path, taking into account how 0 == 2*pi");
+	AddExpFuncDefByStr(context, scratchArena, "r32 angle_opposite(r32 angle)",                              AngleOpposite_Glue,        "Returns the opposite of a particular angle, always normalized to be between [0, 2*pi)");
+	AddExpFuncDefByStr(context, scratchArena, "r32 angle_lerp(r32 start, r32 end, r32 amount)",             AngleLerp_Glue,            "Like lerp, but it will take the shortest path between two angles (even if it crosses 0/2*pi)");
+	// AddExpFuncDefByStr(context, scratchArena, "u64 name(u64 arg)", Name_Glue,      "desc");
+}
+
+void AddStdLibraryConstantsToExpContext(ExpContext_t* context)
+{
+	AddExpConstantDef(context, "pi",             NewExpValueR32(Pi32));
+	AddExpConstantDef(context, "pi32",           NewExpValueR32(Pi32));
+	AddExpConstantDef(context, "pi64",           NewExpValueR64(Pi64));
+	AddExpConstantDef(context, "quarter_pi",     NewExpValueR32(QuarterPi32));
+	AddExpConstantDef(context, "third_pi",       NewExpValueR32(ThirdPi32));
+	AddExpConstantDef(context, "half_pi",        NewExpValueR32(HalfPi32));
+	AddExpConstantDef(context, "three_halfs_pi", NewExpValueR32(ThreeHalfsPi32));
+	AddExpConstantDef(context, "two_pi",         NewExpValueR32(TwoPi32));
+	AddExpConstantDef(context, "e32",            NewExpValueR32(e32));
+	AddExpConstantDef(context, "e64",            NewExpValueR64(e64));
+	AddExpConstantDef(context, "sqrt2",          NewExpValueR32(Sqrt2_32));
+}
+
 #endif GYLIB_HEADER_ONLY
 
 #endif //  _GY_EXPRESSION_H
@@ -3937,6 +4475,9 @@ void GetExpAutocompleteInfo(MyStr_t expressionStr, u64 cursorIndex, MemArena_t* 
 /*
 @Defines
 EXPRESSIONS_MAX_PART_CHILDREN
+EXPRESSIONS_MAX_FUNC_ARGS
+EXPRESSIONS_MAX_PARSE_STACK_SIZE
+EXPRESSIONS_MAX_EVAL_STACK_SIZE
 EXPRESSIONS_MAX_NUM_PARTS
 ExpValueType_None
 ExpValueType_Void
@@ -3954,56 +4495,224 @@ ExpValueType_U16
 ExpValueType_U32
 ExpValueType_U64
 ExpValueType_NumTypes
-ExpOp_None
-ExpOp_Add
-ExpOp_Subtract
-ExpOp_Multiply
-ExpOp_Divide
-ExpOp_Equals
-ExpOp_NotEquals
-ExpOp_Or
-ExpOp_And
-ExpOp_Xor
-ExpOp_Not
-ExpOp_BitwiseOr
-ExpOp_BitwiseAnd
-ExpOp_BitwiseXor
-ExpOp_BitwiseNot
-ExpOp_Ternary
-ExpOp_Assignment
-ExpOp_NumOps
 ExpPartType_None
 ExpPartType_Constant
 ExpPartType_Variable
 ExpPartType_Operator
 ExpPartType_Function
+ExpPartType_ParenthesisGroup
+ExpPartType_TypeCast
 ExpPartType_NumTypes
 ExpTokenType_None
 ExpTokenType_Operator
 ExpTokenType_Parenthesis
-ExpTokenType_Quote
 ExpTokenType_Comma
 ExpTokenType_Number
 ExpTokenType_String
 ExpTokenType_Identifier
 ExpTokenType_NumTypes
+ExpStepOrder_None
+ExpStepOrder_Prefix
+ExpStepOrder_Natural
+ExpStepOrder_Postfix
+ExpStepOrder_NumOrders
 @Types
+ExpressionFunc_f
+ExpGetterBool_f
+ExpGetterPntr_f
+ExpGetterStr_f
+ExpGetterR32_f
+ExpGetterR64_f
+ExpGetterI8_f
+ExpGetterI16_f
+ExpGetterI32_f
+ExpGetterI64_f
+ExpGetterU8_f
+ExpGetterU16_f
+ExpGetterU32_f
+ExpGetterU64_f
+ExpSetterBool_f
+ExpSetterPntr_f
+ExpSetterStr_f
+ExpSetterR32_f
+ExpSetterR64_f
+ExpSetterI8_f
+ExpSetterI16_f
+ExpSetterI32_f
+ExpSetterI64_f
+ExpSetterU8_f
+ExpSetterU16_f
+ExpSetterU32_f
+ExpSetterU64_f
 ExpValueType_t
-ExpOp_t
 ExpPartType_t
 ExpTokenType_t
+ExpStepOrder_t
 ExpValue_t
 ExpPart_t
+ExpPartStack_t
 ExpVariableDef_t
 ExpFuncArg_t
 ExpFuncDef_t
 ExpContext_t
 Expression_t
+ExpToken_t
+ExpTokenizer_t
+ExpStepCallback_f
+ExpTypeCheckState_t
+ExpEvaluateState_t
+ExpAutocompleteInfo_t
 @Functions
-ExpValue_t EXPRESSION_FUNC_DEFINITION(Expression_t* expression, ExpContext_t* context, u64 numArgs, const struct ExpValue_t* args)
+ExpValue_t EXPRESSION_FUNC_DEFINITION(Expression_t* expression, ExpContext_t* context, u64 numArgs, const ExpValue_t* args)
+type EXPRESSION_VAR_GETTER(struct Expression_t* expression, struct ExpContext_t* context, struct ExpVariableDef_t* variableDef)
+void EXPRESSION_VAR_SETTER(struct Expression_t* expression, struct ExpContext_t* context, struct ExpVariableDef_t* variableDef, type newValue)
 const char* GetExpValueTypeStr(ExpValueType_t enumValue)
+const char* GetExpValueTypeStrLower(ExpValueType_t enumValue)
 const char* GetExpOpStr(ExpOp_t enumValue)
+const char* GetExpOpSyntaxStr(ExpOp_t enumValue, bool secondPart = false)
 const char* GetExpPartTypeStr(ExpPartType_t enumValue)
 const char* GetExpTokenTypeStr(ExpTokenType_t enumValue)
+const char* GetExpStepOrderStr(ExpStepOrder_t enumValue)
+void EXP_STEP_CALLBACK(Expression_t* expression, ExpPart_t* part, u64 callbackIndex, u64 depth, ExpContext_t* context, void* userPntr)
+#define EXP_GET_ARG_BOOL(index, argName)
+#define EXP_GET_ARG_STR(index, argName)
+#define EXP_GET_ARG_R32(index, argName)
+#define EXP_GET_ARG_R64(index, argName)
+#define EXP_GET_ARG_I8(index, argName)
+#define EXP_GET_ARG_I16(index, argName)
+#define EXP_GET_ARG_I32(index, argName)
+#define EXP_GET_ARG_I64(index, argName)
+#define EXP_GET_ARG_U8(index, argName)
+#define EXP_GET_ARG_U16(index, argName)
+#define EXP_GET_ARG_U32(index, argName)
+#define EXP_GET_ARG_U64(index, argName)
 void FreeExpValue(MemArena_t* allocArena, ExpValue_t* value)
+void FreeExpression(Expression_t* expression)
+void FreeExpFuncDef(ExpFuncDef_t* funcDef, MemArena_t* allocArena)
+void FreeExpContext(ExpContext_t* context)
+void CopyExpFuncDef(ExpFuncDef_t* dest, ExpFuncDef_t* source, MemArena_t* memArena = nullptr)
+ExpValue_t NewExpValueVoid()
+ExpValue_t NewExpValueBool(bool value)
+ExpValue_t NewExpValueStr(MyStr_t value)
+ExpValue_t NewExpValueStr(const char* valueNt)
+ExpValue_t NewExpValuePntr(u64 typeId, void* value)
+ExpValue_t NewExpValueR32(r32 value)
+ExpValue_t NewExpValueR64(r64 value)
+ExpValue_t NewExpValueI8(i8 value)
+ExpValue_t NewExpValueI16(i16 value)
+ExpValue_t NewExpValueI32(i32 value)
+ExpValue_t NewExpValueI64(i64 value)
+ExpValue_t NewExpValueU8(u8 value)
+ExpValue_t NewExpValueU16(u16 value)
+ExpValue_t NewExpValueU32(u32 value)
+ExpValue_t NewExpValueU64(u64 value)
+u8 GetExpOperandCount(ExpOp_t opType)
+u8 GetExpOpPrecedence(ExpOp_t opType)
+bool IsExpPartReadyToBeOperand(const ExpPart_t* expPart)
+bool CanExpPartProduceLeftHandOperand(const ExpPart_t* expPart)
+inline bool IsExpValueTypeInteger(ExpValueType_t type)
+inline bool IsExpValueTypeFloat(ExpValueType_t type)
+inline bool IsExpValueTypeSigned(ExpValueType_t type)
+inline bool IsExpValueTypeNumber(ExpValueType_t type)
+inline bool IsExpValueTypeConstantCompat(ExpValueType_t type)
+inline bool IsExpValueTypeBoolable(ExpValueType_t type)
+inline bool CanExpValueTypeConvertTo(ExpValueType_t type, ExpValueType_t outType)
+inline bool CanCastExpValueTo(ExpValueType_t valueType, ExpValueType_t type)
+inline u8 GetExpValueTypeByteSize(ExpValueType_t type)
+MyStr_t ExpValueToStr(ExpValue_t value, MemArena_t* memArena, bool includeType = false)
+void InitExpContext(MemArena_t* memArena, ExpContext_t* contextOut, bool allocateStrings = true)
+ExpConstantDef_t* FindExpConstantDef(ExpContext_t* context, MyStr_t constantName, u64* indexOut = nullptr)
+ExpVariableDef_t* FindExpVariableDef(ExpContext_t* context, MyStr_t variableName, u64* indexOut = nullptr)
+ExpFuncDef_t* FindExpFuncDef(ExpContext_t* context, MyStr_t functionName, u64 numArguments = UINT64_MAX, u64* indexOut = nullptr)
+ExpConstantDef_t* AddExpConstantDef(ExpContext_t* context, MyStr_t constantName, ExpValue_t value, MyStr_t documentation = MyStr_Empty_Const)
+ExpVariableDef_t* AddExpVariableDef_(ExpContext_t* context, bool writeable, MyStr_t variableName, ExpValueType_t type, u64 pntrSize, const void* pntr, MyStr_t documentation = MyStr_Empty_Const)
+ExpVariableDef_t* AddExpVariableDefFuncs_(ExpContext_t* context, MyStr_t variableName, ExpValueType_t type, void* getter, void* setter, MyStr_t documentation = MyStr_Empty_Const)
+ExpVariableDef_t* AddExpVariableDefBool(ExpContext_t* context, bool writeable, MyStr_t     variableName,   const bool* pntr,    MyStr_t documentation = MyStr_Empty_Const)
+ExpVariableDef_t* AddExpVariableDefPntr(ExpContext_t* context, bool writeable, MyStr_t     variableName,   const void** pntr,   MyStr_t documentation = MyStr_Empty_Const)
+ExpVariableDef_t* AddExpVariableDefStr(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const MyStr_t* pntr, MyStr_t documentation = MyStr_Empty_Const)
+ExpVariableDef_t* AddExpVariableDefR32(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const r32* pntr,     MyStr_t documentation = MyStr_Empty_Const)
+ExpVariableDef_t* AddExpVariableDefR64(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const r64* pntr,     MyStr_t documentation = MyStr_Empty_Const)
+ExpVariableDef_t* AddExpVariableDefI8(ExpContext_t*   context, bool writeable, MyStr_t     variableName,   const i8*  pntr,     MyStr_t documentation = MyStr_Empty_Const)
+ExpVariableDef_t* AddExpVariableDefI16(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const i16* pntr,     MyStr_t documentation = MyStr_Empty_Const)
+ExpVariableDef_t* AddExpVariableDefI32(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const i32* pntr,     MyStr_t documentation = MyStr_Empty_Const)
+ExpVariableDef_t* AddExpVariableDefI64(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const i64* pntr,     MyStr_t documentation = MyStr_Empty_Const)
+ExpVariableDef_t* AddExpVariableDefU8(ExpContext_t*   context, bool writeable, MyStr_t     variableName,   const u8*  pntr,     MyStr_t documentation = MyStr_Empty_Const)
+ExpVariableDef_t* AddExpVariableDefU16(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const u16* pntr,     MyStr_t documentation = MyStr_Empty_Const)
+ExpVariableDef_t* AddExpVariableDefU32(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const u32* pntr,     MyStr_t documentation = MyStr_Empty_Const)
+ExpVariableDef_t* AddExpVariableDefU64(ExpContext_t*  context, bool writeable, MyStr_t     variableName,   const u64* pntr,     MyStr_t documentation = MyStr_Empty_Const)
+ExpFuncDef_t* AddExpFuncDef(ExpContext_t* context, ExpValueType_t returnType, MyStr_t functionName, ExpressionFunc_f* functionPntr, MyStr_t documentation = MyStr_Empty_Const)
+ExpFuncArg_t* AddExpFuncArg(ExpContext_t* context, ExpFuncDef_t* funcDef, ExpValueType_t argumentType, MyStr_t argumentName, MyStr_t documentation = MyStr_Empty_Const)
+ExpValueType_t GetExpResultTypeForMathOp(ExpValueType_t leftOperandType, ExpValueType_t rightOperandType, bool isSubtractOp, Result_t* reasonOut = nullptr)
+ExpValueType_t GetExpResultTypeForTernaryOp(ExpValueType_t trueOperandType, ExpValueType_t falseOperandType, Result_t* reasonOut = nullptr)
+ExpValueType_t GetExpIntegerTypeForBitwiseOp(ExpValueType_t leftOperandType, ExpValueType_t rightOperandType, bool isAndOp, Result_t* reasonOut = nullptr)
+ExpValueType_t GetExpCommonTypeForComparisonOp(ExpValueType_t leftOperandType, ExpValueType_t rightOperandType, bool isStraightEqualityOp, Result_t* reasonOut = nullptr)
+ExpValue_t CastExpValue(ExpValue_t value, ExpValueType_t type)
+void WriteExpVariable_(ExpVariableDef_t* variableDef, u64 valueSize, const void* valuePntr)
+void WriteExpVariable(ExpVariableDef_t* variableDef, ExpValue_t value)
+void WriteExpVariableBool(ExpVariableDef_t* variableDef, bool value)
+void WriteExpVariablePointer(ExpVariableDef_t* variableDef, void* value)
+void WriteExpVariableString(ExpVariableDef_t* variableDef, MyStr_t value)
+void WriteExpVariableR32(ExpVariableDef_t* variableDef, r32 value)
+void WriteExpVariableR64(ExpVariableDef_t* variableDef, r64 value)
+void WriteExpVariableI8(ExpVariableDef_t* variableDef, i8 value)
+void WriteExpVariableI16(ExpVariableDef_t* variableDef, i16 value)
+void WriteExpVariableI32(ExpVariableDef_t* variableDef, i32 value)
+void WriteExpVariableI64(ExpVariableDef_t* variableDef, i64 value)
+void WriteExpVariableU8(ExpVariableDef_t* variableDef, u8 value)
+void WriteExpVariableU16(ExpVariableDef_t* variableDef, u16 value)
+void WriteExpVariableU32(ExpVariableDef_t* variableDef, u32 value)
+void WriteExpVariableU64(ExpVariableDef_t* variableDef, u64 value)
+ExpValue_t ReadExpVariable_(ExpVariableDef_t* variableDef)
+bool ReadExpVariableBool(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr)
+void* ReadExpVariablePointer(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr)
+r32 ReadExpVariableR32(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr)
+r64 ReadExpVariableR64(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr)
+i8 ReadExpVariableI8(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr)
+i16 ReadExpVariableI16(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr)
+i32 ReadExpVariableI32(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr)
+i64 ReadExpVariableI64(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr)
+u8 ReadExpVariableU8(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr)
+u16 ReadExpVariableU16(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr)
+u32 ReadExpVariableU32(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr)
+u64 ReadExpVariableU64(Expression_t* expression, ExpVariableDef_t* variableDef, ExpContext_t* context = nullptr)
+ExpToken_t NewExpToken(ExpTokenType_t type, MyStr_t tokenStr)
+ExpTokenizer_t NewExpTokenizer(MyStr_t expressionStr)
+bool ExpTokenizerGetNext(ExpTokenizer_t* tokenizer, ExpToken_t* tokenOut, Result_t* errorOut = nullptr, bool allowErrors = false)
+Result_t TryTokenizeExpressionStr(MyStr_t expressionStr, MemArena_t* memArena, ExpToken_t** tokensOut, u64* numTokensOut, bool allowErrors = false)
+ExpToken_t* TokenizeExpressionStr(MyStr_t expressionStr, MemArena_t* memArena, u64* numTokensOut, Result_t* resultOut = nullptr, bool allowErrors = false)
+MyStr_t UnescapeExpressionStr(MemArena_t* memArena, MyStr_t string)
+MyStr_t EscapeExpressionStr(MemArena_t* memArena, MyStr_t string)
+void PushExpPart(ExpPartStack_t* stack, ExpPart_t* partPntr)
+ExpPart_t* PopExpPart(ExpPartStack_t* stack)
+ExpPart_t* PeekExpPart(ExpPartStack_t* stack)
+void PushAndConnectExpPart(ExpPartStack_t* stack, ExpPart_t* partPntr)
+ExpValue_t ConvertExpNumberToken(MyStr_t numberStr)
+ExpPart_t* SplitExpPartTreeWithPrecedenceAtLeast(ExpPart_t* leftPart, ExpOp_t opType, ExpPart_t** remainingPortionOut)
+bool FindExpClosingParensToken(u64 numTokens, const ExpToken_t* tokens, u64 startIndex, u64* indexOut)
+ExpPart_t* AddExpPart(Expression_t* expression, u64 tokenIndex, ExpPartType_t type)
+ExpPart_t* AddExpConstantString(Expression_t* expression, u64 tokenIndex, MyStr_t value)
+ExpPart_t* AddExpVariable(Expression_t* expression, u64 tokenIndex, u64 variableIndex)
+ExpPart_t* AddExpOperator(Expression_t* expression, u64 tokenIndex, ExpOp_t opType, ExpPart_t* firstChild = nullptr, ExpPart_t* secondChild = nullptr, ExpPart_t* thirdChild = nullptr)
+ExpPart_t* AddExpFunction(Expression_t* expression, u64 tokenIndex, u64 functionIndex)
+ExpPart_t* AddExpParenthesisGroup(Expression_t* expression, u64 tokenIndex, ExpPart_t* childRoot)
+Result_t TryCreateExpressionFromTokens_Helper(Expression_t* expression, const ExpContext_t* context, u64 numTokens, const ExpToken_t* tokens, ExpPart_t** rootOut, ExpPart_t* functionPart = nullptr)
+Result_t TryCreateExpressionFromTokens(const ExpContext_t* context, u64 numTokens, const ExpToken_t* tokens, Expression_t* expressionOut, MemArena_t* memArena = nullptr)
+Result_t TryCreateExpFuncDefFromTokens(u64 numTokens, const ExpToken_t* tokens, ExpFuncDef_t* funcDefOut, MemArena_t* memArena = nullptr)
+ExpFuncDef_t CreateExpFuncDefFromTokens(u64 numTokens, const ExpToken_t* tokens, MemArena_t* memArena = nullptr)
+u64 StepThroughExpression_Helper(Expression_t* expression, ExpPart_t* part, ExpStepOrder_t order, ExpStepCallback_f* callback, ExpContext_t* context, void* userPntr, u64 startIndex, u64 depth)
+void StepThroughExpression(Expression_t* expression, ExpStepOrder_t order, ExpStepCallback_f* callback, ExpContext_t* context = nullptr, void* userPntr = nullptr)
+Result_t ExpressionTypeCheckWalk(Expression_t* expression, const ExpContext_t* context = nullptr, u64* errorPartIndex = nullptr)
+ExpValue_t PerformMathOpOnExpValues(ExpValue_t leftOperand, ExpOp_t opType, ExpValue_t rightOperand)
+Result_t EvaluateExpression(Expression_t* expression, ExpContext_t* context = nullptr, ExpValue_t* valueOut = nullptr)
+Result_t TryAddExpFuncDefByStr(ExpContext_t* context, MemArena_t* scratchArena, MyStr_t funcDefString, ExpressionFunc_f* functionPntr, MyStr_t documentation = MyStr_Empty_Const)
+MyStr_t TryAddExpFuncDefByStrErrorStr(ExpContext_t* context, MemArena_t* scratchArena, MyStr_t funcDefString, ExpressionFunc_f* functionPntr, MyStr_t documentation = MyStr_Empty_Const)
+void AddExpFuncDefByStr(ExpContext_t* context, MemArena_t* scratchArena, MyStr_t funcDefString, ExpressionFunc_f* functionPntr, MyStr_t documentation = MyStr_Empty_Const)
+Result_t ValidateExpression(MyStr_t expressionStr, MemArena_t* scratchArena, ExpContext_t* context = nullptr)
+Result_t TryRunExpression(MyStr_t expressionStr, MemArena_t* scratchArena, ExpValue_t* valueOut = nullptr, ExpContext_t* context = nullptr)
+MyStr_t TryRunExpressionErrorStr(MyStr_t expressionStr, MemArena_t* scratchArena, ExpValue_t* valueOut = nullptr, ExpContext_t* context = nullptr)
+ExpValue_t RunExpression(MyStr_t expressionStr, MemArena_t* scratchArena, ExpContext_t* context = nullptr)
+bool IsTokenHigherPriorityForAutocomplete(const ExpToken_t* newToken, const ExpToken_t* oldToken)
+void GetExpAutocompleteInfo(MyStr_t expressionStr, u64 cursorIndex, MemArena_t* scratchArena, ExpAutocompleteInfo_t* infoOut, const ExpContext_t* context = nullptr)
+void AddStdLibraryFuncsToExpContext(ExpContext_t* context, MemArena_t* scratchArena)
+void AddStdLibraryConstantsToExpContext(ExpContext_t* context)
 */

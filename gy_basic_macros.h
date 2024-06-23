@@ -57,6 +57,7 @@ Description:
 #define Kilobytes(value) ((value) * 1024UL)
 #define Megabytes(value) (Kilobytes((value)) * 1024UL)
 #define Gigabytes(value) (Megabytes((value)) * 1024UL)
+#define Terabytes(value) (Gigabytes((value)) * 1024UL)
 
 #define ToRadians32(degrees)		((degrees)/180.0f * Pi32)
 #define ToRadians64(degrees)		((degrees)/180.0 * Pi64)
@@ -162,6 +163,7 @@ EXTERN_C_END
 #define Kilobytes(value)
 #define Megabytes(value)
 #define Gigabytes(value)
+#define Terabytes(value)
 #define ToRadians32(degrees)
 #define ToRadians64(degrees)
 #define ToDegrees32(radians)
