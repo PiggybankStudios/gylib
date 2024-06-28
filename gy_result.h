@@ -9,6 +9,11 @@ Description:
 	**  3. There are a small number of possibilities (or the possibilities are shared with many other enums)
 	** With all this in mind, we can make a single enum that serves all these
 	** disparate scenarios, so we don't have to create new enums all the time.
+	
+	** Another benefit of having a single enum for error codes is that we can
+	** easily pass the result from some inner error up to higher levels without
+	** worrying about mapping the inner error code to one that matches the upper
+	** list of possible errors.
 */
 
 #ifndef _GY_RESULT_H
@@ -132,6 +137,8 @@ enum Result_t
 	Result_InvalidCast,
 	Result_MissingType,
 	Result_ReadOnly,
+	Result_StartsWithNumber,
+	Result_MismatchStartEndTokens,
 	
 	Result_NumValues,
 };
@@ -255,6 +262,8 @@ const char* GetResultStr(Result_t enumValue)
 		case Result_InvalidCast:                    return "InvalidCast";
 		case Result_MissingType:                    return "MissingType";
 		case Result_ReadOnly:                       return "ReadOnly";
+		case Result_StartsWithNumber:               return "StartsWithNumber";
+		case Result_MismatchStartEndTokens:         return "MismatchStartEndTokens";
 		default: return "Unknown";
 	}
 }
