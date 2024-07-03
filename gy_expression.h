@@ -2338,7 +2338,6 @@ MyStr_t EscapeExpressionStr(MemArena_t* memArena, MyStr_t string)
 	{
 		Assert(outIndex < result.length);
 		char c = string.chars[inIndex];
-		char nextChar = ((inIndex+1) < string.length) ? string.chars[inIndex+1] : '\0';
 		if (c == '\\')
 		{
 			result.chars[outIndex++] = '\\';
@@ -2582,8 +2581,6 @@ ExpPart_t* SplitExpPartTreeWithPrecedenceAtLeast(ExpPart_t* leftPart, ExpOp_t op
 bool FindExpClosingParensToken(u64 numTokens, const ExpToken_t* tokens, u64 startIndex, u64* indexOut)
 {
 	AssertIf(numTokens > 0, tokens != nullptr);
-	bool foundEndParenthesis = false;
-	u64 endParenthesisIndex = 0;
 	u64 parensLevel = 0;
 	
 	for (u64 tIndex = startIndex; tIndex < numTokens; tIndex++)
@@ -3130,6 +3127,8 @@ void StepThroughExpression(Expression_t* expression, ExpStepOrder_t order, ExpSt
 // void ExpressionTypeCheckWalk_Callback(Expression_t* expression, ExpPart_t* part, u64 callbackIndex, u64 depth, ExpContext_t* context, void* userPntr)
 EXP_STEP_CALLBACK(ExpressionTypeCheckWalk_Callback)
 {
+	UNUSED(callbackIndex);
+	UNUSED(depth);
 	NotNull3(expression, part, userPntr);
 	ExpTypeCheckState_t* state = (ExpTypeCheckState_t*)userPntr;
 	if (state->result != Result_None) { return; } //once we have an error, skip the rest of the callbacks
@@ -3566,6 +3565,8 @@ ExpValue_t PerformMathOpOnExpValues(ExpValue_t leftOperand, ExpOp_t opType, ExpV
 // void EvaluateExpression_Callback(Expression_t* expression, ExpPart_t* part, u64 callbackIndex, u64 depth, ExpContext_t* context, void* userPntr)
 EXP_STEP_CALLBACK(EvaluateExpression_Callback)
 {
+	UNUSED(callbackIndex);
+	UNUSED(depth);
 	NotNull3(expression, part, userPntr);
 	ExpEvaluateState_t* state = (ExpEvaluateState_t*)userPntr;
 	if (state->result != Result_None) { return; }
@@ -4192,7 +4193,6 @@ void GetExpAutocompleteInfo(MyStr_t expressionStr, u64 cursorIndex, MemArena_t* 
 		ExpToken_t* token = &tokens[tIndex];
 		Assert(IsPntrInsideRange(token->str.chars, expressionStr.chars, expressionStr.length, true));
 		u64 tokenStartIndex = (u64)(token->str.chars - expressionStr.chars);
-		u64 tokenEndIndex = tokenStartIndex + token->str.length;
 		if (IsPntrInsideRange(expressionStr.chars + cursorIndex, token->str.chars, token->str.length, true))
 		{
 			if (currentTokenPntr == nullptr || IsTokenHigherPriorityForAutocomplete(token, currentTokenPntr))
@@ -4355,6 +4355,8 @@ void GetExpAutocompleteInfo(MyStr_t expressionStr, u64 cursorIndex, MemArena_t* 
 // +--------------------------------------------------------------+
 // |                  Standard Function Library                   |
 // +--------------------------------------------------------------+
+#pragma warning(push)
+#pragma warning(disable:4100) //unreferenced formal parameter
 EXPRESSION_FUNC_DEFINITION(Square_Glue)               { EXP_GET_ARG_R32(0, value); return NewExpValueR32(Square(value)); }
 EXPRESSION_FUNC_DEFINITION(Cube_Glue)                 { EXP_GET_ARG_R32(0, value); return NewExpValueR32(Cube(value)); }
 EXPRESSION_FUNC_DEFINITION(Sin_Glue)                  { EXP_GET_ARG_R32(0, angle); return NewExpValueR32(SinR32(angle)); }
@@ -4400,6 +4402,7 @@ EXPRESSION_FUNC_DEFINITION(AngleFix_Glue)             { EXP_GET_ARG_R32(0, angle
 EXPRESSION_FUNC_DEFINITION(AngleDiff_Glue)            { EXP_GET_ARG_R32(0, left); EXP_GET_ARG_R32(0, right); return NewExpValueR32(AngleDiffR32(left, right)); }
 EXPRESSION_FUNC_DEFINITION(AngleOpposite_Glue)        { EXP_GET_ARG_R32(0, angle); return NewExpValueR32(AngleOppositeR32(angle)); }
 EXPRESSION_FUNC_DEFINITION(AngleLerp_Glue)            { EXP_GET_ARG_R32(0, angleFrom); EXP_GET_ARG_R32(1, angleTo); EXP_GET_ARG_R32(2, amount); return NewExpValueR32(AngleLerpR32(angleFrom, angleTo, amount)); }
+#pragma warning(pop)
 void AddStdLibraryFuncsToExpContext(ExpContext_t* context, MemArena_t* scratchArena)
 {
 	AddExpFuncDefByStr(context, scratchArena, "r32 square(r32 value)",                                      Square_Glue,               "Returns value*value");
