@@ -198,14 +198,26 @@ typedef Obb3D_t       obb3;
 // +--------------------------------------------------------------+
 // |                   Simple Value Definitions                   |
 // +--------------------------------------------------------------+
-#define Rec_Zero    NewRec(0, 0, 0, 0)
-#define Rec_Default NewRec(0, 0, 1, 1)
-#define Reci_Zero   NewReci(0, 0, 0, 0)
-#define Box_Zero    NewBox(0, 0, 0, 0, 0, 0)
-#define Boxi_Zero   NewBoxi(0, 0, 0, 0, 0, 0)
-#define Obb2_Zero   NewObb2D(0, 0, 0, 0, 0)
+#define Rec_Zero       NewRec(0, 0, 0, 0)
+#define Rec_Default    NewRec(0, 0, 1, 1)
+#define Reci_Zero      NewReci(0, 0, 0, 0)
+#define Reci_Default   NewReci(0, 0, 1, 1)
+#define Box_Zero       NewBox(0, 0, 0, 0, 0, 0)
+#define Boxi_Zero      NewBoxi(0, 0, 0, 0, 0, 0)
+#define Obb2_Zero      NewObb2D(0, 0, 0, 0, 0)
 #if OBB3D_AVAILABLE
-#define Obb3_Zero   NewObb3D(0, 0, 0, 0, 0, 0, Quat_Identity)
+#define Obb3_Zero      NewObb3D(0, 0, 0, 0, 0, 0, Quat_Identity)
+#endif
+
+#define Rec_Zero_Const     { 0.0f, 0.0f, 0.0f, 0.0f }
+#define Rec_Default_Const  { 0.0f, 0.0f, 1.0f, 1.0f }
+#define Reci_Zero_Const    { 0, 0, 0, 0 }
+#define Reci_Default_Const { 0, 0, 1, 1 }
+#define Box_Zero_Const     { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f }
+#define Boxi_Zero_Const    { 0, 0, 0, 0, 0, 0 }
+#define Obb2_Zero_Const    { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f }
+#if OBB3D_AVAILABLE
+#define Obb3_Zero_Const    { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, Quat_Identity }
 #endif
 
 // +--------------------------------------------------------------+
@@ -461,26 +473,30 @@ typedef Obb3D_t       obb3;
 	void RecLayoutHorizontalCenter(rec* rectangleOut, r32 posToCenterTo, r32 percentage = 0.5f);
 	void RecLayoutHorizontalCenter(rec* rectangleOut, rec otherRectangle, r32 percentage = 0.5f);
 	obb2 Obb2Line(v2 start, v2 end, r32 thickness);
+	bool operator == (rec left, rec right);
+	bool operator != (rec left, rec right);
 	rec operator + (rec rectangle, v2 vector);
 	rec operator - (rec rectangle, v2 vector);
 	rec operator * (rec rectangle, r32 scale);
 	rec operator / (rec rectangle, r32 scale);
+	bool operator == (reci left, reci right);
+	bool operator != (reci left, reci right);
 	reci operator + (reci rectangle, v2i vector);
 	reci operator - (reci rectangle, v2i vector);
 	reci operator * (reci rectangle, i32 scale);
 	reci operator / (reci rectangle, i32 scale);
-	bool operator == (reci left, reci right);
-	bool operator != (reci left, reci right);
 	box operator + (box boundingBox, v3 vector);
 	box operator - (box boundingBox, v3 vector);
 	box operator * (box boundingBox, r32 scale);
 	box operator / (box boundingBox, r32 scale);
+	bool operator == (boxi left, boxi right);
+	bool operator != (boxi left, boxi right);
 	boxi operator + (boxi boundingBox, v3i vector);
 	boxi operator - (boxi boundingBox, v3i vector);
 	boxi operator * (boxi boundingBox, i32 scale);
 	boxi operator / (boxi boundingBox, i32 scale);
-	bool operator == (boxi left, boxi right);
-	bool operator != (boxi left, boxi right);
+	bool operator == (obb2 left, obb2 right);
+	bool operator != (obb2 left, obb2 right);
 	obb2 operator + (obb2 box, v2 vector);
 	obb2 operator - (obb2 box, v2 vector);
 	obb2 operator * (obb2 box, r32 scale);
@@ -3001,30 +3017,34 @@ obb2 Obb2Line(v2 start, v2 end, r32 thickness)
 // +--------------------------------------------------------------+
 // |                      Operator Overloads                      |
 // +--------------------------------------------------------------+
+bool operator == (rec left, rec right) { return  (left.x == right.x && left.y == right.y && left.width == right.width && left.height == right.height); }
+bool operator != (rec left, rec right) { return !(left.x == right.x && left.y == right.y && left.width == right.width && left.height == right.height); }
 rec operator + (rec rectangle, v2 vector) { return RecShift(rectangle, vector); }
 rec operator - (rec rectangle, v2 vector) { return RecShift(rectangle, -vector); }
 rec operator * (rec rectangle, r32 scale) { return RecScale(rectangle, scale); }
 rec operator / (rec rectangle, r32 scale) { return RecScale(rectangle, 1/scale); }
 
+bool operator == (reci left, reci right) { return  (left.x == right.x && left.y == right.y && left.width == right.width && left.height == right.height); }
+bool operator != (reci left, reci right) { return !(left.x == right.x && left.y == right.y && left.width == right.width && left.height == right.height); }
 reci operator + (reci rectangle, v2i vector) { return ReciShift(rectangle, vector); }
 reci operator - (reci rectangle, v2i vector) { return ReciShift(rectangle, -vector); }
 reci operator * (reci rectangle, i32 scale)  { return ReciScale(rectangle, scale); }
 reci operator / (reci rectangle, i32 scale)  { return ReciScale(rectangle, 1/scale); }
-bool operator == (reci left, reci right) { return  (left.x == right.x && left.y == right.y && left.width == right.width && left.height == right.height); }
-bool operator != (reci left, reci right) { return !(left.x == right.x && left.y == right.y && left.width == right.width && left.height == right.height); }
 
 box operator + (box boundingBox, v3 vector) { return BoxShift(boundingBox, vector); }
 box operator - (box boundingBox, v3 vector) { return BoxShift(boundingBox, -vector); }
 box operator * (box boundingBox, r32 scale) { return BoxScale(boundingBox, scale); }
 box operator / (box boundingBox, r32 scale) { return BoxScale(boundingBox, 1/scale); }
 
+bool operator == (boxi left, boxi right) { return  (left.x == right.x && left.y == right.y && left.z == right.z && left.width == right.width && left.height == right.height && left.depth == right.depth); }
+bool operator != (boxi left, boxi right) { return !(left.x == right.x && left.y == right.y && left.z == right.z && left.width == right.width && left.height == right.height && left.depth == right.depth); }
 boxi operator + (boxi boundingBox, v3i vector) { return BoxiShift(boundingBox, vector); }
 boxi operator - (boxi boundingBox, v3i vector) { return BoxiShift(boundingBox, -vector); }
 boxi operator * (boxi boundingBox, i32 scale)  { return BoxiScale(boundingBox, scale); }
 boxi operator / (boxi boundingBox, i32 scale)  { return BoxiScale(boundingBox, 1/scale); }
-bool operator == (boxi left, boxi right) { return  (left.x == right.x && left.y == right.y && left.z == right.z && left.width == right.width && left.height == right.height && left.depth == right.depth); }
-bool operator != (boxi left, boxi right) { return !(left.x == right.x && left.y == right.y && left.z == right.z && left.width == right.width && left.height == right.height && left.depth == right.depth); }
 
+bool operator == (obb2 left, obb2 right) { return  (left.x == right.x && left.y == right.y && left.width == right.width && left.height == right.height && left.rotation == right.rotation); }
+bool operator != (obb2 left, obb2 right) { return !(left.x == right.x && left.y == right.y && left.width == right.width && left.height == right.height && left.rotation == right.rotation); }
 obb2 operator + (obb2 box, v2 vector) { return Obb2DShift(box, vector); }
 obb2 operator - (obb2 box, v2 vector) { return Obb2DShift(box, -vector); }
 obb2 operator * (obb2 box, r32 scale) { return Obb2DScale(box, scale); }
@@ -3044,9 +3064,19 @@ obb2 operator / (obb2 box, r32 scale) { return Obb2DScale(box, 1/scale); }
 Rec_Zero
 Rec_Default
 Reci_Zero
+Reci_Default
 Box_Zero
 Boxi_Zero
 Obb2_Zero
+Obb3_Zero
+Rec_Zero_Const
+Rec_Default_Const
+Reci_Zero_Const
+Reci_Default_Const
+Box_Zero_Const
+Boxi_Zero_Const
+Obb2_Zero_Const
+Obb3_Zero_Const
 @Types
 Rectangle_t
 Rectanglei_t

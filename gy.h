@@ -35,6 +35,7 @@ Description:
 #include "gylib/gy_time.h"
 #include "gylib/gy_audio.h"
 #include "gylib/gy_string.h"
+#include "gylib/gy_path.h"
 #include "gylib/gy_string_buffer.h"
 #include "gylib/gy_uuid.h"
 #include "gylib/gy_stream.h"

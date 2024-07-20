@@ -222,10 +222,6 @@ struct SplitStringContext_t
 	u64 UnescapeQuotedStringInPlace(MyStr_t* target, bool removeQuotes = true, bool allowNewLineEscapes = true, bool allowOtherEscapeCodes = false);
 	MyStr_t UnescapeQuotedStringInArena(MemArena_t* memArena, MyStr_t target, bool removeQuotes = true, bool allowNewLineEscapes = true, bool allowOtherEscapeCodes = false);
 	MyStr_t* SplitStringBySpacesWithQuotesAndUnescape(MemArena_t* memArena, MyStr_t target, u64* numPiecesOut);
-	void SplitFilePath(MyStr_t fullPath, MyStr_t* directoryOut, MyStr_t* fileNameOut, MyStr_t* extensionOut = nullptr);
-	MyStr_t GetFileNamePart(MyStr_t filePath, bool includeExtension = true);
-	MyStr_t GetDirectoryPart(MyStr_t filePath);
-	const char* GetFileNamePartNt(const char* filePath);
 	void StrSpliceInPlace(MyStr_t target, u64 startIndex, MyStr_t replacement);
 	void StrSpliceInPlace(MyStr_t target, u64 startIndex, const char* replacementNullTerm);
 	void StrSpliceInPlace(char* targetNullTermStr, u64 startIndex, MyStr_t replacement);
@@ -1437,90 +1433,6 @@ MyStr_t* SplitStringBySpacesWithQuotesAndUnescape(MemArena_t* memArena, MyStr_t 
 	return pieces;
 }
 
-// if extensionOut is not passed then the extension will be included in the fileNameOut
-// Output MyStr_t are not reallocated so they are not all null-terminated
-// extensionOut will include the '.' character
-// If the path is actually a directory only we may interpret the last folder name as fileName w/ extension.
-// Only use full file paths in order to avoid this, or have trailing "/"
-void SplitFilePath(MyStr_t fullPath, MyStr_t* directoryOut, MyStr_t* fileNameOut, MyStr_t* extensionOut = nullptr)
-{
-	NotNullStr(&fullPath);
-	if (fullPath.length == 0)
-	{
-		if (directoryOut != nullptr) { *directoryOut = MyStr_Empty; }
-		if (fileNameOut != nullptr) { *fileNameOut = MyStr_Empty; }
-		if (extensionOut != nullptr) { *extensionOut = MyStr_Empty; }
-		return;
-	}
-	
-	bool foundSlash = false;
-	bool foundPeriod = false;
-	u64 lastSlashIndex = 0; //index after char
-	u64 lastPeriodIndex = fullPath.length; //index before char
-	for (u64 cIndex = 0; cIndex < fullPath.length; cIndex++)
-	{
-		if (fullPath.pntr[cIndex] == '\\' || fullPath.pntr[cIndex] == '/')
-		{
-			foundSlash = true;
-			lastSlashIndex = cIndex+1;
-		}
-		if (fullPath.pntr[cIndex] == '.')
-		{
-			foundPeriod = true;
-			lastPeriodIndex = cIndex;
-		}
-	}
-	if (foundPeriod && lastPeriodIndex < lastSlashIndex) //periods in the directory portion are relative directives like ".\..\" 
-	{
-		foundPeriod = false;
-		lastPeriodIndex = fullPath.length;
-	}
-	Assert(lastPeriodIndex >= lastSlashIndex);
-	
-	if (directoryOut != nullptr)
-	{
-		*directoryOut = NewStr(lastSlashIndex, &fullPath.pntr[0]);
-	}
-	if (fileNameOut != nullptr)
-	{
-		if (extensionOut != nullptr)
-		{
-			*fileNameOut = NewStr(lastPeriodIndex - lastSlashIndex, &fullPath.pntr[lastSlashIndex]);
-			*extensionOut = NewStr(fullPath.length - lastPeriodIndex, &fullPath.pntr[lastPeriodIndex]);
-		}
-		else
-		{
-			*fileNameOut = NewStr(fullPath.length - lastSlashIndex, &fullPath.pntr[lastSlashIndex]);
-		}
-	}
-}
-MyStr_t GetFileNamePart(MyStr_t filePath, bool includeExtension = true)
-{
-	MyStr_t result;
-	MyStr_t extensionThrowAway;
-	SplitFilePath(filePath, nullptr, &result, (includeExtension ? nullptr : &extensionThrowAway));
-	NotNullStr(&result);
-	return result;
-}
-
-MyStr_t GetDirectoryPart(MyStr_t filePath)
-{
-	MyStr_t result;
-	SplitFilePath(filePath, &result, nullptr, nullptr);
-	NotNullStr(&result);
-	return result;
-}
-
-//NOTE: Because this is expecting a null-terminated output, we can provide the option for includeExtension=false
-const char* GetFileNamePartNt(const char* filePath)
-{
-	NotNull(filePath);
-	MyStr_t result;
-	SplitFilePath(NewStr(filePath), nullptr, &result, nullptr);
-	NotNullStr(&result);
-	return result.pntr;
-}
-
 void StrSpliceInPlace(MyStr_t target, u64 startIndex, MyStr_t replacement)
 {
 	NotNullStr(&target);
@@ -2339,10 +2251,6 @@ bool SplitStringFixed(MyStr_t target, MyStr_t delineator, u64 numPieces, MyStr_t
 MyStr_t* SplitString(MemArena_t* memArena, MyStr_t target, MyStr_t delineator, u64* numPiecesOut = nullptr, bool ignoreCase = false)
 u64 UnescapeQuotedStringInPlace(MyStr_t* target, bool removeQuotes = true, bool allowNewLineEscapes = true, bool allowOtherEscapeCodes = false)
 MyStr_t UnescapeQuotedStringInArena(MemArena_t* memArena, MyStr_t target, bool removeQuotes = true, bool allowNewLineEscapes = true, bool allowOtherEscapeCodes = false)
-void SplitFilePath(MyStr_t fullPath, MyStr_t* directoryOut, MyStr_t* fileNameOut, MyStr_t* extensionOut = nullptr)
-MyStr_t GetFileNamePart(MyStr_t filePath, bool includeExtension = true)
-MyStr_t GetDirectoryPart(MyStr_t filePath)
-const char* GetFileNamePartNt(const char* filePath)
 void StrSpliceInPlace(MyStr_t target, u64 startIndex, MyStr_t replacement)
 MyStr_t StrSplice(MyStr_t target, u64 startIndex, u64 endIndex, MyStr_t replacement, MemArena_t* memArena)
 u64 StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ignoreCase = false, bool allowShrinking = false)
