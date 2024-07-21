@@ -35,6 +35,9 @@ Description:
 #define UNICODE_KATAKANA_COUNT 96
 #define UNICODE_KATAKANA_END   (UNICODE_KATAKANA_START + UNICODE_KATAKANA_COUNT)
 
+//winuser.h defines this macro as an alias for IsCharAlphaNumericA or IsCharAlphaNumericW
+#undef IsCharAlphaNumeric
+
 // +--------------------------------------------------------------+
 // |                         Header Only                          |
 // +--------------------------------------------------------------+
