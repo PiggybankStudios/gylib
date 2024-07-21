@@ -133,8 +133,8 @@ struct SplitStringContext_t
 #define StrPrint(myStrStruct)   (u32)(myStrStruct).length, (myStrStruct).chars
 #define StrPntrPrint(myStrPntr) (u32)(myStrPntr)->length, (myStrPntr)->chars
 #else
-#define StrPrint(myStrStruct)   (myStrStruct).length, (myStrStruct).chars
-#define StrPntrPrint(myStrPntr) (myStrPntr)->length, (myStrPntr)->chars
+#define StrPrint(myStrStruct)   (int)(myStrStruct).length, (myStrStruct).chars
+#define StrPntrPrint(myStrPntr) (int)(myStrPntr)->length, (myStrPntr)->chars
 #endif
 
 // +--------------------------------------------------------------+
