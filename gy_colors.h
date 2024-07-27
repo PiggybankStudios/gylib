@@ -479,6 +479,23 @@ Color_t ColorLighten(Color_t color, u8 amount)
 	return result;
 }
 
+Color_t ColorDarkenPercent(Color_t color, r32 percent)
+{
+	Color_t result = color;
+	result.r = (u8)RoundR32i(ClampR32((r32)result.r * (1 - percent), 0, 255));
+	result.g = (u8)RoundR32i(ClampR32((r32)result.g * (1 - percent), 0, 255));
+	result.b = (u8)RoundR32i(ClampR32((r32)result.b * (1 - percent), 0, 255));
+	return result;
+}
+Color_t ColorLightenPercent(Color_t color, r32 percent)
+{
+	Color_t result = color;
+	result.r = (u8)RoundR32i(ClampR32((r32)result.r * (1 + percent), 0, 255));
+	result.g = (u8)RoundR32i(ClampR32((r32)result.g * (1 + percent), 0, 255));
+	result.b = (u8)RoundR32i(ClampR32((r32)result.b * (1 + percent), 0, 255));
+	return result;
+}
+
 //TODO: Does this need to convert to/from linear color space before/after
 Color_t ColorMultiply(Color_t color1, Color_t color2)
 {
@@ -916,6 +933,8 @@ u8 MultiplyColorChannelR32(u8 left, r32 rightR32)
 Color_t ColorLerp(Color_t start, Color_t end, r32 amount)
 Color_t ColorDarken(Color_t color, u8 amount)
 Color_t ColorLighten(Color_t color, u8 amount)
+Color_t ColorDarkenPercent(Color_t color, r32 percent)
+Color_t ColorLightenPercent(Color_t color, r32 percent)
 Color_t ColorMultiply(Color_t color1, Color_t color2)
 Color_t ColorMultiplyAlpha(Color_t color, u8 alphaValue)
 Color_t ColorMultiplyAlphaR32(Color_t color, r32 amount)
