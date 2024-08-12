@@ -2341,6 +2341,15 @@ rec RecOverlap(rec rectangle1, rec rectangle2)
 	rec result = NewRec(minX, minY, MaxR32(maxX-minX, 0), MaxR32(maxY-minY, 0));
 	return result;
 }
+rec RecLerp(rec rectangle1, rec rectangle2, r32 amount)
+{
+	rec result;
+	result.x      = LerpR32(rectangle1.x,      rectangle2.x,      amount);
+	result.y      = LerpR32(rectangle1.y,      rectangle2.y,      amount);
+	result.width  = LerpR32(rectangle1.width,  rectangle2.width,  amount);
+	result.height = LerpR32(rectangle1.height, rectangle2.height, amount);
+	return result;
+}
 
 // +==============================+
 // |             Reci             |
@@ -3210,6 +3219,7 @@ rec RecUninvert(rec rectangle)
 rec RecBoth(rec rectangle1, rec rectangle2)
 rec RecExpandToVec2(rec rectangle, v2 newPoint)
 rec RecOverlap(rec rectangle1, rec rectangle2)
+rec RecLerp(rec rectangle1, rec rectangle2, r32 amount)
 reci ReciSquarify(reci rectangle, bool makeLarger = true)
 reci ReciInvert(reci rectangle)
 reci ReciInvertX(reci rectangle)
