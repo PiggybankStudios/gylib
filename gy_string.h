@@ -250,6 +250,7 @@ struct SplitStringContext_t
 	u64 FnvHashStr(MyStr_t str);
 	u64 FnvHashStr(const char* nullTermStr);
 	bool IsStringValidIdentifier(MyStr_t str, bool allowUnderscores = true, bool allowNumbers = true, bool allowLeadingNumbers = false, bool allowEmpty = false, bool allowSpaces = false);
+	bool IsStringMadeOfChars(MyStr_t str, MyStr_t allowedChars, u64* firstInvalidCharOut = nullptr);
 	void StrReallocAppend(MyStr_t* baseStr, MyStr_t appendStr, MemArena_t* memArena);
 	void StrReallocAppend(MyStr_t* baseStr, const char* appendNullTermStr, MemArena_t* memArena);
 	WordBreakCharClass_t GetWordBreakCharClass(u32 codepoint);
@@ -1934,6 +1935,27 @@ bool IsStringValidIdentifier(MyStr_t str, bool allowUnderscores = true, bool all
 	return IsStringValidIdentifier(str.length, str.chars, allowUnderscores, allowNumbers, allowLeadingNumbers, allowEmpty, allowSpaces);
 }
 
+bool IsStringMadeOfChars(MyStr_t str, MyStr_t allowedChars, u64* firstInvalidCharOut = nullptr)
+{
+	NotNullStr(&str);
+	NotNullStr(&allowedChars);
+	for (u64 cIndex = 0; cIndex < str.length; cIndex++)
+	{
+		char c = str.chars[cIndex];
+		bool isValidChar = false;
+		for (u64 cIndex2 = 0; cIndex2 < allowedChars.length; cIndex2++)
+		{
+			if (c == allowedChars.chars[cIndex2]) { isValidChar = true; break; }
+		}
+		if (!isValidChar)
+		{
+			SetOptionalOutPntr(firstInvalidCharOut, cIndex);
+			return false;
+		}
+	}
+	return true;
+}
+
 void StrReallocAppend(MyStr_t* baseStr, MyStr_t appendStr, MemArena_t* memArena)
 {
 	MyStr_t result = StrSplice(*baseStr, baseStr->length, baseStr->length, appendStr, memArena);
@@ -2270,6 +2292,7 @@ MyStr_t FormatNumberWithCommas(u64 number, MemArena_t* memArena = nullptr)
 const char* FormatNumberWithCommasNt(u64 number, MemArena_t* memArena = nullptr)
 u64 FnvHashStr(MyStr_t str)
 bool IsStringValidIdentifier(MyStr_t str, bool allowUnderscores = true, bool allowNumbers = true, bool allowLeadingNumbers = false, bool allowEmpty = false, bool allowSpaces = false)
+bool IsStringMadeOfChars(MyStr_t str, MyStr_t allowedChars, u64* firstInvalidCharOut = nullptr)
 void StrReallocAppend(MyStr_t* baseStr, MyStr_t appendStr, MemArena_t* memArena)
 WordBreakCharClass_t GetWordBreakCharClass(u32 codepoint)
 bool IsCharPairWordBreak(u32 prevCodepoint, u32 nextCodepoint, bool forward, bool subwords)
