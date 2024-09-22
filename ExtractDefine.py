@@ -18,7 +18,7 @@ fileContents = headerFile.read();
 # print("File Contents: \"" + str(fileContents) + "\"");
 headerFile.close();
 
-searchStr = "\\#define[ \\t]+([A-Za-z_][A-Za-z0-9_]*)[ \\t]*(\\d+)";
+searchStr = "\\#define[ \\t]+([A-Za-z_][A-Za-z0-9_]*)[ \\t]*([A-Za-z 0-9_\\t]+)";
 
 matches = re.findall(searchStr, fileContents);
 # print("Found %d #defines in %s" % (len(matches), fileName))
