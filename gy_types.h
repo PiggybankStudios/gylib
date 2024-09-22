@@ -15,24 +15,24 @@ Description:
 // +--------------------------------------------------------------+
 // |                  Integer and Float Typedefs                  |
 // +--------------------------------------------------------------+
-typedef uint8_t     uint8;
-typedef uint16_t    uint16;
-typedef uint32_t    uint32;
-typedef uint64_t    uint64;
+typedef uint8_t     uint8; //TODO: We never use this alias, should we delete it?
+typedef uint16_t    uint16; //TODO: We never use this alias, should we delete it?
+typedef uint32_t    uint32; //TODO: We never use this alias, should we delete it?
+typedef uint64_t    uint64; //TODO: We never use this alias, should we delete it?
 
-typedef int8_t 	    int8;
-typedef int16_t     int16;
-typedef int32_t     int32;
-typedef int64_t     int64;
+typedef int8_t 	    int8; //TODO: We never use this alias, should we delete it?
+typedef int16_t     int16; //TODO: We never use this alias, should we delete it?
+typedef int32_t     int32; //TODO: We never use this alias, should we delete it?
+typedef int64_t     int64; //TODO: We never use this alias, should we delete it?
 
-typedef int32_t	    bool32;
+typedef int32_t	    bool32; //TODO: We never use this alias, should we delete it?
 
-typedef float       real32;
-typedef double      real64;
+typedef float       real32; //TODO: We never use this alias, should we delete it?
+typedef double      real64; //TODO: We never use this alias, should we delete it?
 
-typedef uint8_t     flags8;
-typedef uint16_t    flags16;
-typedef uint32_t    flags32;
+typedef uint8_t     flags8; //TODO: We never use this alias, should we delete it?
+typedef uint16_t    flags16; //TODO: We never use this alias, should we delete it?
+typedef uint32_t    flags32; //TODO: We never use this alias, should we delete it?
 
 typedef uint8_t     u8;
 typedef uint16_t    u16;

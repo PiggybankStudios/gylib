@@ -23,7 +23,7 @@ union Vector2_t
 	r32 values[2];
 	struct { r32 x, y; };
 	struct { r32 width, height; };
-	struct { r32 horizontal, vertical; };
+	struct { r32 horizontal, vertical; }; //TODO: We don't really use these, should we remove them?
 	
 	inline Vector2_t& operator += (const Vector2_t& rightSide)
 	{
@@ -92,8 +92,8 @@ union Vector2i_t
 	i32 values[2];
 	struct { i32 x, y; };
 	struct { i32 width, height; };
-	struct { i32 horizontal, vertical; };
-	struct { i32 columns, rows; };
+	struct { i32 horizontal, vertical; }; //TODO: We don't really use these, should we remove them?
+	struct { i32 columns, rows; }; //TODO: We don't really use these, should we remove them?
 	
 	inline Vector2i_t& operator += (const Vector2i_t& rightSide)
 	{

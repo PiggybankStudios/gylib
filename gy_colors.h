@@ -26,7 +26,7 @@ union Color_t
 union Colorf_t
 {
 	v4 values;
-	struct { r32 b, g, r, a; };
+	struct { r32 b, g, r, a; }; //TODO: Are these actually in the right order??
 	struct { r32 blue, green, red, alpha; };
 };
 union ColorHSV_t

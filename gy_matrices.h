@@ -41,14 +41,14 @@ union Matrix4x4_t
 		r32 row0col0, row1col0, row2col0, row3col0;
 		r32 row0col1, row1col1, row2col1, row3col1;
 		r32 row0col2, row1col2, row2col2, row3col2;
-		r32 row0col3, row1col3, row2col3, row3col3;
+		r32 row0col3, row1col3, row2col3, row3col3; //TODO: We never use these. Should we remove them?
 	};
 	struct
 	{
 		r32 a, e, i, m;
 		r32 b, f, j, n;
 		r32 c, g, k, o;
-		r32 d, h, l, p;
+		r32 d, h, l, p; //TODO: We never use these. Should we remove them?
 	};
 };
 
