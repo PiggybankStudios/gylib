@@ -577,6 +577,7 @@ void InitMemArena_PagedStackFuncs(MemArena_t* arena, u64 pageSize, AllocationFun
 }
 void InitMemArena_VirtualStack(MemArena_t* arena, u64 maxSize, u64 maxNumMarks, AllocAlignment_t alignment = AllocAlignment_None)
 {
+	#if !ORCA_COMPILATION
 	NotNull(arena);
 	Assert(maxSize > sizeof(MarkedStackArenaHeader_t) + (maxNumMarks * sizeof(u64)));
 	Assert(maxNumMarks > 0);
@@ -609,6 +610,9 @@ void InitMemArena_VirtualStack(MemArena_t* arena, u64 maxSize, u64 maxNumMarks, 
 	arena->highUsedMark = 0;
 	arena->resettableHighUsedMark = 0;
 	stackHeader->highMarkCount = 0;
+	#else
+	AssertMsg_(false, "VirtualStack type memory arena is not supported without the standard library being present!");
+	#endif //!ORCA_COMPILATION
 }
 void InitMemArena_Buffer(MemArena_t* arena, u64 bufferSize, void* bufferPntr, bool singleAlloc = false, AllocAlignment_t alignment = AllocAlignment_None)
 {
@@ -715,11 +719,15 @@ u64 GetNumMarks(MemArena_t* arena)
 		// +========================================+
 		case MemArenaType_VirtualStack:
 		{
+			#if !ORCA_COMPILATION
 			NotNull(arena->headerPntr);
 			MarkedStackArenaHeader_t* stackHeader = (MarkedStackArenaHeader_t*)arena->headerPntr;
 			Assert(stackHeader->maxNumMarks > 0);
 			Assert(stackHeader->numMarks <= stackHeader->maxNumMarks);
 			result = stackHeader->numMarks;
+			#else
+			Unimplemented();
+			#endif
 		} break;
 		
 		default: AssertMsg(false, "Tried to GetNumMarks on arena that doesn't support pushing and popping"); break;
@@ -2317,6 +2325,7 @@ void* AllocMem_(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride,
 			}
 		} break;
 		
+		#if !ORCA_COMPILATION
 		// +====================================+
 		// | MemArenaType_VirtualStack AllocMem |
 		// +====================================+
@@ -2349,6 +2358,7 @@ void* AllocMem_(MemArena_t* arena, u64 numBytes, AllocAlignment_t alignOverride,
 				if (arena->resettableHighUsedMark < arena->used) { arena->resettableHighUsedMark = arena->used; }
 			}
 		} break;
+		#endif //!ORCA_COMPILATION
 		
 		// +==================================+
 		// | Unsupported Arena Type AllocMem  |
@@ -2778,6 +2788,7 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize, bool ignoreNullp
 			}
 		} break;
 		
+		#if !ORCA_COMPILATION
 		// +====================================+
 		// | MemArenaType_VirtualStack FreeMem  |
 		// +====================================+
@@ -2796,6 +2807,7 @@ bool FreeMem(MemArena_t* arena, void* allocPntr, u64 allocSize, bool ignoreNullp
 				}
 			}
 		} break;
+		#endif //!ORCA_COMPILATION
 		
 		// +==============================+
 		// | MemArenaType_Buffer FreeMem  |
@@ -3060,6 +3072,7 @@ void* ReallocMem_(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize, 
 		// 	//TODO: Implement me!
 		// } break;
 		
+		#if !ORCA_COMPILATION
 		// +======================================+
 		// | MemArenaType_VirtualStack ReallocMem |
 		// +======================================+
@@ -3067,6 +3080,7 @@ void* ReallocMem_(MemArena_t* arena, void* allocPntr, u64 newSize, u64 oldSize, 
 		// {
 		// 	//TODO: Implement me!
 		// } break;
+		#endif //!ORCA_COMPILATION
 		
 		// +================================+
 		// | MemArenaType_Buffer ReallocMem |
@@ -3289,6 +3303,7 @@ u64 GrowMemQuery(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize
 			Unimplemented(); //TODO: Implement me!
 		} break;
 		
+		#if !ORCA_COMPILATION
 		// +========================================+
 		// | MemArenaType_VirtualStack GrowMemQuery |
 		// +========================================+
@@ -3314,6 +3329,7 @@ u64 GrowMemQuery(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize
 				result = arena->size - arena->used;
 			}
 		} break;
+		#endif //!ORCA_COMPILATION
 		
 		// +==================================+
 		// | MemArenaType_Buffer GrowMemQuery |
@@ -3601,6 +3617,7 @@ void GrowMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, u6
 			Unimplemented(); //TODO: Implement me!
 		} break;
 		
+		#if !ORCA_COMPILATION
 		// +====================================+
 		// | MemArenaType_VirtualStack GrowMem  |
 		// +====================================+
@@ -3617,6 +3634,7 @@ void GrowMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, u6
 			}
 			Assert(arena->used <= arena->size);
 		} break;
+		#endif //!ORCA_COMPILATION
 		
 		// +==============================+
 		// | MemArenaType_Buffer GrowMem  |
@@ -3689,6 +3707,7 @@ void ShrinkMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, 
 			Unimplemented(); //TODO: Implement me!
 		} break;
 		
+		#if !ORCA_COMPILATION
 		// +======================================+
 		// | MemArenaType_VirtualStack ShrinkMem  |
 		// +======================================+
@@ -3704,6 +3723,7 @@ void ShrinkMem(MemArena_t* arena, const void* prevAllocPntr, u64 prevAllocSize, 
 				arena->used -= (prevAllocSize - newAllocSize);
 			}
 		} break;
+		#endif //!ORCA_COMPILATION
 		
 		// +==============================+
 		// | MemArenaType_Alias ShrinkMem |
@@ -3932,6 +3952,7 @@ void FreeMemArena(MemArena_t* arena)
 			}
 		} break;
 		
+		#if !ORCA_COMPILATION
 		// +========================================+
 		// | MemArenaType_VirtualStack FreeMemArena |
 		// +========================================+
@@ -3943,6 +3964,7 @@ void FreeMemArena(MemArena_t* arena)
 				OsFreeReservedMemory(arena->mainPntr, arena->maxSize);
 			}
 		} break;
+		#endif //!ORCA_COMPILATION
 		
 		default: AssertMsg(false, "Tried to FreeMemArena on arena that doesn't know where it got it's memory from"); break;
 	}
@@ -4124,6 +4146,7 @@ u64 PushMemMark(MemArena_t* arena)
 			}
 		} break;
 		
+		#if !ORCA_COMPILATION
 		// +========================================+
 		// | MemArenaType_VirtualStack PushMemMark  |
 		// +========================================+
@@ -4153,6 +4176,7 @@ u64 PushMemMark(MemArena_t* arena)
 				if (stackHeader->highMarkCount < stackHeader->numMarks) { stackHeader->highMarkCount = stackHeader->numMarks; }
 			}
 		} break;
+		#endif //!ORCA_COMPILATION
 		
 		default: AssertMsg(false, "Tried to PushMemMark on arena that doesn't support pushing and popping"); break;
 	}
@@ -4261,6 +4285,7 @@ void PopMemMark(MemArena_t* arena, u64 mark = 0xFFFFFFFFFFFFFFFFULL)
 			}
 		} break;
 		
+		#if !ORCA_COMPILATION
 		// +======================================+
 		// | MemArenaType_VirtualStack PopMemMark |
 		// +======================================+
@@ -4287,6 +4312,7 @@ void PopMemMark(MemArena_t* arena, u64 mark = 0xFFFFFFFFFFFFFFFFULL)
 			arena->used = marksPntr[stackHeader->numMarks-1];
 			stackHeader->numMarks--;
 		} break;
+		#endif //!ORCA_COMPILATION
 		
 		default: AssertMsg(false, "Tried to PopMemMark on arena that doesn't support pushing and popping"); break;
 	}
