@@ -47,6 +47,28 @@ typedef int64_t     i64;
 typedef float       r32;
 typedef double      r64;
 
+//These types work similar to size_t but are directly controlled by our defines, and have a stricter guarantee for their type
+// This should allow application code that doesn't care about 32-bit platforms to assume these types are 64-bit and use the
+// i64, u64, r64 types directly (also the naming convention is more agreeable than "size_t")
+// Current 32-bit platforms: wasm32, playdate
+#if PLATFORM_32BIT
+typedef i32 ixx;
+typedef u32 uxx;
+typedef r32 rxx;
+#define UINTXX_MAX UINT32_MAX
+#define INTXX_MIN  INT32_MIN
+#define INTXX_MAX  INT32_MAX
+#elif PLATFORM_64BIT
+typedef i64 ixx;
+typedef u64 uxx;
+typedef r64 rxx;
+#define UINTXX_MAX UINT64_MAX
+#define INTXX_MIN  INT64_MIN
+#define INTXX_MAX  INT64_MAX
+#else
+#error Unsupported PLATFORM_XBIT define!
+#endif
+
 // +--------------------------------------------------------------+
 // |                           Tribool                            |
 // +--------------------------------------------------------------+
@@ -144,6 +166,9 @@ typedef VOID_PNTR_FUNC_DEF(VoidPntrFunc_f);
 // +--------------------------------------------------------------+
 /*
 @Defines
+UINTXX_MAX
+INTXX_MIN
+INTXX_MAX
 Pi64
 Pi32
 QuarterPi64
