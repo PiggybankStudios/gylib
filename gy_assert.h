@@ -60,8 +60,9 @@ Description:
 #define MyBreak() pd->system->error("MyBreak()")
 #define MyBreakEx(message) pd->system->error(message)
 #elif ORCA_COMPILATION
-#define MyBreak() oc_abort_ext(__FILE__, __FUNCTION__, __LINE__, "MyBreak()")
-#define MyBreakEx(message) oc_abort_ext(__FILE__, __FUNCTION__, __LINE__, message)
+//TODO: Can we route these to something that makes a breakpoint hit but doesn't necassarily close the program?
+#define MyBreak() OC_AbortExt(__FILE__, __FUNCTION__, __LINE__, "MyBreak()")
+#define MyBreakEx(message) OC_AbortExt(__FILE__, __FUNCTION__, __LINE__, message)
 #else
 #error Platform not supported in gy_assert.h
 #endif

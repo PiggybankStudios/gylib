@@ -183,6 +183,12 @@ const r64 ColorIllumValues[ColorIlluminant_NumOptions][ColorObserver_NumOptions]
 	Colorf_t ToColorf(Color_t color);
 	Colorf_t ToColorf(v3 vector3);
 	Colorf_t ToColorf(v4 vector4);
+	#if ORCA_COMPILATION
+	Colorf_t ToColorf(OC_Color_t orcaColor);
+	OC_Color_t ToOcColor(Colorf_t color);
+	Color_t ToColor(OC_Color_t orcaColor);
+	OC_Color_t ToOcColor(Color_t color);
+	#endif //ORCA_COMPILATION
 	ColorHSV_t ToColorHsv(v3 vector3);
 	ColorHSV_t ToColorHsv(v4 vector4);
 	v3 ToVec3(Color_t color);
@@ -384,6 +390,22 @@ Colorf_t ToColorf(v4 vector4)
 	result.a = vector4.a;
 	return result;
 }
+
+#if ORCA_COMPILATION
+Colorf_t ToColorf(OC_Color_t orcaColor) { return NewColorf(orcaColor.r, orcaColor.g, orcaColor.b, orcaColor.a); } //NOTE: We are throwing away the color space information here!
+OC_Color_t ToOcColor(Colorf_t color)
+{
+	OC_Color_t result;
+	result.r = color.r;
+	result.g = color.g;
+	result.b = color.b;
+	result.a = color.a;
+	result.colorSpace = OC_COLOR_SPACE_SRGB;
+	return result;
+}
+Color_t ToColor(OC_Color_t orcaColor) { return ToColor(ToColorf(orcaColor)); }
+OC_Color_t ToOcColor(Color_t color) { return ToOcColor(ToColorf(color)); }
+#endif //ORCA_COMPILATION
 
 ColorHSV_t ToColorHsv(v3 vector3)
 {
@@ -925,6 +947,7 @@ ColorHSV_t NewColorHsv(r32 hue, r32 saturation, r32 value)
 Color_t ToColor(Colorf_t colorf)
 Color_t ColorTransparent(Color_t color, r32 alpha)
 Colorf_t ToColorf(Color_t color)
+OC_Color_t ToOcColor(Color_t color)
 ColorHSV_t ToColorHsv(v3 vector3)
 u8 ColorChannelToU8(r32 valueR32)
 r32 ColorChannelToR32(u8 valueU8)

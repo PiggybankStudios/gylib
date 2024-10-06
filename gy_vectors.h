@@ -251,6 +251,16 @@ typedef Vector4i_t v4i;
 	v3 ToVec3(v3i vector);
 	v4 ToVec4(v4i vector);
 	v4 ToVec4(v3 vector, r32 w);
+	#if ORCA_COMPILATION
+	v2 ToVec2(OC_Vec2_t orcaVector);
+	v2i ToVec2i(OC_Vec2i_t orcaVector);
+	v3 ToVec3(OC_Vec3_t orcaVector);
+	v4 ToVec4(OC_Vec4_t orcaVector);
+	OC_Vec2_t ToOcVec2(v2 vector);
+	OC_Vec2i_t ToOcVec2i(v2i vector);
+	OC_Vec3_t ToOcVec3(v3 vector);
+	OC_Vec4_t ToOcVec4(v4 vector);
+	#endif //ORCA_COMPILATION
 	v2 Vec3_xy(v3 vector);
 	v2 Vec3_xz(v3 vector);
 	v2 Vec3_yz(v3 vector);
@@ -528,6 +538,43 @@ v4 ToVec4(v3 vector, r32 w)
 	return result;
 }
 //ToVec4(Color_t) defined in gy_colors.h
+#if ORCA_COMPILATION
+v2 ToVec2(OC_Vec2_t orcaVector) { return NewVec2(orcaVector.x, orcaVector.y); }
+v2i ToVec2i(OC_Vec2i_t orcaVector) { return NewVec2i(orcaVector.x, orcaVector.y); }
+v3 ToVec3(OC_Vec3_t orcaVector) { return NewVec3(orcaVector.x, orcaVector.y, orcaVector.z); }
+v4 ToVec4(OC_Vec4_t orcaVector) { return NewVec4(orcaVector.x, orcaVector.y, orcaVector.z, orcaVector.w); }
+OC_Vec2_t ToOcVec2(v2 vector)
+{
+	OC_Vec2_t result;
+	result.x = vector.x;
+	result.y = vector.y;
+	return result;
+}
+OC_Vec2i_t ToOcVec2i(v2i vector)
+{
+	OC_Vec2i_t result;
+	result.x = vector.x;
+	result.y = vector.y;
+	return result;
+}
+OC_Vec3_t ToOcVec3(v3 vector)
+{
+	OC_Vec3_t result;
+	result.x = vector.x;
+	result.y = vector.y;
+	result.z = vector.z;
+	return result;
+}
+OC_Vec4_t ToOcVec4(v4 vector)
+{
+	OC_Vec4_t result;
+	result.x = vector.x;
+	result.y = vector.y;
+	result.z = vector.z;
+	result.w = vector.w;
+	return result;
+}
+#endif //ORCA_COMPILATION
 
 v2 Vec3_xy(v3 vector)
 {
@@ -1763,6 +1810,10 @@ Vector4i_t NewVec4i(i32 x, i32 y, i32 z, i32 w)
 v2 ToVec2(v2i vector)
 v3 ToVec3(v3i vector)
 v4 ToVec4(v4i vector)
+OC_Vec2_t ToOcVec2(v2 vector)
+OC_Vec2i_t ToOcVec2i(v2i vector)
+OC_Vec3_t ToOcVec3(v3 vector)
+OC_Vec4_t ToOcVec4(v4 vector)
 v2 Vec2Floor(v2 vector)
 v2i Vec2Floori(v2 vector)
 v3 Vec3Floor(v3 vector)

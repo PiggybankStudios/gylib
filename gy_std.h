@@ -9,10 +9,6 @@ Date:   09\14\2021
 
 #include "gy_defines_check.h"
 
-#if ORCA_COMPILATION
-extern "C" {
-#endif // ORCA_COMPILATION
-
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -30,9 +26,6 @@ extern "C" {
 #endif
 //TODO: I don't think we actually need to include algorithm here? fmin and similar functions come from math.h
 // #include <algorithm> //Used for min and max functions
-#if ORCA_COMPILATION
-}
-#endif // ORCA_COMPILATION
 
 #if WINDOWS_COMPILATION
 #include <intrin.h>
@@ -48,6 +41,7 @@ extern "C" {
 #include "pd_api.h"
 #elif ORCA_COMPILATION
 #include <orca.h>
+#include "gy_orca_aliases.h"
 #else
 #error Unsupported platform in gy_std.h
 #endif
@@ -137,16 +131,6 @@ void _free_r(struct _reent* _REENT, void* ptr ) { if ( ptr != NULL ) pdrealloc(p
 // |                        Orca Reroutes                         |
 // +--------------------------------------------------------------+
 #if ORCA_COMPILATION
-
-#ifndef MyMalloc
-#define MyMalloc(numBytes) nullptr; static_assert(false, "basic malloc is not available in Web Assembly!")
-#endif
-#ifndef MyRealloc
-#define MyRealloc(ptr, numBytes) nullptr; static_assert(false, "basic realloc is not available in Web Assembly!")
-#endif
-#ifndef MyFree
-#define MyFree(ptr) static_assert(false, "basic free is not available in Web Assembly!")
-#endif
 
 #ifndef MyStrToFloat
 #ifdef GYLIB_HEADER_ONLY

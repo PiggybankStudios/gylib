@@ -144,6 +144,10 @@ struct SplitStringContext_t
 	MyStr_t NewStr(uxx length, const char* pntr);
 	MyStr_t NewStr(char* nullTermStr);
 	MyStr_t NewStr(const char* nullTermStr);
+	#if ORCA_COMPILATION
+	MyStr_t ToStr(OC_Str8_t orcaString);
+	OC_Str8_t ToOcStr8(MyStr_t str);
+	#endif
 	MyStrPair_t NewStrPair(const char* keyStrNullTerm, const char* valueStrNullTerm);
 	MyStrPair_t NewStrPair(MyStr_t keyStr, const char* valueStrNullTerm);
 	MyStrPair_t NewStrPair(const char* keyStrNullTerm, MyStr_t valueStr);
@@ -300,6 +304,23 @@ MyStr_t NewStr(const char* nullTermStr)
 	result.pntr = (char*)nullTermStr;
 	return result;
 }
+
+#if ORCA_COMPILATION
+MyStr_t ToStr(OC_Str8_t orcaString)
+{
+	MyStr_t result;
+	result.length = orcaString.len;
+	result.pntr = orcaString.ptr;
+	return result;
+}
+OC_Str8_t ToOcStr8(MyStr_t str)
+{
+	OC_Str8_t result;
+	result.len = str.length;
+	result.ptr = str.pntr;
+	return result;
+}
+#endif //ORCA_COMPILATION
 
 //TODO: Is our idea of an empty string somewhat flawed because I could have a 0 length string that is still allocated?? Like when I go to deallocate a string should I check if it's pntr is nullptr or if it's length is 0??
 
@@ -2232,6 +2253,7 @@ WordBreakCharClass_t
 const char* GetWordBreakCharClassStr(WordBreakCharClass_t enumValue)
 MyStr_t NewStrLengthOnly(uxx length)
 MyStr_t NewStr(uxx length, char* pntr)
+OC_Str8_t ToOcStr8(MyStr_t str)
 MyStrPair_t NewStrPair(MyStr_t keyStr, MyStr_t valueStr)
 bool IsNullStr(MyStr_t target)
 bool IsEmptyStr(MyStr_t target)

@@ -280,6 +280,10 @@ typedef Obb3D_t       obb3;
 	#if OBB3D_AVAILABLE
 	obb3 ToObb3D(box boundingBox);
 	#endif
+	#if ORCA_COMPILATION
+	rec ToRec(OC_Rect_t orcaRect);
+	OC_Rect_t ToOcRect(rec rectangle);
+	#endif
 	v2 GetObb2DRelativePos(obb2 boundingBox, v2 point);
 	v2 GetObb2DWorldPoint(obb2 boundingBox, v2 relativeOffset);
 	v2 GetObb2DRightVec(obb2 boundingBox);
@@ -1004,6 +1008,27 @@ obb3 ToObb3D(box boundingBox)
 	return result;
 }
 #endif
+
+#if ORCA_COMPILATION
+rec ToRec(OC_Rect_t orcaRect)
+{
+	rec result;
+	result.x = orcaRect.x;
+	result.y = orcaRect.y;
+	result.width = orcaRect.w;
+	result.height = orcaRect.h;
+	return result;
+}
+OC_Rect_t ToOcRect(rec rectangle)
+{
+	OC_Rect_t result;
+	result.x = rectangle.x;
+	result.y = rectangle.y;
+	result.w = rectangle.width;
+	result.h = rectangle.height;
+	return result;
+}
+#endif //ORCA_COMPILATION
 
 // +--------------------------------------------------------------+
 // |                 Simple Information Functions                 |
@@ -3112,6 +3137,7 @@ rec ToRec(reci rectangle)
 obb2 ToObb2D(rec rectangle)
 box ToBox(boxi boundingBox)
 obb3 ToObb3D(box boundingBox)
+OC_Rect_t ToOcRect(rec rectangle)
 v2 GetObb2DRelativePos(obb2 boundingBox, v2 point)
 v2 GetObb2DWorldPoint(obb2 boundingBox, v2 relativeOffset)
 v2 GetObb2DRightVec(obb2 boundingBox)
