@@ -9,6 +9,11 @@ Date:   09\14\2021
 
 #include "gy_defines_check.h"
 
+//TODO: This should get fixed on Orca's end, but for now we gotta redirect some restrict keyword usages since we are compiling in C++ mode
+#if ORCA_COMPILATION
+#define restrict __restrict
+#endif
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
