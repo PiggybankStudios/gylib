@@ -42,9 +42,9 @@ void SplitFilePath(MyStr_t fullPath, MyStr_t* directoryOut, MyStr_t* fileNameOut
 	
 	bool foundSlash = false;
 	bool foundPeriod = false;
-	u64 lastSlashIndex = 0; //index after char
-	u64 lastPeriodIndex = fullPath.length; //index before char
-	for (u64 cIndex = 0; cIndex < fullPath.length; cIndex++)
+	uxx lastSlashIndex = 0; //index after char
+	uxx lastPeriodIndex = fullPath.length; //index before char
+	for (uxx cIndex = 0; cIndex < fullPath.length; cIndex++)
 	{
 		if (fullPath.pntr[cIndex] == '\\' || fullPath.pntr[cIndex] == '/')
 		{

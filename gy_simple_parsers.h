@@ -19,13 +19,13 @@ XmlParser Description:
 // +--------------------------------------------------------------+
 struct LineParser_t
 {
-	u64 byteIndex;
-	u64 lineBeginByteIndex;
-	u64 lineIndex; //This is not zero based! It's more like a line number you'd see in the gutter of a text editor!
+	uxx byteIndex;
+	uxx lineBeginByteIndex;
+	uxx lineIndex; //This is not zero based! It's more like a line number you'd see in the gutter of a text editor!
 	bool isStreamBased;
 	MyStr_t fileContents;
 	Stream_t* stream;
-	u64 chunkReadSize;
+	uxx chunkReadSize;
 };
 
 enum ParsingTokenType_t
@@ -65,7 +65,7 @@ struct TextParser_t
 {
 	LineParser_t lineParser;
 	MyStr_t currentLine;
-	u64 byteIndex;
+	uxx byteIndex;
 };
 
 //NOTE: XmlParsingError_t is pre-declared in gy_process_log.h
@@ -108,7 +108,7 @@ struct XmlProperty_t
 };
 struct XmlToken_t
 {
-	u64 tokenParseIndex;
+	uxx tokenParseIndex;
 	MyStr_t type;
 	VarArray_t properties;
 };
@@ -116,11 +116,11 @@ struct XmlParser_t
 {
 	MemArena_t* allocArena;
 	
-	u64 nextTokenParseIndex;
+	uxx nextTokenParseIndex;
 	
 	LineParser_t lineParser;
 	MyStr_t currentLine;
-	u64 byteIndex;
+	uxx byteIndex;
 	
 	VarArray_t parentTokens; //XmlToken_t
 	XmlToken_t newToken;
@@ -201,8 +201,8 @@ bool LineParserGetLine(LineParser_t* parser, MyStr_t* lineOut, MemArena_t* chunk
 		parser->lineIndex++;
 		parser->lineBeginByteIndex = parser->byteIndex;
 		
-		u64 endOfLineByteSize = 0;
-		u64 startIndex = parser->byteIndex;
+		uxx endOfLineByteSize = 0;
+		uxx startIndex = parser->byteIndex;
 		while (parser->byteIndex < parser->fileContents.length)
 		{
 			char nextChar = parser->fileContents.pntr[parser->byteIndex];
@@ -284,7 +284,7 @@ bool TextParserGetToken(TextParser_t* parser, ParsingToken_t* tokenOut, MemArena
 		}
 		
 		MyStr_t line = StrSubstring(&parser->currentLine, parser->byteIndex);
-		u64 numTrimmedWhitespaceChars = TrimLeadingWhitespace(&line);
+		uxx numTrimmedWhitespaceChars = TrimLeadingWhitespace(&line);
 		if (line.length == 0)
 		{
 			parser->byteIndex = parser->currentLine.length;
@@ -292,7 +292,7 @@ bool TextParserGetToken(TextParser_t* parser, ParsingToken_t* tokenOut, MemArena
 		}
 		
 		//TODO: This doesn't handle if a // shows up inside something like a string where it shouldn't be treated as a comment
-		u64 commentStartIndex = 0;
+		uxx commentStartIndex = 0;
 		bool lineContainsComment = FindSubstring(line, "//", &commentStartIndex);
 		
 		if (lineContainsComment && commentStartIndex == 0)
@@ -309,7 +309,7 @@ bool TextParserGetToken(TextParser_t* parser, ParsingToken_t* tokenOut, MemArena
 			line = StrSubstring(&line, 0, commentStartIndex);
 		}
 		
-		u64 colonIndex = 0;
+		uxx colonIndex = 0;
 		bool lineContainsColon = FindSubstring(line, ":", &colonIndex);
 		
 		if (lineContainsColon)
@@ -389,7 +389,7 @@ bool XmlParserCheckIdentifierHasValidChars(XmlParser_t* parser, MyStr_t identifi
 	NotNullStr(&identifierStr);
 	NotNull(result);
 	NotNull(log);
-	for (u64 cIndex = 0; cIndex < identifierStr.length; )
+	for (uxx cIndex = 0; cIndex < identifierStr.length; )
 	{
 		u32 codepoint = 0;
 		u8 codepointByteSize = GetCodepointForUtf8Str(identifierStr, cIndex, &codepoint);
@@ -450,7 +450,7 @@ bool XmlParserGetToken(XmlParser_t* parser, XmlParseResult_t* result, ProcessLog
 		}
 		Assert(parser->byteIndex <= parser->currentLine.length);
 		
-		u64 workingStartIndex = parser->byteIndex;
+		uxx workingStartIndex = parser->byteIndex;
 		MyStr_t workingLine = StrSubstring(&parser->currentLine, parser->byteIndex);
 		workingStartIndex += TrimLeadingWhitespace(&workingLine);
 		TrimTrailingWhitespace(&workingLine);
@@ -463,7 +463,7 @@ bool XmlParserGetToken(XmlParser_t* parser, XmlParseResult_t* result, ProcessLog
 		
 		if (inComment)
 		{
-			u64 endCommentIndex = 0;
+			uxx endCommentIndex = 0;
 			if (FindSubstring(workingLine, "-->", &endCommentIndex))
 			{
 				parser->byteIndex = workingStartIndex + endCommentIndex + 3;
@@ -481,7 +481,7 @@ bool XmlParserGetToken(XmlParser_t* parser, XmlParseResult_t* result, ProcessLog
 			if (!foundTokenType)
 			{
 				//find the first whitespace or other name ending character (like " or >)
-				u64 nameEndingCharIndex = 0;
+				uxx nameEndingCharIndex = 0;
 				bool nameGoesTillEndOfLine = !FindNextCharInStr(workingLine, 0, " \t\"<>", &nameEndingCharIndex);
 				if (nameGoesTillEndOfLine) { nameEndingCharIndex = workingLine.length; }
 				if (nameEndingCharIndex == 0)
@@ -596,7 +596,7 @@ bool XmlParserGetToken(XmlParser_t* parser, XmlParseResult_t* result, ProcessLog
 						return true;
 					}
 					
-					u64 equalsIndex = 0;
+					uxx equalsIndex = 0;
 					bool foundEquals = FindNextCharInStr(workingLine, 0, "=", &equalsIndex);
 					if (!foundEquals)
 					{
@@ -615,7 +615,7 @@ bool XmlParserGetToken(XmlParser_t* parser, XmlParseResult_t* result, ProcessLog
 					}
 					
 					//TODO: This is not super safe, per-se. If we see a quoted string for the value
-					u64 valueEndIndex = 0;
+					uxx valueEndIndex = 0;
 					bool foundValueEndChar = FindNextCharInStr(workingLine, equalsIndex+1, " \t<>", &valueEndIndex, true);
 					if (!foundValueEndChar)
 					{
@@ -658,7 +658,7 @@ bool XmlParserGetToken(XmlParser_t* parser, XmlParseResult_t* result, ProcessLog
 		{
 			//TODO: Technically this doesn't handle if the directive token has a string with ?> in it,
 			//      but that's not a use case we have right now so I'm not going to solve it
-			u64 endDirectiveIndex = 0;
+			uxx endDirectiveIndex = 0;
 			if (FindSubstring(workingLine, "?>", &endDirectiveIndex))
 			{
 				parser->byteIndex = workingStartIndex + endDirectiveIndex + 2;
@@ -703,7 +703,7 @@ bool XmlParserGetToken(XmlParser_t* parser, XmlParseResult_t* result, ProcessLog
 			}
 			else
 			{
-				u64 nextOpenBracketIndex = 0;
+				uxx nextOpenBracketIndex = 0;
 				bool foundOpenBracket = FindNextCharInStr(workingLine, 0, "<", &nextOpenBracketIndex, true);
 				if (!foundOpenBracket) { nextOpenBracketIndex = workingLine.length; }
 				Assert(nextOpenBracketIndex > 0);

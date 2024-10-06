@@ -950,7 +950,8 @@ MyStr_t SocketReadFromAnyStr(OpenSocket_t* socket, MemArena_t* memArena, u64 max
 		Assert(numBytesReceived > 0);
 		if (numBytesReceived < maxReadSize) { ShrinkMem(memArena, resultPntr, maxReadSize+1, numBytesReceived+1); }
 		resultPntr[numBytesReceived] = '\0';
-		return NewStr(numBytesReceived, resultPntr);
+		Assert(numBytesReceived <= UINTXX_MAX);
+		return NewStr((uxx)numBytesReceived, resultPntr);
 	}
 	else
 	{
@@ -1021,7 +1022,8 @@ MyStr_t SocketReadStr(OpenSocket_t* socket, MemArena_t* memArena, u64 maxReadSiz
 		Assert(numBytesReceived > 0);
 		if (numBytesReceived < maxReadSize) { ShrinkMem(memArena, resultPntr, maxReadSize+1, numBytesReceived+1); }
 		resultPntr[numBytesReceived] = '\0';
-		return NewStr(numBytesReceived, resultPntr);
+		Assert(numBytesReceived <= UINTXX_MAX);
+		return NewStr((uxx)numBytesReceived, resultPntr);
 	}
 	else
 	{

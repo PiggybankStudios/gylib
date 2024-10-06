@@ -476,7 +476,9 @@ MyStr_t StreamReadUntil(Stream_t* stream, MyStr_t targetStr, bool includeTargetS
 					u64 numBytesRead = 0;
 					void* resultPntr = StreamRead(stream, numBytesToTarget + targetStr.length, &numBytesRead);
 					Assert(numBytesRead == numBytesToTarget + targetStr.length);
-					return NewStr(numBytesToTarget + (includeTargetStr ? targetStr.length : 0), (char*)resultPntr);
+					u64 strLength = numBytesToTarget + (includeTargetStr ? targetStr.length : 0);
+					Assert(strLength <= UINTXX_MAX);
+					return NewStr((uxx)strLength, (char*)resultPntr);
 				}
 			}
 		}
@@ -488,7 +490,8 @@ MyStr_t StreamReadUntil(Stream_t* stream, MyStr_t targetStr, bool includeTargetS
 			u64 numBytesRead = 0;
 			void* resultPntr = StreamRead(stream, numBytesToEnd, &numBytesRead);
 			Assert(numBytesRead == numBytesToEnd);
-			return NewStr(numBytesToEnd, (char*)resultPntr);
+			Assert(numBytesToEnd <= UINTXX_MAX);
+			return NewStr((uxx)numBytesToEnd, (char*)resultPntr);
 		}
 		else { return MyStr_Empty; }
 	}
@@ -516,7 +519,9 @@ MyStr_t StreamReadUntil(Stream_t* stream, MyStr_t targetStr, bool includeTargetS
 				if (MyMemCompare(&stream->chunkPntr[bIndex], targetStr.chars, targetStr.length) == 0)
 				{
 					stream->chunkReturnedSize = bIndex + targetStr.length;
-					return NewStr(bIndex + (includeTargetStr ? targetStr.length : 0), (char*)stream->chunkPntr);
+					u64 strLength = bIndex + (includeTargetStr ? targetStr.length : 0);
+					Assert(strLength <= UINTXX_MAX);
+					return NewStr((uxx)strLength, (char*)stream->chunkPntr);
 				}
 			}
 			searchIndex = stream->chunkSize;
@@ -555,7 +560,8 @@ MyStr_t StreamReadUntil(Stream_t* stream, MyStr_t targetStr, bool includeTargetS
 		if (stream->chunkSize > 0)
 		{
 			stream->chunkReturnedSize = stream->chunkSize;
-			return NewStr(stream->chunkSize, (char*)stream->chunkPntr);
+			Assert(stream->chunkSize <= UINTXX_MAX);
+			return NewStr((uxx)stream->chunkSize, (char*)stream->chunkPntr);
 		}
 		else { return MyStr_Empty; }
 	}

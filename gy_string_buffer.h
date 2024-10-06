@@ -26,16 +26,16 @@ StringBuffer_t is always guaranteed to be null-terminated so you can easily do T
 // this generic version of StringBuffer_t that can be auto-casted to as a pointer
 struct StringBufferGeneric_t
 {
-	u64 length;
-	u64 bufferSize;
+	uxx length;
+	uxx bufferSize;
 	char chars[1];
 };
 
 template<int LENGTH>
 struct StringBuffer_t
 {
-	u64 length;
-	u64 bufferSize;
+	uxx length;
+	uxx bufferSize;
 	union
 	{
 		char chars[LENGTH];
@@ -74,9 +74,9 @@ typedef StringBuffer_t<TEMP_STRING_LENGTH> TempString_t;
 	MyStr_t ToMyStr(StringBufferGeneric_t* stringBuffer);
 	char* ToStr(StringBufferGeneric_t* stringBuffer);
 	const char* ToStr(const StringBufferGeneric_t* stringBuffer);
-	MyStr_t StringBufferSubstring(StringBufferGeneric_t* stringBuffer, u64 startIndex, u64 endIndex);
-	MyStr_t StringBufferSubstring(StringBufferGeneric_t* stringBuffer, u64 startIndex);
-	MyStr_t StringBufferSubstringFromEnd(StringBufferGeneric_t* stringBuffer, u64 startIndexFromEnd);
+	MyStr_t StringBufferSubstring(StringBufferGeneric_t* stringBuffer, uxx startIndex, uxx endIndex);
+	MyStr_t StringBufferSubstring(StringBufferGeneric_t* stringBuffer, uxx startIndex);
+	MyStr_t StringBufferSubstringFromEnd(StringBufferGeneric_t* stringBuffer, uxx startIndexFromEnd);
 	void StringBufferPrint(StringBufferGeneric_t* stringBuffer, const char* formatString, ...);
 	bool StringBufferTryPrint(StringBufferGeneric_t* stringBuffer, const char* formatString, ...);
 	void StringBufferAppendPrint(StringBufferGeneric_t* stringBuffer, const char* formatString, ...);
@@ -85,10 +85,10 @@ typedef StringBuffer_t<TEMP_STRING_LENGTH> TempString_t;
 	void StringBufferAppend(StringBufferGeneric_t* stringBuffer, const char* nullTermStr);
 	bool StringBufferTryAppend(StringBufferGeneric_t* stringBuffer, MyStr_t str, bool appendWhatYouCan = true);
 	bool StringBufferTryAppend(StringBufferGeneric_t* stringBuffer, const char* nullTermStr, bool appendWhatYouCan = true);
-	u64 StringBufferReplace(StringBufferGeneric_t* stringBuffer, MyStr_t targetStr, MyStr_t replacementStr, bool ignoreCase = false);
-	u64 StringBufferReplace(StringBufferGeneric_t* stringBuffer, const char* targetNullTermStr, MyStr_t replacementStr, bool ignoreCase = false);
-	u64 StringBufferReplace(StringBufferGeneric_t* stringBuffer, MyStr_t targetStr, const char* replacementNullTermStr, bool ignoreCase = false);
-	u64 StringBufferReplace(StringBufferGeneric_t* stringBuffer, const char* targetNullTermStr, const char* replacementNullTermStr, bool ignoreCase = false);
+	uxx StringBufferReplace(StringBufferGeneric_t* stringBuffer, MyStr_t targetStr, MyStr_t replacementStr, bool ignoreCase = false);
+	uxx StringBufferReplace(StringBufferGeneric_t* stringBuffer, const char* targetNullTermStr, MyStr_t replacementStr, bool ignoreCase = false);
+	uxx StringBufferReplace(StringBufferGeneric_t* stringBuffer, MyStr_t targetStr, const char* replacementNullTermStr, bool ignoreCase = false);
+	uxx StringBufferReplace(StringBufferGeneric_t* stringBuffer, const char* targetNullTermStr, const char* replacementNullTermStr, bool ignoreCase = false);
 #else
 
 // +--------------------------------------------------------------+
@@ -213,7 +213,7 @@ const char* ToStr(const StringBufferGeneric_t* stringBuffer) //const variant
 // +--------------------------------------------------------------+
 // |                        Get Functions                         |
 // +--------------------------------------------------------------+
-MyStr_t StringBufferSubstring(StringBufferGeneric_t* stringBuffer, u64 startIndex, u64 endIndex)
+MyStr_t StringBufferSubstring(StringBufferGeneric_t* stringBuffer, uxx startIndex, uxx endIndex)
 {
 	Assert(IsInitialized(stringBuffer));
 	Assert(startIndex <= stringBuffer->length);
@@ -221,13 +221,13 @@ MyStr_t StringBufferSubstring(StringBufferGeneric_t* stringBuffer, u64 startInde
 	Assert(startIndex <= endIndex);
 	return NewStr(endIndex - startIndex, &stringBuffer->chars[startIndex]);
 }
-MyStr_t StringBufferSubstring(StringBufferGeneric_t* stringBuffer, u64 startIndex)
+MyStr_t StringBufferSubstring(StringBufferGeneric_t* stringBuffer, uxx startIndex)
 {
 	Assert(IsInitialized(stringBuffer));
 	Assert(startIndex <= stringBuffer->length);
 	return NewStr(stringBuffer->length - startIndex, &stringBuffer->chars[startIndex]);
 }
-MyStr_t StringBufferSubstringFromEnd(StringBufferGeneric_t* stringBuffer, u64 startIndexFromEnd)
+MyStr_t StringBufferSubstringFromEnd(StringBufferGeneric_t* stringBuffer, uxx startIndexFromEnd)
 {
 	Assert(IsInitialized(stringBuffer));
 	Assert(startIndexFromEnd <= stringBuffer->length);
@@ -248,8 +248,8 @@ void StringBufferPrint(StringBufferGeneric_t* stringBuffer, const char* formatSt
 	int printResult = MyVaListPrintf(&stringBuffer->chars[0], (int)stringBuffer->bufferSize, formatString, args);
 	va_end(args);
 	Assert(printResult >= 0);
-	Assert((u64)printResult < stringBuffer->bufferSize);
-	stringBuffer->length = (u64)printResult;
+	Assert((uxx)printResult < stringBuffer->bufferSize);
+	stringBuffer->length = (uxx)printResult;
 	stringBuffer->chars[stringBuffer->length] = '\0';
 }
 //returns false if the print fails or if it doesn't fit in the buffer (will still put the portion that fits into the buffer)
@@ -261,8 +261,8 @@ bool StringBufferTryPrint(StringBufferGeneric_t* stringBuffer, const char* forma
 	int printResult = MyVaListPrintf(&stringBuffer->chars[0], (int)stringBuffer->bufferSize, formatString, args);
 	va_end(args);
 	if (printResult < 0) { DebugAssert(IsNullTerminated(stringBuffer)); return false; }
-	if ((u64)printResult >= stringBuffer->bufferSize) { stringBuffer->length = stringBuffer->bufferSize-1; DebugAssert(IsNullTerminated(stringBuffer)); return false; }
-	stringBuffer->length = (u64)printResult;
+	if ((uxx)printResult >= stringBuffer->bufferSize) { stringBuffer->length = stringBuffer->bufferSize-1; DebugAssert(IsNullTerminated(stringBuffer)); return false; }
+	stringBuffer->length = (uxx)printResult;
 	stringBuffer->chars[stringBuffer->length] = '\0';
 	return true;
 }
@@ -275,8 +275,8 @@ void StringBufferAppendPrint(StringBufferGeneric_t* stringBuffer, const char* fo
 	int printResult = MyVaListPrintf(&stringBuffer->chars[stringBuffer->length], (int)(stringBuffer->bufferSize - stringBuffer->length), formatString, args);
 	va_end(args);
 	Assert(printResult >= 0);
-	Assert((u64)printResult < stringBuffer->bufferSize - stringBuffer->length);
-	stringBuffer->length += (u64)printResult;
+	Assert((uxx)printResult < stringBuffer->bufferSize - stringBuffer->length);
+	stringBuffer->length += (uxx)printResult;
 	stringBuffer->chars[stringBuffer->length] = '\0';
 }
 //returns false if the print fails or if it doesn't fit in the buffer (will still put the portion that fits into the buffer)
@@ -288,8 +288,8 @@ bool StringBufferTryAppendPrint(StringBufferGeneric_t* stringBuffer, const char*
 	int printResult = MyVaListPrintf(&stringBuffer->chars[stringBuffer->length], (int)(stringBuffer->bufferSize - stringBuffer->length), formatString, args);
 	va_end(args);
 	if (printResult < 0) { DebugAssert(IsNullTerminated(stringBuffer)); return false; }
-	if ((u64)printResult >= stringBuffer->bufferSize - stringBuffer->length) { stringBuffer->length = stringBuffer->bufferSize-1; DebugAssert(IsNullTerminated(stringBuffer)); return false; }
-	stringBuffer->length += (u64)printResult;
+	if ((uxx)printResult >= stringBuffer->bufferSize - stringBuffer->length) { stringBuffer->length = stringBuffer->bufferSize-1; DebugAssert(IsNullTerminated(stringBuffer)); return false; }
+	stringBuffer->length += (uxx)printResult;
 	stringBuffer->chars[stringBuffer->length] = '\0';
 	return true;
 }
@@ -332,13 +332,13 @@ bool StringBufferTryAppend(StringBufferGeneric_t* stringBuffer, const char* null
 }
 
 //Returns the number of replacements performed
-u64 StringBufferReplace(StringBufferGeneric_t* stringBuffer, MyStr_t targetStr, MyStr_t replacementStr, bool ignoreCase = false)
+uxx StringBufferReplace(StringBufferGeneric_t* stringBuffer, MyStr_t targetStr, MyStr_t replacementStr, bool ignoreCase = false)
 {
 	Assert(IsInitialized(stringBuffer));
 	if (targetStr.length == 0) { return 0; } //no work to do if there is no target
-	u64 result = 0;
+	uxx result = 0;
 	
-	for (u64 cIndex = 0; cIndex + targetStr.length <= stringBuffer->length; cIndex++)
+	for (uxx cIndex = 0; cIndex + targetStr.length <= stringBuffer->length; cIndex++)
 	{
 		if ((!ignoreCase && MyMemCompare(&stringBuffer->chars[cIndex], targetStr.chars, targetStr.length) == 0) ||
 			(ignoreCase && StrCompareIgnoreCase(&stringBuffer->chars[cIndex], targetStr.chars, targetStr.length) == 0))
@@ -347,8 +347,8 @@ u64 StringBufferReplace(StringBufferGeneric_t* stringBuffer, MyStr_t targetStr, 
 			{
 				Assert(stringBuffer->length + (replacementStr.length - targetStr.length) < stringBuffer->bufferSize); //make sure we have space
 				//Move all characters after this point up
-				u64 offset = (replacementStr.length - targetStr.length);
-				for (u64 cIndex2 = stringBuffer->length-1 + offset; cIndex2 - offset >= cIndex; cIndex2--)
+				uxx offset = (replacementStr.length - targetStr.length);
+				for (uxx cIndex2 = stringBuffer->length-1 + offset; cIndex2 - offset >= cIndex; cIndex2--)
 				{
 					stringBuffer->chars[cIndex2] = stringBuffer->chars[cIndex2 - offset];
 				}
@@ -357,8 +357,8 @@ u64 StringBufferReplace(StringBufferGeneric_t* stringBuffer, MyStr_t targetStr, 
 			else if (replacementStr.length < targetStr.length) //if replacing with a smaller string
 			{
 				//Move all characters after this point down
-				u64 offset = targetStr.length - replacementStr.length;
-				for (u64 cIndex2 = cIndex; cIndex2 + offset < stringBuffer->length; cIndex2++)
+				uxx offset = targetStr.length - replacementStr.length;
+				for (uxx cIndex2 = cIndex; cIndex2 + offset < stringBuffer->length; cIndex2++)
 				{
 					stringBuffer->chars[cIndex2] = stringBuffer->chars[cIndex2 + offset];
 				}
@@ -379,15 +379,15 @@ u64 StringBufferReplace(StringBufferGeneric_t* stringBuffer, MyStr_t targetStr, 
 	
 	return result;
 }
-u64 StringBufferReplace(StringBufferGeneric_t* stringBuffer, const char* targetNullTermStr, MyStr_t replacementStr, bool ignoreCase = false)
+uxx StringBufferReplace(StringBufferGeneric_t* stringBuffer, const char* targetNullTermStr, MyStr_t replacementStr, bool ignoreCase = false)
 {
 	return StringBufferReplace(stringBuffer, NewStr(targetNullTermStr), replacementStr, ignoreCase);
 }
-u64 StringBufferReplace(StringBufferGeneric_t* stringBuffer, MyStr_t targetStr, const char* replacementNullTermStr, bool ignoreCase = false)
+uxx StringBufferReplace(StringBufferGeneric_t* stringBuffer, MyStr_t targetStr, const char* replacementNullTermStr, bool ignoreCase = false)
 {
 	return StringBufferReplace(stringBuffer, targetStr, NewStr(replacementNullTermStr), ignoreCase);
 }
-u64 StringBufferReplace(StringBufferGeneric_t* stringBuffer, const char* targetNullTermStr, const char* replacementNullTermStr, bool ignoreCase = false)
+uxx StringBufferReplace(StringBufferGeneric_t* stringBuffer, const char* targetNullTermStr, const char* replacementNullTermStr, bool ignoreCase = false)
 {
 	return StringBufferReplace(stringBuffer, NewStr(targetNullTermStr), NewStr(replacementNullTermStr), ignoreCase);
 }
@@ -428,13 +428,13 @@ StringBuffer_t* ToStringBuffer(StringBufferGeneric_t* stringBuffer)
 TempString_t* ToTempString(StringBufferGeneric_t* stringBuffer)
 MyStr_t ToMyStr(StringBufferGeneric_t* stringBuffer)
 char* ToStr(StringBufferGeneric_t* stringBuffer)
-MyStr_t StringBufferSubstring(StringBufferGeneric_t* stringBuffer, u64 startIndex, u64 endIndex = optional)
-MyStr_t StringBufferSubstringFromEnd(StringBufferGeneric_t* stringBuffer, u64 startIndexFromEnd)
+MyStr_t StringBufferSubstring(StringBufferGeneric_t* stringBuffer, uxx startIndex, uxx endIndex = optional)
+MyStr_t StringBufferSubstringFromEnd(StringBufferGeneric_t* stringBuffer, uxx startIndexFromEnd)
 void StringBufferPrint(StringBufferGeneric_t* stringBuffer, const char* formatString, ...)
 bool StringBufferTryPrint(StringBufferGeneric_t* stringBuffer, const char* formatString, ...)
 void StringBufferAppendPrint(StringBufferGeneric_t* stringBuffer, const char* formatString, ...)
 bool StringBufferTryAppendPrint(StringBufferGeneric_t* stringBuffer, const char* formatString, ...)
 void StringBufferAppend(StringBufferGeneric_t* stringBuffer, MyStr_t str)
 bool StringBufferTryAppend(StringBufferGeneric_t* stringBuffer, MyStr_t str, bool appendWhatYouCan = true)
-u64 StringBufferReplace(StringBufferGeneric_t* stringBuffer, MyStr_t targetStr, MyStr_t replacementStr, bool ignoreCase = false)
+uxx StringBufferReplace(StringBufferGeneric_t* stringBuffer, MyStr_t targetStr, MyStr_t replacementStr, bool ignoreCase = false)
 */

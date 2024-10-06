@@ -90,7 +90,8 @@ MyStr_t OsGetExecutablePath(MemArena_t* memArena, OsError_t* errorOut)
 		Assert(resultLength == pathLength);
 		resultBuffer[resultLength] = '\0';
 		
-		MyStr_t result = NewStr(resultLength, resultBuffer);
+		Assert(resultLength <= UINTXX_MAX);
+		MyStr_t result = NewStr((uxx)resultLength, resultBuffer);
 		StrReplaceInPlace(result, "\\", "/");
 		return result;
 	}
@@ -189,7 +190,8 @@ MyStr_t OsGetWorkingDirectory(MemArena_t* memArena, OsError_t* errorOut)
 		}
 		
 		resultBuffer[resultLength] = '\0';
-		MyStr_t result = NewStr(resultLength, resultBuffer);
+		Assert(resultLength <= UINTXX_MAX);
+		MyStr_t result = NewStr((uxx)resultLength, resultBuffer);
 		StrReplaceInPlace(result, "\\", "/");
 		return result;
 	}

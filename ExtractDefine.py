@@ -5,7 +5,7 @@ import sys
 import re
 
 # This file is script is expected to be used in a batch script like so:
-# for /f "delims=" %%value in ('python ExtractDefines.py ../../../game/pig_config.h DEFINE_NAME') do set DEFINE_NAME=%%value
+# for /f "delims=" %%value in ('python ExtractDefines.py ../../../game/build_config.h DEFINE_NAME') do set DEFINE_NAME=%%value
 
 filePath = sys.argv[1];
 targetDefineName = sys.argv[2];

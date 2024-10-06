@@ -18,7 +18,7 @@ Date:   09\24\2021
 
 struct MyStr_t
 {
-	u64 length;
+	uxx length;
 	union
 	{
 		char* pntr;
@@ -29,7 +29,7 @@ struct MyStr_t
 
 struct MyWideStr_t
 {
-	u64 length;
+	uxx length;
 	union
 	{
 		wchar_t* pntr;
@@ -93,7 +93,7 @@ const char* GetWordBreakCharClassStr(WordBreakCharClass_t enumValue)
 
 struct SplitStringContext_t
 {
-	u64 lastSeparatorIndex;
+	uxx lastSeparatorIndex;
 	MyStr_t piece;
 };
 
@@ -101,7 +101,7 @@ struct SplitStringContext_t
 // |                            Macros                            |
 // +--------------------------------------------------------------+
 #define MyStr_Empty_Const { 0, nullptr }
-#define MyStr_Empty NewStr((u64)0, (char*)nullptr)
+#define MyStr_Empty NewStr((uxx)0, (char*)nullptr)
 
 // +==============================+
 // |       Assertion Macros       |
@@ -126,24 +126,22 @@ struct SplitStringContext_t
 // +==============================+
 // |         Print Macros         |
 // +==============================+
-// When using the %.*s format specifier, we need to be careful about the size of the length argument being passed
-// On 32-bit platforms, the u64 in the MyStr_t structure is too large, so we need to cast to u32.
-// We should use one of these macros in ALL location where we are using %.*s in a format string and sourcing from MyStr_t
-#if PLATFORM_32BIT
-#define StrPrint(myStrStruct)   (u32)(myStrStruct).length, (myStrStruct).chars
-#define StrPntrPrint(myStrPntr) (u32)(myStrPntr)->length, (myStrPntr)->chars
-#else
-#define StrPrint(myStrStruct)   (int)(myStrStruct).length, (myStrStruct).chars
-#define StrPntrPrint(myStrPntr) (int)(myStrPntr)->length, (myStrPntr)->chars
-#endif
+//NOTE: Before we changed the u64 length in MyStr_t to uxx type, printing a string
+//      with %.*s was one of the scenarios where 32-bit platforms would cause us
+//      trouble. So this macro used to sneak in a u32 cast for those platforms.
+//      Now it simply serves as a shorthand for passing the length and then chars
+//      in the right order, and also will help us fix up this use case in the future
+//      if we find any more idiosyncrasies with this format specifier
+#define StrPrint(myStrStruct)   (myStrStruct).length, (myStrStruct).chars
+#define StrPntrPrint(myStrPntr) (myStrPntr)->length, (myStrPntr)->chars
 
 // +--------------------------------------------------------------+
 // |                         Header Only                          |
 // +--------------------------------------------------------------+
 #ifdef GYLIB_HEADER_ONLY
-	MyStr_t NewStrLengthOnly(u64 length);
-	MyStr_t NewStr(u64 length, char* pntr);
-	MyStr_t NewStr(u64 length, const char* pntr);
+	MyStr_t NewStrLengthOnly(uxx length);
+	MyStr_t NewStr(uxx length, char* pntr);
+	MyStr_t NewStr(uxx length, const char* pntr);
 	MyStr_t NewStr(char* nullTermStr);
 	MyStr_t NewStr(const char* nullTermStr);
 	MyStrPair_t NewStrPair(const char* keyStrNullTerm, const char* valueStrNullTerm);
@@ -156,46 +154,46 @@ struct SplitStringContext_t
 	bool IsEmptyStr(const MyStr_t* targetPntr);
 	bool IsStrNullTerminated(MyStr_t target);
 	bool IsStrNullTerminated(const MyStr_t* targetPntr);
-	bool BufferIsNullTerminated(u64 bufferSize, const char* bufferPntr);
+	bool BufferIsNullTerminated(uxx bufferSize, const char* bufferPntr);
 	MyStr_t PrintInArenaStr(MemArena_t* arena, const char* formatString, ...);
 	#ifdef _GY_UNICODE_H
-	u8 GetCodepointForUtf8Str(MyStr_t str, u64 index, u32* codepointOut = nullptr);
+	u8 GetCodepointForUtf8Str(MyStr_t str, uxx index, u32* codepointOut = nullptr);
 	#if WINDOWS_COMPILATION
-	MyStr_t ConvertUcs2StrToUtf8(MemArena_t* memArena, const wchar_t* wideStrPntr, u64 wideStrLength);
+	MyStr_t ConvertUcs2StrToUtf8(MemArena_t* memArena, const wchar_t* wideStrPntr, uxx wideStrLength);
 	MyStr_t ConvertUcs2StrToUtf8Nt(MemArena_t* memArena, const wchar_t* nullTermWideStr);
 	MyWideStr_t ConvertUtf8StrToUcs2(MemArena_t* memArena, MyStr_t utf8Str);
 	#endif // WINDOWS_COMPILATION
 	bool DoesStrContainMultibyteUtf8Characters(MyStr_t str);
 	#endif //_GY_UNICODE_H
-	u64 TrimLeadingWhitespace(MyStr_t* target, bool trimNewLines = false);
-	u64 TrimTrailingWhitespace(MyStr_t* target, bool trimNewLines = false);
-	u64 TrimWhitespace(MyStr_t* target, bool trimNewLines = false);
-	bool FindNextCharInStr(MyStr_t target, u64 startIndex, MyStr_t searchCharsStr, u64* indexOut = nullptr, bool ignoreCharsInQuotes = false);
-	bool FindNextCharInStr(MyStr_t target, u64 startIndex, const char* nullTermSearchCharsStr, u64* indexOut = nullptr, bool ignoreCharsInQuotes = false);
-	bool FindNextUnknownCharInStr(MyStr_t target, u64 startIndex, MyStr_t knownCharsStr, u64* indexOut = nullptr, bool ignoreCharsInQuotes = false);
-	bool FindNextUnknownCharInStr(MyStr_t target, u64 startIndex, const char* nullTermKnownCharsStr, u64* indexOut = nullptr, bool ignoreCharsInQuotes = false);
-	bool FindNextWhitespaceInStr(MyStr_t target, u64 startIndex, u64* indexOut = nullptr, bool ignoreCharsInQuotes = false);
-	MyStr_t StrSubstring(MyStr_t* target, u64 startIndex);
-	MyStr_t StrSubstring(MyStr_t* target, u64 startIndex, u64 endIndex);
-	MyStr_t StrSubstringLength(MyStr_t* target, u64 startIndex, u64 length);
+	uxx TrimLeadingWhitespace(MyStr_t* target, bool trimNewLines = false);
+	uxx TrimTrailingWhitespace(MyStr_t* target, bool trimNewLines = false);
+	uxx TrimWhitespace(MyStr_t* target, bool trimNewLines = false);
+	bool FindNextCharInStr(MyStr_t target, uxx startIndex, MyStr_t searchCharsStr, uxx* indexOut = nullptr, bool ignoreCharsInQuotes = false);
+	bool FindNextCharInStr(MyStr_t target, uxx startIndex, const char* nullTermSearchCharsStr, uxx* indexOut = nullptr, bool ignoreCharsInQuotes = false);
+	bool FindNextUnknownCharInStr(MyStr_t target, uxx startIndex, MyStr_t knownCharsStr, uxx* indexOut = nullptr, bool ignoreCharsInQuotes = false);
+	bool FindNextUnknownCharInStr(MyStr_t target, uxx startIndex, const char* nullTermKnownCharsStr, uxx* indexOut = nullptr, bool ignoreCharsInQuotes = false);
+	bool FindNextWhitespaceInStr(MyStr_t target, uxx startIndex, uxx* indexOut = nullptr, bool ignoreCharsInQuotes = false);
+	MyStr_t StrSubstring(MyStr_t* target, uxx startIndex);
+	MyStr_t StrSubstring(MyStr_t* target, uxx startIndex, uxx endIndex);
+	MyStr_t StrSubstringLength(MyStr_t* target, uxx startIndex, uxx length);
 	MyStr_t CombineStrs(MemArena_t* memArena, MyStr_t str1, MyStr_t str2);
 	MyStr_t CombineStrs(MemArena_t* memArena, MyStr_t str1, MyStr_t str2, MyStr_t str3);
 	MyStr_t CombineStrs(MemArena_t* memArena, MyStr_t str1, MyStr_t str2, MyStr_t str3, MyStr_t str4);
 	bool StrEquals(MyStr_t target, MyStr_t comparison);
 	bool StrEquals(MyStr_t target, const char* comparisonNt);
-	bool StrEquals(MyStr_t target, u64 comparisonLength, const char* comparisonPntr);
+	bool StrEquals(MyStr_t target, uxx comparisonLength, const char* comparisonPntr);
 	bool StrEquals(const char* comparisonNt, MyStr_t target);
-	bool StrEquals(u64 comparisonLength, const char* comparisonPntr, MyStr_t target);
-	i32 StrCompareIgnoreCase(MyStr_t str1, MyStr_t str2, u64 compareLength);
+	bool StrEquals(uxx comparisonLength, const char* comparisonPntr, MyStr_t target);
+	i32 StrCompareIgnoreCase(MyStr_t str1, MyStr_t str2, uxx compareLength);
 	i32 StrCompareIgnoreCase(MyStr_t str1, MyStr_t str2);
-	i32 StrCompareIgnoreCase(MyStr_t str1, const char* nullTermStr, u64 compareLength);
+	i32 StrCompareIgnoreCase(MyStr_t str1, const char* nullTermStr, uxx compareLength);
 	i32 StrCompareIgnoreCase(MyStr_t str1, const char* nullTermStr);
-	i32 StrCompareIgnoreCase(const char* str1, const char* str2, u64 compareLength);
+	i32 StrCompareIgnoreCase(const char* str1, const char* str2, uxx compareLength);
 	bool StrEqualsIgnoreCase(MyStr_t target, MyStr_t comparison);
 	bool StrEqualsIgnoreCase(MyStr_t target, const char* comparisonNt);
-	bool StrEqualsIgnoreCase(MyStr_t target, u64 comparisonLength, const char* comparisonPntr);
+	bool StrEqualsIgnoreCase(MyStr_t target, uxx comparisonLength, const char* comparisonPntr);
 	bool StrEqualsIgnoreCase(const char* comparisonNt, MyStr_t target);
-	bool StrEqualsIgnoreCase(u64 comparisonLength, const char* comparisonPntr, MyStr_t target);
+	bool StrEqualsIgnoreCase(uxx comparisonLength, const char* comparisonPntr, MyStr_t target);
 	bool StrStartsWith(MyStr_t str, MyStr_t prefix, bool ignoreCase = false);
 	bool StrStartsWith(MyStr_t str, const char* nullTermPrefixStr, bool ignoreCase = false);
 	bool StrStartsWith(const char* nullTermStr, MyStr_t prefix, bool ignoreCase = false);
@@ -208,80 +206,80 @@ struct SplitStringContext_t
 	bool StrStartsWithSlash(const char* nullTermStr);
 	bool StrEndsWithSlash(MyStr_t str);
 	bool StrEndsWithSlash(const char* nullTermStr);
-	bool SplitStringFixed(MyStr_t target, MyStr_t delineator, u64 numPieces, MyStr_t* piecesBuffer, bool ignoreCase = false);
-	bool SplitStringFixed(MyStr_t target, const char* delineatorNullTerm, u64 numPieces, MyStr_t* piecesBuffer, bool ignoreCase = false);
-	bool SplitStringFixed(const char* targetNullTerm, MyStr_t delineator, u64 numPieces, MyStr_t* piecesBuffer, bool ignoreCase = false);
-	bool SplitStringFixed(const char* targetNullTerm, const char* delineatorNullTerm, u64 numPieces, MyStr_t* piecesBuffer, bool ignoreCase = false);
-	MyStr_t* SplitString(MemArena_t* memArena, MyStr_t target, MyStr_t delineator, u64* numPiecesOut = nullptr, bool ignoreCase = false);
-	MyStr_t* SplitString(MemArena_t* memArena, MyStr_t target, const char* delineatorNt, u64* numPiecesOut = nullptr, bool ignoreCase = false);
-	MyStr_t* SplitString(MemArena_t* memArena, const char* targetNt, MyStr_t delineator, u64* numPiecesOut = nullptr, bool ignoreCase = false);
-	MyStr_t* SplitString(MemArena_t* memArena, const char* targetNt, const char* delineatorNt, u64* numPiecesOut = nullptr, bool ignoreCase = false);
+	bool SplitStringFixed(MyStr_t target, MyStr_t delineator, uxx numPieces, MyStr_t* piecesBuffer, bool ignoreCase = false);
+	bool SplitStringFixed(MyStr_t target, const char* delineatorNullTerm, uxx numPieces, MyStr_t* piecesBuffer, bool ignoreCase = false);
+	bool SplitStringFixed(const char* targetNullTerm, MyStr_t delineator, uxx numPieces, MyStr_t* piecesBuffer, bool ignoreCase = false);
+	bool SplitStringFixed(const char* targetNullTerm, const char* delineatorNullTerm, uxx numPieces, MyStr_t* piecesBuffer, bool ignoreCase = false);
+	MyStr_t* SplitString(MemArena_t* memArena, MyStr_t target, MyStr_t delineator, uxx* numPiecesOut = nullptr, bool ignoreCase = false);
+	MyStr_t* SplitString(MemArena_t* memArena, MyStr_t target, const char* delineatorNt, uxx* numPiecesOut = nullptr, bool ignoreCase = false);
+	MyStr_t* SplitString(MemArena_t* memArena, const char* targetNt, MyStr_t delineator, uxx* numPiecesOut = nullptr, bool ignoreCase = false);
+	MyStr_t* SplitString(MemArena_t* memArena, const char* targetNt, const char* delineatorNt, uxx* numPiecesOut = nullptr, bool ignoreCase = false);
 	bool SplitStringFast(SplitStringContext_t* context, MyStr_t target, char separatorChar, bool includeEmptyPieces = false);
-	MyStr_t* SplitStringBySpacesFastTemp(MemArena_t* tempArena, MyStr_t target, u64* numPiecesOut);
-	MyStr_t* SplitStringBySlashesFastTemp(MemArena_t* tempArena, MyStr_t target, u64* numPiecesOut);
-	u64 UnescapeQuotedStringInPlace(MyStr_t* target, bool removeQuotes = true, bool allowNewLineEscapes = true, bool allowOtherEscapeCodes = false);
+	MyStr_t* SplitStringBySpacesFastTemp(MemArena_t* tempArena, MyStr_t target, uxx* numPiecesOut);
+	MyStr_t* SplitStringBySlashesFastTemp(MemArena_t* tempArena, MyStr_t target, uxx* numPiecesOut);
+	uxx UnescapeQuotedStringInPlace(MyStr_t* target, bool removeQuotes = true, bool allowNewLineEscapes = true, bool allowOtherEscapeCodes = false);
 	MyStr_t UnescapeQuotedStringInArena(MemArena_t* memArena, MyStr_t target, bool removeQuotes = true, bool allowNewLineEscapes = true, bool allowOtherEscapeCodes = false);
-	MyStr_t* SplitStringBySpacesWithQuotesAndUnescape(MemArena_t* memArena, MyStr_t target, u64* numPiecesOut);
-	void StrSpliceInPlace(MyStr_t target, u64 startIndex, MyStr_t replacement);
-	void StrSpliceInPlace(MyStr_t target, u64 startIndex, const char* replacementNullTerm);
-	void StrSpliceInPlace(char* targetNullTermStr, u64 startIndex, MyStr_t replacement);
-	void StrSpliceInPlace(char* targetNullTermStr, u64 startIndex, const char* replacementNullTerm);
-	MyStr_t StrSplice(MyStr_t target, u64 startIndex, u64 endIndex, MyStr_t replacement, MemArena_t* memArena);
-	MyStr_t StrSplice(MyStr_t target, u64 startIndex, u64 endIndex, const char* replacementNullTerm, MemArena_t* memArena);
-	MyStr_t StrSplice(char* targetNullTermStr, u64 startIndex, u64 endIndex, MyStr_t replacement, MemArena_t* memArena);
-	MyStr_t StrSplice(char* targetNullTermStr, u64 startIndex, u64 endIndex, const char* replacement, MemArena_t* memArena);
-	u64 StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ignoreCase = false, bool allowShrinking = false);
-	u64 StrReplaceInPlace(MyStr_t str, const char* target, const char* replacement, bool ignoreCase = false, bool allowShrinking = false);
+	MyStr_t* SplitStringBySpacesWithQuotesAndUnescape(MemArena_t* memArena, MyStr_t target, uxx* numPiecesOut);
+	void StrSpliceInPlace(MyStr_t target, uxx startIndex, MyStr_t replacement);
+	void StrSpliceInPlace(MyStr_t target, uxx startIndex, const char* replacementNullTerm);
+	void StrSpliceInPlace(char* targetNullTermStr, uxx startIndex, MyStr_t replacement);
+	void StrSpliceInPlace(char* targetNullTermStr, uxx startIndex, const char* replacementNullTerm);
+	MyStr_t StrSplice(MyStr_t target, uxx startIndex, uxx endIndex, MyStr_t replacement, MemArena_t* memArena);
+	MyStr_t StrSplice(MyStr_t target, uxx startIndex, uxx endIndex, const char* replacementNullTerm, MemArena_t* memArena);
+	MyStr_t StrSplice(char* targetNullTermStr, uxx startIndex, uxx endIndex, MyStr_t replacement, MemArena_t* memArena);
+	MyStr_t StrSplice(char* targetNullTermStr, uxx startIndex, uxx endIndex, const char* replacement, MemArena_t* memArena);
+	uxx StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ignoreCase = false, bool allowShrinking = false);
+	uxx StrReplaceInPlace(MyStr_t str, const char* target, const char* replacement, bool ignoreCase = false, bool allowShrinking = false);
 	MyStr_t StrReplace(MyStr_t str, MyStr_t target, MyStr_t replacement, MemArena_t* memArena);
 	MyStr_t StrReplace(MyStr_t str, const char* target, const char* replacement, MemArena_t* memArena);
-	MyStr_t StrReplaceMultiple(MyStr_t str, u64 numReplacements, const MyStrPair_t* replacements, MemArena_t* memArena);
-	bool FindSubstring(MyStr_t target, MyStr_t substring, u64* indexOut = nullptr, bool ignoreCase = false, u64 startIndex = 0);
-	bool FindSubstring(MyStr_t target, const char* nullTermSubstring, u64* indexOut= nullptr, bool ignoreCase = false, u64 startIndex = 0);
-	bool FindSubstring(const char* nullTermTarget, MyStr_t substring, u64* indexOut= nullptr, bool ignoreCase = false, u64 startIndex = 0);
-	bool FindSubstring(const char* nullTermTarget, const char* nullTermSubstring, u64* indexOut= nullptr, bool ignoreCase = false, u64 startIndex = 0);
+	MyStr_t StrReplaceMultiple(MyStr_t str, uxx numReplacements, const MyStrPair_t* replacements, MemArena_t* memArena);
+	bool FindSubstring(MyStr_t target, MyStr_t substring, uxx* indexOut = nullptr, bool ignoreCase = false, uxx startIndex = 0);
+	bool FindSubstring(MyStr_t target, const char* nullTermSubstring, uxx* indexOut= nullptr, bool ignoreCase = false, uxx startIndex = 0);
+	bool FindSubstring(const char* nullTermTarget, MyStr_t substring, uxx* indexOut= nullptr, bool ignoreCase = false, uxx startIndex = 0);
+	bool FindSubstring(const char* nullTermTarget, const char* nullTermSubstring, uxx* indexOut= nullptr, bool ignoreCase = false, uxx startIndex = 0);
 	MyStr_t FindStrParensPart(MyStr_t target, char openParensChar = '(', char closeParensChar = ')');
 	MyStr_t FindStrParensPart(const char* nullTermTarget, char openParensChar = '(', char closeParensChar = ')');
-	MyStr_t StringRepeat(MemArena_t* memArena, MyStr_t str, u64 numRepetitions);
-	MyStr_t StringRepeat(MemArena_t* memArena, const char* nullTermStr, u64 numRepetitions);
-	MyStr_t FormatBytes(u64 numBytes, MemArena_t* memArena);
-	const char* FormatBytesNt(u64 numBytes, MemArena_t* memArena);
-	MyStr_t FormatNumberWithCommas(u64 number, MemArena_t* memArena = nullptr);
-	const char* FormatNumberWithCommasNt(u64 number, MemArena_t* memArena = nullptr);
-	u64 FnvHashStr(MyStr_t str);
-	u64 FnvHashStr(const char* nullTermStr);
+	MyStr_t StringRepeat(MemArena_t* memArena, MyStr_t str, uxx numRepetitions);
+	MyStr_t StringRepeat(MemArena_t* memArena, const char* nullTermStr, uxx numRepetitions);
+	MyStr_t FormatBytes(uxx numBytes, MemArena_t* memArena);
+	const char* FormatBytesNt(uxx numBytes, MemArena_t* memArena);
+	MyStr_t FormatNumberWithCommas(uxx number, MemArena_t* memArena = nullptr);
+	const char* FormatNumberWithCommasNt(uxx number, MemArena_t* memArena = nullptr);
+	uxx FnvHashStr(MyStr_t str);
+	uxx FnvHashStr(const char* nullTermStr);
 	bool IsStringValidIdentifier(MyStr_t str, bool allowUnderscores = true, bool allowNumbers = true, bool allowLeadingNumbers = false, bool allowEmpty = false, bool allowSpaces = false);
-	bool IsStringMadeOfChars(MyStr_t str, MyStr_t allowedChars, u64* firstInvalidCharOut = nullptr);
+	bool IsStringMadeOfChars(MyStr_t str, MyStr_t allowedChars, uxx* firstInvalidCharOut = nullptr);
 	void StrReallocAppend(MyStr_t* baseStr, MyStr_t appendStr, MemArena_t* memArena);
 	void StrReallocAppend(MyStr_t* baseStr, const char* appendNullTermStr, MemArena_t* memArena);
 	WordBreakCharClass_t GetWordBreakCharClass(u32 codepoint);
 	bool IsCharPairWordBreak(u32 prevCodepoint, u32 nextCodepoint, bool forward, bool subwords);
-	u64 FindNextWordBreakInString(MyStr_t str, u64 startIndex, bool forward, bool subwords, bool includeBreakAtStartIndex = false);
+	uxx FindNextWordBreakInString(MyStr_t str, uxx startIndex, bool forward, bool subwords, bool includeBreakAtStartIndex = false);
 	#ifdef _GY_TIME_H
 	MyStr_t FormatRealTime(const RealTime_t* realTime, MemArena_t* memArena, bool includeDayOfWeek = true, bool includeHourMinuteSecond = true, bool includeMonthDayYear = true);
 	const char* FormatRealTimeNt(const RealTime_t* realTime, MemArena_t* memArena, bool includeDayOfWeek = true, bool includeHourMinuteSecond = true, bool includeMonthDayYear = true);
-	MyStr_t FormatMilliseconds(u64 milliseconds, MemArena_t* memArena);
-	const char* FormatMillisecondsNt(u64 milliseconds, MemArena_t* memArena);
+	MyStr_t FormatMilliseconds(uxx milliseconds, MemArena_t* memArena);
+	const char* FormatMillisecondsNt(uxx milliseconds, MemArena_t* memArena);
 	#endif //_GY_TIME_H
 #else
 
 // +--------------------------------------------------------------+
 // |                        New Functions                         |
 // +--------------------------------------------------------------+
-MyStr_t NewStrLengthOnly(u64 length)
+MyStr_t NewStrLengthOnly(uxx length)
 {
 	MyStr_t result;
 	result.length = length;
 	result.pntr = nullptr;
 	return result;
 }
-MyStr_t NewStr(u64 length, char* pntr)
+MyStr_t NewStr(uxx length, char* pntr)
 {
 	MyStr_t result;
 	result.length = length;
 	result.pntr = pntr;
 	return result;
 }
-MyStr_t NewStr(u64 length, const char* pntr)
+MyStr_t NewStr(uxx length, const char* pntr)
 {
 	MyStr_t result;
 	result.length = length;
@@ -367,10 +365,10 @@ bool IsStrNullTerminated(const MyStr_t* targetPntr)
 	if (targetPntr->pntr == nullptr) { return false; }
 	return (targetPntr->pntr[targetPntr->length] == '\0');
 }
-bool BufferIsNullTerminated(u64 bufferSize, const char* bufferPntr)
+bool BufferIsNullTerminated(uxx bufferSize, const char* bufferPntr)
 {
 	AssertIf(bufferSize > 0, bufferPntr != nullptr);
-	for (u64 cIndex = 0; cIndex < bufferSize; cIndex++)
+	for (uxx cIndex = 0; cIndex < bufferSize; cIndex++)
 	{
 		if (bufferPntr[cIndex] == '\0') { return true; }
 	}
@@ -402,14 +400,14 @@ MyStr_t PrintInArenaStr(MemArena_t* arena, const char* formatString, ...)
 	
 	result[length] = '\0';
 	
-	return NewStr((u64)length, result);
+	return NewStr((uxx)length, result);
 }
 
 // +--------------------------------------------------------------+
 // |                   Unicode String Functions                   |
 // +--------------------------------------------------------------+
 #ifdef _GY_UNICODE_H
-u8 GetCodepointForUtf8Str(MyStr_t str, u64 index, u32* codepointOut = nullptr)
+u8 GetCodepointForUtf8Str(MyStr_t str, uxx index, u32* codepointOut = nullptr)
 {
 	Assert(index <= str.length);
 	return GetCodepointForUtf8(str.length - index, str.pntr + index, codepointOut);
@@ -417,16 +415,16 @@ u8 GetCodepointForUtf8Str(MyStr_t str, u64 index, u32* codepointOut = nullptr)
 
 #if WINDOWS_COMPILATION
 
-MyStr_t ConvertUcs2StrToUtf8(MemArena_t* memArena, const wchar_t* wideStrPntr, u64 wideStrLength)
+MyStr_t ConvertUcs2StrToUtf8(MemArena_t* memArena, const wchar_t* wideStrPntr, uxx wideStrLength)
 {
 	Assert(wideStrPntr != nullptr || wideStrLength == 0);
 	MyStr_t result = MyStr_Empty;
 	for (u8 pass = 0; pass < 2; pass++)
 	{
-		u64 byteIndex = 0;
+		uxx byteIndex = 0;
 		
 		u8 encodeBuffer[UTF8_MAX_CHAR_SIZE];
-		for (u64 cIndex = 0; cIndex < wideStrLength; cIndex++)
+		for (uxx cIndex = 0; cIndex < wideStrLength; cIndex++)
 		{
 			wchar_t wideChar = wideStrPntr[cIndex];
 			//TODO: Should we just straight convert wide characters to unicode points by casting to u32!?
@@ -470,8 +468,8 @@ MyWideStr_t ConvertUtf8StrToUcs2(MemArena_t* memArena, MyStr_t utf8Str)
 	NotNullStr(&utf8Str);
 	u16 encodedWords[2];
 	
-	u64 numWordsNeeded = 0;
-	for (u64 byteIndex = 0; byteIndex < utf8Str.length; )
+	uxx numWordsNeeded = 0;
+	for (uxx byteIndex = 0; byteIndex < utf8Str.length; )
 	{
 		u32 codepoint = 0;
 		u8 charByteSize = GetCodepointForUtf8(utf8Str.length - byteIndex, &utf8Str.chars[byteIndex], &codepoint);
@@ -493,7 +491,7 @@ MyWideStr_t ConvertUtf8StrToUcs2(MemArena_t* memArena, MyStr_t utf8Str)
 	result.length = 0;
 	if (result.words == nullptr) { return result; }
 	
-	for (u64 byteIndex = 0; byteIndex < utf8Str.length; )
+	for (uxx byteIndex = 0; byteIndex < utf8Str.length; )
 	{
 		u32 codepoint = 0;
 		u8 charByteSize = GetCodepointForUtf8(utf8Str.length - byteIndex, &utf8Str.chars[byteIndex], &codepoint);
@@ -521,7 +519,7 @@ MyWideStr_t ConvertUtf8StrToUcs2(MemArena_t* memArena, MyStr_t utf8Str)
 
 bool DoesStrContainMultibyteUtf8Characters(MyStr_t str)
 {
-	for (u64 bIndex = 0; bIndex < str.length; bIndex++)
+	for (uxx bIndex = 0; bIndex < str.length; bIndex++)
 	{
 		if (GetCodepointForUtf8Str(str, bIndex) > 0) { return true; }
 	}
@@ -533,10 +531,10 @@ bool DoesStrContainMultibyteUtf8Characters(MyStr_t str)
 // +--------------------------------------------------------------+
 // |                Helpful Manipulation Functions                |
 // +--------------------------------------------------------------+
-u64 TrimLeadingWhitespace(MyStr_t* target, bool trimNewLines = false)
+uxx TrimLeadingWhitespace(MyStr_t* target, bool trimNewLines = false)
 {
 	NotNullStr(target);
-	u64 result = 0;
+	uxx result = 0;
 	while (target->length > 0)
 	{
 		if (target->pntr[0] == ' ' || target->pntr[0] == '\t' ||
@@ -550,10 +548,10 @@ u64 TrimLeadingWhitespace(MyStr_t* target, bool trimNewLines = false)
 	}
 	return result;
 }
-u64 TrimTrailingWhitespace(MyStr_t* target, bool trimNewLines = false)
+uxx TrimTrailingWhitespace(MyStr_t* target, bool trimNewLines = false)
 {
 	NotNullStr(target);
-	u64 result = 0;
+	uxx result = 0;
 	while (target->length > 0)
 	{
 		if (target->pntr[target->length-1] == ' ' || target->pntr[target->length-1] == '\t' ||
@@ -567,26 +565,26 @@ u64 TrimTrailingWhitespace(MyStr_t* target, bool trimNewLines = false)
 	return result;
 }
 //TODO: We should make a version of this that doesn't take a pointer to a string, but rather just returns the MyStr_t without modifying the input MyStr_t
-u64 TrimWhitespace(MyStr_t* target, bool trimNewLines = false)
+uxx TrimWhitespace(MyStr_t* target, bool trimNewLines = false)
 {
 	NotNullStr(target);
-	u64 result = 0;
+	uxx result = 0;
 	result += TrimLeadingWhitespace(target, trimNewLines);
 	result += TrimTrailingWhitespace(target, trimNewLines);
 	return result;
 }
 
-bool FindNextCharInStr(MyStr_t target, u64 startIndex, MyStr_t searchCharsStr, u64* indexOut = nullptr, bool ignoreCharsInQuotes = false)
+bool FindNextCharInStr(MyStr_t target, uxx startIndex, MyStr_t searchCharsStr, uxx* indexOut = nullptr, bool ignoreCharsInQuotes = false)
 {
 	NotNullStr(&target);
 	bool inString = false;
 	u32 previousCodepoint = 0;
-	for (u64 cIndex = startIndex; cIndex < target.length; )
+	for (uxx cIndex = startIndex; cIndex < target.length; )
 	{
 		u32 codepoint = 0;
 		u8 codepointSize = GetCodepointForUtf8Str(target, cIndex, &codepoint);
 		if (codepointSize == 0) { cIndex++; continue; } //invalid utf-8 encoding in target
-		for (u64 sIndex = 0; sIndex < searchCharsStr.length; )
+		for (uxx sIndex = 0; sIndex < searchCharsStr.length; )
 		{
 			u32 searchCodepoint = 0;
 			u8 searchCodepointSize = GetCodepointForUtf8Str(searchCharsStr, sIndex, &searchCodepoint);
@@ -608,22 +606,22 @@ bool FindNextCharInStr(MyStr_t target, u64 startIndex, MyStr_t searchCharsStr, u
 	}
 	return false;
 }
-bool FindNextCharInStr(MyStr_t target, u64 startIndex, const char* nullTermSearchCharsStr, u64* indexOut = nullptr, bool ignoreCharsInQuotes = false)
+bool FindNextCharInStr(MyStr_t target, uxx startIndex, const char* nullTermSearchCharsStr, uxx* indexOut = nullptr, bool ignoreCharsInQuotes = false)
 {
 	return FindNextCharInStr(target, startIndex, NewStr(nullTermSearchCharsStr), indexOut, ignoreCharsInQuotes);
 }
-bool FindNextUnknownCharInStr(MyStr_t target, u64 startIndex, MyStr_t knownCharsStr, u64* indexOut = nullptr, bool ignoreCharsInQuotes = false)
+bool FindNextUnknownCharInStr(MyStr_t target, uxx startIndex, MyStr_t knownCharsStr, uxx* indexOut = nullptr, bool ignoreCharsInQuotes = false)
 {
 	NotNullStr(&target);
 	bool inString = false;
 	u32 previousCodepoint = 0;
-	for (u64 cIndex = startIndex; cIndex < target.length; )
+	for (uxx cIndex = startIndex; cIndex < target.length; )
 	{
 		u32 codepoint = 0;
 		u8 codepointSize = GetCodepointForUtf8Str(target, cIndex, &codepoint);
 		if (codepointSize == 0) { cIndex++; continue; } //invalid utf-8 encoding in target
 		bool isUnknownChar = true;
-		for (u64 sIndex = 0; sIndex < knownCharsStr.length; )
+		for (uxx sIndex = 0; sIndex < knownCharsStr.length; )
 		{
 			u32 knownCodepoint = 0;
 			u8 knownCodepointSize = GetCodepointForUtf8Str(knownCharsStr, sIndex, &knownCodepoint);
@@ -650,16 +648,16 @@ bool FindNextUnknownCharInStr(MyStr_t target, u64 startIndex, MyStr_t knownChars
 	}
 	return false;
 }
-bool FindNextUnknownCharInStr(MyStr_t target, u64 startIndex, const char* nullTermKnownCharsStr, u64* indexOut = nullptr, bool ignoreCharsInQuotes = false)
+bool FindNextUnknownCharInStr(MyStr_t target, uxx startIndex, const char* nullTermKnownCharsStr, uxx* indexOut = nullptr, bool ignoreCharsInQuotes = false)
 {
 	return FindNextUnknownCharInStr(target, startIndex, NewStr(nullTermKnownCharsStr), indexOut, ignoreCharsInQuotes);
 }
-bool FindNextWhitespaceInStr(MyStr_t target, u64 startIndex, u64* indexOut = nullptr, bool ignoreCharsInQuotes = false)
+bool FindNextWhitespaceInStr(MyStr_t target, uxx startIndex, uxx* indexOut = nullptr, bool ignoreCharsInQuotes = false)
 {
 	NotNullStr(&target);
 	bool inString = false;
 	u32 previousCodepoint = 0;
-	for (u64 cIndex = startIndex; cIndex < target.length; )
+	for (uxx cIndex = startIndex; cIndex < target.length; )
 	{
 		u32 codepoint = 0;
 		u8 codepointSize = GetCodepointForUtf8Str(target, cIndex, &codepoint);
@@ -680,7 +678,7 @@ bool FindNextWhitespaceInStr(MyStr_t target, u64 startIndex, u64* indexOut = nul
 }
 
 //TODO: Change these so they don't take pointers?
-MyStr_t StrSubstring(MyStr_t* target, u64 startIndex)
+MyStr_t StrSubstring(MyStr_t* target, uxx startIndex)
 {
 	NotNullStr(target);
 	MyStr_t result;
@@ -689,7 +687,7 @@ MyStr_t StrSubstring(MyStr_t* target, u64 startIndex)
 	result.length = target->length - startIndex;
 	return result;
 }
-MyStr_t StrSubstring(MyStr_t* target, u64 startIndex, u64 endIndex)
+MyStr_t StrSubstring(MyStr_t* target, uxx startIndex, uxx endIndex)
 {
 	NotNullStr(target);
 	MyStr_t result;
@@ -700,7 +698,7 @@ MyStr_t StrSubstring(MyStr_t* target, u64 startIndex, u64 endIndex)
 	result.length = endIndex - startIndex;
 	return result;
 }
-MyStr_t StrSubstringLength(MyStr_t* target, u64 startIndex, u64 length)
+MyStr_t StrSubstringLength(MyStr_t* target, uxx startIndex, uxx length)
 {
 	NotNullStr(target);
 	MyStr_t result;
@@ -783,7 +781,7 @@ bool StrEquals(MyStr_t target, const char* comparisonNt)
 	MyStr_t comparisonStr = NewStr(comparisonNt);
 	return StrEquals(target, comparisonStr);
 }
-bool StrEquals(MyStr_t target, u64 comparisonLength, const char* comparisonPntr)
+bool StrEquals(MyStr_t target, uxx comparisonLength, const char* comparisonPntr)
 {
 	MyStr_t comparisonStr = NewStr(comparisonLength, comparisonPntr);
 	return StrEquals(target, comparisonStr);
@@ -793,18 +791,18 @@ bool StrEquals(const char* comparisonNt, MyStr_t target)
 	MyStr_t comparisonStr = NewStr(comparisonNt);
 	return StrEquals(comparisonStr, target);
 }
-bool StrEquals(u64 comparisonLength, const char* comparisonPntr, MyStr_t target)
+bool StrEquals(uxx comparisonLength, const char* comparisonPntr, MyStr_t target)
 {
 	MyStr_t comparisonStr = NewStr(comparisonLength, comparisonPntr);
 	return StrEquals(comparisonStr, target);
 }
 
 //TODO: These currently don't support unicode's idea of "lowercase/uppercase" equivalent characters
-i32 StrCompareIgnoreCase(MyStr_t str1, MyStr_t str2, u64 compareLength)
+i32 StrCompareIgnoreCase(MyStr_t str1, MyStr_t str2, uxx compareLength)
 {
 	NotNullStr(&str1);
 	NotNullStr(&str2);
-	for (u64 cIndex = 0; cIndex < compareLength; cIndex++)
+	for (uxx cIndex = 0; cIndex < compareLength; cIndex++)
 	{
 		if (cIndex >= str1.length && cIndex >= str2.length)
 		{
@@ -843,7 +841,7 @@ i32 StrCompareIgnoreCase(MyStr_t str1, MyStr_t str2)
 	if (str1.length < str2.length) { return -1; }
 	return 0;
 }
-i32 StrCompareIgnoreCase(MyStr_t str1, const char* nullTermStr, u64 compareLength)
+i32 StrCompareIgnoreCase(MyStr_t str1, const char* nullTermStr, uxx compareLength)
 {
 	MyStr_t str2 = NewStr(nullTermStr);
 	return StrCompareIgnoreCase(str1, str2, compareLength);
@@ -853,11 +851,11 @@ i32 StrCompareIgnoreCase(MyStr_t str1, const char* nullTermStr)
 	MyStr_t str2 = NewStr(nullTermStr);
 	return StrCompareIgnoreCase(str1, str2);
 }
-i32 StrCompareIgnoreCase(const char* str1, const char* str2, u64 compareLength)
+i32 StrCompareIgnoreCase(const char* str1, const char* str2, uxx compareLength)
 {
 	NotNull(str1);
 	NotNull(str2);
-	for (u64 cIndex = 0; cIndex < compareLength; cIndex++)
+	for (uxx cIndex = 0; cIndex < compareLength; cIndex++)
 	{
 		char char1 = GetLowercaseAnsiiChar(str1[cIndex]);
 		char char2 = GetLowercaseAnsiiChar(str2[cIndex]);
@@ -897,7 +895,7 @@ bool StrEqualsIgnoreCase(MyStr_t target, const char* comparisonNt)
 {
 	return (StrCompareIgnoreCase(target, comparisonNt) == 0);
 }
-bool StrEqualsIgnoreCase(MyStr_t target, u64 comparisonLength, const char* comparisonPntr)
+bool StrEqualsIgnoreCase(MyStr_t target, uxx comparisonLength, const char* comparisonPntr)
 {
 	return (StrCompareIgnoreCase(target, comparisonPntr, comparisonLength) == 0);
 }
@@ -905,7 +903,7 @@ bool StrEqualsIgnoreCase(const char* comparisonNt, MyStr_t target)
 {
 	return (StrCompareIgnoreCase(target, comparisonNt) == 0);
 }
-bool StrEqualsIgnoreCase(u64 comparisonLength, const char* comparisonPntr, MyStr_t target)
+bool StrEqualsIgnoreCase(uxx comparisonLength, const char* comparisonPntr, MyStr_t target)
 {
 	return (StrCompareIgnoreCase(target, comparisonPntr, comparisonLength) == 0);
 }
@@ -992,11 +990,11 @@ bool StrEndsWithSlash(const char* nullTermStr)
 	return StrEndsWithSlash(NewStr(nullTermStr));
 }
 
-bool SplitStringFixed(MyStr_t target, MyStr_t delineator, u64 numPieces, MyStr_t* piecesBuffer, bool ignoreCase = false)
+bool SplitStringFixed(MyStr_t target, MyStr_t delineator, uxx numPieces, MyStr_t* piecesBuffer, bool ignoreCase = false)
 {
-	u64 pieceIndex = 0;
-	u64 prevDelineator = 0;
-	for (u64 cIndex = 0; cIndex + delineator.length <= target.length+1; cIndex++)
+	uxx pieceIndex = 0;
+	uxx prevDelineator = 0;
+	for (uxx cIndex = 0; cIndex + delineator.length <= target.length+1; cIndex++)
 	{
 		bool match = false;
 		if (cIndex + delineator.length > target.length) { match = true; }
@@ -1017,29 +1015,29 @@ bool SplitStringFixed(MyStr_t target, MyStr_t delineator, u64 numPieces, MyStr_t
 	if (pieceIndex != numPieces) { return false; }
 	return true;
 }
-bool SplitStringFixed(MyStr_t target, const char* delineatorNullTerm, u64 numPieces, MyStr_t* piecesBuffer, bool ignoreCase = false)
+bool SplitStringFixed(MyStr_t target, const char* delineatorNullTerm, uxx numPieces, MyStr_t* piecesBuffer, bool ignoreCase = false)
 {
 	return SplitStringFixed(target, NewStr(delineatorNullTerm), numPieces, piecesBuffer, ignoreCase);
 }
-bool SplitStringFixed(const char* targetNullTerm, MyStr_t delineator, u64 numPieces, MyStr_t* piecesBuffer, bool ignoreCase = false)
+bool SplitStringFixed(const char* targetNullTerm, MyStr_t delineator, uxx numPieces, MyStr_t* piecesBuffer, bool ignoreCase = false)
 {
 	return SplitStringFixed(NewStr(targetNullTerm), delineator, numPieces, piecesBuffer, ignoreCase);
 }
-bool SplitStringFixed(const char* targetNullTerm, const char* delineatorNullTerm, u64 numPieces, MyStr_t* piecesBuffer, bool ignoreCase = false)
+bool SplitStringFixed(const char* targetNullTerm, const char* delineatorNullTerm, uxx numPieces, MyStr_t* piecesBuffer, bool ignoreCase = false)
 {
 	return SplitStringFixed(NewStr(targetNullTerm), NewStr(delineatorNullTerm), numPieces, piecesBuffer, ignoreCase);
 }
 
 //TODO: This has some kind of bug when the delineator is 2 or more characters long it chops off the last character (or more?) of the target!
-MyStr_t* SplitString(MemArena_t* memArena, MyStr_t target, MyStr_t delineator, u64* numPiecesOut = nullptr, bool ignoreCase = false)
+MyStr_t* SplitString(MemArena_t* memArena, MyStr_t target, MyStr_t delineator, uxx* numPiecesOut = nullptr, bool ignoreCase = false)
 {
 	NotNull(memArena);
 	NotNullStr(&target);
 	NotEmptyStr(&delineator);
 	
-	u64 numPieces = 0;
-	u64 prevDelineator = 0;
-	for (u64 cIndex = 0; cIndex <= target.length+1 - delineator.length; cIndex++)
+	uxx numPieces = 0;
+	uxx prevDelineator = 0;
+	for (uxx cIndex = 0; cIndex <= target.length+1 - delineator.length; cIndex++)
 	{
 		bool match = false;
 		if (cIndex + delineator.length > target.length) { match = true; }
@@ -1062,9 +1060,9 @@ MyStr_t* SplitString(MemArena_t* memArena, MyStr_t target, MyStr_t delineator, u
 	MyStr_t* results = AllocArray(memArena, MyStr_t, numPieces);
 	NotNull(results);
 	
-	u64 pIndex = 0;
+	uxx pIndex = 0;
 	prevDelineator = 0;
-	for (u64 cIndex = 0; cIndex <= target.length+1 - delineator.length; cIndex++)
+	for (uxx cIndex = 0; cIndex <= target.length+1 - delineator.length; cIndex++)
 	{
 		bool match = false;
 		if (cIndex + delineator.length > target.length) { match = true; }
@@ -1086,17 +1084,17 @@ MyStr_t* SplitString(MemArena_t* memArena, MyStr_t target, MyStr_t delineator, u
 	if (numPiecesOut != nullptr) { *numPiecesOut = numPieces; }
 	return results;
 }
-MyStr_t* SplitString(MemArena_t* memArena, MyStr_t target, const char* delineatorNt, u64* numPiecesOut = nullptr, bool ignoreCase = false)
+MyStr_t* SplitString(MemArena_t* memArena, MyStr_t target, const char* delineatorNt, uxx* numPiecesOut = nullptr, bool ignoreCase = false)
 {
 	MyStr_t delineator = NewStr(delineatorNt);
 	return SplitString(memArena, target, delineator, numPiecesOut, ignoreCase);
 }
-MyStr_t* SplitString(MemArena_t* memArena, const char* targetNt, MyStr_t delineator, u64* numPiecesOut = nullptr, bool ignoreCase = false)
+MyStr_t* SplitString(MemArena_t* memArena, const char* targetNt, MyStr_t delineator, uxx* numPiecesOut = nullptr, bool ignoreCase = false)
 {
 	MyStr_t target = NewStr(targetNt);
 	return SplitString(memArena, target, delineator, numPiecesOut, ignoreCase);
 }
-MyStr_t* SplitString(MemArena_t* memArena, const char* targetNt, const char* delineatorNt, u64* numPiecesOut = nullptr, bool ignoreCase = false)
+MyStr_t* SplitString(MemArena_t* memArena, const char* targetNt, const char* delineatorNt, uxx* numPiecesOut = nullptr, bool ignoreCase = false)
 {
 	MyStr_t target = NewStr(targetNt);
 	MyStr_t delineator = NewStr(delineatorNt);
@@ -1105,7 +1103,7 @@ MyStr_t* SplitString(MemArena_t* memArena, const char* targetNt, const char* del
 
 bool SplitStringFast(SplitStringContext_t* context, MyStr_t target, char separatorChar, bool includeEmptyPieces = false)
 {
-	for (u64 cIndex = context->lastSeparatorIndex; cIndex <= target.length; cIndex++)
+	for (uxx cIndex = context->lastSeparatorIndex; cIndex <= target.length; cIndex++)
 	{
 		if (cIndex == target.length || target.pntr[cIndex] == separatorChar)
 		{
@@ -1122,7 +1120,7 @@ bool SplitStringFast(SplitStringContext_t* context, MyStr_t target, char separat
 	return false;
 }
 
-MyStr_t* SplitStringBySpacesFastTemp(MemArena_t* tempArena, MyStr_t target, u64* numPiecesOut)
+MyStr_t* SplitStringBySpacesFastTemp(MemArena_t* tempArena, MyStr_t target, uxx* numPiecesOut)
 {
 	DebugAssert(tempArena != nullptr);
 	DebugAssert(DoesMemArenaSupportPushAndPop(tempArena));
@@ -1130,8 +1128,8 @@ MyStr_t* SplitStringBySpacesFastTemp(MemArena_t* tempArena, MyStr_t target, u64*
 	DebugAssert(numPiecesOut != nullptr);
 	*numPiecesOut = 0;
 	MyStr_t* result = nullptr;
-	u64 previousSplitIndex = 0;
-	for (u64 cIndex = 0; cIndex <= target.length; cIndex++)
+	uxx previousSplitIndex = 0;
+	for (uxx cIndex = 0; cIndex <= target.length; cIndex++)
 	{
 		if (cIndex == target.length || target.pntr[cIndex] == ' ')
 		{
@@ -1150,7 +1148,7 @@ MyStr_t* SplitStringBySpacesFastTemp(MemArena_t* tempArena, MyStr_t target, u64*
 	}
 	return result;
 }
-MyStr_t* SplitStringBySlashesFastTemp(MemArena_t* tempArena, MyStr_t target, u64* numPiecesOut)
+MyStr_t* SplitStringBySlashesFastTemp(MemArena_t* tempArena, MyStr_t target, uxx* numPiecesOut)
 {
 	DebugAssert(tempArena != nullptr);
 	DebugAssert(DoesMemArenaSupportPushAndPop(tempArena));
@@ -1158,8 +1156,8 @@ MyStr_t* SplitStringBySlashesFastTemp(MemArena_t* tempArena, MyStr_t target, u64
 	DebugAssert(numPiecesOut != nullptr);
 	*numPiecesOut = 0;
 	MyStr_t* result = nullptr;
-	u64 previousSplitIndex = 0;
-	for (u64 cIndex = 0; cIndex <= target.length; cIndex++)
+	uxx previousSplitIndex = 0;
+	for (uxx cIndex = 0; cIndex <= target.length; cIndex++)
 	{
 		if (cIndex == target.length || target.pntr[cIndex] == '/')
 		{
@@ -1182,13 +1180,13 @@ MyStr_t* SplitStringBySlashesFastTemp(MemArena_t* tempArena, MyStr_t target, u64
 //TODO: This doesn't play SUPER nice with unicode strings. It shouldn't really "fail" though
 //TODO: Add support for hex or unicode sequences
 //Returns the number of bytes that the string shrunk by after unescaping
-u64 UnescapeQuotedStringInPlace(MyStr_t* target, bool removeQuotes = true, bool allowNewLineEscapes = true, bool allowOtherEscapeCodes = false)
+uxx UnescapeQuotedStringInPlace(MyStr_t* target, bool removeQuotes = true, bool allowNewLineEscapes = true, bool allowOtherEscapeCodes = false)
 {
 	NotNullStr(target);
 	if (target->length == 0) { return 0; }
-	u64 numBytesSmaller = 0;
-	u64 writeIndex = 0;
-	for (u64 readIndex = 0; readIndex < target->length; readIndex++)
+	uxx numBytesSmaller = 0;
+	uxx writeIndex = 0;
+	for (uxx readIndex = 0; readIndex < target->length; readIndex++)
 	{
 		char currChar = target->pntr[readIndex];
 		char nextChar = (readIndex+1 < target->length) ? target->pntr[readIndex+1] : '\0';
@@ -1313,21 +1311,21 @@ MyStr_t UnescapeQuotedStringInArena(MemArena_t* memArena, MyStr_t target, bool r
 {
 	NotNull(memArena);
 	MyStr_t result = AllocString(memArena, &target);
-	u64 numBytesSmaller = UnescapeQuotedStringInPlace(&result, removeQuotes, allowNewLineEscapes, allowOtherEscapeCodes);
+	uxx numBytesSmaller = UnescapeQuotedStringInPlace(&result, removeQuotes, allowNewLineEscapes, allowOtherEscapeCodes);
 	UNUSED(numBytesSmaller);
 	return result;
 }
 
 //NOTE: Unlike the other split string functions, the string pieces are each allocated from the memArena rather than pointing at target (because we need to unescape them without modifying the original)
-MyStr_t* SplitStringBySpacesWithQuotesAndUnescape(MemArena_t* memArena, MyStr_t target, u64* numPiecesOut)
+MyStr_t* SplitStringBySpacesWithQuotesAndUnescape(MemArena_t* memArena, MyStr_t target, uxx* numPiecesOut)
 {
 	NotNullStr(&target);
 	bool insideQuotes = false;
 	bool prevCharWasBackslash = false;
-	u64 pieceStart = 0;
+	uxx pieceStart = 0;
 	
-	u64 numPieces = 0;
-	for (u64 bIndex = 0; bIndex <= target.length; )
+	uxx numPieces = 0;
+	for (uxx bIndex = 0; bIndex <= target.length; )
 	{
 		u32 codepoint = 0;
 		u8 codepointSize = 0;
@@ -1374,8 +1372,8 @@ MyStr_t* SplitStringBySpacesWithQuotesAndUnescape(MemArena_t* memArena, MyStr_t 
 	insideQuotes = false;
 	prevCharWasBackslash = false;
 	pieceStart = 0;
-	u64 pieceIndex = 0;
-	for (u64 bIndex = 0; bIndex <= target.length; )
+	uxx pieceIndex = 0;
+	for (uxx bIndex = 0; bIndex <= target.length; )
 	{
 		u32 codepoint = 0;
 		u8 codepointSize = 0;
@@ -1434,7 +1432,7 @@ MyStr_t* SplitStringBySpacesWithQuotesAndUnescape(MemArena_t* memArena, MyStr_t 
 	return pieces;
 }
 
-void StrSpliceInPlace(MyStr_t target, u64 startIndex, MyStr_t replacement)
+void StrSpliceInPlace(MyStr_t target, uxx startIndex, MyStr_t replacement)
 {
 	NotNullStr(&target);
 	NotNullStr(&replacement);
@@ -1443,20 +1441,20 @@ void StrSpliceInPlace(MyStr_t target, u64 startIndex, MyStr_t replacement)
 	if (replacement.length == 0) { return; }
 	MyMemCopy(&target.chars[startIndex], &replacement.chars[0], replacement.length);
 }
-void StrSpliceInPlace(MyStr_t target, u64 startIndex, const char* replacementNullTerm)
+void StrSpliceInPlace(MyStr_t target, uxx startIndex, const char* replacementNullTerm)
 {
 	StrSpliceInPlace(target, startIndex, NewStr(replacementNullTerm));
 }
-void StrSpliceInPlace(char* targetNullTermStr, u64 startIndex, MyStr_t replacement)
+void StrSpliceInPlace(char* targetNullTermStr, uxx startIndex, MyStr_t replacement)
 {
 	StrSpliceInPlace(NewStr(targetNullTermStr), startIndex, replacement);
 }
-void StrSpliceInPlace(char* targetNullTermStr, u64 startIndex, const char* replacementNullTerm)
+void StrSpliceInPlace(char* targetNullTermStr, uxx startIndex, const char* replacementNullTerm)
 {
 	StrSpliceInPlace(NewStr(targetNullTermStr), startIndex, NewStr(replacementNullTerm));
 }
 
-MyStr_t StrSplice(MyStr_t target, u64 startIndex, u64 endIndex, MyStr_t replacement, MemArena_t* memArena)
+MyStr_t StrSplice(MyStr_t target, uxx startIndex, uxx endIndex, MyStr_t replacement, MemArena_t* memArena)
 {
 	NotNull(memArena);
 	NotNullStr(&target);
@@ -1477,15 +1475,15 @@ MyStr_t StrSplice(MyStr_t target, u64 startIndex, u64 endIndex, MyStr_t replacem
 	
 	return result;
 }
-MyStr_t StrSplice(MyStr_t target, u64 startIndex, u64 endIndex, const char* replacementNullTerm, MemArena_t* memArena)
+MyStr_t StrSplice(MyStr_t target, uxx startIndex, uxx endIndex, const char* replacementNullTerm, MemArena_t* memArena)
 {
 	return StrSplice(target, startIndex, endIndex, NewStr(replacementNullTerm), memArena);
 }
-MyStr_t StrSplice(char* targetNullTermStr, u64 startIndex, u64 endIndex, MyStr_t replacement, MemArena_t* memArena)
+MyStr_t StrSplice(char* targetNullTermStr, uxx startIndex, uxx endIndex, MyStr_t replacement, MemArena_t* memArena)
 {
 	return StrSplice(NewStr(targetNullTermStr), startIndex, endIndex, replacement, memArena);
 }
-MyStr_t StrSplice(char* targetNullTermStr, u64 startIndex, u64 endIndex, const char* replacement, MemArena_t* memArena)
+MyStr_t StrSplice(char* targetNullTermStr, uxx startIndex, uxx endIndex, const char* replacement, MemArena_t* memArena)
 {
 	return StrSplice(NewStr(targetNullTermStr), startIndex, endIndex, NewStr(replacement), memArena);
 }
@@ -1493,7 +1491,7 @@ MyStr_t StrSplice(char* targetNullTermStr, u64 startIndex, u64 endIndex, const c
 //TODO: This is really slow right now, when we are replacing "\r\n" with "\n" in win32_files.cpp when asked to convertNewLines
 //      We should do some profiling and optimize this function a bit more
 //Returns the number of instances replaced
-u64 StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ignoreCase = false, bool allowShrinking = false)
+uxx StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ignoreCase = false, bool allowShrinking = false)
 {
 	NotNullStr(&str);
 	NotNullStr(&target);
@@ -1502,12 +1500,12 @@ u64 StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ign
 	AssertIf(allowShrinking, target.length >= replacement.length);
 	if (target.length == 0) { return 0; } //nothing to replace
 	
-	u64 numReplacements = 0;
+	uxx numReplacements = 0;
 	if (!ignoreCase) //Faster code-path:
 	{
-		u64 writeIndex = 0;
-		u64 prevMemMove = 0;
-		u64 readIndex = 0;
+		uxx writeIndex = 0;
+		uxx prevMemMove = 0;
+		uxx readIndex = 0;
 		for (readIndex = 0; readIndex < str.length; readIndex++)
 		{
 			if (readIndex + target.length <= str.length &&
@@ -1515,7 +1513,7 @@ u64 StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ign
 			{
 				if (prevMemMove < writeIndex)
 				{
-					u64 amountToMove = writeIndex - prevMemMove;
+					uxx amountToMove = writeIndex - prevMemMove;
 					MyMemMove(&str.chars[prevMemMove], &str.chars[readIndex - amountToMove], amountToMove);
 				}
 				MyMemCopy(&str.chars[writeIndex], replacement.chars, replacement.length);
@@ -1532,20 +1530,20 @@ u64 StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ign
 		}
 		if (prevMemMove < writeIndex)
 		{
-			u64 amountToMove = writeIndex - prevMemMove;
+			uxx amountToMove = writeIndex - prevMemMove;
 			MyMemMove(&str.chars[prevMemMove], &str.chars[readIndex - amountToMove], amountToMove);
 		}
 	}
 	else
 	{
-		u64 writeIndex = 0;
-		for (u64 readIndex = 0; readIndex < str.length; readIndex++)
+		uxx writeIndex = 0;
+		for (uxx readIndex = 0; readIndex < str.length; readIndex++)
 		{
 			if (readIndex + target.length <= str.length &&
 				((ignoreCase && StrEqualsIgnoreCase(StrSubstringLength(&str, readIndex, target.length), target)) ||
 				(!ignoreCase && StrEquals(StrSubstringLength(&str, readIndex, target.length), target))))
 			{
-				for (u64 cIndex = 0; cIndex < replacement.length; cIndex++)
+				for (uxx cIndex = 0; cIndex < replacement.length; cIndex++)
 				{
 					str.pntr[writeIndex + cIndex] = replacement.pntr[cIndex];
 				}
@@ -1563,7 +1561,7 @@ u64 StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ign
 	
 	return numReplacements;
 }
-u64 StrReplaceInPlace(MyStr_t str, const char* target, const char* replacement, bool ignoreCase = false, bool allowShrinking = false)
+uxx StrReplaceInPlace(MyStr_t str, const char* target, const char* replacement, bool ignoreCase = false, bool allowShrinking = false)
 {
 	NotNullStr(&str);
 	NotNull(target);
@@ -1582,14 +1580,14 @@ MyStr_t StrReplace(MyStr_t str, MyStr_t target, MyStr_t replacement, MemArena_t*
 	MyStr_t result = {};
 	for (u8 pass = 0; pass < 2; pass++)
 	{
-		u64 numBytesNeeded = 0;
+		uxx numBytesNeeded = 0;
 		
-		for (u64 bIndex = 0; bIndex < str.length; )
+		for (uxx bIndex = 0; bIndex < str.length; )
 		{
 			if (bIndex + target.length <= str.length)
 			{
 				bool foundTarget = true;
-				for (u64 tIndex = 0; tIndex < target.length; )
+				for (uxx tIndex = 0; tIndex < target.length; )
 				{
 					u32 strCodepoint = 0;
 					u8 strByteSize = GetCodepointForUtf8Str(str, bIndex + tIndex, &strCodepoint);
@@ -1664,19 +1662,19 @@ MyStr_t StrReplace(MyStr_t str, const char* target, const char* replacement, Mem
 	return StrReplace(str, NewStr(target), NewStr(replacement), memArena);
 }
 
-MyStr_t StrReplaceMultiple(MyStr_t str, u64 numReplacements, const MyStrPair_t* replacements, MemArena_t* memArena)
+MyStr_t StrReplaceMultiple(MyStr_t str, uxx numReplacements, const MyStrPair_t* replacements, MemArena_t* memArena)
 {
 	NotNullStr(&str);
 	
 	MyStr_t result = MyStr_Empty;
 	for (u8 pass = 0; pass < 2; pass++)
 	{
-		u64 writeIndex = 0;
+		uxx writeIndex = 0;
 		
-		for (u64 readIndex = 0; readIndex < str.length; readIndex++)
+		for (uxx readIndex = 0; readIndex < str.length; readIndex++)
 		{
 			bool foundReplacement = false;
-			for (u64 rIndex = 0; rIndex < numReplacements; rIndex++)
+			for (uxx rIndex = 0; rIndex < numReplacements; rIndex++)
 			{
 				const MyStrPair_t* replacement = &replacements[rIndex];
 				NotNullStr(&replacement->key);
@@ -1727,7 +1725,7 @@ MyStr_t StrReplaceMultiple(MyStr_t str, u64 numReplacements, const MyStrPair_t* 
 }
 
 //TODO: This should return true if target and substring are equal!
-bool FindSubstring(MyStr_t target, MyStr_t substring, u64* indexOut = nullptr, bool ignoreCase = false, u64 startIndex = 0)
+bool FindSubstring(MyStr_t target, MyStr_t substring, uxx* indexOut = nullptr, bool ignoreCase = false, uxx startIndex = 0)
 {
 	NotNullStr(&target);
 	NotNullStr(&substring);
@@ -1736,7 +1734,7 @@ bool FindSubstring(MyStr_t target, MyStr_t substring, u64* indexOut = nullptr, b
 	
 	if (!ignoreCase) //Faster code-path:
 	{
-		for (u64 cIndex = startIndex; cIndex + substring.length <= target.length; cIndex++)
+		for (uxx cIndex = startIndex; cIndex + substring.length <= target.length; cIndex++)
 		{
 			if (MyMemCompare(&target.chars[cIndex], substring.chars, substring.length) == 0)
 			{
@@ -1747,11 +1745,11 @@ bool FindSubstring(MyStr_t target, MyStr_t substring, u64* indexOut = nullptr, b
 	}
 	else
 	{
-		for (u64 cIndex = startIndex; cIndex + substring.length <= target.length; )
+		for (uxx cIndex = startIndex; cIndex + substring.length <= target.length; )
 		{
 			bool allMatched = true;
-			u64 cSubIndex = 0;
-			for (u64 subIndex = 0; subIndex < substring.length; )
+			uxx cSubIndex = 0;
+			for (uxx subIndex = 0; subIndex < substring.length; )
 			{
 				u32 targetCodepoint = 0;
 				u8 targetCodepointSize = GetCodepointForUtf8Str(target, cIndex + cSubIndex, &targetCodepoint);
@@ -1791,15 +1789,15 @@ bool FindSubstring(MyStr_t target, MyStr_t substring, u64* indexOut = nullptr, b
 	
 	return false;
 }
-bool FindSubstring(MyStr_t target, const char* nullTermSubstring, u64* indexOut= nullptr, bool ignoreCase = false, u64 startIndex = 0)
+bool FindSubstring(MyStr_t target, const char* nullTermSubstring, uxx* indexOut= nullptr, bool ignoreCase = false, uxx startIndex = 0)
 {
 	return FindSubstring(target, NewStr(nullTermSubstring), indexOut, ignoreCase, startIndex);
 }
-bool FindSubstring(const char* nullTermTarget, MyStr_t substring, u64* indexOut= nullptr, bool ignoreCase = false, u64 startIndex = 0)
+bool FindSubstring(const char* nullTermTarget, MyStr_t substring, uxx* indexOut= nullptr, bool ignoreCase = false, uxx startIndex = 0)
 {
 	return FindSubstring(NewStr(nullTermTarget), substring, indexOut, ignoreCase, startIndex);
 }
-bool FindSubstring(const char* nullTermTarget, const char* nullTermSubstring, u64* indexOut= nullptr, bool ignoreCase = false, u64 startIndex = 0)
+bool FindSubstring(const char* nullTermTarget, const char* nullTermSubstring, uxx* indexOut= nullptr, bool ignoreCase = false, uxx startIndex = 0)
 {
 	return FindSubstring(NewStr(nullTermTarget), NewStr(nullTermSubstring), indexOut, ignoreCase, startIndex);
 }
@@ -1807,9 +1805,9 @@ bool FindSubstring(const char* nullTermTarget, const char* nullTermSubstring, u6
 MyStr_t FindStrParensPart(MyStr_t target, char openParensChar = '(', char closeParensChar = ')')
 {
 	NotNullStr(&target);
-	u64 openParensIndex = target.length;
-	u64 parensLevel = 0;
-	for (u64 cIndex = 0; cIndex < target.length; cIndex++)
+	uxx openParensIndex = target.length;
+	uxx parensLevel = 0;
+	for (uxx cIndex = 0; cIndex < target.length; cIndex++)
 	{
 		if (target.pntr[cIndex] == openParensChar)
 		{
@@ -1839,7 +1837,7 @@ MyStr_t FindStrParensPart(const char* nullTermTarget, char openParensChar = '(',
 }
 
 //takes the str and returns a string that repeats that str some number of times
-MyStr_t StringRepeat(MemArena_t* memArena, MyStr_t str, u64 numRepetitions)
+MyStr_t StringRepeat(MemArena_t* memArena, MyStr_t str, uxx numRepetitions)
 {
 	NotNull(memArena);
 	NotNullStr(&str);
@@ -1847,24 +1845,24 @@ MyStr_t StringRepeat(MemArena_t* memArena, MyStr_t str, u64 numRepetitions)
 	result.length = str.length * numRepetitions;
 	result.pntr = AllocArray(memArena, char, result.length+1);
 	NotNull(result.pntr);
-	for (u64 rIndex = 0; rIndex < numRepetitions; rIndex++)
+	for (uxx rIndex = 0; rIndex < numRepetitions; rIndex++)
 	{
 		MyMemCopy(&result.pntr[rIndex * str.length], str.pntr, str.length);
 	}
 	result.pntr[result.length] = '\0';
 	return result;
 }
-MyStr_t StringRepeat(MemArena_t* memArena, const char* nullTermStr, u64 numRepetitions)
+MyStr_t StringRepeat(MemArena_t* memArena, const char* nullTermStr, uxx numRepetitions)
 {
 	return StringRepeat(memArena, NewStr(nullTermStr), numRepetitions);
 }
 
-MyStr_t FormatBytes(u64 numBytes, MemArena_t* memArena)
+MyStr_t FormatBytes(uxx numBytes, MemArena_t* memArena)
 {
-	u64 gigabytes = numBytes/Gigabytes(1);
-	u64 megabytes = (numBytes%Gigabytes(1))/Megabytes(1);
-	u64 kilobytes = (numBytes%Megabytes(1))/Kilobytes(1);
-	u64 remainder = (numBytes % Kilobytes(1));
+	uxx gigabytes = numBytes/Gigabytes(1);
+	uxx megabytes = (numBytes%Gigabytes(1))/Megabytes(1);
+	uxx kilobytes = (numBytes%Megabytes(1))/Kilobytes(1);
+	uxx remainder = (numBytes % Kilobytes(1));
 	if (numBytes >= Kilobytes(1))
 	{
 		if (numBytes >= Megabytes(1))
@@ -1888,12 +1886,12 @@ MyStr_t FormatBytes(u64 numBytes, MemArena_t* memArena)
 		return PrintInArenaStr(memArena, "%llub", remainder);
 	}
 }
-const char* FormatBytesNt(u64 numBytes, MemArena_t* memArena)
+const char* FormatBytesNt(uxx numBytes, MemArena_t* memArena)
 {
 	return FormatBytes(numBytes, memArena).pntr;
 }
 
-MyStr_t FormatNumberWithCommas(u64 number, MemArena_t* memArena = nullptr)
+MyStr_t FormatNumberWithCommas(uxx number, MemArena_t* memArena = nullptr)
 {
 	//Max uint64: 18,446,744,073,709,551,615 (20 digits + 6 commas)
 	static char printBuffer[20 + 6 + 1];
@@ -1916,16 +1914,16 @@ MyStr_t FormatNumberWithCommas(u64 number, MemArena_t* memArena = nullptr)
 	}
 	return result;
 }
-const char* FormatNumberWithCommasNt(u64 number, MemArena_t* memArena = nullptr)
+const char* FormatNumberWithCommasNt(uxx number, MemArena_t* memArena = nullptr)
 {
 	return FormatNumberWithCommas(number, memArena).chars;
 }
 
-u64 FnvHashStr(MyStr_t str)
+uxx FnvHashStr(MyStr_t str)
 {
 	return FnvHashU64(str.pntr, str.length);
 }
-u64 FnvHashStr(const char* nullTermStr)
+uxx FnvHashStr(const char* nullTermStr)
 {
 	return FnvHashU64(nullTermStr, MyStrLength64(nullTermStr));
 }
@@ -1935,15 +1933,15 @@ bool IsStringValidIdentifier(MyStr_t str, bool allowUnderscores = true, bool all
 	return IsStringValidIdentifier(str.length, str.chars, allowUnderscores, allowNumbers, allowLeadingNumbers, allowEmpty, allowSpaces);
 }
 
-bool IsStringMadeOfChars(MyStr_t str, MyStr_t allowedChars, u64* firstInvalidCharOut = nullptr)
+bool IsStringMadeOfChars(MyStr_t str, MyStr_t allowedChars, uxx* firstInvalidCharOut = nullptr)
 {
 	NotNullStr(&str);
 	NotNullStr(&allowedChars);
-	for (u64 cIndex = 0; cIndex < str.length; cIndex++)
+	for (uxx cIndex = 0; cIndex < str.length; cIndex++)
 	{
 		char c = str.chars[cIndex];
 		bool isValidChar = false;
-		for (u64 cIndex2 = 0; cIndex2 < allowedChars.length; cIndex2++)
+		for (uxx cIndex2 = 0; cIndex2 < allowedChars.length; cIndex2++)
 		{
 			if (c == allowedChars.chars[cIndex2]) { isValidChar = true; break; }
 		}
@@ -2016,14 +2014,14 @@ bool IsCharPairWordBreak(u32 prevCodepoint, u32 nextCodepoint, bool forward, boo
 	return false;
 }
 //This function stops at invalid UTF-8 encoding, treating them as single byte characters that always cause a word break
-u64 FindNextWordBreakInString(MyStr_t str, u64 startIndex, bool forward, bool subwords, bool includeBreakAtStartIndex = false)
+uxx FindNextWordBreakInString(MyStr_t str, uxx startIndex, bool forward, bool subwords, bool includeBreakAtStartIndex = false)
 {
 	NotNullStr(&str);
 	Assert(startIndex <= str.length);
-	u64 result = startIndex;
+	uxx result = startIndex;
 	u8 leftCodepointSize = 0;
 	u8 rightCodepointSize = 0;
-	for (u64 bIndex = startIndex; bIndex >= 0 && bIndex <= str.length; bIndex += (forward ? rightCodepointSize : -leftCodepointSize))
+	for (uxx bIndex = startIndex; bIndex >= 0 && bIndex <= str.length; bIndex += (forward ? rightCodepointSize : -leftCodepointSize))
 	{
 		if ((!forward && bIndex == 0) || (forward && bIndex == str.length))
 		{
@@ -2147,7 +2145,7 @@ const char* FormatRealTimeNt(const RealTime_t* realTime, MemArena_t* memArena, b
 	return FormatRealTime(realTime, memArena, includeDayOfWeek, includeHourMinuteSecond, includeMonthDayYear).pntr;
 }
 
-MyStr_t FormatMilliseconds(u64 milliseconds, MemArena_t* memArena)
+MyStr_t FormatMilliseconds(uxx milliseconds, MemArena_t* memArena)
 {
 	NotNull(memArena);
 	if (milliseconds < NUM_MS_PER_DAY)
@@ -2198,7 +2196,7 @@ MyStr_t FormatMilliseconds(u64 milliseconds, MemArena_t* memArena)
 		);
 	}
 }
-const char* FormatMillisecondsNt(u64 milliseconds, MemArena_t* memArena)
+const char* FormatMillisecondsNt(uxx milliseconds, MemArena_t* memArena)
 {
 	return FormatMilliseconds(milliseconds, memArena).pntr;
 }
@@ -2232,13 +2230,13 @@ MyStrPair_t
 WordBreakCharClass_t
 @Functions
 const char* GetWordBreakCharClassStr(WordBreakCharClass_t enumValue)
-MyStr_t NewStrLengthOnly(u64 length)
-MyStr_t NewStr(u64 length, char* pntr)
+MyStr_t NewStrLengthOnly(uxx length)
+MyStr_t NewStr(uxx length, char* pntr)
 MyStrPair_t NewStrPair(MyStr_t keyStr, MyStr_t valueStr)
 bool IsNullStr(MyStr_t target)
 bool IsEmptyStr(MyStr_t target)
 bool IsStrNullTerminated(MyStr_t target)
-bool BufferIsNullTerminated(u64 bufferSize, const char* bufferPntr)
+bool BufferIsNullTerminated(uxx bufferSize, const char* bufferPntr)
 #define NotNullStr(strPntr)
 #define NotNullStr_(strPntr)
 #define NotEmptyStr(strPntr)
@@ -2253,14 +2251,14 @@ bool BufferIsNullTerminated(u64 bufferSize, const char* bufferPntr)
 #define StrPrint(myStrStruct)
 #define StrPntrPrint(myStrPntr)
 MyStr_t PrintInArenaStr(MemArena_t* arena, const char* formatString, ...)
-u64 TrimLeadingWhitespace(MyStr_t* target, bool trimNewLines = false)
-u64 TrimTrailingWhitespace(MyStr_t* target, bool trimNewLines = false)
-u64 TrimWhitespace(MyStr_t* target, bool trimNewLines = false)
-bool FindNextCharInStr(MyStr_t target, u64 startIndex, MyStr_t searchCharsStr, u64* indexOut = nullptr, bool ignoreCharsInQuotes = false)
-bool FindNextUnknownCharInStr(MyStr_t target, u64 startIndex, MyStr_t knownCharsStr, u64* indexOut = nullptr, bool ignoreCharsInQuotes = false)
-bool FindNextWhitespaceInStr(MyStr_t target, u64 startIndex, u64* indexOut = nullptr, bool ignoreCharsInQuotes = false)
-MyStr_t StrSubstring(MyStr_t* target, u64 startIndex, u64 endIndex)
-MyStr_t StrSubstringLength(MyStr_t* target, u64 startIndex, u64 length)
+uxx TrimLeadingWhitespace(MyStr_t* target, bool trimNewLines = false)
+uxx TrimTrailingWhitespace(MyStr_t* target, bool trimNewLines = false)
+uxx TrimWhitespace(MyStr_t* target, bool trimNewLines = false)
+bool FindNextCharInStr(MyStr_t target, uxx startIndex, MyStr_t searchCharsStr, uxx* indexOut = nullptr, bool ignoreCharsInQuotes = false)
+bool FindNextUnknownCharInStr(MyStr_t target, uxx startIndex, MyStr_t knownCharsStr, uxx* indexOut = nullptr, bool ignoreCharsInQuotes = false)
+bool FindNextWhitespaceInStr(MyStr_t target, uxx startIndex, uxx* indexOut = nullptr, bool ignoreCharsInQuotes = false)
+MyStr_t StrSubstring(MyStr_t* target, uxx startIndex, uxx endIndex)
+MyStr_t StrSubstringLength(MyStr_t* target, uxx startIndex, uxx length)
 MyStr_t CombineStrs(MemArena_t* memArena, MyStr_t str1, MyStr_t str2)
 bool StrEquals(MyStr_t target, MyStr_t comparison)
 i32 StrCompareIgnoreCase(MyStr_t str1, MyStr_t str2)
@@ -2269,36 +2267,36 @@ bool StrStartsWith(MyStr_t str, MyStr_t prefix, bool ignoreCase = false)
 bool StrEndsWith(MyStr_t str, MyStr_t suffix, bool ignoreCase = false)
 bool StrStartsWithSlash(MyStr_t str)
 bool StrEndsWithSlash(MyStr_t str)
-bool SplitStringFixed(MyStr_t target, MyStr_t delineator, u64 numPieces, MyStr_t* piecesBuffer, bool ignoreCase = false)
-MyStr_t* SplitString(MemArena_t* memArena, MyStr_t target, MyStr_t delineator, u64* numPiecesOut = nullptr, bool ignoreCase = false)
-u64 UnescapeQuotedStringInPlace(MyStr_t* target, bool removeQuotes = true, bool allowNewLineEscapes = true, bool allowOtherEscapeCodes = false)
+bool SplitStringFixed(MyStr_t target, MyStr_t delineator, uxx numPieces, MyStr_t* piecesBuffer, bool ignoreCase = false)
+MyStr_t* SplitString(MemArena_t* memArena, MyStr_t target, MyStr_t delineator, uxx* numPiecesOut = nullptr, bool ignoreCase = false)
+uxx UnescapeQuotedStringInPlace(MyStr_t* target, bool removeQuotes = true, bool allowNewLineEscapes = true, bool allowOtherEscapeCodes = false)
 MyStr_t UnescapeQuotedStringInArena(MemArena_t* memArena, MyStr_t target, bool removeQuotes = true, bool allowNewLineEscapes = true, bool allowOtherEscapeCodes = false)
-void StrSpliceInPlace(MyStr_t target, u64 startIndex, MyStr_t replacement)
-MyStr_t StrSplice(MyStr_t target, u64 startIndex, u64 endIndex, MyStr_t replacement, MemArena_t* memArena)
-u64 StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ignoreCase = false, bool allowShrinking = false)
+void StrSpliceInPlace(MyStr_t target, uxx startIndex, MyStr_t replacement)
+MyStr_t StrSplice(MyStr_t target, uxx startIndex, uxx endIndex, MyStr_t replacement, MemArena_t* memArena)
+uxx StrReplaceInPlace(MyStr_t str, MyStr_t target, MyStr_t replacement, bool ignoreCase = false, bool allowShrinking = false)
 MyStr_t StrReplace(MyStr_t str, MyStr_t target, MyStr_t replacement, MemArena_t* memArena)
-MyStr_t StrReplaceMultiple(MyStr_t str, u64 numReplacements, const MyStrPair_t* replacements, MemArena_t* memArena)
-bool FindSubstring(MyStr_t target, MyStr_t substring, u64* indexOut = nullptr, bool ignoreCase = false, u64 startIndex = 0)
+MyStr_t StrReplaceMultiple(MyStr_t str, uxx numReplacements, const MyStrPair_t* replacements, MemArena_t* memArena)
+bool FindSubstring(MyStr_t target, MyStr_t substring, uxx* indexOut = nullptr, bool ignoreCase = false, uxx startIndex = 0)
 MyStr_t FindStrParensPart(MyStr_t target, char openParensChar = '[', char closeParensChar = ']')
-MyStr_t StringRepeat(MemArena_t* memArena, MyStr_t str, u64 numRepetitions)
-u8 GetCodepointForUtf8Str(MyStr_t str, u64 index, u32* codepointOut = nullptr)
-MyStr_t ConvertUcs2StrToUtf8(MemArena_t* memArena, const wchar_t* wideStrPntr, u64 wideStrLength)
+MyStr_t StringRepeat(MemArena_t* memArena, MyStr_t str, uxx numRepetitions)
+u8 GetCodepointForUtf8Str(MyStr_t str, uxx index, u32* codepointOut = nullptr)
+MyStr_t ConvertUcs2StrToUtf8(MemArena_t* memArena, const wchar_t* wideStrPntr, uxx wideStrLength)
 MyStr_t ConvertUcs2StrToUtf8Nt(MemArena_t* memArena, const wchar_t* nullTermWideStr)
 MyWideStr_t ConvertUtf8StrToUcs2(MemArena_t* memArena, MyStr_t utf8Str)
 bool DoesStrContainMultibyteUtf8Characters(MyStr_t str)
-MyStr_t FormatBytes(u64 numBytes, MemArena_t* memArena)
-const char* FormatBytesNt(u64 numBytes, MemArena_t* memArena)
-MyStr_t FormatNumberWithCommas(u64 number, MemArena_t* memArena = nullptr)
-const char* FormatNumberWithCommasNt(u64 number, MemArena_t* memArena = nullptr)
-u64 FnvHashStr(MyStr_t str)
+MyStr_t FormatBytes(uxx numBytes, MemArena_t* memArena)
+const char* FormatBytesNt(uxx numBytes, MemArena_t* memArena)
+MyStr_t FormatNumberWithCommas(uxx number, MemArena_t* memArena = nullptr)
+const char* FormatNumberWithCommasNt(uxx number, MemArena_t* memArena = nullptr)
+uxx FnvHashStr(MyStr_t str)
 bool IsStringValidIdentifier(MyStr_t str, bool allowUnderscores = true, bool allowNumbers = true, bool allowLeadingNumbers = false, bool allowEmpty = false, bool allowSpaces = false)
-bool IsStringMadeOfChars(MyStr_t str, MyStr_t allowedChars, u64* firstInvalidCharOut = nullptr)
+bool IsStringMadeOfChars(MyStr_t str, MyStr_t allowedChars, uxx* firstInvalidCharOut = nullptr)
 void StrReallocAppend(MyStr_t* baseStr, MyStr_t appendStr, MemArena_t* memArena)
 WordBreakCharClass_t GetWordBreakCharClass(u32 codepoint)
 bool IsCharPairWordBreak(u32 prevCodepoint, u32 nextCodepoint, bool forward, bool subwords)
-u64 FindNextWordBreakInString(MyStr_t str, u64 startIndex, bool forward, bool subwords, bool includeBreakAtStartIndex = false)
+uxx FindNextWordBreakInString(MyStr_t str, uxx startIndex, bool forward, bool subwords, bool includeBreakAtStartIndex = false)
 MyStr_t FormatRealTime(const RealTime_t* realTime, MemArena_t* memArena, bool includeDayOfWeek = true, bool includeHourMinuteSecond = true, bool includeMonthDayYear = true)
 const char* FormatRealTimeNt(const RealTime_t* realTime, MemArena_t* memArena, bool includeDayOfWeek = true, bool includeHourMinuteSecond = true, bool includeMonthDayYear = true)
-MyStr_t FormatMilliseconds(u64 milliseconds, MemArena_t* memArena)
-const char* FormatMillisecondsNt(u64 milliseconds, MemArena_t* memArena)
+MyStr_t FormatMilliseconds(uxx milliseconds, MemArena_t* memArena)
+const char* FormatMillisecondsNt(uxx milliseconds, MemArena_t* memArena)
 */
