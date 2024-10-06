@@ -164,78 +164,84 @@ typedef Vector4i_t v4i;
 // +--------------------------------------------------------------+
 // |                   Simple Value Definitions                   |
 // +--------------------------------------------------------------+
-#define Vec2_Zero      NewVec2( 0.0f,  0.0f)
-#define Vec2_One       NewVec2( 1.0f,  1.0f)
-#define Vec2_Half      NewVec2( 0.5f,  0.5f)
-#define Vec2_Left      NewVec2(-1.0f,  0.0f)
-#define Vec2_Right     NewVec2( 1.0f,  0.0f)
-#define Vec2_Up        NewVec2( 0.0f, -1.0f)
-#define Vec2_Down      NewVec2( 0.0f,  1.0f)
+#define Vec2_Zero       NewVec2( 0.0f,  0.0f)
+#define Vec2_Zero_Const {0.0f, 0.0f}
+#define Vec2_One        NewVec2( 1.0f,  1.0f)
+#define Vec2_Half       NewVec2( 0.5f,  0.5f)
+#define Vec2_Left       NewVec2(-1.0f,  0.0f)
+#define Vec2_Right      NewVec2( 1.0f,  0.0f)
+#define Vec2_Up         NewVec2( 0.0f, -1.0f)
+#define Vec2_Down       NewVec2( 0.0f,  1.0f)
 
-#define Vec2i_Zero     NewVec2i( 0,  0)
-#define Vec2i_One      NewVec2i( 1,  1)
-#define Vec2i_Left     NewVec2i(-1,  0)
-#define Vec2i_Right    NewVec2i( 1,  0)
-#define Vec2i_Up       NewVec2i( 0, -1)
-#define Vec2i_Down     NewVec2i( 0,  1)
+#define Vec2i_Zero       NewVec2i( 0,  0)
+#define Vec2i_Zero_Const {0, 0}
+#define Vec2i_One        NewVec2i( 1,  1)
+#define Vec2i_Left       NewVec2i(-1,  0)
+#define Vec2i_Right      NewVec2i( 1,  0)
+#define Vec2i_Up         NewVec2i( 0, -1)
+#define Vec2i_Down       NewVec2i( 0,  1)
 
-#define Vec3_Zero      NewVec3( 0.0f,  0.0f,  0.0f)
-#define Vec3_One       NewVec3( 1.0f,  1.0f,  1.0f)
-#define Vec3_Half      NewVec3( 0.5f,  0.5f,  0.5f)
-#define Vec3_Left      NewVec3(-1.0f,  0.0f,  0.0f)
-#define Vec3_Right     NewVec3( 1.0f,  0.0f,  0.0f)
-#define Vec3_Bottom    NewVec3( 0.0f, -1.0f,  0.0f)
-#define Vec3_Top       NewVec3( 0.0f,  1.0f,  0.0f)
-#define Vec3_Back      NewVec3( 0.0f,  0.0f, -1.0f)
-#define Vec3_Front     NewVec3( 0.0f,  0.0f,  1.0f)
-#define Vec3_Down      NewVec3( 0.0f, -1.0f,  0.0f)
-#define Vec3_Up        NewVec3( 0.0f,  1.0f,  0.0f)
-#define Vec3_Backward  NewVec3( 0.0f,  0.0f, -1.0f)
-#define Vec3_Forward   NewVec3( 0.0f,  0.0f,  1.0f)
+#define Vec3_Zero       NewVec3( 0.0f,  0.0f,  0.0f)
+#define Vec3_Zero_Const {0.0f, 0.0f, 0.0f}
+#define Vec3_One        NewVec3( 1.0f,  1.0f,  1.0f)
+#define Vec3_Half       NewVec3( 0.5f,  0.5f,  0.5f)
+#define Vec3_Left       NewVec3(-1.0f,  0.0f,  0.0f)
+#define Vec3_Right      NewVec3( 1.0f,  0.0f,  0.0f)
+#define Vec3_Bottom     NewVec3( 0.0f, -1.0f,  0.0f)
+#define Vec3_Top        NewVec3( 0.0f,  1.0f,  0.0f)
+#define Vec3_Back       NewVec3( 0.0f,  0.0f, -1.0f)
+#define Vec3_Front      NewVec3( 0.0f,  0.0f,  1.0f)
+#define Vec3_Down       NewVec3( 0.0f, -1.0f,  0.0f)
+#define Vec3_Up         NewVec3( 0.0f,  1.0f,  0.0f)
+#define Vec3_Backward   NewVec3( 0.0f,  0.0f, -1.0f)
+#define Vec3_Forward    NewVec3( 0.0f,  0.0f,  1.0f)
 
-#define Vec3i_Zero     NewVec3i( 0,  0,  0)
-#define Vec3i_One      NewVec3i( 1,  1,  1)
-#define Vec3i_Left     NewVec3i(-1,  0,  0)
-#define Vec3i_Right    NewVec3i( 1,  0,  0)
-#define Vec3i_Bottom   NewVec3i( 0, -1,  0)
-#define Vec3i_Top      NewVec3i( 0,  1,  0)
-#define Vec3i_Back     NewVec3i( 0,  0, -1)
-#define Vec3i_Front    NewVec3i( 0,  0,  1)
-#define Vec3i_Down     NewVec3i( 0, -1,  0)
-#define Vec3i_Up       NewVec3i( 0,  1,  0)
-#define Vec3i_Backward NewVec3i( 0,  0, -1)
-#define Vec3i_Forward  NewVec3i( 0,  0,  1)
+#define Vec3i_Zero       NewVec3i( 0,  0,  0)
+#define Vec3i_Zero_Const {0, 0, 0}
+#define Vec3i_One        NewVec3i( 1,  1,  1)
+#define Vec3i_Left       NewVec3i(-1,  0,  0)
+#define Vec3i_Right      NewVec3i( 1,  0,  0)
+#define Vec3i_Bottom     NewVec3i( 0, -1,  0)
+#define Vec3i_Top        NewVec3i( 0,  1,  0)
+#define Vec3i_Back       NewVec3i( 0,  0, -1)
+#define Vec3i_Front      NewVec3i( 0,  0,  1)
+#define Vec3i_Down       NewVec3i( 0, -1,  0)
+#define Vec3i_Up         NewVec3i( 0,  1,  0)
+#define Vec3i_Backward   NewVec3i( 0,  0, -1)
+#define Vec3i_Forward    NewVec3i( 0,  0,  1)
 
-#define Vec4_Zero      NewVec4( 0.0f,  0.0f,  0.0f, 0.0f)
-#define Vec4_One       NewVec4( 1.0f,  1.0f,  1.0f, 1.0f)
-#define Vec4_Half      NewVec4( 0.5f,  0.5f,  0.5f, 0.5f)
-#define Vec4_Left      NewVec4(-1.0f,  0.0f,  0.0f, 0.0f)
-#define Vec4_Right     NewVec4( 1.0f,  0.0f,  0.0f, 0.0f)
-#define Vec4_Bottom    NewVec4( 0.0f, -1.0f,  0.0f, 0.0f)
-#define Vec4_Top       NewVec4( 0.0f,  1.0f,  0.0f, 0.0f)
-#define Vec4_Back      NewVec4( 0.0f,  0.0f, -1.0f, 0.0f)
-#define Vec4_Front     NewVec4( 0.0f,  0.0f,  1.0f, 0.0f)
-#define Vec4_Down      NewVec4( 0.0f, -1.0f,  0.0f, 0.0f)
-#define Vec4_Up        NewVec4( 0.0f,  1.0f,  0.0f, 0.0f)
-#define Vec4_Backward  NewVec4( 0.0f,  0.0f, -1.0f, 0.0f)
-#define Vec4_Forward   NewVec4( 0.0f,  0.0f,  1.0f, 0.0f)
-#define Vec4_Prevward  NewVec4( 0.0f,  0.0f,  0.0f,-1.0f)
-#define Vec4_Nextward  NewVec4( 0.0f,  0.0f,  0.0f, 1.0f)
+#define Vec4_Zero       NewVec4( 0.0f,  0.0f,  0.0f, 0.0f)
+#define Vec4_Zero_Const {0.0f, 0.0f, 0.0f, 0.0f}
+#define Vec4_One        NewVec4( 1.0f,  1.0f,  1.0f, 1.0f)
+#define Vec4_Half       NewVec4( 0.5f,  0.5f,  0.5f, 0.5f)
+#define Vec4_Left       NewVec4(-1.0f,  0.0f,  0.0f, 0.0f)
+#define Vec4_Right      NewVec4( 1.0f,  0.0f,  0.0f, 0.0f)
+#define Vec4_Bottom     NewVec4( 0.0f, -1.0f,  0.0f, 0.0f)
+#define Vec4_Top        NewVec4( 0.0f,  1.0f,  0.0f, 0.0f)
+#define Vec4_Back       NewVec4( 0.0f,  0.0f, -1.0f, 0.0f)
+#define Vec4_Front      NewVec4( 0.0f,  0.0f,  1.0f, 0.0f)
+#define Vec4_Down       NewVec4( 0.0f, -1.0f,  0.0f, 0.0f)
+#define Vec4_Up         NewVec4( 0.0f,  1.0f,  0.0f, 0.0f)
+#define Vec4_Backward   NewVec4( 0.0f,  0.0f, -1.0f, 0.0f)
+#define Vec4_Forward    NewVec4( 0.0f,  0.0f,  1.0f, 0.0f)
+#define Vec4_Prevward   NewVec4( 0.0f,  0.0f,  0.0f,-1.0f)
+#define Vec4_Nextward   NewVec4( 0.0f,  0.0f,  0.0f, 1.0f)
 
-#define Vec4i_Zero      NewVec4i( 0,  0,  0, 0)
-#define Vec4i_One       NewVec4i( 1,  1,  1, 0)
-#define Vec4i_Left      NewVec4i(-1,  0,  0, 0)
-#define Vec4i_Right     NewVec4i( 1,  0,  0, 0)
-#define Vec4i_Bottom    NewVec4i( 0, -1,  0, 0)
-#define Vec4i_Top       NewVec4i( 0,  1,  0, 0)
-#define Vec4i_Back      NewVec4i( 0,  0, -1, 0)
-#define Vec4i_Front     NewVec4i( 0,  0,  1, 0)
-#define Vec4i_Down      NewVec4i( 0, -1,  0, 0)
-#define Vec4i_Up        NewVec4i( 0,  1,  0, 0)
-#define Vec4i_Backward  NewVec4i( 0,  0, -1, 0)
-#define Vec4i_Forward   NewVec4i( 0,  0,  1, 0)
-#define Vec4i_Prevward  NewVec4i( 0,  0,  0,-1)
-#define Vec4i_Nextward  NewVec4i( 0,  0,  0, 1)
+#define Vec4i_Zero       NewVec4i( 0,  0,  0, 0)
+#define Vec4i_Zero_Const {0, 0, 0, 0}
+#define Vec4i_One        NewVec4i( 1,  1,  1, 0)
+#define Vec4i_Left       NewVec4i(-1,  0,  0, 0)
+#define Vec4i_Right      NewVec4i( 1,  0,  0, 0)
+#define Vec4i_Bottom     NewVec4i( 0, -1,  0, 0)
+#define Vec4i_Top        NewVec4i( 0,  1,  0, 0)
+#define Vec4i_Back       NewVec4i( 0,  0, -1, 0)
+#define Vec4i_Front      NewVec4i( 0,  0,  1, 0)
+#define Vec4i_Down       NewVec4i( 0, -1,  0, 0)
+#define Vec4i_Up         NewVec4i( 0,  1,  0, 0)
+#define Vec4i_Backward   NewVec4i( 0,  0, -1, 0)
+#define Vec4i_Forward    NewVec4i( 0,  0,  1, 0)
+#define Vec4i_Prevward   NewVec4i( 0,  0,  0,-1)
+#define Vec4i_Nextward   NewVec4i( 0,  0,  0, 1)
 
 // +--------------------------------------------------------------+
 // |                         Header Only                          |
@@ -1721,6 +1727,7 @@ bool operator != (v4i left, v4i right)  { return (left.x != right.x || left.y !=
 /*
 @Defines
 Vec2_Zero
+Vec2_Zero_Const
 Vec2_One
 Vec2_Half
 Vec2_Left
@@ -1728,12 +1735,14 @@ Vec2_Right
 Vec2_Up
 Vec2_Down
 Vec2i_Zero
+Vec2i_Zero_Const
 Vec2i_One
 Vec2i_Left
 Vec2i_Right
 Vec2i_Up
 Vec2i_Down
 Vec3_Zero
+Vec3_Zero_Const
 Vec3_One
 Vec3_Half
 Vec3_Left
@@ -1747,6 +1756,7 @@ Vec3_Up
 Vec3_Backward
 Vec3_Forward
 Vec3i_Zero
+Vec3i_Zero_Const
 Vec3i_One
 Vec3i_Left
 Vec3i_Right
@@ -1759,6 +1769,7 @@ Vec3i_Up
 Vec3i_Backward
 Vec3i_Forward
 Vec4_Zero
+Vec4_Zero_Const
 Vec4_One
 Vec4_Half
 Vec4_Left
@@ -1774,6 +1785,7 @@ Vec4_Forward
 Vec4_Prevward
 Vec4_Nextward
 Vec4i_Zero
+Vec4i_Zero_Const
 Vec4i_One
 Vec4i_Left
 Vec4i_Right
