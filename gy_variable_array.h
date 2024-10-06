@@ -624,7 +624,7 @@ void VarArrayReverse(VarArray_t* array, u64 startIndex, u64 endIndex)
 	#if ORCA_COMPILATION || PLAYDATE_COMPILATION
 	u8 tempSpace[128];
 	Assert(array->itemSize < sizeof(tempSpace));
-	void* workingSpace = &tempSpace[0]
+	void* workingSpace = &tempSpace[0];
 	#else
 	void* workingSpace = alloca(array->itemSize);
 	#endif

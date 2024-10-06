@@ -3166,7 +3166,7 @@ EXP_STEP_CALLBACK(ExpressionTypeCheckWalk_Callback)
 					Assert(leftOperandType != ExpValueType_None && rightOperandType != ExpValueType_None);
 					Result_t mismatchReason = Result_None;
 					part->evalType = GetExpResultTypeForMathOp(leftOperandType, rightOperandType, (part->opType == ExpOp_Subtract), &mismatchReason);
-					if (part->evalType == ExpPartType_None)
+					if (part->evalType == ExpValueType_None)
 					{
 						state->result = mismatchReason;
 						state->errorPartIndex = part->index;
@@ -3189,7 +3189,7 @@ EXP_STEP_CALLBACK(ExpressionTypeCheckWalk_Callback)
 					Assert(leftOperandType != ExpValueType_None && rightOperandType != ExpValueType_None);
 					Result_t mismatchReason = Result_None;
 					ExpValueType_t commonType = GetExpCommonTypeForComparisonOp(leftOperandType, rightOperandType, (part->opType == ExpOp_Equals || part->opType == ExpOp_NotEquals), &mismatchReason);
-					if (commonType != ExpPartType_None)
+					if (commonType != ExpValueType_None)
 					{
 						part->evalType = ExpValueType_Bool;
 					}
@@ -3254,7 +3254,7 @@ EXP_STEP_CALLBACK(ExpressionTypeCheckWalk_Callback)
 					Assert(leftOperandType != ExpValueType_None && rightOperandType != ExpValueType_None);
 					Result_t mismatchReason = Result_None;
 					part->evalType = GetExpIntegerTypeForBitwiseOp(leftOperandType, rightOperandType, (part->opType == ExpOp_And), &mismatchReason);
-					if (part->evalType == ExpPartType_None)
+					if (part->evalType == ExpValueType_None)
 					{
 						state->result = mismatchReason;
 						state->errorPartIndex = part->index;
@@ -3283,7 +3283,7 @@ EXP_STEP_CALLBACK(ExpressionTypeCheckWalk_Callback)
 						// Ternary operators do not combine their true and false values BUT during this typecheck pass we don't know whether the condition is true or not, so we need to report some common type that both sides could be cast to
 						Result_t mismatchReason = Result_None;
 						part->evalType = GetExpResultTypeForTernaryOp(trueOperandType, falseOperandType, &mismatchReason);
-						if (part->evalType == ExpPartType_None)
+						if (part->evalType == ExpValueType_None)
 						{
 							state->result = mismatchReason;
 							state->errorPartIndex = part->index;
@@ -4383,7 +4383,9 @@ EXPRESSION_FUNC_DEFINITION(Saw_Glue)                  { EXP_GET_ARG_R32(0, angle
 EXPRESSION_FUNC_DEFINITION(Pow_Glue)                  { EXP_GET_ARG_R32(0, value); EXP_GET_ARG_R32(1, power); return NewExpValueR32(PowR32(value, power)); }
 EXPRESSION_FUNC_DEFINITION(Ln_Glue)                   { EXP_GET_ARG_R32(0, value); return NewExpValueR32(LnR32(value)); }
 EXPRESSION_FUNC_DEFINITION(Log2_Glue)                 { EXP_GET_ARG_R32(0, value); return NewExpValueR32(Log2R32(value)); }
+#if !ORCA_COMPILATION
 EXPRESSION_FUNC_DEFINITION(Log10_Glue)                { EXP_GET_ARG_R32(0, value); return NewExpValueR32(Log10R32(value)); }
+#endif
 EXPRESSION_FUNC_DEFINITION(Sqrt_Glue)                 { EXP_GET_ARG_R32(0, value); return NewExpValueR32(SqrtR32(value)); }
 EXPRESSION_FUNC_DEFINITION(Cbrt_Glue)                 { EXP_GET_ARG_R32(0, value); return NewExpValueR32(CbrtR32(value)); }
 EXPRESSION_FUNC_DEFINITION(SignOf_Glue)               { EXP_GET_ARG_R32(0, value); return NewExpValueR32(SignOfR32(value)); }
@@ -4431,7 +4433,9 @@ void AddStdLibraryFuncsToExpContext(ExpContext_t* context, MemArena_t* scratchAr
 	AddExpFuncDefByStr(context, scratchArena, "r32 pow(r32 value, r32 power)",                              Pow_Glue,                  "Returns a number raised to a power");
 	AddExpFuncDefByStr(context, scratchArena, "r32 ln(r32 value)",                                          Ln_Glue,                   "Returns the natural log of the value");
 	AddExpFuncDefByStr(context, scratchArena, "r32 log2(r32 value)",                                        Log2_Glue,                 "Returns the base-2 log of the value");
+	#if !ORCA_COMPILATION
 	AddExpFuncDefByStr(context, scratchArena, "r32 log10(r32 value)",                                       Log10_Glue,                "Returns the base-10 log of the value");
+	#endif
 	AddExpFuncDefByStr(context, scratchArena, "r32 sqrt(r32 value)",                                        Sqrt_Glue,                 "Returns the square root of the value");
 	AddExpFuncDefByStr(context, scratchArena, "r32 cbrt(r32 value)",                                        Cbrt_Glue,                 "Returns the cube root of the value");
 	AddExpFuncDefByStr(context, scratchArena, "r32 sign(r32 value)",                                        SignOf_Glue,               "Returns -1 or 1 based on whether the input is positive or negative (returns 0 for 0)");
@@ -4468,7 +4472,7 @@ void AddStdLibraryConstantsToExpContext(ExpContext_t* context)
 	AddExpConstantDef(context, "sqrt2",          NewExpValueR32(Sqrt2_32));
 }
 
-#endif GYLIB_HEADER_ONLY
+#endif //GYLIB_HEADER_ONLY
 
 #endif //  _GY_EXPRESSION_H
 

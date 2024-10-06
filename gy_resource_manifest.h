@@ -174,6 +174,7 @@ ResourceManifestEntry_t* ResourceManifestAdd(ResourceManifest_t* manifest, MyStr
 // +--------------------------------------------------------------+
 // |                   Deserialization Function                   |
 // +--------------------------------------------------------------+
+#if GYLIB_SCRATCH_ARENA_AVAILABLE //We need ProcessLog_t to be available for this function
 bool TryDeserResourceManifest(MyStr_t fileContents, ProcessLog_t* log, ResourceManifest_t* manifestOut, MemArena_t* memArena)
 {
 	NotNullStr(&fileContents);
@@ -252,6 +253,7 @@ bool TryDeserResourceManifest(MyStr_t fileContents, ProcessLog_t* log, ResourceM
 	
 	return true;
 }
+#endif //GYLIB_SCRATCH_ARENA_AVAILABLE
 
 #endif // GYLIB_HEADER_ONLY
 

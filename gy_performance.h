@@ -14,6 +14,8 @@ struct PerfTime_t
 	#if WINDOWS_COMPILATION
 	LARGE_INTEGER perfCount;
 	u64 cycleCount;
+	#elif ORCA_COMPILATION
+	u64 value;
 	#else
 	//TODO: Implement linux/OSX/wasm variants of PerfTime!
 	#error Unsupported platform in gy_performance.h PerfTime_t
@@ -45,6 +47,8 @@ PerfTime_t GetPerfTime()
 	BOOL queryResult = QueryPerformanceCounter(&result.perfCount);
 	Assert_(queryResult != 0);
 	result.cycleCount = __rdtsc();
+	#elif ORCA_COMPILATION
+	Unimplemented(); //TODO: Implement me!
 	#else
 	//TODO: Implement linux/OSX/wasm variants of PerfTime!
 	#error Unsupported platform in gy_performance.h GetPerfTime
@@ -61,6 +65,8 @@ r64 GetPerfTimeDiff(const PerfTime_t* tStart, const PerfTime_t* tEnd)
 	LARGE_INTEGER perfCountFrequencyLarge;
 	QueryPerformanceFrequency(&perfCountFrequencyLarge);
 	resultSecs = ((r64)(tEnd->perfCount.QuadPart - tStart->perfCount.QuadPart) / (r64)perfCountFrequencyLarge.QuadPart);
+	#elif ORCA_COMPILATION
+	Unimplemented(); //TODO: Implement me!
 	#else
 	//TODO: Implement linux/OSX/wasm variants of PerfTime!
 	#error Unsupported platform in gy_performance.h GetPerfTimeDiff
@@ -75,6 +81,8 @@ void AddToPerfTimeTotal(const PerfTime_t* tStart, const PerfTime_t* tEnd, PerfTi
 	NotNull_(totalOut);
 	#if WINDOWS_COMPILATION
 	totalOut->totalCounterAmount += (u64)(tEnd->perfCount.QuadPart - tStart->perfCount.QuadPart);
+	#elif ORCA_COMPILATION
+	Unimplemented(); //TODO: Implement me!
 	#else
 	//TODO: Implement linux/OSX/wasm variants of PerfTime!
 	#error Unsupported platform in gy_performance.h AddToPerfTimeTotal
@@ -89,6 +97,8 @@ r64 GetPerfTimeTotal(const PerfTimeTotal_t* total)
 	LARGE_INTEGER perfCountFrequencyLarge;
 	QueryPerformanceFrequency(&perfCountFrequencyLarge);
 	resultSecs = ((r64)total->totalCounterAmount / (r64)perfCountFrequencyLarge.QuadPart);
+	#elif ORCA_COMPILATION
+	Unimplemented(); //TODO: Implement me!
 	#else
 	//TODO: Implement linux/OSX/wasm variants of PerfTime!
 	#error Unsupported platform in gy_performance.h GetPerfTimeTotal
