@@ -75,6 +75,7 @@ Description:
 
 #include "gylib/gy_os.h"
 #include "gylib/gy_orca_overloads.h"
+#include "gylib/gy_orca_addons.h"
 
 #include "gylib/gy_ip.h"
 #include "gylib/gy_socket.h"

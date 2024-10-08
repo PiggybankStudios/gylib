@@ -79,8 +79,8 @@ ORCA_INLINE OC_UiTextBoxResult_t OC_UiTextBox(const char* name, OC_Arena_t* aren
 
 //TODO: These have types we may wanna convert, but we gotta change the name so the macro is unique
 #define OC_UiFrame(size, style, mask) oc_defer_loop(OC_UiBeginFrame(ToOcVec2(size), (style), (mask)), OC_UiEndFrame())
-#define OC_UiMenuBar(name)            oc_defer_loop(OC_UiMenuBarBegin(ToOcStr8(name)), OC_UiMenuBarEnd())
-#define OC_UiMenu(label)              oc_defer_loop(OC_UiMenuBegin(ToOcStr8(label)), OC_UiMenuEnd())
+#define OC_UiMenuBar(name)            oc_defer_loop(OC_UiMenuBarBegin(name), OC_UiMenuBarEnd())
+#define OC_UiMenu(label)              oc_defer_loop(OC_UiMenuBegin(label), OC_UiMenuEnd())
 
 // +--------------------------------------------------------------+
 // |                        Orca Util API                         |

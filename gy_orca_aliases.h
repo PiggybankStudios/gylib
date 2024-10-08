@@ -84,8 +84,11 @@ typedef oc_ui_radio_group_info          OC_UiRadioGroupInfo_t;
 typedef oc_ui_flags                     OC_UiFlags_t;
 typedef oc_ui_pattern                   OC_UiPattern_t;
 typedef oc_ui_selector                  OC_UiSelector_t;
+typedef oc_ui_theme                     OC_UiTheme_t;
 typedef oc_list                         OC_List_t;
 typedef oc_list_elt                     OC_ListElement_t;
+typedef oc_clock_kind                   OC_ClockKind_t;
+typedef oc_ui_size_kind                 OC_UiSizeKind_t;
 
 // +--------------------------------------------------------------+
 // |                    Orca Function Aliases                     |
@@ -279,6 +282,7 @@ ORCA_INLINE void OC_UiProcessEvent(OC_Event_t* event)                           
 ORCA_INLINE void OC_UiBeginFrame(OC_Vec2_t size, OC_UiStyle_t* defaultStyle, OC_UiStyleMask_t mask)        { oc_ui_begin_frame(size, defaultStyle, mask); }
 ORCA_INLINE void OC_UiEndFrame()                                                                           { oc_ui_end_frame(); }
 ORCA_INLINE void OC_UiDraw()                                                                               { oc_ui_draw(); }
+ORCA_INLINE void OC_UiSetTheme(OC_UiTheme_t* theme)                                                        { oc_ui_set_theme(theme); }
 ORCA_INLINE OC_UiSig_t OC_UiLabel(const char* label)                                                       { return oc_ui_label(label); }
 ORCA_INLINE OC_UiSig_t OC_UiLabelStr8(OC_Str8_t label)                                                     { return oc_ui_label_str8(label); }
 ORCA_INLINE OC_UiSig_t OC_UiButton(const char* label)                                                      { return oc_ui_button(label); }
@@ -379,6 +383,11 @@ ORCA_INLINE bool OC_PathIsAbsolute(OC_Str8_t path)                              
 #define OC_AbortExt(file, function, line, fmt, ...)         oc_abort_ext(file, function, line, fmt, ##__VA_ARGS__) 
 #define OC_Abort(message, ...)                              OC_ABORT(message, ##__VA_ARGS__) 
 
+// +--------------------------------------------------------------+
+// |                     Other Orca Functions                     |
+// +--------------------------------------------------------------+
+ORCA_INLINE f64 OC_ClockTime(oc_clock_kind clock) { return oc_clock_time(clock); }
+
 #endif //ORCA_COMPILATION
 
 #endif //  _GY_ORCA_ALIASES_H
@@ -441,8 +450,11 @@ OC_UiRadioGroupInfo_t
 OC_UiFlags_t
 OC_UiPattern_t
 OC_UiSelector_t
+OC_UiTheme_t
 OC_List_t
 OC_ListElement_t
+OC_ClockKind_t
+OC_UiSizeKind_t
 @Functions
 OC_OnInit()
 OC_OnMouseDown(OC_MouseButton_t button)
@@ -611,6 +623,7 @@ ORCA_INLINE void OC_UiProcessEvent(OC_Event_t* event)
 ORCA_INLINE void OC_UiBeginFrame(OC_Vec2_t size, OC_UiStyle_t* defaultStyle, OC_UiStyleMask_t mask)
 ORCA_INLINE void OC_UiEndFrame()
 ORCA_INLINE void OC_UiDraw()
+ORCA_INLINE void OC_UiSetTheme(OC_UiTheme_t* theme)
 ORCA_INLINE OC_UiSig_t OC_UiLabel(const char* label)
 ORCA_INLINE OC_UiSig_t OC_UiLabelStr8(OC_Str8_t label)
 ORCA_INLINE OC_UiSig_t OC_UiButton(const char* label)
