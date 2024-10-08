@@ -25,7 +25,8 @@ Description:
 #elif defined(GYLIB_LOOKUP_PRIMES_10)
 #define PrimeNumbersU32_Count 10
 #else
-#error You must define GYLIB_LOOKUP_PRIMES_[10-10000] before including gy_lookup.h
+#define GYLIB_LOOKUP_PRIMES_10
+#define PrimeNumbersU32_Count 10
 #endif
 
 #ifdef GYLIB_HEADER_ONLY

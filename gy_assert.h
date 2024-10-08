@@ -80,15 +80,21 @@ Description:
 
 #if WASM_COMPILATION
 #define AssertMsg_(Expression, message) do { if (!(Expression)) { jsStdAssertFailure(__FILE__, __LINE__, __FUNCTION__, #Expression, (message)); } } while(0)
+#elif ORCA_COMPILATION
+#define AssertMsg_(Expression, message) do { if (!(Expression)) { OC_AssertFail(__FILE__, __FUNCTION__, __LINE__, #Expression, message); } } while(0)
 #else
 #define AssertMsg_(Expression, message) do { if (!(Expression)) { MyBreakEx(((message) != nullptr) ? (message) : #Expression); } } while(0)
 #endif
 
 #if GYLIB_USE_ASSERT_FAILURE_FUNC
-extern void GyLibAssertFailure(const char* filePath, int lineNumber, const char* funcName, const char* expressionStr, const char* messageStr);
-#define AssertMsg(Expression, message) do { if (!(Expression)) { GyLibAssertFailure(__FILE__, __LINE__, __func__, #Expression, (message)); } } while(0)
+	extern void GyLibAssertFailure(const char* filePath, int lineNumber, const char* funcName, const char* expressionStr, const char* messageStr);
+	#if ORCA_COMPILATION
+		#define AssertMsg(Expression, message) do { if (!(Expression)) { GyLibAssertFailure(__FILE__, __LINE__, __func__, #Expression, (message)); OC_AssertFail(__FILE__, __FUNCTION__, __LINE__, #Expression, message); } } while(0)
+	#else
+		#define AssertMsg(Expression, message) do { if (!(Expression)) { GyLibAssertFailure(__FILE__, __LINE__, __func__, #Expression, (message)); } } while(0)
+	#endif
 #else
-#define AssertMsg(Expression, message) AssertMsg_(Expression, (message))
+	#define AssertMsg(Expression, message) AssertMsg_(Expression, (message))
 #endif
 
 #else //!GYLIB_ASSERTIONS_ENABLED
