@@ -572,7 +572,7 @@ bool TryParseV2i(MyStr_t str, v2i* valueOut, TryParseFailureReason_t* reasonOut 
 	NotNullStr(&str);
 	if (StrStartsWith(str, "(")) { str = StrSubstring(&str, 1); }
 	if (StrEndsWith(str, ")")) { str = StrSubstring(&str, 0, str.length-1); }
-	u64 commaIndex = 0;
+	uxx commaIndex = 0;
 	bool strContainsComma = FindSubstring(str, ",", &commaIndex);
 	if (!strContainsComma)
 	{
@@ -598,7 +598,7 @@ bool TryParseV2(MyStr_t str, v2* valueOut, TryParseFailureReason_t* reasonOut = 
 	NotNullStr(&str);
 	if (StrStartsWith(str, "(")) { str = StrSubstring(&str, 1); }
 	if (StrEndsWith(str, ")")) { str = StrSubstring(&str, 0, str.length-1); }
-	u64 commaIndex = 0;
+	uxx commaIndex = 0;
 	bool strContainsComma = FindSubstring(str, ",", &commaIndex);
 	if (!strContainsComma)
 	{
@@ -625,14 +625,14 @@ bool TryParseV3i(MyStr_t str, v3i* valueOut, TryParseFailureReason_t* reasonOut 
 	NotNullStr(&str);
 	if (StrStartsWith(str, "(")) { str = StrSubstring(&str, 1); }
 	if (StrEndsWith(str, ")")) { str = StrSubstring(&str, 0, str.length-1); }
-	u64 commaIndex1 = 0;
+	uxx commaIndex1 = 0;
 	bool strContainsComma1 = FindSubstring(str, ",", &commaIndex1);
 	if (!strContainsComma1)
 	{
 		if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_NotEnoughCommas; }
 		return false;
 	}
-	u64 commaIndex2 = 0;
+	uxx commaIndex2 = 0;
 	bool strContainsComma2 = FindSubstring(str, ",", &commaIndex2, false, commaIndex1+1);
 	if (!strContainsComma2)
 	{
@@ -663,14 +663,14 @@ bool TryParseV3(MyStr_t str, v3* valueOut, TryParseFailureReason_t* reasonOut = 
 	NotNullStr(&str);
 	if (StrStartsWith(str, "(")) { str = StrSubstring(&str, 1); }
 	if (StrEndsWith(str, ")")) { str = StrSubstring(&str, 0, str.length-1); }
-	u64 commaIndex1 = 0;
+	uxx commaIndex1 = 0;
 	bool strContainsComma1 = FindSubstring(str, ",", &commaIndex1);
 	if (!strContainsComma1)
 	{
 		if (reasonOut != nullptr) { *reasonOut = TryParseFailureReason_NotEnoughCommas; }
 		return false;
 	}
-	u64 commaIndex2 = 0;
+	uxx commaIndex2 = 0;
 	bool strContainsComma2 = FindSubstring(str, ",", &commaIndex2, false, commaIndex1+1);
 	if (!strContainsComma2)
 	{

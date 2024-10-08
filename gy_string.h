@@ -1916,7 +1916,7 @@ MyStr_t FormatNumberWithCommas(uxx number, MemArena_t* memArena = nullptr)
 {
 	//Max uint64: 18,446,744,073,709,551,615 (20 digits + 6 commas)
 	static char printBuffer[20 + 6 + 1];
-	int numberLength = MyBufferPrintf(printBuffer, ArrayCount(printBuffer), "%llu", number);
+	int numberLength = MyBufferPrintf(printBuffer, ArrayCount(printBuffer), "%llu", (u64)number);
 	if (numberLength >= 0 && numberLength < (int)ArrayCount(printBuffer)) { printBuffer[numberLength] = '\0'; }
 	for (int cIndex = numberLength-3; cIndex > 0; cIndex -= 3)
 	{
