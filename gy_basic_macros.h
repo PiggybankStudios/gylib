@@ -75,6 +75,13 @@ Description:
 #define TrackMax(isFirst, trackVariable, newValue) do { if ((isFirst) || (trackVariable) < (newValue)) { (trackVariable) = (newValue); } } while(0)
 #define TrackMin(isFirst, trackVariable, newValue) do { if ((isFirst) || (trackVariable) > (newValue)) { (trackVariable) = (newValue); } } while(0)
 
+#ifndef STRINGIFY_DEFINE
+#define STRINGIFY_DEFINE(define) STRINGIFY(define)
+#endif
+#ifndef STRINGIFY
+#define STRINGIFY(text)          #text
+#endif
+
 // +--------------------------------------------------------------+
 // |                  Platform Dependant Macros                   |
 // +--------------------------------------------------------------+
