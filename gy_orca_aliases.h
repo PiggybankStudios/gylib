@@ -35,6 +35,7 @@ typedef oc_rect      OC_Rect_t;
 typedef oc_mat2x3    OC_Mat2x3_t;
 typedef oc_color     OC_Color_t;
 typedef oc_str8      OC_Str8_t;
+typedef oc_str8_elt  OC_Str8Elt_t;
 typedef oc_str32     OC_Str32_t;
 typedef oc_utf32     OC_Utf32_t;
 typedef oc_str8_list OC_Str8List_t;
@@ -405,6 +406,7 @@ OC_Rect_t
 OC_Mat2x3_t
 OC_Color_t
 OC_Str8_t
+OC_Str8Elt_t
 OC_Str32_t
 OC_Utf32_t
 OC_Str8List_t
