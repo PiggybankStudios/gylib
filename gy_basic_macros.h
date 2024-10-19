@@ -82,6 +82,17 @@ Description:
 #define STRINGIFY(text)          #text
 #endif
 
+#define INDEX_FROM_COORD3D(coordX, coordY, coordZ, arrayWidth, arrayHeight, arrayDepth) ( \
+	(coordY) * ((arrayWidth) * (arrayDepth)) +                                            \
+	(coordZ) * (arrayWidth) +                                                             \
+	(coordX)                                                                              \
+)
+#define COORD3D_FROM_INDEX(voxelIndex, arrayWidth, arrayHeight, arrayDepth) NewVec3i( \
+	(i32)((voxelIndex) % (arrayWidth)),                                               \
+	(i32)((voxelIndex) / ((arrayWidth) * (arrayDepth))),                              \
+	(i32)(((voxelIndex) % ((arrayWidth) * (arrayDepth))) / (arrayWidth))              \
+)
+
 // +--------------------------------------------------------------+
 // |                  Platform Dependant Macros                   |
 // +--------------------------------------------------------------+
@@ -182,6 +193,10 @@ EXTERN_C_END
 #define Plural(number, multipleSuffix)
 #define TrackMax(isFirst, trackVariable, newValue)
 #define TrackMin(isFirst, trackVariable, newValue)
+#define STRINGIFY_DEFINE(define)
+#define STRINGIFY(text)
+#define INDEX_FROM_COORD3D(coordX, coordY, coordZ, arrayWidth, arrayHeight, arrayDepth)
+#define COORD3D_FROM_INDEX(voxelIndex, arrayWidth, arrayHeight, arrayDepth)
 #define UNUSED(varName)
 #define UNREFERENCED(varName)
 #define PACKED(class_to_pack)

@@ -139,6 +139,9 @@ enum Result_t
 	Result_ReadOnly,
 	Result_StartsWithNumber,
 	Result_MismatchStartEndTokens,
+	Result_TooSmall,
+	Result_TooDeep,
+	Result_WrongFirstItem,
 	
 	Result_NumValues,
 };
@@ -264,6 +267,9 @@ const char* GetResultStr(Result_t enumValue)
 		case Result_ReadOnly:                       return "ReadOnly";
 		case Result_StartsWithNumber:               return "StartsWithNumber";
 		case Result_MismatchStartEndTokens:         return "MismatchStartEndTokens";
+		case Result_TooSmall:                       return "TooSmall";
+		case Result_TooDeep:                        return "TooDeep";
+		case Result_WrongFirstItem:                 return "WrongFirstItem";
 		default: return "Unknown";
 	}
 }
