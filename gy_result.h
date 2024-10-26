@@ -140,8 +140,15 @@ enum Result_t
 	Result_StartsWithNumber,
 	Result_MismatchStartEndTokens,
 	Result_TooSmall,
+	Result_TooLarge,
 	Result_TooDeep,
 	Result_WrongFirstItem,
+	Result_DuplicateItem,
+	Result_InvalidSize,
+	Result_CorruptValue,
+	Result_MissingSize,
+	Result_MissingHeader,
+	Result_EndOfFile,
 	
 	Result_NumValues,
 };
@@ -268,8 +275,15 @@ const char* GetResultStr(Result_t enumValue)
 		case Result_StartsWithNumber:               return "StartsWithNumber";
 		case Result_MismatchStartEndTokens:         return "MismatchStartEndTokens";
 		case Result_TooSmall:                       return "TooSmall";
+		case Result_TooLarge:                       return "TooLarge";
 		case Result_TooDeep:                        return "TooDeep";
 		case Result_WrongFirstItem:                 return "WrongFirstItem";
+		case Result_DuplicateItem:                  return "DuplicateItem";
+		case Result_InvalidSize:                    return "InvalidSize";
+		case Result_CorruptValue:                   return "CorruptValue";
+		case Result_MissingSize:                    return "MissingSize";
+		case Result_MissingHeader:                  return "MissingHeader";
+		case Result_EndOfFile:                      return "EndOfFile";
 		default: return "Unknown";
 	}
 }

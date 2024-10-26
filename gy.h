@@ -44,6 +44,7 @@ Description:
 #include "gylib/gy_basis_vectors.h"
 #include "gylib/gy_quaternions.h"
 #include "gylib/gy_rectangles.h"
+#include "gylib/gy_voxel_rotation.h"
 #include "gylib/gy_cyclic_functions.h"
 #include "gylib/gy_math.h"
 #include "gylib/gy_matrices.h"
