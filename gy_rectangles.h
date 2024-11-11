@@ -199,22 +199,26 @@ typedef Obb3D_t       obb3;
 // |                   Simple Value Definitions                   |
 // +--------------------------------------------------------------+
 #define Rec_Zero       NewRec(0, 0, 0, 0)
-#define Rec_Default    NewRec(0, 0, 1, 1)
+#define Rec_Unit       NewRec(0, 0, 1, 1)
 #define Reci_Zero      NewReci(0, 0, 0, 0)
-#define Reci_Default   NewReci(0, 0, 1, 1)
+#define Reci_Unit      NewReci(0, 0, 1, 1)
 #define Box_Zero       NewBox(0, 0, 0, 0, 0, 0)
+#define Box_Unit       NewBox(0, 0, 0, 1, 1, 1)
 #define Boxi_Zero      NewBoxi(0, 0, 0, 0, 0, 0)
+#define Boxi_Unit      NewBoxi(0, 0, 0, 1, 1, 1)
 #define Obb2_Zero      NewObb2D(0, 0, 0, 0, 0)
 #if OBB3D_AVAILABLE
 #define Obb3_Zero      NewObb3D(0, 0, 0, 0, 0, 0, Quat_Identity)
 #endif
 
 #define Rec_Zero_Const     { 0.0f, 0.0f, 0.0f, 0.0f }
-#define Rec_Default_Const  { 0.0f, 0.0f, 1.0f, 1.0f }
+#define Rec_Unit_Const     { 0.0f, 0.0f, 1.0f, 1.0f }
 #define Reci_Zero_Const    { 0, 0, 0, 0 }
-#define Reci_Default_Const { 0, 0, 1, 1 }
+#define Reci_Unit_Const    { 0, 0, 1, 1 }
 #define Box_Zero_Const     { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f }
+#define Box_Unit_Const     { 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f }
 #define Boxi_Zero_Const    { 0, 0, 0, 0, 0, 0 }
+#define Boxi_Unit_Const    { 0, 0, 0, 1, 1, 1 }
 #define Obb2_Zero_Const    { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f }
 #if OBB3D_AVAILABLE
 #define Obb3_Zero_Const    { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, Quat_Identity }
@@ -3096,19 +3100,23 @@ obb2 operator / (obb2 box, r32 scale) { return Obb2DScale(box, 1/scale); }
 /*
 @Defines
 Rec_Zero
-Rec_Default
+Rec_Unit
 Reci_Zero
-Reci_Default
+Reci_Unit
 Box_Zero
+Box_Unit
 Boxi_Zero
+Boxi_Unit
 Obb2_Zero
 Obb3_Zero
 Rec_Zero_Const
-Rec_Default_Const
+Rec_Unit_Const
 Reci_Zero_Const
-Reci_Default_Const
+Reci_Unit_Const
 Box_Zero_Const
+Box_Unit_Const
 Boxi_Zero_Const
+Boxi_Unit_Const
 Obb2_Zero_Const
 Obb3_Zero_Const
 @Types
